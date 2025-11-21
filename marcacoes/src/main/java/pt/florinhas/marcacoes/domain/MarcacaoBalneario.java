@@ -1,4 +1,4 @@
-package pt.florinhas.domain;
+package pt.florinhas.marcacoes.domain;
 
 public class MarcacaoBalneario {
     

@@ -1,4 +1,4 @@
-package pt.florinhas.exception;
+package pt.florinhas.marcacoes.exception;
 
 public class NotFoundException {
     

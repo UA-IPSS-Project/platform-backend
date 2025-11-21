@@ -1,4 +1,4 @@
-package pt.florinhas.dto;
+package pt.florinhas.marcacoes.dto;
 
 public class MarcacaoBalnearioRequest {
     

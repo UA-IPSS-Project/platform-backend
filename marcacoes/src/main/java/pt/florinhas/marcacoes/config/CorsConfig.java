@@ -1,4 +1,4 @@
-package pt.florinhas.config;
+package pt.florinhas.marcacoes.config;
 
 public class CorsConfig {
     

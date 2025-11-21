@@ -1,4 +1,4 @@
-package pt.florinhas.mapper;
+package pt.florinhas.marcacoes.mapper;
 
 public class MarcacaoSecretariaMapper {
     

@@ -1,4 +1,4 @@
-package pt.florinhas.service;
+package pt.florinhas.marcacoes.service;
 
 public class MarcacaoServiceImpl implements MarcacaoService {
     

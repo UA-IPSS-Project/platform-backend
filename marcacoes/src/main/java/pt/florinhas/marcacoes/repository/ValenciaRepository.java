@@ -1,4 +1,4 @@
-package pt.florinhas.repository;
+package pt.florinhas.marcacoes.repository;
 
 public class ValenciaRepository {
     
