@@ -53,3 +53,25 @@ platform-backend/
 │
 ├── pom.xml
 └── README.md
+```
+
+## Spring Initializer
+Group: pt.florinhas
+Artifact: marcacoes-service
+Description: Serviço de marcações da plataforma Florinhas
+
+PLUGINS:
+- Spring Web
+- Spring Data JPA
+- Validation
+- H2 Database
+- PostgreSQL Driver
+- Lombok
+- Spring Boot DevTools
+- Spring Boot Actuator
+
+
+## Fluxo típico dentro do microserviço
+Controller → Service → Repository → Entity
+↓
+DTO ↔ Mapper
