@@ -56,9 +56,9 @@ platform-backend/
 ```
 
 ## Spring Initializer
-Group: pt.florinhas
-Artifact: marcacoes-service
-Description: Serviço de marcações da plataforma Florinhas
+- Group: pt.florinhas
+- Artifact: marcacoes-service
+- Description: Serviço de marcações da plataforma Florinhas
 
 PLUGINS:
 - Spring Web
