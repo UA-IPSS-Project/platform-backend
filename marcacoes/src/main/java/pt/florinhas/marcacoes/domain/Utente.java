@@ -20,64 +20,50 @@ public class Utente {
 	private Long id;
 
 	private String nome;
-
 	private String nif;
-
 	private String telefone;
-
+	private String telefoneAlternativo;
+	private String email;
 	private LocalDate dataNascimento;
+	
+	private Boolean contaCriadaAutomaticamente;
+	private Boolean passwordDefinida;
 
 	@OneToMany(mappedBy = "utente")
 	private List<Marcacao> marcacoes = new ArrayList<>();
 
 	public Utente() {
+		this.contaCriadaAutomaticamente = false;
+		this.passwordDefinida = false;
 	}
 
-	public Long getId() {
-		return id;
-	}
+	public Long getId() { return id; }
+	public void setId(Long id) { this.id = id; }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+	public String getNome() { return nome; }
+	public void setNome(String nome) { this.nome = nome; }
 
-	public String getNome() {
-		return nome;
-	}
+	public String getNif() { return nif; }
+	public void setNif(String nif) { this.nif = nif; }
 
-	public void setNome(String nome) {
-		this.nome = nome;
-	}
+	public String getTelefone() { return telefone; }
+	public void setTelefone(String telefone) { this.telefone = telefone; }
+	
+	public String getTelefoneAlternativo() { return telefoneAlternativo; }
+	public void setTelefoneAlternativo(String telefoneAlternativo) { this.telefoneAlternativo = telefoneAlternativo; }
+	
+	public String getEmail() { return email; }
+	public void setEmail(String email) { this.email = email; }
 
-	public String getNif() {
-		return nif;
-	}
+	public LocalDate getDataNascimento() { return dataNascimento; }
+	public void setDataNascimento(LocalDate dataNascimento) { this.dataNascimento = dataNascimento; }
+	
+	public Boolean getContaCriadaAutomaticamente() { return contaCriadaAutomaticamente; }
+	public void setContaCriadaAutomaticamente(Boolean contaCriadaAutomaticamente) { this.contaCriadaAutomaticamente = contaCriadaAutomaticamente; }
+	
+	public Boolean getPasswordDefinida() { return passwordDefinida; }
+	public void setPasswordDefinida(Boolean passwordDefinida) { this.passwordDefinida = passwordDefinida; }
 
-	public void setNif(String nif) {
-		this.nif = nif;
-	}
-
-	public String getTelefone() {
-		return telefone;
-	}
-
-	public void setTelefone(String telefone) {
-		this.telefone = telefone;
-	}
-
-	public LocalDate getDataNascimento() {
-		return dataNascimento;
-	}
-
-	public void setDataNascimento(LocalDate dataNascimento) {
-		this.dataNascimento = dataNascimento;
-	}
-
-	public List<Marcacao> getMarcacoes() {
-		return marcacoes;
-	}
-
-	public void setMarcacoes(List<Marcacao> marcacoes) {
-		this.marcacoes = marcacoes;
-	}
+	public List<Marcacao> getMarcacoes() { return marcacoes; }
+	public void setMarcacoes(List<Marcacao> marcacoes) { this.marcacoes = marcacoes; }
 }

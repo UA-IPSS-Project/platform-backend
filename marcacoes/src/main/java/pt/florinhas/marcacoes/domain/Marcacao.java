@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.domain;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import jakarta.persistence.Entity;
@@ -23,10 +24,16 @@ public class Marcacao {
 	private Long id;
 
 	private LocalDate data;
-
 	private LocalTime hora;
-
-	private String estado;
+	private String estado; // AGENDADO, CONFIRMADO, RECEBIDO, CONCLUIDO, CANCELADO
+	private String tipoAtendimento; // PRESENCIAL, REMOTO
+	
+	private LocalDateTime dataCriacao;
+	private LocalDateTime dataAtualizacao;
+	
+	private Boolean presencaConfirmada;
+	private String documentosObservacoes;
+	private Boolean documentosInvalidos;
 
 	@ManyToOne
 	@JoinColumn(name = "utente_id")
@@ -39,64 +46,55 @@ public class Marcacao {
 	@ManyToOne
 	@JoinColumn(name = "valencia_id")
 	private Valencia valencia;
+	
+	@ManyToOne
+	@JoinColumn(name = "criado_por_id")
+	private Utilizador criadoPor;
 
 	public Marcacao() {
+		this.dataCriacao = LocalDateTime.now();
+		this.estado = "AGENDADO";
 	}
 
-	public Long getId() {
-		return id;
-	}
+	public Long getId() { return id; }
+	public void setId(Long id) { this.id = id; }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+	public LocalDate getData() { return data; }
+	public void setData(LocalDate data) { this.data = data; }
 
-	public LocalDate getData() {
-		return data;
-	}
+	public LocalTime getHora() { return hora; }
+	public void setHora(LocalTime hora) { this.hora = hora; }
 
-	public void setData(LocalDate data) {
-		this.data = data;
-	}
+	public String getEstado() { return estado; }
+	public void setEstado(String estado) { this.estado = estado; }
+	
+	public String getTipoAtendimento() { return tipoAtendimento; }
+	public void setTipoAtendimento(String tipoAtendimento) { this.tipoAtendimento = tipoAtendimento; }
+	
+	public LocalDateTime getDataCriacao() { return dataCriacao; }
+	public void setDataCriacao(LocalDateTime dataCriacao) { this.dataCriacao = dataCriacao; }
+	
+	public LocalDateTime getDataAtualizacao() { return dataAtualizacao; }
+	public void setDataAtualizacao(LocalDateTime dataAtualizacao) { this.dataAtualizacao = dataAtualizacao; }
+	
+	public Boolean getPresencaConfirmada() { return presencaConfirmada; }
+	public void setPresencaConfirmada(Boolean presencaConfirmada) { this.presencaConfirmada = presencaConfirmada; }
+	
+	public String getDocumentosObservacoes() { return documentosObservacoes; }
+	public void setDocumentosObservacoes(String documentosObservacoes) { this.documentosObservacoes = documentosObservacoes; }
+	
+	public Boolean getDocumentosInvalidos() { return documentosInvalidos; }
+	public void setDocumentosInvalidos(Boolean documentosInvalidos) { this.documentosInvalidos = documentosInvalidos; }
 
-	public LocalTime getHora() {
-		return hora;
-	}
+	public Utente getUtente() { return utente; }
+	public void setUtente(Utente utente) { this.utente = utente; }
 
-	public void setHora(LocalTime hora) {
-		this.hora = hora;
-	}
+	public Funcionario getFuncionario() { return funcionario; }
+	public void setFuncionario(Funcionario funcionario) { this.funcionario = funcionario; }
 
-	public String getEstado() {
-		return estado;
-	}
-
-	public void setEstado(String estado) {
-		this.estado = estado;
-	}
-
-	public Utente getUtente() {
-		return utente;
-	}
-
-	public void setUtente(Utente utente) {
-		this.utente = utente;
-	}
-
-	public Funcionario getFuncionario() {
-		return funcionario;
-	}
-
-	public void setFuncionario(Funcionario funcionario) {
-		this.funcionario = funcionario;
-	}
-
-	public Valencia getValencia() {
-		return valencia;
-	}
-
-	public void setValencia(Valencia valencia) {
-		this.valencia = valencia;
-	}
-
+	public Valencia getValencia() { return valencia; }
+	public void setValencia(Valencia valencia) { this.valencia = valencia; }
+	
+	public Utilizador getCriadoPor() { return criadoPor; }
+	public void setCriadoPor(Utilizador criadoPor) { this.criadoPor = criadoPor; }
 }

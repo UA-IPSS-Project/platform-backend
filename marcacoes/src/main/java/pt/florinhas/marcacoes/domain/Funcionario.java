@@ -17,12 +17,10 @@ public class Funcionario {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-
 	private String nome;
-
 	private String nif;
-
 	private String email;
+	private String tipo; // SECRETARIA, BALNEARIO
 
 	@OneToMany(mappedBy = "funcionario")
 	private List<Marcacao> marcacoes = new ArrayList<>();
@@ -58,15 +56,12 @@ public class Funcionario {
 		return email;
 	}
 
-	public void setEmail(String email) {
-		this.email = email;
-	}
+	public void setEmail(String email) { this.email = email; }
 
-	public List<Marcacao> getMarcacoes() {
-		return marcacoes;
-	}
+	public List<Marcacao> getMarcacoes() { return marcacoes; }
 
-	public void setMarcacoes(List<Marcacao> marcacoes) {
-		this.marcacoes = marcacoes;
-	}
+	public void setMarcacoes(List<Marcacao> marcacoes) { this.marcacoes = marcacoes; }
+
+	public String getTipo() { return tipo; }
+	public void setTipo(String tipo) { this.tipo = tipo; }
 }
