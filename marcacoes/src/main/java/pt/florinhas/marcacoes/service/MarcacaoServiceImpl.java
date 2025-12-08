@@ -15,6 +15,7 @@ import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @Transactional
@@ -337,8 +338,8 @@ public class MarcacaoServiceImpl implements MarcacaoService {
         switch (tipoNotificacao) {
             case "NOVA_MARCACAO":
                 assunto = "Nova Marcação Criada";
-                mensagem = String.format("A sua marcação para %s às %s foi agendada com sucesso.", 
-                    marcacao.getData(), marcacao.getHora());
+                mensagem = "A sua marcação para %s às %s foi agendada com sucesso.".formatted(
+                        marcacao.getData(), marcacao.getHora());
                 break;
             case "CANCELAMENTO":
                 assunto = "Marcação Cancelada";
@@ -370,9 +371,9 @@ public class MarcacaoServiceImpl implements MarcacaoService {
     
     private void enviarTokenAcesso(Utente utente) {
         String token = gerarToken();
-        String mensagem = String.format(
-            "Foi criada uma conta automática para si. Use o token %s para aceder à plataforma. " +
-            "Será obrigatório definir uma nova palavra-passe no primeiro acesso.", token);
+        String mensagem = (
+                "Foi criada uma conta automática para si. Use o token %s para aceder à plataforma. " +
+                        "Será obrigatório definir uma nova palavra-passe no primeiro acesso.").formatted(token);
         
         if (utente.getEmail() != null) {
             //emailService.enviarEmail(utente.getEmail(), "Token de Acesso - Plataforma", mensagem);
@@ -380,6 +381,6 @@ public class MarcacaoServiceImpl implements MarcacaoService {
     }
     
     private String gerarToken() {
-        return String.valueOf((int) ((Math.random() * 900000) + 100000));
+        return String.valueOf((int) ((ThreadLocalRandom.current().nextDouble() * 900000) + 100000));
     }
 }
