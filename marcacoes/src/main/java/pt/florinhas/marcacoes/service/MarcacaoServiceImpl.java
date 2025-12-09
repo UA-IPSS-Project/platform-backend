@@ -1,19 +1,25 @@
 package pt.florinhas.marcacoes.service;
 
-import pt.florinhas.marcacoes.domain.*;
-import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.repository.MarcacaoSecretariaRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
+import pt.florinhas.marcacoes.domain.AtendimentoTipo;
+import pt.florinhas.marcacoes.domain.EventoEstado;
+import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
+import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
+import pt.florinhas.marcacoes.domain.Utente;
+import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.repository.MarcacaoSecretariaRepository;
+import pt.florinhas.marcacoes.repository.UtenteRepository;
 
 @Service
 @Transactional
@@ -28,8 +34,8 @@ public class MarcacaoServiceImpl implements MarcacaoService {
     @Autowired
     private UtenteRepository utenteRepository;
     
-    @Autowired
-    private FuncionarioRepository funcionarioRepository;
+    //@Autowired
+    //private FuncionarioRepository funcionarioRepository;
     
     //@Autowired
     //private EmailService emailService;
@@ -88,7 +94,10 @@ public class MarcacaoServiceImpl implements MarcacaoService {
         marcacaoSecretaria.setTipoAtendimento(AtendimentoTipo.REMOTO);
         marcacaoSecretaria.setUtente(utente);
         
-        marcacaoSecretariaRepository.save(marcacaoSecretaria);
+        MarcacaoSecretaria savedMarcacaoSecretaria = marcacaoSecretariaRepository.save(marcacaoSecretaria);
+        
+        // Estabelecer relacionamento bidirecional
+        savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
         
         notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
         
@@ -97,6 +106,9 @@ public class MarcacaoServiceImpl implements MarcacaoService {
 
     @Override
     public void cancelarMarcacao(Long marcacaoId, String motivo, Utilizador canceladoPor) {
+        if (marcacaoId == null || canceladoPor == null) {
+            throw new IllegalArgumentException(" Argumento não pode ser nulo");
+        }
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId).orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
         
         // Verificar permissões: apenas secretaria ou funcionário responsável pode cancelar
@@ -126,13 +138,16 @@ public class MarcacaoServiceImpl implements MarcacaoService {
 
     @Override
     public Marcacao atualizarEstadoMarcacao(Long marcacaoId, EventoEstado novoEstado, Utilizador atualizadoPor) {
+        if (marcacaoId == null || novoEstado == null || atualizadoPor == null) {
+            throw new IllegalArgumentException(" Argumento não pode ser nulo");
+        }   
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId).orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
         
         // TODO: Ver se vale a pena por aqui a parte de cancelar
 
-        if (atualizadoPor instanceof Funcionario) {
-            validarFuncionarioSecretaria((Funcionario) atualizadoPor); // Apenas secretaria pode atualizar estado
-    }
+        if (atualizadoPor instanceof Funcionario funcionario) {
+            validarFuncionarioSecretaria(funcionario); // Apenas secretaria pode atualizar estado
+        }
         else {
             throw new RuntimeException("Apenas funcionários podem atualizar o estado da marcação");
         }
@@ -257,19 +272,19 @@ public class MarcacaoServiceImpl implements MarcacaoService {
         String assunto = "";
         
         switch (tipoNotificacao) {
-            case "NOVA_MARCACAO":
+            case "NOVA_MARCACAO" -> {
                 assunto = "Nova Marcação Criada";
                 mensagem = "A sua marcação para %s foi agendada com sucesso.".formatted(
                         marcacao.getData());
-                break;
-            case "CANCELAMENTO":
+            }
+            case "CANCELAMENTO" -> {
                 assunto = "Marcação Cancelada";
                 mensagem = "A sua marcação foi cancelada.";
-                break;
-            case "DOCUMENTOS_INVALIDOS":
+            }
+            case "DOCUMENTOS_INVALIDOS" -> {
                 assunto = "Documentos Inválidos";
                 mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria.";
-                break;
+            }
         }
         
         if (marcacao.getMarcacaoSecretaria().getUtente().getEmail() != null) {
@@ -284,7 +299,7 @@ public class MarcacaoServiceImpl implements MarcacaoService {
         }
         
         try {
-            Integer.parseInt(nif);
+            Integer.valueOf(nif);
             return true;
         } catch (NumberFormatException e) {
             return false;
@@ -297,7 +312,7 @@ public class MarcacaoServiceImpl implements MarcacaoService {
         
         if (utente.getEmail() != null) {
             //emailService.enviarEmail(utente.getEmail(), "Token de Acesso - Plataforma", mensagem);
-            System.out.println("Email enviado para " + utente.getEmail() + " com token: " + token);
+            System.out.println("Email enviado para " + utente.getEmail() + " com token: " + token + " e mensagem: " + mensagem);
         }
     }
     

@@ -21,13 +21,13 @@ import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
 import pt.florinhas.marcacoes.dto.CancelarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
+import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 
 @RestController
@@ -47,7 +47,7 @@ public class MarcacaoController {
     @Autowired
     private UtilizadorRepository utilizadorRepository;
 
-    // RF1.2.1 - Criar marcação presencial (Secretaria)
+    // Criar marcação presencial (Secretaria)
     @PostMapping("/presencial")
     public ResponseEntity<Marcacao> criarMarcacaoPresencial(@RequestBody CriarMarcacaoRequest request) {
         try {
@@ -66,24 +66,48 @@ public class MarcacaoController {
         }
     }
 
-    // RF1.2.10 - Criar marcação remota (Utente)
+    // Criar marcação remota (Utente)
     @PostMapping("/remota")
-    public ResponseEntity<Marcacao> criarMarcacaoRemota(@RequestBody CriarMarcacaoRequest request) {
+    public ResponseEntity<?> criarMarcacaoRemota(@RequestBody CriarMarcacaoRequest request) {
         try {
-            Utente utente = utenteRepository.findById(request.getUtenteId())
-                    .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
+ 
+            // Buscar utilizador e verificar se é um Utente
+            Utilizador utilizador = utilizadorRepository.findById(request.getUtenteId())
+                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + request.getUtenteId()));
+
+            
+            // Verificar se é um Utente
+            if (!(utilizador instanceof Utente)) {
+                throw new RuntimeException("O utilizador com ID " + request.getUtenteId() + 
+                    " é um " + utilizador.getClass().getSimpleName() + ", não um Utente. " +
+                    "Apenas utentes podem criar marcações remotas.");
+            }
+            
+            Utente utente = (Utente) utilizador;
 
             Marcacao marcacao = marcacaoService.criarMarcacaoRemota(
                     request.getData(), request.getAssunto(),
                     utente);
 
-            return ResponseEntity.ok(marcacao);
+            System.out.println("Marcação criada com sucesso: " + marcacao.getId());
+            
+            // Retornar resposta simples para evitar serialização circular
+            return ResponseEntity.ok().body(java.util.Map.of(
+                "id", marcacao.getId(),
+                "data", marcacao.getData().toString(),
+                "estado", marcacao.getEstado().toString(),
+                "message", "Marcação criada com sucesso"
+            ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            System.err.println("Erro ao criar marcação: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "error", e.getMessage()
+            ));
         }
     }
 
-    // RF1.2.2 - Cancelar marcação
+    // Cancelar marcação
     @PutMapping("/{id}/cancelar")
     public ResponseEntity<Marcacao> cancelarMarcacao(@PathVariable Long id, @RequestBody CancelarMarcacaoRequest request) {
         try {
@@ -132,7 +156,7 @@ public class MarcacaoController {
         }
     }
 
-    // RF1.2.4 - Atualizar estado da marcação
+    // Atualizar estado da marcação
     @PutMapping("/{id}/estado")
     public ResponseEntity<Marcacao> atualizarEstadoMarcacao(@PathVariable Long id, @RequestBody AtualizarEstadoRequest request) {
         try {
@@ -146,7 +170,7 @@ public class MarcacaoController {
         }
     }
 
-    // RF1.2.14 - Consultar marcações passadas
+    // Consultar marcações passadas
     @GetMapping("/passadas")
     public ResponseEntity<List<Marcacao>> consultarMarcacoesPassadas(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
@@ -162,7 +186,7 @@ public class MarcacaoController {
         }
     }
 
-    // RF1.2.11 - Notificar documentos inválidos
+    // Notificar documentos inválidos
     @PutMapping("/{id}/notificar-documentos-invalidos")
     public ResponseEntity<Marcacao> notificarDocumentosInvalidos(@PathVariable Long id, @RequestBody NotificarDocumentosRequest request) {
         try {

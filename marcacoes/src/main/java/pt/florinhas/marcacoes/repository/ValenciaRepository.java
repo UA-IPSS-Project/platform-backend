@@ -27,5 +27,6 @@ public interface ValenciaRepository extends JpaRepository<Valencia, Long> {
     List<Valencia> findAllByOrderByNomeAsc();
     
     // Contar valências
+    @Override
     long count();
 }

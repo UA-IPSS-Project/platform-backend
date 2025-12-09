@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -13,6 +14,7 @@ import pt.florinhas.marcacoes.domain.*;
 import pt.florinhas.marcacoes.dto.*;
 import pt.florinhas.marcacoes.repository.*;
 import pt.florinhas.marcacoes.service.MarcacaoService;
+import pt.florinhas.marcacoes.config.TestSecurityConfig;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,7 +25,9 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(MarcacaoController.class)
+@WebMvcTest(controllers = MarcacaoController.class,
+    excludeAutoConfiguration = org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class)
+@Import(TestSecurityConfig.class)
 class MarcacaoControllerTest {
 
     @Autowired
@@ -43,6 +47,18 @@ class MarcacaoControllerTest {
 
     @MockBean
     private UtilizadorRepository utilizadorRepository;
+
+    @MockBean
+    private pt.florinhas.marcacoes.security.JwtService jwtService;
+
+    @MockBean
+    private pt.florinhas.marcacoes.security.CustomUserDetailsService customUserDetailsService;
+
+    @MockBean
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    @MockBean
+    private org.springframework.security.authentication.AuthenticationManager authenticationManager;
 
     private Funcionario funcionario;
     private Utente utente;

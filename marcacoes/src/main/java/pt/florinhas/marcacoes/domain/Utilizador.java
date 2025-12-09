@@ -6,7 +6,12 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Table(name = "Utilizador")
@@ -16,7 +21,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
-public class Utilizador {
+public class Utilizador implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,7 +43,7 @@ public class Utilizador {
     @Column(name = "dataNasc")
     private LocalDate dataNasc;
 
-    @Column(name = "passHash", length = 32)
+    @Column(name = "passHash", length = 60)
     private String passHash;
 
     // Informações de morada
@@ -52,4 +57,41 @@ public class Utilizador {
     private String moradaEmprego;
     private String profissao;
 
+    // Implementação UserDetails
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Se for Funcionario retorna ROLE_FUNCIONARIO, se for Utente retorna ROLE_UTENTE
+        String role = this instanceof Funcionario ? "ROLE_FUNCIONARIO" : "ROLE_UTENTE";
+        return List.of(new SimpleGrantedAuthority(role));
+    }
+
+    @Override
+    public String getPassword() {
+        return passHash;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 }

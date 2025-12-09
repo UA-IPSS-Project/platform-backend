@@ -1,13 +1,14 @@
 package pt.florinhas.marcacoes.domain;
 
+import java.util.Set;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import jakarta.persistence.CascadeType;
-import java.util.Set;
 
 @Entity
 @Table(name = "utente")
@@ -15,6 +16,8 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 public class Utente extends Utilizador {
+
+    private boolean activo;
 
 	@OneToMany(mappedBy = "utente", cascade = CascadeType.ALL)
     private Set<MarcacaoSecretaria> marcacoes;

@@ -36,6 +36,7 @@ public interface UtenteRepository extends JpaRepository<Utente, Long> {
     boolean existsByEmail(String email);
     
     // Contar total de utentes
+    @Override
     long count();
 
 }
