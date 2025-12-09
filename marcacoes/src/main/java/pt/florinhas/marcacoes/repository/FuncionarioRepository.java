@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
+import pt.florinhas.marcacoes.domain.Valencia;
 
 @Repository
 public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> {
@@ -19,14 +21,11 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     // Verificar se NIF existe
     boolean existsByNif(String nif);
     
-    // Encontrar funcionários por tipo (SECRETARIA, BALNEARIO, TECNICO)
-    List<Funcionario> findByTipo(String tipo);
+    // Encontrar funcionários por tipo (SECRETARIA, BALNEARIO)
+    List<Funcionario> findByTipo(FuncionarioTipo tipo);
     
     // Encontrar funcionários por email
     Optional<Funcionario> findByEmail(String email);
-    
-    // Encontrar funcionários ativos (se tivermos campo de ativo)
-    // List<Funcionario> findByAtivoTrue();
     
     // Buscar funcionários por nome (case insensitive)
     @Query("SELECT f FROM Funcionario f WHERE LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")
@@ -34,4 +33,12 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     
     // Verificar se existe funcionário com email
     boolean existsByEmail(String email);
+    
+    // Encontrar funcionários por valência
+    @Query("SELECT f FROM Funcionario f JOIN f.valencias v WHERE v = :valencia")
+    List<Funcionario> findByValencia(@Param("valencia") Valencia valencia);
+    
+    // Encontrar funcionários por ID de valência
+    @Query("SELECT f FROM Funcionario f JOIN f.valencias v WHERE v.id = :valenciaId")
+    List<Funcionario> findByValenciaId(@Param("valenciaId") Long valenciaId);
 }

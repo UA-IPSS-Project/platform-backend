@@ -1,39 +1,31 @@
 package pt.florinhas.marcacoes.service;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Valencia;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
-import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.ValenciaRepository;
+import pt.florinhas.marcacoes.domain.*;
+import pt.florinhas.marcacoes.repository.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MarcacaoServiceTest{
+class MarcacaoServiceTest {
 
     @Mock
     private MarcacaoRepository marcacaoRepository;
+
+    @Mock
+    private MarcacaoSecretariaRepository marcacaoSecretariaRepository;
 
     @Mock
     private UtenteRepository utenteRepository;
@@ -41,239 +33,282 @@ class MarcacaoServiceTest{
     @Mock
     private FuncionarioRepository funcionarioRepository;
 
-    @Mock
-    private ValenciaRepository valenciaRepository;
-
-    //@Mock
-    //private EmailService emailService;
-
     @InjectMocks
     private MarcacaoServiceImpl marcacaoService;
 
+    private Funcionario funcionarioSecretaria;
     private Utente utente;
-    private Funcionario funcionario;
-    private Valencia valencia;
-    private Funcionario secretaria;
+    private Marcacao marcacao;
+    private MarcacaoSecretaria marcacaoSecretaria;
 
     @BeforeEach
     void setUp() {
+        // Setup Funcionario
+        funcionarioSecretaria = new Funcionario();
+        funcionarioSecretaria.setId(1L);
+        funcionarioSecretaria.setNome("João Silva");
+        funcionarioSecretaria.setTipo(FuncionarioTipo.SECRETARIA);
+        funcionarioSecretaria.setEmail("joao@test.com");
+
+        // Setup Utente
         utente = new Utente();
-        utente.setId(1L);
-        utente.setNome("João Silva");
+        utente.setId(2L);
+        utente.setNome("Maria Santos");
+        utente.setEmail("maria@test.com");
         utente.setNif("123456789");
-        utente.setTelefone("912345678");
-        utente.setEmail("joao@email.com");
 
-        funcionario = new Funcionario();
-        funcionario.setId(1L);
-        funcionario.setNome("Dr. Maria Santos");
-        funcionario.setTipo("SECRETARIA");
+        // Setup Marcacao
+        marcacao = new Marcacao();
+        marcacao.setId(1L);
+        marcacao.setData(LocalDateTime.now().plusDays(1));
+        marcacao.setEstado(EventoEstado.AGENDADO);
+        marcacao.setCriadoPor(funcionarioSecretaria);
 
-        valencia = new Valencia();
-        valencia.setId(1L);
-        valencia.setNome("Serviço Social");
+        // Setup MarcacaoSecretaria
+        marcacaoSecretaria = new MarcacaoSecretaria();
+        marcacaoSecretaria.setMarcacaoId(1L);
+        marcacaoSecretaria.setMarcacao(marcacao);
+        marcacaoSecretaria.setAssunto("Consulta");
+        marcacaoSecretaria.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
+        marcacaoSecretaria.setUtente(utente);
 
-        secretaria = new Funcionario();
-        secretaria.setId(2L);
-        secretaria.setNome("Ana Costa");
-        secretaria.setTipo("SECRETARIA");
+        marcacao.setMarcacaoSecretaria(marcacaoSecretaria);
     }
 
     @Test
-    void testCriarMarcacaoPresencial_Success() {
+    void criarMarcacaoPresencial_DevecriarComSucesso() {
         // Arrange
-        LocalDate data = LocalDate.now().plusDays(1);
-        LocalTime hora = LocalTime.of(10, 0);
-        
-        when(marcacaoRepository.existsByDataAndHoraAndFuncionarioAndEstadoNot(any(), any(), any(), any())).thenReturn(false);
-        when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        LocalDateTime dataFutura = LocalDateTime.now().plusDays(1);
+        when(marcacaoRepository.save(any(Marcacao.class))).thenReturn(marcacao);
+        when(marcacaoSecretariaRepository.save(any(MarcacaoSecretaria.class))).thenReturn(marcacaoSecretaria);
 
         // Act
-        Marcacao result = marcacaoService.criarMarcacaoPresencial(
-                data, hora, "PRESENCIAL", utente, funcionario, valencia, secretaria);
+        Marcacao resultado = marcacaoService.criarMarcacaoPresencial(dataFutura, "Consulta", utente, funcionarioSecretaria);
 
         // Assert
-        assertNotNull(result);
-        assertEquals(data, result.getData());
-        assertEquals(hora, result.getHora());
-        assertEquals("PRESENCIAL", result.getTipoAtendimento());
-        assertEquals("AGENDADO", result.getEstado());
-        assertEquals(utente, result.getUtente());
-        assertEquals(funcionario, result.getFuncionario());
-        assertEquals(valencia, result.getValencia());
-        
+        assertNotNull(resultado);
         verify(marcacaoRepository, times(1)).save(any(Marcacao.class));
+        verify(marcacaoSecretariaRepository, times(1)).save(any(MarcacaoSecretaria.class));
     }
 
     @Test
-    void testCriarMarcacaoRemota_Success() {
+    void criarMarcacaoPresencial_DeveFalharSeNaoForSecretaria() {
         // Arrange
-        LocalDate data = LocalDate.now().plusDays(2);
-        LocalTime hora = LocalTime.of(14, 30);
-        
-        when(marcacaoRepository.existsByDataAndHoraAndFuncionarioAndEstadoNot(any(), any(), any(), any())).thenReturn(false);
-        when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        Funcionario funcionarioBalneario = new Funcionario();
+        funcionarioBalneario.setTipo(FuncionarioTipo.BALNEARIO);
+        LocalDateTime dataFutura = LocalDateTime.now().plusDays(1);
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> 
+            marcacaoService.criarMarcacaoPresencial(dataFutura, "Consulta", utente, funcionarioBalneario)
+        );
+    }
+
+    @Test
+    void criarMarcacaoRemota_DeveCriarComSucesso() {
+        // Arrange
+        LocalDateTime dataFutura = LocalDateTime.now().plusDays(1);
+        when(marcacaoRepository.save(any(Marcacao.class))).thenReturn(marcacao);
+        when(marcacaoSecretariaRepository.save(any(MarcacaoSecretaria.class))).thenReturn(marcacaoSecretaria);
 
         // Act
-        Marcacao result = marcacaoService.criarMarcacaoRemota(
-                data, hora, "REMOTO", utente, funcionario, valencia);
+        Marcacao resultado = marcacaoService.criarMarcacaoRemota(dataFutura, "Consulta", utente);
 
         // Assert
-        assertNotNull(result);
-        assertEquals(data, result.getData());
-        assertEquals(hora, result.getHora());
-        assertEquals("REMOTO", result.getTipoAtendimento());
-        assertEquals("AGENDADO", result.getEstado());
-        assertFalse(result.getPresencaConfirmada());
-        assertFalse(result.getDocumentosInvalidos());
-        
+        assertNotNull(resultado);
         verify(marcacaoRepository, times(1)).save(any(Marcacao.class));
+        verify(marcacaoSecretariaRepository, times(1)).save(any(MarcacaoSecretaria.class));
     }
 
     @Test
-    void testCancelarMarcacao_Success() {
+    void cancelarMarcacao_DeveCancelarComSucesso() {
         // Arrange
-        Long marcacaoId = 1L;
-        Marcacao marcacao = new Marcacao();
-        marcacao.setId(marcacaoId);
-        marcacao.setEstado("AGENDADO");
-        marcacao.setUtente(utente);
-        marcacao.setFuncionario(funcionario);
-
-        when(marcacaoRepository.findById(marcacaoId)).thenReturn(Optional.of(marcacao));
-        when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+        when(marcacaoRepository.save(any(Marcacao.class))).thenReturn(marcacao);
 
         // Act
-        marcacaoService.cancelarMarcacao(marcacaoId, "Utente não compareceu", secretaria);
+        marcacaoService.cancelarMarcacao(1L, "Motivo teste", funcionarioSecretaria);
 
         // Assert
-        assertEquals("CANCELADO", marcacao.getEstado());
-        assertNotNull(marcacao.getDataAtualizacao());
+        assertEquals(EventoEstado.CANCELADO, marcacao.getEstado());
         verify(marcacaoRepository, times(1)).save(marcacao);
     }
 
     @Test
-    void testCriarMarcacaoBalnearioTecnico_Success() {
+    void cancelarMarcacao_DeveFalharSeMarcacaoNaoExiste() {
         // Arrange
-        LocalDate data = LocalDate.now().plusDays(1);
-        LocalTime hora = LocalTime.of(9, 0);
-        
-        funcionario.setTipo("TECNICO");
-        
-        when(marcacaoRepository.existsByDataAndHoraAndFuncionarioAndEstadoNot(any(), any(), any(), any())).thenReturn(false);
-        when(marcacaoRepository.save(any(MarcacaoBalneario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(marcacaoRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Act
-        MarcacaoBalneario result = marcacaoService.criarMarcacaoBalnearioTecnico(
-                data, hora, utente, funcionario, true, false, "Camisola e calças");
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(MarcacaoBalneario.class, result.getClass());
-        assertEquals(data, result.getData());
-        assertEquals(hora, result.getHora());
-        assertTrue(result.getProdutosHigiene());
-        assertFalse(result.getLavagemRoupa());
-        assertEquals("Camisola e calças", result.getRoupaDescricao());
-        assertFalse(result.getConsumoRegistado());
-        
-        verify(marcacaoRepository, times(1)).save(any(MarcacaoBalneario.class));
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> 
+            marcacaoService.cancelarMarcacao(999L, "Motivo", funcionarioSecretaria)
+        );
     }
 
     @Test
-    void testAtualizarEstadoMarcacao_Success() {
+    void consultarAgenda_DeveRetornarMarcacoes() {
         // Arrange
-        Long marcacaoId = 1L;
-        Marcacao marcacao = new Marcacao();
-        marcacao.setId(marcacaoId);
-        marcacao.setEstado("AGENDADO");
-
-        when(marcacaoRepository.findById(marcacaoId)).thenReturn(Optional.of(marcacao));
-        when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        LocalDateTime inicio = LocalDateTime.now();
+        LocalDateTime fim = LocalDateTime.now().plusDays(7);
+        when(marcacaoRepository.findMarcacoesBetweenDates(inicio, fim))
+            .thenReturn(List.of(marcacao));
 
         // Act
-        Marcacao result = marcacaoService.atualizarEstadoMarcacao(marcacaoId, "CONCLUIDO", secretaria);
+        List<Marcacao> resultado = marcacaoService.consultarAgenda(inicio, fim);
 
         // Assert
-        assertEquals("CONCLUIDO", result.getEstado());
-        assertNotNull(result.getDataAtualizacao());
+        assertNotNull(resultado);
+        assertEquals(1, resultado.size());
+        verify(marcacaoRepository, times(1)).findMarcacoesBetweenDates(inicio, fim);
+    }
+
+    @Test
+    void procurarAgenda_DeveFiltrarPorEstado() {
+        // Arrange
+        LocalDateTime inicio = LocalDateTime.now();
+        LocalDateTime fim = LocalDateTime.now().plusDays(7);
+        when(marcacaoRepository.findMarcacoesBetweenDates(inicio, fim))
+            .thenReturn(List.of(marcacao));
+
+        // Act
+        List<Marcacao> resultado = marcacaoService.procurarAgenda(inicio, fim, null, null, EventoEstado.AGENDADO);
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(1, resultado.size());
+        assertEquals(EventoEstado.AGENDADO, resultado.get(0).getEstado());
+    }
+
+    @Test
+    void atualizarEstadoMarcacao_DeveAtualizarComSucesso() {
+        // Arrange
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+        when(marcacaoRepository.save(any(Marcacao.class))).thenReturn(marcacao);
+
+        // Act
+        Marcacao resultado = marcacaoService.atualizarEstadoMarcacao(1L, EventoEstado.CONFIRMADO, funcionarioSecretaria);
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(EventoEstado.CONFIRMADO, marcacao.getEstado());
         verify(marcacaoRepository, times(1)).save(marcacao);
     }
 
     @Test
-    void testConfirmarPresencaBalneario_Success() {
+    void atualizarEstadoMarcacao_DeveFalharSeNaoForFuncionario() {
         // Arrange
-        Long marcacaoId = 1L;
-        MarcacaoBalneario marcacao = new MarcacaoBalneario();
-        marcacao.setId(marcacaoId);
-        marcacao.setEstado("AGENDADO");
-        marcacao.setPresencaConfirmada(false);
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
 
-        funcionario.setTipo("BALNEARIO");
-
-        when(marcacaoRepository.findById(marcacaoId)).thenReturn(Optional.of(marcacao));
-        when(marcacaoRepository.save(any(MarcacaoBalneario.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        marcacaoService.confirmarPresencaBalneario(marcacaoId, true, funcionario);
-
-        // Assert
-        assertTrue(marcacao.getPresencaConfirmada());
-        assertEquals("CONFIRMADO", marcacao.getEstado());
-        assertNotNull(marcacao.getDataAtualizacao());
-        verify(marcacaoRepository, times(1)).save(marcacao);
-    }
-
-    //@Test
-    //void testNotificarDocumentosInvalidos_Success() {
-    //    // Arrange
-    //    Long marcacaoId = 1L;
-    //    Marcacao marcacao = new Marcacao();
-    //    marcacao.setId(marcacaoId);
-    //    marcacao.setDocumentosInvalidos(false);
-    //
-    //    when(marcacaoRepository.findById(marcacaoId)).thenReturn(Optional.of(marcacao));
-    //    when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
-    //
-    //    // Act
-    //    marcacaoService.notificarDocumentosInvalidos(marcacaoId, "NIF inválido", secretaria);
-    //
-    //    // Assert
-    //    assertTrue(marcacao.getDocumentosInvalidos());
-    //    assertEquals("NIF inválido", marcacao.getDocumentosObservacoes());
-    //    assertNotNull(marcacao.getDataAtualizacao());
-    //    verify(marcacaoRepository, times(1)).save(marcacao);
-    //}
-
-    @Test
-    void testFindById_Success() {
-        // Arrange
-        Long marcacaoId = 1L;
-        Marcacao marcacao = new Marcacao();
-        marcacao.setId(marcacaoId);
-
-        when(marcacaoRepository.findById(marcacaoId)).thenReturn(Optional.of(marcacao));
-
-        // Act
-        Optional<Marcacao> result = marcacaoService.findById(marcacaoId);
-
-        // Assert
-        assertTrue(result.isPresent());
-        assertEquals(marcacaoId, result.get().getId());
-        verify(marcacaoRepository, times(1)).findById(marcacaoId);
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> 
+            marcacaoService.atualizarEstadoMarcacao(1L, EventoEstado.CONFIRMADO, utente)
+        );
     }
 
     @Test
-    void testFindById_NotFound() {
+    void criarUtenteAutomatico_DeveCriarComSucesso() {
         // Arrange
-        Long marcacaoId = 999L;
-        when(marcacaoRepository.findById(marcacaoId)).thenReturn(Optional.empty());
+        when(utenteRepository.existsByNif("123456789")).thenReturn(false);
+        when(utenteRepository.save(any(Utente.class))).thenReturn(utente);
 
         // Act
-        Optional<Marcacao> result = marcacaoService.findById(marcacaoId);
+        Utente resultado = marcacaoService.criarUtenteAutomatico("Maria Santos", "123456789", "912345678", "maria@test.com");
 
         // Assert
-        assertFalse(result.isPresent());
-        verify(marcacaoRepository, times(1)).findById(marcacaoId);
+        assertNotNull(resultado);
+        verify(utenteRepository, times(1)).save(any(Utente.class));
+    }
+
+    @Test
+    void criarUtenteAutomatico_DeveFalharSeNifInvalido() {
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> 
+            marcacaoService.criarUtenteAutomatico("Nome", "123", "912345678", "email@test.com")
+        );
+    }
+
+    @Test
+    void criarUtenteAutomatico_DeveFalharSeNifJaExiste() {
+        // Arrange
+        when(utenteRepository.existsByNif("123456789")).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> 
+            marcacaoService.criarUtenteAutomatico("Nome", "123456789", "912345678", "email@test.com")
+        );
+    }
+
+    @Test
+    void findById_DeveRetornarMarcacao() {
+        // Arrange
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+
+        // Act
+        Optional<Marcacao> resultado = marcacaoService.findById(1L);
+
+        // Assert
+        assertTrue(resultado.isPresent());
+        assertEquals(1L, resultado.get().getId());
+    }
+
+    @Test
+    void findById_DeveFalharSeIdNulo() {
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> 
+            marcacaoService.findById(null)
+        );
+    }
+
+    @Test
+    void findAll_DeveRetornarTodasMarcacoes() {
+        // Arrange
+        when(marcacaoRepository.findAll()).thenReturn(List.of(marcacao));
+
+        // Act
+        List<Marcacao> resultado = marcacaoService.findAll();
+
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(1, resultado.size());
+    }
+
+    @Test
+    void deleteById_DeveRemoverMarcacao() {
+        // Arrange
+        doNothing().when(marcacaoRepository).deleteById(1L);
+
+        // Act
+        marcacaoService.deleteById(1L);
+
+        // Assert
+        verify(marcacaoRepository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    void deleteById_DeveFalharSeIdNulo() {
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> 
+            marcacaoService.deleteById(null)
+        );
+    }
+
+    @Test
+    void notificarDocumentosInvalidos_DeveNotificarComSucesso() {
+        // Arrange
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+
+        // Act
+        marcacaoService.notificarDocumentosInvalidos(1L, "Documentos incompletos", funcionarioSecretaria);
+
+        // Assert
+        verify(marcacaoRepository, times(1)).findById(1L);
+    }
+
+    @Test
+    void notificarDocumentosInvalidos_DeveFalharSeArgumentoNulo() {
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> 
+            marcacaoService.notificarDocumentosInvalidos(null, "Obs", funcionarioSecretaria)
+        );
     }
 }

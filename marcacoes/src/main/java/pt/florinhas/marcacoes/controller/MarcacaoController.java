@@ -1,6 +1,6 @@
 package pt.florinhas.marcacoes.controller;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,21 +16,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
 import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Valencia;
-import pt.florinhas.marcacoes.dto.AtualizarConsumosRequest;
+import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
 import pt.florinhas.marcacoes.dto.CancelarMarcacaoRequest;
-import pt.florinhas.marcacoes.dto.ConfirmarPresencaRequest;
-import pt.florinhas.marcacoes.dto.CriarBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.ValenciaRepository;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 
 @RestController
@@ -48,7 +45,7 @@ public class MarcacaoController {
     private FuncionarioRepository funcionarioRepository;
     
     @Autowired
-    private ValenciaRepository valenciaRepository;
+    private UtilizadorRepository utilizadorRepository;
 
     // RF1.2.1 - Criar marcação presencial (Secretaria)
     @PostMapping("/presencial")
@@ -56,16 +53,12 @@ public class MarcacaoController {
         try {
             Utente utente = utenteRepository.findById(request.getUtenteId())
                     .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-            Funcionario funcionario = funcionarioRepository.findById(request.getFuncionarioId())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
-            Valencia valencia = valenciaRepository.findById(request.getValenciaId())
-                    .orElseThrow(() -> new RuntimeException("Valência não encontrada"));
             Funcionario criadoPor = funcionarioRepository.findById(request.getCriadoPorId())
                     .orElseThrow(() -> new RuntimeException("Funcionário (criado por) não encontrado"));
 
             Marcacao marcacao = marcacaoService.criarMarcacaoPresencial(
-                    request.getData(), request.getHora(), request.getTipoAtendimento(),
-                    utente, funcionario, valencia, criadoPor);
+                    request.getData(), request.getAssunto(),
+                    utente, criadoPor);
 
             return ResponseEntity.ok(marcacao);
         } catch (Exception e) {
@@ -79,14 +72,10 @@ public class MarcacaoController {
         try {
             Utente utente = utenteRepository.findById(request.getUtenteId())
                     .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-            Funcionario funcionario = funcionarioRepository.findById(request.getFuncionarioId())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
-            Valencia valencia = valenciaRepository.findById(request.getValenciaId())
-                    .orElseThrow(() -> new RuntimeException("Valência não encontrada"));
 
             Marcacao marcacao = marcacaoService.criarMarcacaoRemota(
-                    request.getData(), request.getHora(), request.getTipoAtendimento(),
-                    utente, funcionario, valencia);
+                    request.getData(), request.getAssunto(),
+                    utente);
 
             return ResponseEntity.ok(marcacao);
         } catch (Exception e) {
@@ -98,8 +87,8 @@ public class MarcacaoController {
     @PutMapping("/{id}/cancelar")
     public ResponseEntity<Marcacao> cancelarMarcacao(@PathVariable Long id, @RequestBody CancelarMarcacaoRequest request) {
         try {
-            Funcionario canceladoPor = funcionarioRepository.findById(request.getFuncionarioId())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
+            Utilizador canceladoPor = utilizadorRepository.findById(request.getFuncionarioId())
+                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
 
             marcacaoService.cancelarMarcacao(id, request.getMotivo(), canceladoPor);
             
@@ -112,17 +101,31 @@ public class MarcacaoController {
         }
     }
 
-    // RF1.2.3 - Consultar agenda com filtros
+    // RF1.2.3 - Consultar agenda (todas as marcações)
     @GetMapping("/agenda")
     public ResponseEntity<List<Marcacao>> consultarAgenda(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
-            @RequestParam(required = false) Long funcionarioId,
-            @RequestParam(required = false) Long valenciaId,
-            @RequestParam(required = false) String estado) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim) {
         
         try {
-            List<Marcacao> marcacoes = marcacaoService.consultarAgenda(dataInicio, dataFim, funcionarioId, valenciaId, estado);
+            List<Marcacao> marcacoes = marcacaoService.consultarAgenda(dataInicio, dataFim);
+            return ResponseEntity.ok(marcacoes);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Procurar agenda com filtros
+    @GetMapping("/agenda/procurar")
+    public ResponseEntity<List<Marcacao>> procurarAgenda(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
+            @RequestParam(required = false) Long criadoPorId,
+            @RequestParam(required = false) Long utenteId,
+            @RequestParam(required = false) EventoEstado estado) {
+        
+        try {
+            List<Marcacao> marcacoes = marcacaoService.procurarAgenda(dataInicio, dataFim, criadoPorId, utenteId, estado);
             return ResponseEntity.ok(marcacoes);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -133,8 +136,8 @@ public class MarcacaoController {
     @PutMapping("/{id}/estado")
     public ResponseEntity<Marcacao> atualizarEstadoMarcacao(@PathVariable Long id, @RequestBody AtualizarEstadoRequest request) {
         try {
-            Funcionario atualizadoPor = funcionarioRepository.findById(request.getFuncionarioId())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
+            Utilizador atualizadoPor = utilizadorRepository.findById(request.getFuncionarioId())
+                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
 
             Marcacao marcacao = marcacaoService.atualizarEstadoMarcacao(id, request.getNovoEstado(), atualizadoPor);
             return ResponseEntity.ok(marcacao);
@@ -146,89 +149,13 @@ public class MarcacaoController {
     // RF1.2.14 - Consultar marcações passadas
     @GetMapping("/passadas")
     public ResponseEntity<List<Marcacao>> consultarMarcacoesPassadas(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
             @RequestParam(required = false) Long utenteId,
-            @RequestParam(required = false) String estado) {
+            @RequestParam(required = false) EventoEstado estado) {
         
         try {
             List<Marcacao> marcacoes = marcacaoService.consultarMarcacoesPassadas(dataInicio, dataFim, utenteId, estado);
-            return ResponseEntity.ok(marcacoes);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    // RF2.1 e RF2.2 - Criar marcação de balneário
-    @PostMapping("/balneario")
-    public ResponseEntity<MarcacaoBalneario> criarMarcacaoBalneario(@RequestBody CriarBalnearioRequest request) {
-        try {
-            Utente utente = utenteRepository.findById(request.getUtenteId())
-                    .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-            Funcionario funcionario = funcionarioRepository.findById(request.getFuncionarioId())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
-
-            MarcacaoBalneario marcacao;
-            
-            if ("TECNICO".equals(request.getTipoCriador())) {
-                marcacao = marcacaoService.criarMarcacaoBalnearioTecnico(
-                        request.getData(), request.getHora(), utente, funcionario,
-                        request.getProdutosHigiene(), request.getLavagemRoupa(), request.getRoupaDescricao());
-            } else {
-                marcacao = marcacaoService.criarMarcacaoBalnearioResponsavel(
-                        request.getData(), request.getHora(), utente, funcionario,
-                        request.getProdutosHigiene(), request.getLavagemRoupa(), request.getRoupaDescricao());
-            }
-
-            return ResponseEntity.ok(marcacao);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    // RF2.3 - Confirmar presença no balneário
-    @PutMapping("/balneario/{id}/confirmar-presenca")
-    public ResponseEntity<MarcacaoBalneario> confirmarPresencaBalneario(@PathVariable Long id, @RequestBody ConfirmarPresencaRequest request) {
-        try {
-            Funcionario confirmadoPor = funcionarioRepository.findById(request.getFuncionarioId())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
-
-            marcacaoService.confirmarPresencaBalneario(id, request.getPresencaConfirmada(), confirmadoPor);
-            
-            MarcacaoBalneario marcacao = (MarcacaoBalneario) marcacaoService.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
-                    
-            return ResponseEntity.ok(marcacao);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    // RF2.4 - Atualizar consumos do balneário
-    @PutMapping("/balneario/{id}/consumos")
-    public ResponseEntity<MarcacaoBalneario> atualizarConsumosBalneario(@PathVariable Long id, @RequestBody AtualizarConsumosRequest request) {
-        try {
-            Funcionario atualizadoPor = funcionarioRepository.findById(request.getFuncionarioId())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
-
-            MarcacaoBalneario marcacao = marcacaoService.atualizarConsumosBalneario(
-                    id, request.getQuantidadeProdutos(), request.getQuantidadeRoupa(), 
-                    request.getObservacoesConsumo(), atualizadoPor);
-
-            return ResponseEntity.ok(marcacao);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    // RF2.5 - Consultar marcações do balneário
-    @GetMapping("/balneario")
-    public ResponseEntity<List<MarcacaoBalneario>> consultarMarcacoesBalneario(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
-            @RequestParam(required = false) String estado) {
-        
-        try {
-            List<MarcacaoBalneario> marcacoes = marcacaoService.consultarMarcacoesBalneario(data, estado);
             return ResponseEntity.ok(marcacoes);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

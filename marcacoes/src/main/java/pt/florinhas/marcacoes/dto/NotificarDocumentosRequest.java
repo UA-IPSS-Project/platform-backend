@@ -1,13 +1,13 @@
 package pt.florinhas.marcacoes.dto;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class NotificarDocumentosRequest {
     private String observacoes;
     private Long funcionarioId;
-
-    // Getters e Setters
-    public String getObservacoes() { return observacoes; }
-    public void setObservacoes(String observacoes) { this.observacoes = observacoes; }
-
-    public Long getFuncionarioId() { return funcionarioId; }
-    public void setFuncionarioId(Long funcionarioId) { this.funcionarioId = funcionarioId; }
 }

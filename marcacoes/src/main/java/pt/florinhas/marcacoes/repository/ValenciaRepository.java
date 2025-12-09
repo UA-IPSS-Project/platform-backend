@@ -23,9 +23,6 @@ public interface ValenciaRepository extends JpaRepository<Valencia, Long> {
     @Query("SELECT v FROM Valencia v WHERE LOWER(v.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")
     List<Valencia> findByNomeContainingIgnoreCase(@Param("nome") String nome);
     
-    // Encontrar valências ativas (se tivermos campo de ativo)
-    // List<Valencia> findByAtivoTrue();
-    
     // Ordenar valências por nome
     List<Valencia> findAllByOrderByNomeAsc();
     
