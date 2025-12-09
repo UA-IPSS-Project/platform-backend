@@ -1,10 +1,19 @@
 package pt.florinhas.marcacoes.domain;
 
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "Marcacao_Secretaria")
@@ -25,6 +34,10 @@ public class MarcacaoSecretaria {
     
     @Column(name = "assunto", length = 100)
     private String assunto;
+
+    @Column(name = "descricao", length = 300)
+    private String descricao;
+
 
 	@Enumerated(EnumType.STRING)
 	private AtendimentoTipo tipoAtendimento; // PRESENCIAL, REMOTO

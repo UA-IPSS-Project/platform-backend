@@ -67,7 +67,10 @@ public class MarcacaoServiceImpl implements MarcacaoService {
 
         marcacaoSecretaria.setUtente(utente);
         
-        marcacaoSecretariaRepository.save(marcacaoSecretaria);
+        MarcacaoSecretaria savedMarcacaoSecretaria = marcacaoSecretariaRepository.save(marcacaoSecretaria);
+        
+        // Estabelecer relação bidirecional
+        savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
         
         notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
         

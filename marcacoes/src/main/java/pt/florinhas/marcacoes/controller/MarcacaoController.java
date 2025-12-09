@@ -24,6 +24,7 @@ import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
 import pt.florinhas.marcacoes.dto.CancelarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
+import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
@@ -71,12 +72,8 @@ public class MarcacaoController {
     public ResponseEntity<?> criarMarcacaoRemota(@RequestBody CriarMarcacaoRequest request) {
         try {
  
-            // Buscar utilizador e verificar se é um Utente
-            Utilizador utilizador = utilizadorRepository.findById(request.getUtenteId())
-                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + request.getUtenteId()));
+            Utilizador utilizador = utilizadorRepository.findById(request.getUtenteId()).orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + request.getUtenteId()));
 
-            
-            // Verificar se é um Utente
             if (!(utilizador instanceof Utente)) {
                 throw new RuntimeException("O utilizador com ID " + request.getUtenteId() + 
                     " é um " + utilizador.getClass().getSimpleName() + ", não um Utente. " +
@@ -85,13 +82,10 @@ public class MarcacaoController {
             
             Utente utente = (Utente) utilizador;
 
-            Marcacao marcacao = marcacaoService.criarMarcacaoRemota(
-                    request.getData(), request.getAssunto(),
-                    utente);
+            Marcacao marcacao = marcacaoService.criarMarcacaoRemota(request.getData(), request.getAssunto(), utente);
 
             System.out.println("Marcação criada com sucesso: " + marcacao.getId());
             
-            // Retornar resposta simples para evitar serialização circular
             return ResponseEntity.ok().body(java.util.Map.of(
                 "id", marcacao.getId(),
                 "data", marcacao.getData().toString(),
@@ -99,8 +93,6 @@ public class MarcacaoController {
                 "message", "Marcação criada com sucesso"
             ));
         } catch (Exception e) {
-            System.err.println("Erro ao criar marcação: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest().body(java.util.Map.of(
                 "error", e.getMessage()
             ));
@@ -127,13 +119,16 @@ public class MarcacaoController {
 
     // RF1.2.3 - Consultar agenda (todas as marcações)
     @GetMapping("/agenda")
-    public ResponseEntity<List<Marcacao>> consultarAgenda(
+    public ResponseEntity<List<MarcacaoResponseDTO>> consultarAgenda(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim) {
         
         try {
             List<Marcacao> marcacoes = marcacaoService.consultarAgenda(dataInicio, dataFim);
-            return ResponseEntity.ok(marcacoes);
+            List<MarcacaoResponseDTO> response = marcacoes.stream()
+                .map(this::converterParaDTO)
+                .toList();
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -141,7 +136,7 @@ public class MarcacaoController {
 
     // Procurar agenda com filtros
     @GetMapping("/agenda/procurar")
-    public ResponseEntity<List<Marcacao>> procurarAgenda(
+    public ResponseEntity<List<MarcacaoResponseDTO>> procurarAgenda(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
             @RequestParam(required = false) Long criadoPorId,
@@ -150,7 +145,10 @@ public class MarcacaoController {
         
         try {
             List<Marcacao> marcacoes = marcacaoService.procurarAgenda(dataInicio, dataFim, criadoPorId, utenteId, estado);
-            return ResponseEntity.ok(marcacoes);
+            List<MarcacaoResponseDTO> response = marcacoes.stream()
+                .map(this::converterParaDTO)
+                .toList();
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -206,13 +204,16 @@ public class MarcacaoController {
 
     // Consultar marcações de um utente
     @GetMapping("/utente/{utenteId}")
-    public ResponseEntity<List<Marcacao>> consultarMarcacoesUtente(@PathVariable Long utenteId) {
+    public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesUtente(@PathVariable Long utenteId) {
         try {
             Utente utente = utenteRepository.findById(utenteId)
                     .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
             
             List<Marcacao> marcacoes = marcacaoService.consultarMarcacoesUtente(utente);
-            return ResponseEntity.ok(marcacoes);
+            List<MarcacaoResponseDTO> response = marcacoes.stream()
+                .map(this::converterParaDTO)
+                .toList();
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -220,13 +221,16 @@ public class MarcacaoController {
 
     // Consultar marcações de um funcionário
     @GetMapping("/funcionario/{funcionarioId}")
-    public ResponseEntity<List<Marcacao>> consultarMarcacoesFuncionario(@PathVariable Long funcionarioId) {
+    public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesFuncionario(@PathVariable Long funcionarioId) {
         try {
             Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
                     .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
             
             List<Marcacao> marcacoes = marcacaoService.consultarMarcacoesFuncionario(funcionario);
-            return ResponseEntity.ok(marcacoes);
+            List<MarcacaoResponseDTO> response = marcacoes.stream()
+                .map(this::converterParaDTO)
+                .toList();
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -234,11 +238,11 @@ public class MarcacaoController {
 
     // Obter detalhes de uma marcação específica
     @GetMapping("/{id}")
-    public ResponseEntity<Marcacao> obterMarcacao(@PathVariable Long id) {
+    public ResponseEntity<MarcacaoResponseDTO> obterMarcacao(@PathVariable Long id) {
         try {
             Marcacao marcacao = marcacaoService.findById(id)
                     .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
-            return ResponseEntity.ok(marcacao);
+            return ResponseEntity.ok(converterParaDTO(marcacao));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -246,12 +250,44 @@ public class MarcacaoController {
 
     // Listar todas as marcações
     @GetMapping
-    public ResponseEntity<List<Marcacao>> listarTodasMarcacoes() {
+    public ResponseEntity<List<MarcacaoResponseDTO>> listarTodasMarcacoes() {
         try {
             List<Marcacao> marcacoes = marcacaoService.findAll();
-            return ResponseEntity.ok(marcacoes);
+            List<MarcacaoResponseDTO> response = marcacoes.stream()
+                .map(this::converterParaDTO)
+                .toList();
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    private MarcacaoResponseDTO converterParaDTO(Marcacao marcacao) {
+        MarcacaoResponseDTO dto = new MarcacaoResponseDTO();
+        dto.setId(marcacao.getId());
+        dto.setData(marcacao.getData());
+        dto.setEstado(marcacao.getEstado());
+        
+        if (marcacao.getMarcacaoSecretaria() != null) {
+            MarcacaoResponseDTO.MarcacaoSecretariaDTO secDTO = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
+            secDTO.setAssunto(marcacao.getMarcacaoSecretaria().getAssunto());
+            secDTO.setDescricao(marcacao.getMarcacaoSecretaria().getDescricao());
+            secDTO.setTipoAtendimento(marcacao.getMarcacaoSecretaria().getTipoAtendimento());
+            
+            if (marcacao.getMarcacaoSecretaria().getUtente() != null) {
+                MarcacaoResponseDTO.UtenteDTO utenteDTO = new MarcacaoResponseDTO.UtenteDTO();
+                utenteDTO.setId(marcacao.getMarcacaoSecretaria().getUtente().getId());
+                utenteDTO.setNome(marcacao.getMarcacaoSecretaria().getUtente().getNome());
+                utenteDTO.setEmail(marcacao.getMarcacaoSecretaria().getUtente().getEmail());
+                utenteDTO.setNif(marcacao.getMarcacaoSecretaria().getUtente().getNif());
+                utenteDTO.setTelefone(marcacao.getMarcacaoSecretaria().getUtente().getTelefone());
+                secDTO.setUtente(utenteDTO);
+            }
+            
+            dto.setMarcacaoSecretaria(secDTO);
+        }
+        
+        return dto;
+    }
+
 }
