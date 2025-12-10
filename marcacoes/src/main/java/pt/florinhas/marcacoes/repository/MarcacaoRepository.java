@@ -76,5 +76,9 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
     long countMarcacoesBetweenDates(
         @Param("dataInicio") LocalDateTime dataInicio,
         @Param("dataFim") LocalDateTime dataFim);
+
+    List<Marcacao> findByDataBetween(LocalDateTime inicioBloqueio, LocalDateTime fimBloqueio);
+
+    void deleteByEstadoAndCriadoEmBefore(EventoEstado emPreenchimento, LocalDateTime limite);
     
 }
