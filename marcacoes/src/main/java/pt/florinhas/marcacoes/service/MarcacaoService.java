@@ -18,7 +18,10 @@ import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
-import pt.florinhas.marcacoes.dto.*;
+import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
+import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
+import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
+import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoSecretariaRepository;
@@ -493,6 +496,6 @@ public class MarcacaoService{
     
     
     public List<MarcacaoResponseDTO> consultarMarcacoesPassadasDTO(LocalDateTime dataInicio, LocalDateTime dataFim, Long utenteId, EventoEstado estado) {
-        return consultarMarcacoesPassadas(dataInicio, dataFim, utenteId, estado).stream().map(this::converterParaDTO).toList();
+        return consultarMarcacoesPassadas(dataInicio).stream().map(this::converterParaDTO).toList();
     }
 }
