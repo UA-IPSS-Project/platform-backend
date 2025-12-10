@@ -32,6 +32,13 @@ public class MarcacaoController {
     @Autowired
     private MarcacaoService marcacaoService;
 
+    // Contar marcações do dia
+    @GetMapping("/count/hoje")
+    public ResponseEntity<Long> contarMarcacoesHoje() {
+        long count = marcacaoService.contarMarcacoesDiarias(LocalDateTime.now());
+        return ResponseEntity.ok(count);
+    }
+
     // Criar marcação presencial (Secretaria)
     @PostMapping("/presencial")
     public ResponseEntity<?> criarMarcacaoPresencial(@RequestBody CriarMarcacaoRequest request) {
@@ -55,7 +62,7 @@ public class MarcacaoController {
     @PostMapping("/remota")
     public ResponseEntity<?> criarMarcacaoRemota(@RequestBody CriarMarcacaoRequest request) {
         try {
-            Marcacao marcacao = marcacaoService.criarMarcacaoRemotaComRequest(request);
+            Marcacao marcacao = marcacaoService.criarMarcacaoRemota(request);
             
             return ResponseEntity.ok().body(java.util.Map.of(
                 "id", marcacao.getId(),
@@ -108,7 +115,6 @@ public class MarcacaoController {
             MarcacaoResponseDTO response = marcacaoService.atualizarEstadoMarcacaoDTO(id, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }
@@ -125,7 +131,6 @@ public class MarcacaoController {
             List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadasDTO(dataInicio, dataFim, utenteId, estado);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }

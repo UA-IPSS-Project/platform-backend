@@ -71,8 +71,7 @@ public class AuthService {
                 )
         );
 
-        var user = utilizadorRepository.findByNif(request.nif())
-                .orElseThrow(() -> new BadRequestException("Utente não encontrado"));
+        var user = utilizadorRepository.findByNif(request.nif()).orElseThrow(() -> new BadRequestException("Utente não encontrado"));
         
         if (!(user instanceof Utente)) {
             throw new BadRequestException("Credenciais inválidas para utente");
@@ -91,7 +90,7 @@ public class AuthService {
             throw new BadRequestException("NIF já está em uso");
         }
 
-        // Criar Utente
+        // Criar Utente com info básica
         Utente utente = new Utente();
         utente.setNome(request.nome());
         utente.setEmail(request.email());
@@ -99,13 +98,7 @@ public class AuthService {
         utente.setTelefone(request.telefone());
         utente.setPassHash(passwordEncoder.encode(request.password()));
         utente.setDataNasc(request.dataNasc());
-        // utente.setMorada(request.morada());
-        // utente.setCodigoPostal(request.codigoPostal());
-        // utente.setFreguesia(request.freguesia());
-        // utente.setProfissao(request.profissao());
-        // utente.setLocalEmprego(request.localEmprego());
-        // utente.setMoradaEmprego(request.moradaEmprego());
-        // utente.setTelefoneEmprego(request.telefoneEmprego());
+        utente.setActivo(true);
 
         utente = utenteRepository.save(utente);
 
@@ -122,7 +115,7 @@ public class AuthService {
             throw new BadRequestException("NIF já está em uso");
         }
 
-        // Criar Funcionário
+        // Criar Funcionário com info básica
         Funcionario funcionario = new Funcionario();
         funcionario.setNome(request.nome());
         funcionario.setEmail(request.email());
@@ -132,10 +125,6 @@ public class AuthService {
         FuncionarioTipo tipo = mapFuncaoToTipo(request.funcao());
         funcionario.setTipo(tipo);
         funcionario.setDataNasc(request.dataNasc());
-        
-        // funcionario.setMorada(request.morada());
-        // funcionario.setCodigoPostal(request.codigoPostal());
-        // funcionario.setFreguesia(request.freguesia());
 
         funcionario = funcionarioRepository.save(funcionario);
 

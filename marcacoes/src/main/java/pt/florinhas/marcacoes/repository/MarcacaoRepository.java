@@ -9,9 +9,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import pt.florinhas.marcacoes.domain.EventoEstado;
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.Utente;
+import pt.florinhas.marcacoes.domain.Utilizador;
 
 @Repository
 public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
@@ -70,5 +70,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
     // Estatísticas - contar marcações por estado
     @Query("SELECT m.estado, COUNT(m) FROM Marcacao m GROUP BY m.estado")
     List<Object[]> countMarcacoesByEstado();
+    
+    // Contar marcações entre datas específicas
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data BETWEEN :dataInicio AND :dataFim")
+    long countMarcacoesBetweenDates(
+        @Param("dataInicio") LocalDateTime dataInicio,
+        @Param("dataFim") LocalDateTime dataFim);
     
 }

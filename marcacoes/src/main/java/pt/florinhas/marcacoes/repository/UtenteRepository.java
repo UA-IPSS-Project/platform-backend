@@ -38,5 +38,8 @@ public interface UtenteRepository extends JpaRepository<Utente, Long> {
     // Contar total de utentes
     @Override
     long count();
+    
+    // Contar utentes ativos
+    long countByActivo(boolean activo);
 
 }

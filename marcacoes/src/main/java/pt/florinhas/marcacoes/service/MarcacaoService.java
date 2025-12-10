@@ -3,10 +3,8 @@ package pt.florinhas.marcacoes.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,13 +45,20 @@ public class MarcacaoService{
     @Autowired
     private UtilizadorRepository utilizadorRepository;
     
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private UtilizadorService utilizadorService;
     
     //@Autowired
     //private FuncionarioRepository funcionarioRepository;
     
     //@Autowired
     //private EmailService emailService;
+
+    public long contarMarcacoesDiarias(LocalDateTime data) {
+        LocalDateTime inicioDia = data.toLocalDate().atStartOfDay();
+        LocalDateTime fimDia = inicioDia.plusDays(1).minusSeconds(1);
+        return marcacaoRepository.countMarcacoesBetweenDates(inicioDia, fimDia);
+    }
 
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
         // Validar campos obrigatórios
@@ -68,41 +73,13 @@ public class MarcacaoService{
         
         validarFuncionarioSecretaria(criadoPor); // Apenas secretaria pode criar
 
-        // Procurar ou criar utente por NIF
-        Utente utente = utenteRepository.findByNif(request.getUtenteNif()).orElseGet(() -> {
-                    // Se não existir, criar novo utente
-                    System.out.println("Utente com NIF " + request.getUtenteNif() + " não encontrado. Criando novo utente...");
-                    
-                    // Validar campos necessários para criar utente
-                    if (request.getUtenteNome() == null || request.getUtenteNome().trim().isEmpty()) {
-                        throw new RuntimeException("Nome do utente é obrigatório para criar novo registo");
-                    }
-                    if (request.getUtenteEmail() == null || request.getUtenteEmail().trim().isEmpty()) {
-                        throw new RuntimeException("Email do utente é obrigatório para criar novo registo");
-                    }
-                    if (request.getUtenteTelefone() == null || request.getUtenteTelefone().trim().isEmpty()) {
-                        throw new RuntimeException("Telefone do utente é obrigatório para criar novo registo");
-                    }
-                    
-                    // Verificar se email já existe
-                    if (utenteRepository.existsByEmail(request.getUtenteEmail())) {
-                        throw new RuntimeException("Email já está registado no sistema");
-                    }
-                    
-                    // Criar novo utente
-                    Utente novoUtente = new Utente();
-                    novoUtente.setNif(request.getUtenteNif());
-                    novoUtente.setNome(request.getUtenteNome());
-                    novoUtente.setEmail(request.getUtenteEmail());
-                    novoUtente.setTelefone(request.getUtenteTelefone());
-                    novoUtente.setActivo(false); // Inactivo até dar login pela primeira vez
-                    String passwordTemporaria = request.getUtenteNif();
-                    novoUtente.setPassHash(passwordEncoder.encode(passwordTemporaria)); // TODO GERAR TOKEN e TROCAR PASSWORD
-                    
-                    System.out.println("Novo utente criado com password temporária = NIF: " + passwordTemporaria);
-                    
-                    return utenteRepository.save(novoUtente);
-                });
+        // Procurar ou criar utente por NIF usando o UtilizadorService
+        Utente utente = utilizadorService.obterOuCriarUtente(
+            request.getUtenteNif(), 
+            request.getUtenteNome(), 
+            request.getUtenteEmail(), 
+            request.getUtenteTelefone()
+        );
         
         // Verificar se os dados do request coincidem com os dados do utente existente
         if (request.getUtenteNome() != null && !request.getUtenteNome().trim().isEmpty() 
@@ -153,13 +130,24 @@ public class MarcacaoService{
     }
 
     
-    public Marcacao criarMarcacaoRemota(LocalDateTime data, String assunto, Utente utente) {
+    public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
+        // Buscar e validar utilizador
+        Utilizador utilizador = utilizadorRepository.findById(request.getUtenteId())
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + request.getUtenteId()));
+
+        if (!(utilizador instanceof Utente)) {
+            throw new RuntimeException("O utilizador com ID " + request.getUtenteId() + 
+                " é um " + utilizador.getClass().getSimpleName() + ", não um Utente. " +
+                "Apenas utentes podem criar marcações remotas.");
+        }
         
-        validarDisponibilidade(data);
+        Utente utente = (Utente) utilizador;
+        
+        validarDisponibilidade(request.getData());
         
         // Criar Marcacao
         Marcacao marcacao = new Marcacao();
-        marcacao.setData(data);
+        marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
         marcacao.setCriadoPor(utente); // Criado pelo próprio utente
 
@@ -168,9 +156,14 @@ public class MarcacaoService{
         // Criar MarcacaoSecretaria com OneToOne
         MarcacaoSecretaria marcacaoSecretaria = new MarcacaoSecretaria();
         marcacaoSecretaria.setMarcacao(savedMarcacao);
-        marcacaoSecretaria.setAssunto(assunto);
+        marcacaoSecretaria.setAssunto(request.getAssunto());
         marcacaoSecretaria.setTipoAtendimento(AtendimentoTipo.REMOTO);
         marcacaoSecretaria.setUtente(utente);
+        
+        // Se tiver descrição, adicionar
+        if (request.getDescricao() != null && !request.getDescricao().trim().isEmpty()) {
+            marcacaoSecretaria.setDescricao(request.getDescricao());
+        }
         
         MarcacaoSecretaria savedMarcacaoSecretaria = marcacaoSecretariaRepository.save(marcacaoSecretaria);
         
@@ -178,6 +171,8 @@ public class MarcacaoService{
         savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
         
         notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
+        
+        System.out.println("Marcação remota criada com sucesso: " + savedMarcacao.getId());
         
         return savedMarcacao;
     }
@@ -199,11 +194,18 @@ public class MarcacaoService{
     }
 
     
-    public Marcacao atualizarEstadoMarcacao(Long marcacaoId, EventoEstado novoEstado, Utilizador atualizadoPor) {
-        if (marcacaoId == null || novoEstado == null || atualizadoPor == null) {
-            throw new IllegalArgumentException(" Argumento não pode ser nulo");
-        }   
-        Marcacao marcacao = marcacaoRepository.findById(marcacaoId).orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
+    public Marcacao atualizarEstadoMarcacao(Long marcacaoId, AtualizarEstadoRequest request) {
+        if (marcacaoId == null || request == null) {
+            throw new IllegalArgumentException("Argumento não pode ser nulo");
+        }
+        
+        Utilizador atualizadoPor = utilizadorRepository.findById(request.getFuncionarioId())
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+        
+        EventoEstado novoEstado = request.getNovoEstadoEnum();
+        
+        Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
+                .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
 
         if (atualizadoPor instanceof Utente utente && utente.equals(marcacao.getCriadoPor()) && novoEstado.equals(EventoEstado.CANCELADO)) {
             // Utente que criou a marcação pode apenas marcar com cancelado
@@ -219,7 +221,6 @@ public class MarcacaoService{
         else {
             throw new RuntimeException("Apenas funcionários podem atualizar o estado da marcação");
         }
-        
     }
 
     
@@ -239,31 +240,6 @@ public class MarcacaoService{
                 .toList();
     }
 
-
-
-    
-    public Utente criarUtenteAutomatico(String nome, String nif, String telefone, String email) {
-        if (!validarNIF(nif)) {
-            throw new RuntimeException("NIF inválido");
-        }
-        
-        if (utenteRepository.existsByNif(nif)) {
-            throw new RuntimeException("NIF já existe");
-        }
-        
-        Utente utente = new Utente();
-        utente.setNome(nome);
-        utente.setNif(nif);
-        utente.setTelefone(telefone);
-        utente.setEmail(email);
-        
-        Utente savedUtente = utenteRepository.save(utente);
-        
-        enviarTokenAcesso(savedUtente);
-        
-        return savedUtente;
-    }
-
     
     public Optional<Marcacao> findById(Long id) {
         if (id == null) { throw new IllegalArgumentException("ID não pode ser nulo"); }
@@ -280,10 +256,16 @@ public class MarcacaoService{
     }
 
     
-    public void notificarDocumentosInvalidos(Long marcacaoId, String observacoes, Funcionario notificadoPor) {
-        if (marcacaoId == null || notificadoPor == null || observacoes == null) { throw new IllegalArgumentException(" Argumento não pode ser nulo"); }
+    public void notificarDocumentosInvalidos(Long marcacaoId, NotificarDocumentosRequest request) {
+        if (marcacaoId == null || request == null) {
+            throw new IllegalArgumentException("Argumento não pode ser nulo");
+        }
+        
+        Funcionario notificadoPor = funcionarioRepository.findById(request.getFuncionarioId())
+                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
 
-        Marcacao marcacao = marcacaoRepository.findById(marcacaoId).orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
+        Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
+                .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
         
         // Apenas secretaria pode notificar documentos inválidos
         validarFuncionarioSecretaria(notificadoPor);
@@ -292,7 +274,11 @@ public class MarcacaoService{
     }
 
     
-    public List<Marcacao> consultarMarcacoesUtente(Utente utente) { return marcacaoRepository.findByUtente(utente); }
+    public List<Marcacao> consultarMarcacoesUtente(Long utenteId) {
+        Utente utente = utenteRepository.findById(utenteId)
+                .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
+        return marcacaoRepository.findByUtente(utente);
+    }
 
     
     public List<Marcacao> consultarMarcacoesFuncionario(Funcionario funcionario) { return marcacaoRepository.findByCriadoPor(funcionario); }
@@ -335,67 +321,17 @@ public class MarcacaoService{
         }
     }
     
-    private boolean validarNIF(String nif) { // TODO: melhorar validação de NIF com API Externa
-        if (nif == null || nif.length() != 9) {
-            return false;
-        }
-        
-        try {
-            Integer.valueOf(nif);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-    
-    private void enviarTokenAcesso(Utente utente) {
-        String token = gerarToken();
-        String mensagem = ( "Foi criada uma conta automática para si. Use o token %s para aceder à plataforma. " + "Será obrigatório definir uma nova palavra-passe no primeiro acesso.").formatted(token);
-        
-        if (utente.getEmail() != null) {
-            //emailService.enviarEmail(utente.getEmail(), "Token de Acesso - Plataforma", mensagem);
-            System.out.println("Email enviado para " + utente.getEmail() + " com token: " + token + " e mensagem: " + mensagem);
-        }
-    }
-    
-    private String gerarToken() { return String.valueOf((int) ((ThreadLocalRandom.current().nextDouble() * 900000) + 100000)); }
-    
     // ======================== Métodos de lógica de negócio complexa (delegados do controller) ========================
     
     
-    public Marcacao criarMarcacaoRemotaComRequest(CriarMarcacaoRequest request) {
-        Utilizador utilizador = utilizadorRepository.findById(request.getUtenteId())
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + request.getUtenteId()));
-
-        if (!(utilizador instanceof Utente)) {
-            throw new RuntimeException("O utilizador com ID " + request.getUtenteId() + 
-                " é um " + utilizador.getClass().getSimpleName() + ", não um Utente. " +
-                "Apenas utentes podem criar marcações remotas.");
-        }
-        
-        Utente utente = (Utente) utilizador;
-        Marcacao marcacao = criarMarcacaoRemota(request.getData(), request.getAssunto(), utente);
-
-        System.out.println("Marcação remota criada com sucesso: " + marcacao.getId());
-        
-        return marcacao;
-    }
-    
-    
     public MarcacaoResponseDTO atualizarEstadoMarcacaoDTO(Long id, AtualizarEstadoRequest request) {
-        Utilizador atualizadoPor = utilizadorRepository.findById(request.getFuncionarioId())
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
-
-        Marcacao marcacao = atualizarEstadoMarcacao(id, request.getNovoEstadoEnum(), atualizadoPor);
+        Marcacao marcacao = atualizarEstadoMarcacao(id, request);
         return converterParaDTO(marcacao);
     }
     
     
     public MarcacaoResponseDTO notificarDocumentosInvalidosDTO(Long id, NotificarDocumentosRequest request) {
-        Funcionario notificadoPor = funcionarioRepository.findById(request.getFuncionarioId())
-                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
-
-        notificarDocumentosInvalidos(id, request.getObservacoes(), notificadoPor);
+        notificarDocumentosInvalidos(id, request);
         
         Marcacao marcacao = findById(id)
                 .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
@@ -405,10 +341,7 @@ public class MarcacaoService{
     
     
     public List<MarcacaoResponseDTO> consultarMarcacoesUtenteDTO(Long utenteId) {
-        Utente utente = utenteRepository.findById(utenteId)
-                .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-        
-        return consultarMarcacoesUtente(utente).stream().map(this::converterParaDTO).toList();
+        return consultarMarcacoesUtente(utenteId).stream().map(this::converterParaDTO).toList();
     }
     
     
@@ -440,9 +373,6 @@ public class MarcacaoService{
         
         return consultarMarcacoesFuncionario(funcionario).stream().map(this::converterParaDTO).toList();
     }
-    
-    // ======================== Métodos que retornam DTOs (delegados do controller) ========================
-    
     
     public MarcacaoResponseDTO converterParaDTO(Marcacao marcacao) {
         MarcacaoResponseDTO dto = new MarcacaoResponseDTO();
