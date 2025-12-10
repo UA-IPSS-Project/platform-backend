@@ -23,8 +23,7 @@ public class UtilizadorController {
     @GetMapping("/nif/{nif}")
     public ResponseEntity<Utilizador> buscarPorNif(@PathVariable String nif) {
         try {
-            Utilizador utilizador = utilizadorRepository.findByNif(nif)
-                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + nif));
+            Utilizador utilizador = utilizadorRepository.findByNif(nif).orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + nif));
             return ResponseEntity.ok(utilizador);
         } catch (Exception e) {
             return ResponseEntity.status(404).build();

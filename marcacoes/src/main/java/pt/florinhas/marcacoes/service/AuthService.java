@@ -60,7 +60,7 @@ public class AuthService {
         }
 
         var jwtToken = jwtService.generateToken(user);
-        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "FUNCIONARIO");
+        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "FUNCIONARIO", user.getNif(), user.getTelefone());
     }
     
     public AuthResponse loginUtente(LoginUtenteRequest request) {
@@ -79,7 +79,7 @@ public class AuthService {
         }
 
         var jwtToken = jwtService.generateToken(user);
-        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "UTENTE");
+        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "UTENTE", user.getNif(), user.getTelefone());
     }
 
     public AuthResponse registerUtente(UtenteRegisterRequest request) {
@@ -110,7 +110,7 @@ public class AuthService {
         utente = utenteRepository.save(utente);
 
         var jwtToken = jwtService.generateToken(utente);
-        return new AuthResponse(jwtToken, utente.getId(), utente.getEmail(), utente.getNome(), "UTENTE");
+        return new AuthResponse(jwtToken, utente.getId(), utente.getEmail(), utente.getNome(), "UTENTE", utente.getNif(), utente.getTelefone());
     }
 
     public AuthResponse registerFuncionario(FuncionarioRegisterRequest request) {
@@ -140,7 +140,7 @@ public class AuthService {
         funcionario = funcionarioRepository.save(funcionario);
 
         var jwtToken = jwtService.generateToken(funcionario);
-        return new AuthResponse(jwtToken, funcionario.getId(), funcionario.getEmail(), funcionario.getNome(), "FUNCIONARIO");
+        return new AuthResponse(jwtToken, funcionario.getId(), funcionario.getEmail(), funcionario.getNome(), "FUNCIONARIO", funcionario.getNif(), funcionario.getTelefone());
     }
 
     private FuncionarioTipo mapFuncaoToTipo(String funcao) {

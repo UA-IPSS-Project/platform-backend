@@ -6,9 +6,11 @@ public record AuthResponse(
     Long id,
     String email,
     String nome,
-    String role
+    String role,
+    String nif,
+    String telefone
 ) {
-    public AuthResponse(String token, Long id, String email, String nome, String role) {
-        this(token, "Bearer", id, email, nome, role);
+    public AuthResponse(String token, Long id, String email, String nome, String role, String nif, String telefone) {
+        this(token, "Bearer", id, email, nome, role, nif, telefone);
     }
 }

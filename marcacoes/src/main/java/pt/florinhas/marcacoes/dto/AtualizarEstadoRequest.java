@@ -1,14 +1,18 @@
 package pt.florinhas.marcacoes.dto;
 
-import pt.florinhas.marcacoes.domain.EventoEstado;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import pt.florinhas.marcacoes.domain.EventoEstado;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class AtualizarEstadoRequest {
-    private EventoEstado novoEstado;
+    private String novoEstado;
     private Long funcionarioId;
+    
+    public EventoEstado getNovoEstadoEnum() {
+        return EventoEstado.valueOf(novoEstado);
+    }
 }
