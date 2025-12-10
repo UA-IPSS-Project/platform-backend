@@ -42,6 +42,11 @@ public class JwtService {
         return buildToken(extraClaims, userDetails, jwtExpiration);
     }
 
+    // Expor a expiração configurada (em milissegundos)
+    public long getJwtExpiration() {
+        return jwtExpiration;
+    }
+
     private String buildToken(
             Map<String, Object> extraClaims,
             UserDetails userDetails,

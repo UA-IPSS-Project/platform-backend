@@ -8,9 +8,10 @@ public record AuthResponse(
     String nome,
     String role,
     String nif,
-    String telefone
+    String telefone,
+    long expiresAt
 ) {
-    public AuthResponse(String token, Long id, String email, String nome, String role, String nif, String telefone) {
-        this(token, "Bearer", id, email, nome, role, nif, telefone);
+    public AuthResponse(String token, Long id, String email, String nome, String role, String nif, String telefone, long expiresAt) {
+        this(token, "Bearer", id, email, nome, role, nif, telefone, expiresAt);
     }
 }

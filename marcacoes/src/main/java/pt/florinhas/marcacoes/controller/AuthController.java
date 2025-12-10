@@ -2,6 +2,7 @@ package pt.florinhas.marcacoes.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import pt.florinhas.marcacoes.dto.AuthResponse;
 import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
 import pt.florinhas.marcacoes.dto.LoginFuncionarioRequest;
 import pt.florinhas.marcacoes.dto.LoginUtenteRequest;
+import pt.florinhas.marcacoes.dto.UserResponse;
 import pt.florinhas.marcacoes.dto.UtenteRegisterRequest;
 import pt.florinhas.marcacoes.service.AuthService;
 
@@ -44,6 +46,23 @@ public class AuthController {
     @PostMapping("/register/funcionario")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody FuncionarioRegisterRequest request) {
         return ResponseEntity.ok(authService.registerFuncionario(request));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> me(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof pt.florinhas.marcacoes.domain.Utilizador) {
+            pt.florinhas.marcacoes.domain.Utilizador u = (pt.florinhas.marcacoes.domain.Utilizador) principal;
+            String role = u instanceof pt.florinhas.marcacoes.domain.Funcionario ? "FUNCIONARIO" : "UTENTE";
+            UserResponse resp = new UserResponse(u.getId(), u.getEmail(), u.getNome(), role, u.getNif(), u.getTelefone());
+            return ResponseEntity.ok(resp);
+        }
+
+        return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
     }
 }
 
