@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
+import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
 @RestController
@@ -27,7 +28,8 @@ public class UtilizadorController {
     public ResponseEntity<?> obterUtilizadorPorId(@PathVariable Long id) {
         try {
             Utilizador utilizador = utilizadorService.obterUtilizadorPorId(id);
-            return ResponseEntity.ok(utilizador);
+            UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(404).body(java.util.Map.of(
                 "error", e.getMessage()
@@ -53,7 +55,8 @@ public class UtilizadorController {
             @RequestBody UtilizadorInfoDTO request) {
         try {
             Utilizador utilizador = utilizadorService.atualizarUtilizador(id, request);
-            return ResponseEntity.ok(utilizador);
+            UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(java.util.Map.of(
                 "error", e.getMessage()
