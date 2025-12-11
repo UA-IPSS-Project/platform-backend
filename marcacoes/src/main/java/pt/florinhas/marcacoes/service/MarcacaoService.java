@@ -57,7 +57,13 @@ public class MarcacaoService{
     public long contarMarcacoesDiarias(LocalDateTime data) {
         LocalDateTime inicioDia = data.toLocalDate().atStartOfDay();
         LocalDateTime fimDia = inicioDia.plusDays(1).minusSeconds(1);
-        return marcacaoRepository.countMarcacoesBetweenDates(inicioDia, fimDia);
+        
+        // Contar apenas marcações com estados ativos: AGENDADO, EM_PROGRESSO, AVISO
+        return marcacaoRepository.findMarcacoesBetweenDates(inicioDia, fimDia).stream()
+                .filter(m -> m.getEstado() == EventoEstado.AGENDADO ||
+                            m.getEstado() == EventoEstado.EM_PROGRESSO ||
+                            m.getEstado() == EventoEstado.AVISO)
+                .count();
     }
 
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
@@ -178,23 +184,26 @@ public class MarcacaoService{
     }
 
     
-    public List<Marcacao> consultarAgenda(LocalDateTime dataInicio, LocalDateTime dataFim) {
-        return marcacaoRepository.findMarcacoesBetweenDates(dataInicio, dataFim);
+    public List<MarcacaoResponseDTO> consultarAgenda(LocalDateTime dataInicio, LocalDateTime dataFim) {
+        return marcacaoRepository.findMarcacoesBetweenDates(dataInicio, dataFim).stream()
+                .map(this::converterParaDTO)
+                .toList();
     }
 
     
-    public List<Marcacao> procurarAgenda(LocalDateTime dataInicio, LocalDateTime dataFim, Long criadoPorId, Long utenteId, EventoEstado estado) {
+    public List<MarcacaoResponseDTO> procurarAgenda(LocalDateTime dataInicio, LocalDateTime dataFim, Long criadoPorId, Long utenteId, EventoEstado estado) {
         List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(dataInicio, dataFim);
         
         return marcacoes.stream()
                 .filter(m -> criadoPorId == null || m.getCriadoPor().getId().equals(criadoPorId))
                 .filter(m -> utenteId == null || (m.getMarcacaoSecretaria() != null && m.getMarcacaoSecretaria().getUtente().getId().equals(utenteId)))
                 .filter(m -> estado == null || m.getEstado().equals(estado))
+                .map(this::converterParaDTO)
                 .toList();
     }
 
     
-    public Marcacao atualizarEstadoMarcacao(Long marcacaoId, AtualizarEstadoRequest request) {
+    public MarcacaoResponseDTO atualizarEstadoMarcacao(Long marcacaoId, AtualizarEstadoRequest request) {
         if (marcacaoId == null || request == null) {
             throw new IllegalArgumentException("Argumento não pode ser nulo");
         }
@@ -212,16 +221,23 @@ public class MarcacaoService{
             throw new RuntimeException("Conflito de versão: a marcação foi modificada por outro utilizador. Por favor, recarregue e tente novamente.");
         }
 
+        EventoEstado estadoAtual = marcacao.getEstado();
+        
+        // Validar transições de estado permitidas
+        validarTransicaoEstado(estadoAtual, novoEstado);
+
         if (atualizadoPor instanceof Utente utente && utente.equals(marcacao.getCriadoPor()) && novoEstado.equals(EventoEstado.CANCELADO)) {
             // Utente que criou a marcação pode apenas marcar com cancelado
             marcacao.setEstado(novoEstado);
-            return marcacaoRepository.save(marcacao);
+            Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
+            return converterParaDTO(savedMarcacao);
         }
 
         if (atualizadoPor instanceof Funcionario funcionario) {
             validarFuncionarioSecretaria(funcionario); // Apenas secretaria pode atualizar estado
             marcacao.setEstado(novoEstado);
-            return marcacaoRepository.save(marcacao);
+            Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
+            return converterParaDTO(savedMarcacao);
         }
         else {
             throw new RuntimeException("Apenas funcionários podem atualizar o estado da marcação");
@@ -229,7 +245,7 @@ public class MarcacaoService{
     }
 
     
-    public List<Marcacao> consultarMarcacoesPassadas(LocalDateTime dataInicio) {
+    public List<MarcacaoResponseDTO> consultarMarcacoesPassadas(LocalDateTime dataInicio, LocalDateTime dataFim, Long utenteId, EventoEstado estado) {
         // Se não foram fornecidas datas, buscar desde o início até agora
         LocalDateTime inicio = dataInicio != null ? dataInicio : LocalDateTime.of(2000, 1, 1, 0, 0);
         LocalDateTime fim = LocalDateTime.now();
@@ -242,6 +258,7 @@ public class MarcacaoService{
                 .filter(m -> m.getEstado() == EventoEstado.CONCLUIDO || 
                             m.getEstado() == EventoEstado.CANCELADO || 
                             m.getEstado() == EventoEstado.AVISO)
+                .map(this::converterParaDTO)
                 .toList();
     }
 
@@ -261,7 +278,7 @@ public class MarcacaoService{
     }
 
     
-    public void notificarDocumentosInvalidos(Long marcacaoId, NotificarDocumentosRequest request) {
+    public MarcacaoResponseDTO notificarDocumentosInvalidos(Long marcacaoId, NotificarDocumentosRequest request) {
         if (marcacaoId == null || request == null) {
             throw new IllegalArgumentException("Argumento não pode ser nulo");
         }
@@ -276,17 +293,27 @@ public class MarcacaoService{
         validarFuncionarioSecretaria(notificadoPor);
         
         notificarUtenteMarcacao(marcacao, "DOCUMENTOS_INVALIDOS");
+        
+        return converterParaDTO(marcacao);
     }
 
     
-    public List<Marcacao> consultarMarcacoesUtente(Long utenteId) {
+    public List<MarcacaoResponseDTO> consultarMarcacoesUtente(Long utenteId) {
         Utente utente = utenteRepository.findById(utenteId)
                 .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-        return marcacaoRepository.findByUtente(utente);
+        return marcacaoRepository.findByUtente(utente).stream()
+                .map(this::converterParaDTO)
+                .toList();
     }
 
     
-    public List<Marcacao> consultarMarcacoesFuncionario(Funcionario funcionario) { return marcacaoRepository.findByCriadoPor(funcionario); }
+    public List<MarcacaoResponseDTO> consultarMarcacoesFuncionario(Long funcionarioId) {
+        Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
+                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
+        return marcacaoRepository.findByCriadoPor(funcionario).stream()
+                .map(this::converterParaDTO)
+                .toList();
+    }
 
     // Métodos privados auxiliares
     private void validarDisponibilidade(LocalDateTime data) {
@@ -297,6 +324,44 @@ public class MarcacaoService{
     private void validarFuncionarioSecretaria(Funcionario funcionario) {
         // Verificar se o funcionário pertence à secretaria
         if (funcionario.getTipo() != FuncionarioTipo.SECRETARIA) { throw new RuntimeException("Apenas funcionários da secretaria podem realizar esta ação"); }
+    }
+    
+    private void validarTransicaoEstado(EventoEstado estadoAtual, EventoEstado novoEstado) {
+        // Estados finais não podem ser alterados
+        if (estadoAtual == EventoEstado.CONCLUIDO) {
+            throw new RuntimeException("Não é possível alterar o estado de uma marcação já concluída");
+        }
+        
+        // Marcação em progresso só pode ser concluída ou marcada com aviso
+        if (estadoAtual == EventoEstado.EM_PROGRESSO) {
+            if (novoEstado != EventoEstado.CONCLUIDO && novoEstado != EventoEstado.AVISO) {
+                throw new RuntimeException("Uma marcação em progresso só pode ser concluída ou marcada com aviso. Não é possível cancelar ou voltar ao estado agendado.");
+            }
+        }
+        
+        // Marcação cancelada não pode ser reativada
+        if (estadoAtual == EventoEstado.CANCELADO) {
+            throw new RuntimeException("Não é possível alterar o estado de uma marcação cancelada");
+        }
+        
+        // Marcação com não compareceu não pode ser alterada
+        if (estadoAtual == EventoEstado.NAO_COMPARECIDO) {
+            throw new RuntimeException("Não é possível alterar o estado de uma marcação marcada como não comparecimento");
+        }
+        
+        // Validar que não se pode voltar para EM_PREENCHIMENTO
+        if (novoEstado == EventoEstado.EM_PREENCHIMENTO) {
+            throw new RuntimeException("Não é possível voltar ao estado de preenchimento");
+        }
+        
+        // De AGENDADO pode-se ir para: EM_PROGRESSO, CANCELADO, AVISO
+        if (estadoAtual == EventoEstado.AGENDADO) {
+            if (novoEstado != EventoEstado.EM_PROGRESSO && 
+                novoEstado != EventoEstado.CANCELADO && 
+                novoEstado != EventoEstado.AVISO) {
+                throw new RuntimeException("De agendado só é possível iniciar a marcação, cancelar ou marcar como aviso");
+            }
+        }
     }
     
     
@@ -321,10 +386,6 @@ public class MarcacaoService{
             Utilizador criador = utilizadorRepository.getReferenceById(request.getCriadoPorId());
             temp.setCriadoPor(criador);
         }
-        
-        // Nota: Não preenchemos Utente nem MarcacaoSecretaria aqui, 
-        // pois isso geralmente ocorre no passo de "Confirmar", 
-        // mas se quiseres podes adicionar a lógica aqui.
 
         marcacaoRepository.save(temp);
         return temp.getId();
@@ -369,28 +430,7 @@ public class MarcacaoService{
         }
     }
     
-    // ======================== Métodos de lógica de negócio complexa (delegados do controller) ========================
-    
-    
-    public MarcacaoResponseDTO atualizarEstadoMarcacaoDTO(Long id, AtualizarEstadoRequest request) {
-        Marcacao marcacao = atualizarEstadoMarcacao(id, request);
-        return converterParaDTO(marcacao);
-    }
-    
-    
-    public MarcacaoResponseDTO notificarDocumentosInvalidosDTO(Long id, NotificarDocumentosRequest request) {
-        notificarDocumentosInvalidos(id, request);
-        
-        Marcacao marcacao = findById(id)
-                .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
-                
-        return converterParaDTO(marcacao);
-    }
-    
-    
-    public List<MarcacaoResponseDTO> consultarMarcacoesUtenteDTO(Long utenteId) {
-        return consultarMarcacoesUtente(utenteId).stream().map(this::converterParaDTO).toList();
-    }
+
     
     
     public List<java.util.Map<String, Object>> consultarMarcacoesBloqueadas(Long utenteId) {
@@ -413,13 +453,6 @@ public class MarcacaoService{
                 return map;
             })
             .toList();
-    }
-    
-    
-    public List<MarcacaoResponseDTO> consultarMarcacoesFuncionarioDTO(Long funcionarioId) {
-        Funcionario funcionario = funcionarioRepository.findById(funcionarioId).orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
-        
-        return consultarMarcacoesFuncionario(funcionario).stream().map(this::converterParaDTO).toList();
     }
     
     public MarcacaoResponseDTO converterParaDTO(Marcacao marcacao) {
@@ -463,18 +496,4 @@ public class MarcacaoService{
         return converterParaDTO(marcacao);
     }
     
-    
-    public List<MarcacaoResponseDTO> consultarAgendaDTO(LocalDateTime dataInicio, LocalDateTime dataFim) {
-        return consultarAgenda(dataInicio, dataFim).stream().map(this::converterParaDTO).toList();
-    }
-    
-    
-    public List<MarcacaoResponseDTO> procurarAgendaDTO(LocalDateTime dataInicio, LocalDateTime dataFim, Long criadoPorId, Long utenteId, EventoEstado estado) {
-        return procurarAgenda(dataInicio, dataFim, criadoPorId, utenteId, estado).stream().map(this::converterParaDTO).toList();
-    }
-    
-    
-    public List<MarcacaoResponseDTO> consultarMarcacoesPassadasDTO(LocalDateTime dataInicio, LocalDateTime dataFim, Long utenteId, EventoEstado estado) {
-        return consultarMarcacoesPassadas(dataInicio).stream().map(this::converterParaDTO).toList();
-    }
 }
