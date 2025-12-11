@@ -2,11 +2,14 @@ package pt.florinhas.marcacoes.controller;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -159,9 +162,9 @@ public class MarcacaoController {
 
     // Consultar marcações bloqueadas (de outros utentes)
     @GetMapping("/utente/{utenteId}/bloqueadas")
-    public ResponseEntity<List<java.util.Map<String, Object>>> consultarMarcacoesBloqueadas(@PathVariable Long utenteId) {
+    public ResponseEntity<List<Map<String, Object>>> consultarMarcacoesBloqueadas(@PathVariable Long utenteId) {
         try {
-            List<java.util.Map<String, Object>> marcacoesBloqueadas = marcacaoService.consultarMarcacoesBloqueadas(utenteId);
+            List<Map<String, Object>> marcacoesBloqueadas = marcacaoService.consultarMarcacoesBloqueadas(utenteId);
             return ResponseEntity.ok(marcacoesBloqueadas);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -199,6 +202,26 @@ public class MarcacaoController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+
+    @PostMapping("/reservar-slot")
+    public ResponseEntity<?> reservarSlotTemporariamente(@RequestBody CriarMarcacaoRequest request) {
+        try {
+            // O service vai verificar se JÁ existe alguém nesse horário
+            // Se estiver livre, cria uma marcação com estado EM_PREENCHIMENTO
+            Long tempId = marcacaoService.criarReservaTemporaria(request);
+            return ResponseEntity.ok(Map.of("tempId", tempId, "message", "Slot bloqueado por 10 minutos"));
+        } catch (Exception e) {
+            // Se já estiver ocupado (por reserva real ou temporária de outro), devolve 409 Conflict
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/libertar-slot/{id}")
+    public ResponseEntity<?> libertarSlot(@PathVariable Long id) {
+        marcacaoService.apagarReservaTemporaria(id);
+        return ResponseEntity.ok().build();
     }
 
 }

@@ -6,5 +6,6 @@ public enum EventoEstado {
     AVISO,              // Documentos inválidos ou problemas
     CONCLUIDO,          // Atendimento finalizado
     CANCELADO,          // Marcação cancelada
-    NAO_COMPARECIDO     // Utente não compareceu
+    NAO_COMPARECIDO,    // Utente não compareceu
+    EM_PREENCHIMENTO    // Marcação em processo de criação (não finalizada)
 }

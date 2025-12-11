@@ -295,6 +295,51 @@ public class MarcacaoService{
     }
     
     
+    public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
+        // 1. Verificar disponibilidade
+        // Passamos apenas request.getData() pois é um LocalDateTime (Data + Hora)
+        if (existeSobreposicao(request.getData())) {
+            throw new RuntimeException("Este horário já está a ser preenchido ou ocupado por outra pessoa.");
+        }
+
+        Marcacao temp = new Marcacao();
+        
+        // 2. Definir dados básicos
+        temp.setData(request.getData()); 
+        temp.setEstado(EventoEstado.EM_PREENCHIMENTO);
+        
+        // 3. Definir o Timestamp de criação (CRÍTICO para o Cron Job)
+        temp.setCriadoEm(LocalDateTime.now()); 
+
+        // 4. Associar quem está a criar (se o ID vier no request)
+        if (request.getCriadoPorId() != null) {
+            // getReferenceById é mais eficiente que findById pois cria apenas um proxy sem ir à BD imediatamente
+            Utilizador criador = utilizadorRepository.getReferenceById(request.getCriadoPorId());
+            temp.setCriadoPor(criador);
+        }
+        
+        // Nota: Não preenchemos Utente nem MarcacaoSecretaria aqui, 
+        // pois isso geralmente ocorre no passo de "Confirmar", 
+        // mas se quiseres podes adicionar a lógica aqui.
+
+        marcacaoRepository.save(temp);
+        return temp.getId();
+    }
+
+    public void apagarReservaTemporaria(Long id) {
+        // Usamos findById para evitar NullPointerException
+        marcacaoRepository.findById(id).ifPresent(m -> {
+            // Só apagamos se ainda estiver em preenchimento
+            if (m.getEstado() == EventoEstado.EM_PREENCHIMENTO) {
+                marcacaoRepository.delete(m);
+            }
+        });
+    }
+
+    private boolean existeSobreposicao(LocalDateTime dataHora) {
+        return marcacaoRepository.existsByDataAndEstadoNot(dataHora, EventoEstado.CANCELADO);
+    }
+    
     private void notificarUtenteMarcacao(Marcacao marcacao, String tipoNotificacao) {
         String mensagem = "";
         String assunto = "";
