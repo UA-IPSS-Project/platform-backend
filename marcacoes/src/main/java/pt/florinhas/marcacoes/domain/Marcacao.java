@@ -2,8 +2,6 @@ package pt.florinhas.marcacoes.domain;
 
 import java.time.LocalDateTime;
 
-import org.springframework.data.annotation.CreatedDate;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -45,8 +43,7 @@ public class Marcacao {
     @JoinColumn(name = "utilizador_id")
     private Utilizador criadoPor; // Criador da marcação
 
-    @CreatedDate
-    @Column(name = "criado_em", nullable = false, updatable = false)
+    @Column(name = "criado_em", updatable = false)
     private LocalDateTime criadoEm;
     
     // Relacionamento OneToOne com Marcacao_Secretaria (relacionamento 1:1)

@@ -33,8 +33,8 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
         @Param("dataInicio") LocalDateTime dataInicio, 
         @Param("dataFim") LocalDateTime dataFim);
     
-    // Verificar se existe marcação na mesma data (não cancelada)
-    @Query("SELECT COUNT(m) > 0 FROM Marcacao m WHERE CAST(m.data AS date) = CAST(:data AS date) AND m.estado <> :estado")
+    // Verificar se existe marcação no mesmo horário exato (não cancelada)
+    @Query("SELECT COUNT(m) > 0 FROM Marcacao m WHERE m.data = :data AND m.estado <> :estado")
     boolean existsByDataAndEstadoNot(
         @Param("data") LocalDateTime data, 
         @Param("estado") EventoEstado estado);
