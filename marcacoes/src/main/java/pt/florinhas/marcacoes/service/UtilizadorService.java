@@ -26,8 +26,8 @@ public class UtilizadorService{
     @Autowired
     private UtenteRepository utenteRepository;
     
-    @Autowired
-    private pt.florinhas.marcacoes.repository.FuncionarioRepository funcionarioRepository;
+    //@Autowired
+    //private FuncionarioRepository funcionarioRepository;
     
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -159,7 +159,6 @@ public class UtilizadorService{
         return utenteRepository.countByActivo(true);
     }
 
-    // Métodos privados auxiliares
     
     private boolean validarNIF(String nif) {
         // TODO: melhorar validação de NIF com API Externa

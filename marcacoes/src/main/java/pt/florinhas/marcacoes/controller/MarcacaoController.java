@@ -87,7 +87,7 @@ public class MarcacaoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim) {
         
         try {
-            List<MarcacaoResponseDTO> response = marcacaoService.consultarAgendaDTO(dataInicio, dataFim);
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarAgenda(dataInicio, dataFim);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -104,7 +104,7 @@ public class MarcacaoController {
             @RequestParam(required = false) EventoEstado estado) {
         
         try {
-            List<MarcacaoResponseDTO> response = marcacaoService.procurarAgendaDTO(dataInicio, dataFim, criadoPorId, utenteId, estado);
+            List<MarcacaoResponseDTO> response = marcacaoService.procurarAgenda(dataInicio, dataFim, criadoPorId, utenteId, estado);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -115,7 +115,7 @@ public class MarcacaoController {
     @PutMapping("/{id}/estado")
     public ResponseEntity<MarcacaoResponseDTO> atualizarEstadoMarcacao(@PathVariable Long id, @RequestBody AtualizarEstadoRequest request) {
         try {
-            MarcacaoResponseDTO response = marcacaoService.atualizarEstadoMarcacaoDTO(id, request);
+            MarcacaoResponseDTO response = marcacaoService.atualizarEstadoMarcacao(id, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -131,7 +131,7 @@ public class MarcacaoController {
             @RequestParam(required = false) EventoEstado estado) {
         
         try {
-            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadasDTO(dataInicio, dataFim, utenteId, estado);
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadas(dataInicio, dataFim, utenteId, estado);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -142,7 +142,7 @@ public class MarcacaoController {
     @PutMapping("/{id}/notificar-documentos-invalidos")
     public ResponseEntity<MarcacaoResponseDTO> notificarDocumentosInvalidos(@PathVariable Long id, @RequestBody NotificarDocumentosRequest request) {
         try {
-            MarcacaoResponseDTO response = marcacaoService.notificarDocumentosInvalidosDTO(id, request);
+            MarcacaoResponseDTO response = marcacaoService.notificarDocumentosInvalidos(id, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -153,7 +153,7 @@ public class MarcacaoController {
     @GetMapping("/utente/{utenteId}")
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesUtente(@PathVariable Long utenteId) {
         try {
-            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesUtenteDTO(utenteId);
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesUtente(utenteId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -175,7 +175,7 @@ public class MarcacaoController {
     @GetMapping("/funcionario/{funcionarioId}")
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesFuncionario(@PathVariable Long funcionarioId) {
         try {
-            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesFuncionarioDTO(funcionarioId);
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesFuncionario(funcionarioId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
