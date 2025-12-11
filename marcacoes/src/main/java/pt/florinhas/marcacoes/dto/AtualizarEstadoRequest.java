@@ -11,6 +11,7 @@ import pt.florinhas.marcacoes.domain.EventoEstado;
 public class AtualizarEstadoRequest {
     private String novoEstado;
     private Long funcionarioId;
+    private Long version;
     
     public EventoEstado getNovoEstadoEnum() {
         return EventoEstado.valueOf(novoEstado);

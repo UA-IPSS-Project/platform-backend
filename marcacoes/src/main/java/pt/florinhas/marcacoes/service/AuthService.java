@@ -77,7 +77,7 @@ public class AuthService {
         if (!(user instanceof Utente)) {
             throw new BadRequestException("Credenciais inválidas para utente");
         }
-
+        
         var jwtToken = jwtService.generateToken(user);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
         return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "UTENTE", user.getNif(), user.getTelefone(), expiresAt);

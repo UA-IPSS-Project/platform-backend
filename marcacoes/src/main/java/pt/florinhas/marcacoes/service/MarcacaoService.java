@@ -207,6 +207,11 @@ public class MarcacaoService{
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
                 .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
 
+        // Validar versão para evitar conflitos de concorrência
+        if (request.getVersion() != null && !request.getVersion().equals(marcacao.getVersion())) {
+            throw new RuntimeException("Conflito de versão: a marcação foi modificada por outro utilizador. Por favor, recarregue e tente novamente.");
+        }
+
         if (atualizadoPor instanceof Utente utente && utente.equals(marcacao.getCriadoPor()) && novoEstado.equals(EventoEstado.CANCELADO)) {
             // Utente que criou a marcação pode apenas marcar com cancelado
             marcacao.setEstado(novoEstado);
@@ -297,7 +302,6 @@ public class MarcacaoService{
     
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
         // 1. Verificar disponibilidade
-        // Passamos apenas request.getData() pois é um LocalDateTime (Data + Hora)
         if (existeSobreposicao(request.getData())) {
             throw new RuntimeException("Este horário já está a ser preenchido ou ocupado por outra pessoa.");
         }
@@ -327,7 +331,6 @@ public class MarcacaoService{
     }
 
     public void apagarReservaTemporaria(Long id) {
-        // Usamos findById para evitar NullPointerException
         marcacaoRepository.findById(id).ifPresent(m -> {
             // Só apagamos se ainda estiver em preenchimento
             if (m.getEstado() == EventoEstado.EM_PREENCHIMENTO) {
@@ -422,6 +425,7 @@ public class MarcacaoService{
     public MarcacaoResponseDTO converterParaDTO(Marcacao marcacao) {
         MarcacaoResponseDTO dto = new MarcacaoResponseDTO();
         dto.setId(marcacao.getId());
+        dto.setVersion(marcacao.getVersion());
         dto.setData(marcacao.getData());
         dto.setEstado(marcacao.getEstado());
         

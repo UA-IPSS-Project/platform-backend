@@ -13,6 +13,7 @@ import pt.florinhas.marcacoes.domain.EventoEstado;
 @AllArgsConstructor
 public class MarcacaoResponseDTO {
     private Long id;
+    private Long version;
     private LocalDateTime data;
     private EventoEstado estado;
     private MarcacaoSecretariaDTO marcacaoSecretaria;

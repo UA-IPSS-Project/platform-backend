@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AuthResponse;
 import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
 import pt.florinhas.marcacoes.dto.LoginFuncionarioRequest;
@@ -55,9 +57,8 @@ public class AuthController {
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof pt.florinhas.marcacoes.domain.Utilizador) {
-            pt.florinhas.marcacoes.domain.Utilizador u = (pt.florinhas.marcacoes.domain.Utilizador) principal;
-            String role = u instanceof pt.florinhas.marcacoes.domain.Funcionario ? "FUNCIONARIO" : "UTENTE";
+        if (principal instanceof Utilizador u) {
+            String role = u instanceof Funcionario ? "FUNCIONARIO" : "UTENTE";
             UserResponse resp = new UserResponse(u.getId(), u.getEmail(), u.getNome(), role, u.getNif(), u.getTelefone());
             return ResponseEntity.ok(resp);
         }
