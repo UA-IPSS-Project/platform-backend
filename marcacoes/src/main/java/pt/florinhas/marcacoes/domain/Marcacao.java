@@ -50,7 +50,12 @@ public class Marcacao {
 
     @Column(name = "criado_em", updatable = false)
     private LocalDateTime criadoEm;
-    
+
+    // Funcionário que atendeu/concluiu a marcação
+    @ManyToOne
+    @JoinColumn(name = "atendente_id")
+    private Utilizador atendente;
+
     // Relacionamento OneToOne com Marcacao_Secretaria (relacionamento 1:1)
     @OneToOne(mappedBy = "marcacao", cascade = CascadeType.ALL)
     private MarcacaoSecretaria marcacaoSecretaria;

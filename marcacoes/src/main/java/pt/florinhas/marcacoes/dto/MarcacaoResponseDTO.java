@@ -16,6 +16,7 @@ public class MarcacaoResponseDTO {
     private Long version;
     private LocalDateTime data;
     private EventoEstado estado;
+    private String atendenteNome; // Nome do funcionário que atendeu
     private MarcacaoSecretariaDTO marcacaoSecretaria;
 
     @Data
