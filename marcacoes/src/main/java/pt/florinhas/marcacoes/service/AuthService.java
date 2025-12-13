@@ -19,6 +19,19 @@ import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
 
+/**
+ * Serviço responsável por autenticação e registo de utilizadores.
+ *
+ * Responsabilidades principais:
+ *  - Autenticação de Funcionários e Utentes (login).
+ *  - Registo de novos Utentes e Funcionários.
+ *  - Geração de tokens JWT após autenticação/registo.
+ *
+ * Integra:
+ *  - Spring Security (AuthenticationManager).
+ *  - Persistência JPA (repositórios).
+ *  - Segurança (PasswordEncoder + JwtService).
+ */
 @Service
 public class AuthService {
 
@@ -45,7 +58,18 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
     }
     
+    /**
+     * Autenticação de Funcionário.
+     *
+     * Fluxo:
+     *  1) Autentica credenciais via AuthenticationManager.
+     *  2) Valida que o utilizador existe e é do tipo Funcionario.
+     *  3) Gera token JWT.
+     *  4) Devolve AuthResponse com dados do utilizador e expiração.
+     */
     public AuthResponse loginFuncionario(LoginFuncionarioRequest request) {
+
+        // Autenticação delegada ao Spring Security
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.email(),
@@ -53,18 +77,40 @@ public class AuthService {
                 )
         );
 
-        var user = utilizadorRepository.findByEmail(request.email()).orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
+        // Obter utilizador pelo email
+        var user = utilizadorRepository.findByEmail(request.email())
+                .orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
         
+        // Garantir que é efetivamente um Funcionário
         if (!(user instanceof Funcionario)) {
             throw new BadRequestException("Credenciais inválidas para funcionário");
         }
 
+        // Geração de token JWT
         var jwtToken = jwtService.generateToken(user);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "FUNCIONARIO", user.getNif(), user.getTelefone(), expiresAt);
+
+        return new AuthResponse(
+                jwtToken,
+                user.getId(),
+                user.getEmail(),
+                user.getNome(),
+                "FUNCIONARIO",
+                user.getNif(),
+                user.getTelefone(),
+                expiresAt
+        );
     }
     
+    /**
+     * Autenticação de Utente.
+     *
+     * Diferença principal:
+     *  - Username usado na autenticação é o NIF.
+     */
     public AuthResponse loginUtente(LoginUtenteRequest request) {
+
+        // Autenticação via NIF + password
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.nif(),
@@ -72,19 +118,46 @@ public class AuthService {
                 )
         );
 
-        var user = utilizadorRepository.findByNif(request.nif()).orElseThrow(() -> new BadRequestException("Utente não encontrado"));
+        // Obter utilizador pelo NIF
+        var user = utilizadorRepository.findByNif(request.nif())
+                .orElseThrow(() -> new BadRequestException("Utente não encontrado"));
         
+        // Garantir que é efetivamente um Utente
         if (!(user instanceof Utente)) {
             throw new BadRequestException("Credenciais inválidas para utente");
         }
         
+        // Geração de token JWT
         var jwtToken = jwtService.generateToken(user);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "UTENTE", user.getNif(), user.getTelefone(), expiresAt);
+
+        return new AuthResponse(
+                jwtToken,
+                user.getId(),
+                user.getEmail(),
+                user.getNome(),
+                "UTENTE",
+                user.getNif(),
+                user.getTelefone(),
+                expiresAt
+        );
     }
 
+    /**
+     * Registo de um novo Utente.
+     *
+     * Validações:
+     *  - Email único.
+     *  - NIF único.
+     *
+     * Após criação:
+     *  - Password é guardada com hash (BCrypt).
+     *  - Utente é marcado como ativo.
+     *  - JWT é gerado automaticamente.
+     */
     public AuthResponse registerUtente(UtenteRegisterRequest request) {
-        // Verificar se já existe utilizador com este email ou NIF
+
+        // Verificar unicidade de email e NIF
         if (utilizadorRepository.existsByEmail(request.email())) {
             throw new BadRequestException("Email já está em uso");
         }
@@ -92,7 +165,7 @@ public class AuthService {
             throw new BadRequestException("NIF já está em uso");
         }
 
-        // Criar Utente com info básica
+        // Construção da entidade Utente
         Utente utente = new Utente();
         utente.setNome(request.nome());
         utente.setEmail(request.email());
@@ -102,15 +175,36 @@ public class AuthService {
         utente.setDataNasc(request.dataNasc());
         utente.setActivo(true);
 
+        // Persistência
         utente = utenteRepository.save(utente);
 
+        // Token JWT pós-registo
         var jwtToken = jwtService.generateToken(utente);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, utente.getId(), utente.getEmail(), utente.getNome(), "UTENTE", utente.getNif(), utente.getTelefone(), expiresAt);
+
+        return new AuthResponse(
+                jwtToken,
+                utente.getId(),
+                utente.getEmail(),
+                utente.getNome(),
+                "UTENTE",
+                utente.getNif(),
+                utente.getTelefone(),
+                expiresAt
+        );
     }
 
+    /**
+     * Registo de um novo Funcionário.
+     *
+     * Particularidades:
+     *  - Tipo de funcionário é inferido a partir da string "funcao".
+     *  - Password é armazenada com hash.
+     *  - JWT é devolvido após criação.
+     */
     public AuthResponse registerFuncionario(FuncionarioRegisterRequest request) {
-        // Verificar se já existe utilizador com este email ou NIF
+
+        // Verificar unicidade de email e NIF
         if (utilizadorRepository.existsByEmail(request.email())) {
             throw new BadRequestException("Email já está em uso");
         }
@@ -118,24 +212,42 @@ public class AuthService {
             throw new BadRequestException("NIF já está em uso");
         }
 
-        // Criar Funcionário com info básica
+        // Construção da entidade Funcionário
         Funcionario funcionario = new Funcionario();
         funcionario.setNome(request.nome());
         funcionario.setEmail(request.email());
         funcionario.setNif(request.nif());
         funcionario.setTelefone(request.contacto());
         funcionario.setPassHash(passwordEncoder.encode(request.password()));
-        FuncionarioTipo tipo = mapFuncaoToTipo(request.funcao());
-        funcionario.setTipo(tipo);
+        funcionario.setTipo(mapFuncaoToTipo(request.funcao()));
         funcionario.setDataNasc(request.dataNasc());
 
+        // Persistência
         funcionario = funcionarioRepository.save(funcionario);
 
+        // Token JWT pós-registo
         var jwtToken = jwtService.generateToken(funcionario);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, funcionario.getId(), funcionario.getEmail(), funcionario.getNome(), "FUNCIONARIO", funcionario.getNif(), funcionario.getTelefone(), expiresAt);
+
+        return new AuthResponse(
+                jwtToken,
+                funcionario.getId(),
+                funcionario.getEmail(),
+                funcionario.getNome(),
+                "FUNCIONARIO",
+                funcionario.getNif(),
+                funcionario.getTelefone(),
+                expiresAt
+        );
     }
 
+    /**
+     * Converte a string "funcao" recebida no registo
+     * para o enum FuncionarioTipo.
+     *
+     * Aceita variantes com/sem acentos.
+     * Valor default: SECRETARIA.
+     */
     private FuncionarioTipo mapFuncaoToTipo(String funcao) {
         return switch (funcao.toUpperCase()) {
             case "SECRETARIA", "SECRETÁRIA" -> FuncionarioTipo.SECRETARIA;

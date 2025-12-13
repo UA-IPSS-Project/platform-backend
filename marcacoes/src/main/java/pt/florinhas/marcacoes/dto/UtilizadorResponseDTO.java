@@ -4,7 +4,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import pt.florinhas.marcacoes.domain.Utilizador;
-
+/**
+ * DTO de resposta com os dados públicos de um Utilizador.
+ *
+ * Usos típicos:
+ *  - Devolver ao frontend informação pronta a consumir (strings formatadas),
+ *    sem expor a entidade JPA diretamente.
+ *  - Padronizar o contrato de saída em endpoints que consultam utilizadores.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,7 +30,18 @@ public class UtilizadorResponseDTO {
     private String moradaEmprego;
     private String telefoneEmprego;
 
-    // Construtor para converter de Utilizador
+   /**
+     * Construtor/factory estático para converter uma entidade Utilizador
+     * no respetivo DTO de resposta.
+     *
+     * Responsabilidades:
+     *  - Extrair os campos de leitura da entidade de domínio.
+     *  - Tratar conversões simples (ex.: LocalDate -> String ISO).
+     *  - Evitar expor internamente objetos JPA ao exterior.
+     *
+     * param utilizador entidade de domínio a converter
+     * return DTO preenchido com os dados do utilizador
+     */
     public static UtilizadorResponseDTO fromUtilizador(Utilizador utilizador) {
         UtilizadorResponseDTO dto = new UtilizadorResponseDTO();
         dto.setId(utilizador.getId());

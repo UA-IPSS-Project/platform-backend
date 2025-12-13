@@ -26,6 +26,20 @@ import pt.florinhas.marcacoes.repository.MarcacaoSecretariaRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 
+/**
+ * Serviço central de gestão de marcações.
+ *
+ * Este serviço concentra a maior parte da lógica de negócio do sistema:
+ *  - Criação de marcações (presenciais e remotas)
+ *  - Gestão de estados e respetivas transições
+ *  - Controlo de concorrência (versões)
+ *  - Reservas temporárias de slots
+ *  - Consultas de agenda, histórico e bloqueios
+ *  - Conversão de entidades para DTOs
+ *
+ * A anotação @Transactional garante consistência em operações complexas
+ * que envolvem múltiplas entidades (Marcacao + MarcacaoSecretaria).
+ */
 @Service
 @Transactional
 public class MarcacaoService {
