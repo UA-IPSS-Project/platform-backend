@@ -12,7 +12,14 @@ import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
 import pt.florinhas.marcacoes.domain.Utente;
-
+/**
+ * Repositório Spring Data JPA para a entidade MarcacaoSecretaria.
+ *
+ * Responsabilidades:
+ *  - Operações CRUD herdadas de JpaRepository.
+ *  - Consultas derivadas por convenção (findBy...).
+ *  - Consulta JPQL customizada para pesquisa por assunto (case-insensitive).
+ */
 @Repository
 public interface MarcacaoSecretariaRepository extends JpaRepository<MarcacaoSecretaria, Long> {
     

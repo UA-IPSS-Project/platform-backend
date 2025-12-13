@@ -15,14 +15,41 @@ import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
+/**
+ * Controller responsável por operações de consulta e atualização de
+ * Utilizadores.
+ *
+ * Endpoints principais:
+ * - GET /api/utilizadores/{id}: obter utilizador por ID (formato DTO para o
+ * frontend)
+ * - GET /api/utilizadores/nif/{nif}: obter utilizador por NIF (objeto de
+ * domínio)
+ * - PUT /api/utilizadores/{id}: atualizar dados de perfil do utilizador
+ * - GET /api/utilizadores/utentes/count: contar utentes ativos (métrica para
+ * dashboards)
+ *
+ * Nota: a lógica de negócio reside em UtilizadorService; o controller apenas
+ * valida,
+ * delega e adapta respostas HTTP/DTO.
+ */
 @RestController
 @RequestMapping("/api/utilizadores")
 @CrossOrigin(origins = "*")
 public class UtilizadorController {
 
+    /**
+     * Serviço de domínio responsável por ler/atualizar utilizadores.
+     */
     @Autowired
     private UtilizadorService utilizadorService;
 
+    /**
+     * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
+     * frontend.
+     *
+     * param id identificador único do utilizador
+     * return 200 OK com UtilizadorResponseDTO; 404 se não for encontrado
+     */
     // Buscar utilizador por ID
     @GetMapping("/{id}")
     public ResponseEntity<?> obterUtilizadorPorId(@PathVariable Long id) {
@@ -31,11 +58,22 @@ public class UtilizadorController {
             UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            // Mapeia exceções de negócio em 404 com mensagem informativa
             return ResponseEntity.status(404).body(java.util.Map.of(
                     "error", e.getMessage()));
         }
     }
 
+    /**
+     * Obtém um utilizador por NIF.
+     *
+     * Atenção: este endpoint devolve o objeto de domínio completo (Utilizador).
+     * Caso seja necessário ocultar campos sensíveis, considerar trocar para DTO.
+     *
+     * param nif NIF do utilizador a procurar
+     * return 200 OK com Utilizador; 404 se não for encontrado
+     */
+    // Buscar utilizador por NIF
     @GetMapping("/nif/{nif}")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         try {
@@ -43,10 +81,22 @@ public class UtilizadorController {
                     .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + nif));
             return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
         } catch (Exception e) {
+            // Em caso de ausência, responde com 404 sem corpo
             return ResponseEntity.status(404).build();
         }
     }
 
+    /**
+     * Atualiza os dados de perfil de um utilizador.
+     *
+     * O corpo (UtilizadorInfoDTO) deve conter apenas campos editáveis do perfil.
+     * A lógica de validação e persistência é delegada ao serviço.
+     *
+     * param id identificador do utilizador a atualizar
+     * param request DTO com os novos dados de perfil
+     * return 200 OK com UtilizadorResponseDTO atualizado; 400 em erro de
+     * validação/negócio
+     */
     // Atualizar informações do utilizador
     @PutMapping("/{id}")
     public ResponseEntity<?> atualizarUtilizador(
@@ -57,11 +107,17 @@ public class UtilizadorController {
             UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            // Erros de validação/negócio são devolvidos como 400 com mensagem
             return ResponseEntity.badRequest().body(java.util.Map.of(
                     "error", e.getMessage()));
         }
     }
 
+    /**
+     * Devolve o número de utentes ativos no sistema.
+     * Útil para widgets/indicadores no dashboard administrativo.
+     * return 200 OK com contagem de utentes ativos
+     */
     // Obter número de utentes
     @GetMapping("/utentes/count")
     public ResponseEntity<Long> contarUtentes() {

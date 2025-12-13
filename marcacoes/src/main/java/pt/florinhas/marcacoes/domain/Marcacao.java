@@ -20,6 +20,9 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+/**
+ * Entidade JPA que representa uma Marcação (evento no calendário).
+ */
 @Entity
 @Table(name = "Marcacao")
 @Data
@@ -28,34 +31,68 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(of = "id")
 public class Marcacao {
 
+    /**
+     * Chave primária autogerada (IDENTITY).
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Campo de versão para concorrência otimista.
+     * É incrementado automaticamente pelo JPA em cada update e usado no WHERE,
+     * lançando OptimisticLockException quando há conflito de escrita.
+     */
     @Version
     @Column(name = "version")
     private Long version;
 
+    /**
+     * Data/hora agendada para a marcação (instante do atendimento).
+     * Obrigatório.
+     */
     @Column(name = "data", nullable = false)
     private LocalDateTime data;
 
+    /**
+     * Estado do ciclo de vida da marcação (AGENDADO, EM_PROGRESSO, ...).
+     * Persistido como texto (STRING) para legibilidade e robustez a reordenações.
+     */
     @Column(name = "estado", nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
     private EventoEstado estado;
 
+    /**
+     * Utilizador que criou a marcação (ex.: funcionário de secretaria ou o próprio utente).
+     * Relação N:1. A FK é armazenada em 'utilizador_id'.
+     */
     // Relacionamento ManyToOne com Funcionario
     @ManyToOne
     @JoinColumn(name = "utilizador_id")
     private Utilizador criadoPor; // Criador da marcação
 
+    /**
+     * Timestamp de criação do registo. Deve ser preenchido na camada de serviço
+     * ou via callback JPA (@PrePersist). Marcado como updatable = false.
+     */
     @Column(name = "criado_em", updatable = false)
     private LocalDateTime criadoEm;
 
+    /**
+     * Utilizador que efetivamente atendeu/concluiu a marcação.
+     * Pode ser nulo até ao início ou conclusão do atendimento.
+     * Relação N:1. A FK é 'atendente_id'.
+     */
     // Funcionário que atendeu/concluiu a marcação
     @ManyToOne
     @JoinColumn(name = "atendente_id")
     private Utilizador atendente;
 
+    /**
+     * Detalhes específicos quando a marcação segue o fluxo de secretaria.
+     * Relação 1:1 bidirecional. 'mappedBy' indica que a FK está do lado de MarcacaoSecretaria.
+     * Cascade ALL para propagar persist/update/delete de Marcacao para MarcacaoSecretaria.
+     */
     // Relacionamento OneToOne com Marcacao_Secretaria (relacionamento 1:1)
     @OneToOne(mappedBy = "marcacao", cascade = CascadeType.ALL)
     private MarcacaoSecretaria marcacaoSecretaria;

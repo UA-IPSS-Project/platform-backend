@@ -10,16 +10,39 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Tratamento global de exceções para os controladores REST.
+ *
+ * Esta classe centraliza o mapeamento de exceções para respostas HTTP
+ * consistentes (status code + payload JSON), evitando duplicação de lógica
+ * nos controllers e garantindo mensagens padronizadas para o frontend.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Mapeia NotFoundException para HTTP 404 (NOT_FOUND).
+     *
+     * Corpo de resposta:
+     *  {
+     *    "message": "<detalhe do erro>"
+     *  }
+     */
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFoundException(NotFoundException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put("message", ex.getMessage()); // Changed "error" to "message" for consistency
+        error.put("message", ex.getMessage()); // Consistência no campo "message"
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
+    /**
+     * Mapeia BadRequestException para HTTP 400 (BAD_REQUEST).
+     *
+     * Corpo de resposta:
+     *  {
+     *    "message": "<detalhe do erro>"
+     *  }
+     */
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Map<String, String>> handleBadRequestException(BadRequestException ex) {
         Map<String, String> error = new HashMap<>();
@@ -27,12 +50,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    /**
+     * Mapeia erros de validação Bean Validation (@Valid) para HTTP 400.
+     *
+     * Agrega os erros por campo e devolve um payload estruturado:
+     *  {
+     *    "message": "Erro de validação nos campos fornecidos",
+     *    "errors": {
+     *      "campo1": "mensagem de erro",
+     *      "campo2": "mensagem de erro"
+     *    }
+     *  }
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
+            String fieldName = ((FieldError) error).getField();   // nome do campo inválido
+            String errorMessage = error.getDefaultMessage();      // mensagem definida na constraint
             errors.put(fieldName, errorMessage);
         });
 
@@ -43,13 +78,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    /**
+     * Fallback genérico para exceções não mapeadas explicitamente.
+     *
+     * Devolve HTTP 500 (INTERNAL_SERVER_ERROR) com uma mensagem genérica,
+     * protegendo detalhes internos da aplicação em produção.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
-        ex.printStackTrace(); // Log stack trace for server-side debugging
+        ex.printStackTrace(); // Log no servidor para diagnóstico
         Map<String, String> error = new HashMap<>();
         error.put("message", "Ocorreu um erro interno no servidor. Por favor, tente novamente mais tarde.");
-        // Em dev, pode ser útil enviar ex.getMessage(), mas em prod é melhor esconder.
-        // Vou deixar seguro por padrão.
+        // Em desenvolvimento, pode enviar ex.getMessage(); em produção, evitar expor detalhes.
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

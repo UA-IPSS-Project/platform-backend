@@ -3,7 +3,13 @@ package pt.florinhas.marcacoes.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+/**
+ * DTO para atualização/edição de informação de perfil de um Utilizador.
+ *
+ * Usos típicos:
+ *  - Receber do frontend os novos dados de perfil (contactos, morada, profissão, etc.)
+ *  - Servir de payload para o serviço que valida e persiste as alterações
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

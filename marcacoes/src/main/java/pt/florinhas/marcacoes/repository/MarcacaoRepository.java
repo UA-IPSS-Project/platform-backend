@@ -13,6 +13,15 @@ import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
 
+/**
+ * Repositório Spring Data JPA para a entidade Marcacao.
+ *
+ * Responsabilidades:
+ *  - Operações CRUD herdadas de JpaRepository.
+ *  - Consultas derivadas por convenção (findBy..., deleteBy...).
+ *  - Consultas JPQL customizadas para pesquisa por utente, criador, intervalo temporal,
+ *    estado, estatísticas e limpeza de reservas temporárias.
+ */
 @Repository
 public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
     
@@ -77,8 +86,15 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
         @Param("dataInicio") LocalDateTime dataInicio,
         @Param("dataFim") LocalDateTime dataFim);
 
+    /**
+     * Lista marcações com data no intervalo indicado.
+     * Método derivado pelo nome (equivalente a BETWEEN).
+     */
     List<Marcacao> findByDataBetween(LocalDateTime inicioBloqueio, LocalDateTime fimBloqueio);
 
+    /**
+     * Remove marcações com determinado estado criadas antes de um limite temporal.
+     * Usado para limpeza de reservas temporárias (ex.: EM_PREENCHIMENTO expiradas).
+     */
     void deleteByEstadoAndCriadoEmBefore(EventoEstado emPreenchimento, LocalDateTime limite);
-    
 }

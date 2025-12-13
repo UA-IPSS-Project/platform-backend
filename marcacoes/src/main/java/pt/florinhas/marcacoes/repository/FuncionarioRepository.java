@@ -11,7 +11,14 @@ import org.springframework.stereotype.Repository;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Valencia;
-
+/**
+ * Repositório Spring Data JPA para a entidade Funcionario.
+ *
+ * Responsabilidades:
+ *  - Operações CRUD herdadas de JpaRepository.
+ *  - Consultas derivadas por convenção (findBy.../existsBy...).
+ *  - Consultas JPQL customizadas para pesquisa por nome e por valência.
+ */
 @Repository
 public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> {
     

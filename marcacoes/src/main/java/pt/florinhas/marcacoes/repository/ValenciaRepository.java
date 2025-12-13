@@ -9,7 +9,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import pt.florinhas.marcacoes.domain.Valencia;
-
+/**
+ * Repositório Spring Data JPA para a entidade Valencia.
+ *
+ * Responsabilidades:
+ *  - Operações CRUD herdadas de JpaRepository.
+ *  - Consultas derivadas por convenção (findBy..., existsBy...).
+ *  - Consultas JPQL customizadas para pesquisa por nome (case-insensitive).
+ *  - Ordenação e contagem de valências.
+ */
 @Repository
 public interface ValenciaRepository extends JpaRepository<Valencia, Long> {
     

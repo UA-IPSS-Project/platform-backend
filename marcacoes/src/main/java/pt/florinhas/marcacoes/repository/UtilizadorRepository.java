@@ -9,7 +9,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import pt.florinhas.marcacoes.domain.Utilizador;
-
+/**
+ * Repositório Spring Data JPA para a entidade Utilizador.
+ *
+ * Responsabilidades:
+ *  - Operações CRUD herdadas de JpaRepository.
+ *  - Consultas derivadas por convenção (findBy..., existsBy...).
+ *  - Consulta JPQL customizada para pesquisa por nome (case-insensitive).
+ */
 @Repository
 public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
     
