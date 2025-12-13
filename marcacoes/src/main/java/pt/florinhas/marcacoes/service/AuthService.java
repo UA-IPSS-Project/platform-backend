@@ -35,8 +35,7 @@ public class AuthService {
             UtenteRepository utenteRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            AuthenticationManager authenticationManager) 
-    {
+            AuthenticationManager authenticationManager) {
         this.utilizadorRepository = utilizadorRepository;
         this.funcionarioRepository = funcionarioRepository;
         this.utenteRepository = utenteRepository;
@@ -44,43 +43,43 @@ public class AuthService {
         this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
     }
-    
+
     public AuthResponse loginFuncionario(LoginFuncionarioRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.email(),
-                        request.password()
-                )
-        );
+                        request.password()));
 
-        var user = utilizadorRepository.findByEmail(request.email()).orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
-        
+        var user = utilizadorRepository.findByEmail(request.email())
+                .orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
+
         if (!(user instanceof Funcionario)) {
             throw new BadRequestException("Credenciais inválidas para funcionário");
         }
 
         var jwtToken = jwtService.generateToken(user);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "FUNCIONARIO", user.getNif(), user.getTelefone(), expiresAt);
+        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "FUNCIONARIO", user.getNif(),
+                user.getTelefone(), expiresAt, true);
     }
-    
+
     public AuthResponse loginUtente(LoginUtenteRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.nif(),
-                        request.password()
-                )
-        );
+                        request.password()));
 
-        var user = utilizadorRepository.findByNif(request.nif()).orElseThrow(() -> new BadRequestException("Utente não encontrado"));
-        
+        var user = utilizadorRepository.findByNif(request.nif())
+                .orElseThrow(() -> new BadRequestException("Utente não encontrado"));
+
         if (!(user instanceof Utente)) {
             throw new BadRequestException("Credenciais inválidas para utente");
         }
-        
+
         var jwtToken = jwtService.generateToken(user);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "UTENTE", user.getNif(), user.getTelefone(), expiresAt);
+        return new AuthResponse(jwtToken, user.getId(), user.getEmail(), user.getNome(), "UTENTE", user.getNif(),
+                user.getTelefone(), expiresAt, ((Utente) user).isActivo());
     }
 
     public AuthResponse registerUtente(UtenteRegisterRequest request) {
@@ -106,7 +105,8 @@ public class AuthService {
 
         var jwtToken = jwtService.generateToken(utente);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, utente.getId(), utente.getEmail(), utente.getNome(), "UTENTE", utente.getNif(), utente.getTelefone(), expiresAt);
+        return new AuthResponse(jwtToken, utente.getId(), utente.getEmail(), utente.getNome(), "UTENTE",
+                utente.getNif(), utente.getTelefone(), expiresAt, true);
     }
 
     public AuthResponse registerFuncionario(FuncionarioRegisterRequest request) {
@@ -133,7 +133,23 @@ public class AuthService {
 
         var jwtToken = jwtService.generateToken(funcionario);
         long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-        return new AuthResponse(jwtToken, funcionario.getId(), funcionario.getEmail(), funcionario.getNome(), "FUNCIONARIO", funcionario.getNif(), funcionario.getTelefone(), expiresAt);
+        return new AuthResponse(jwtToken, funcionario.getId(), funcionario.getEmail(), funcionario.getNome(),
+                "FUNCIONARIO", funcionario.getNif(), funcionario.getTelefone(), expiresAt, true);
+    }
+
+    public void updatePassword(Long userId, String newPassword) {
+        var user = utilizadorRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("Utilizador não encontrado"));
+
+        user.setPassHash(passwordEncoder.encode(newPassword));
+
+        if (user instanceof Utente utente) {
+            utente.setActivo(true);
+            utenteRepository.save(utente);
+        } else {
+            // Funcionários assumimos que já estão ativos ou lógica diferente
+            utilizadorRepository.save(user);
+        }
     }
 
     private FuncionarioTipo mapFuncaoToTipo(String funcao) {

@@ -29,12 +29,12 @@ public class AuthController {
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
-    
+
     @PostMapping("/login/funcionario")
     public ResponseEntity<AuthResponse> loginFuncionario(@Valid @RequestBody LoginFuncionarioRequest request) {
         return ResponseEntity.ok(authService.loginFuncionario(request));
     }
-    
+
     @PostMapping("/login/utente")
     public ResponseEntity<AuthResponse> loginUtente(@Valid @RequestBody LoginUtenteRequest request) {
         return ResponseEntity.ok(authService.loginUtente(request));
@@ -59,11 +59,28 @@ public class AuthController {
         Object principal = authentication.getPrincipal();
         if (principal instanceof Utilizador u) {
             String role = u instanceof Funcionario ? "FUNCIONARIO" : "UTENTE";
-            UserResponse resp = new UserResponse(u.getId(), u.getEmail(), u.getNome(), role, u.getNif(), u.getTelefone());
+            UserResponse resp = new UserResponse(u.getId(), u.getEmail(), u.getNome(), role, u.getNif(),
+                    u.getTelefone());
             return ResponseEntity.ok(resp);
         }
 
         return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
     }
-}
 
+    @PostMapping("/set-password")
+    public ResponseEntity<Void> setPassword(
+            @Valid @RequestBody pt.florinhas.marcacoes.dto.SetPasswordRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof Utilizador u) {
+            authService.updatePassword(u.getId(), request.password());
+            return ResponseEntity.ok().build();
+        }
+
+        return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+    }
+}
