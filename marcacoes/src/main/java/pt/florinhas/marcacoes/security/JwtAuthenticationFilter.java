@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,10 +21,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * Filtro de autenticação JWT executado uma vez por request.
  *
  * Responsabilidades:
- *  - Interceptar pedidos HTTP.
- *  - Extrair e validar o token JWT do header Authorization.
- *  - Carregar o utilizador associado ao token.
- *  - Popular o SecurityContext com a autenticação válida.
+ * - Interceptar pedidos HTTP.
+ * - Extrair e validar o token JWT do header Authorization.
+ * - Carregar o utilizador associado ao token.
+ * - Popular o SecurityContext com a autenticação válida.
  *
  * Extende OncePerRequestFilter para garantir execução única por request.
  */
@@ -42,25 +43,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * Método central do filtro, executado para cada request HTTP.
      *
      * Fluxo geral:
-     *  1) Ignorar endpoints públicos de autenticação (login/registo).
-     *  2) Ler o header Authorization.
-     *  3) Extrair e validar o JWT.
-     *  4) Carregar o utilizador e definir a autenticação no SecurityContext.
+     * 1) Ignorar endpoints públicos de autenticação (login/registo).
+     * 2) Ler o header Authorization.
+     * 3) Extrair e validar o JWT.
+     * 4) Carregar o utilizador e definir a autenticação no SecurityContext.
      */
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         // Caminho do endpoint atual
         String path = request.getServletPath();
 
         /**
          * Regra de bypass:
-         *  - Permite acesso sem JWT aos endpoints de login e registo.
-         *  - O endpoint /api/auth/me permanece protegido e requer JWT válido.
+         * - Permite acesso sem JWT aos endpoints de login e registo.
+         * - O endpoint /api/auth/me permanece protegido e requer JWT válido.
          */
         if (path.startsWith("/api/auth/")
                 && !(path.equals("/api/auth/me") || path.startsWith("/api/auth/me/"))) {
@@ -74,6 +74,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Leitura do header Authorization
         final String authHeader = request.getHeader("Authorization");
+        System.out.println("DEBUG JWT: Header present? " + (authHeader != null));
         final String jwt;
         final String userEmail;
 
@@ -91,30 +92,51 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Extrai o username (email ou NIF) embutido no token
         userEmail = jwtService.extractUsername(jwt);
+        System.out.println("DEBUG JWT: Extracted UserEmail: " + userEmail);
 
         /**
          * Apenas tenta autenticar se:
-         *  - O token contém um identificador válido
-         *  - Ainda não existe autenticação no contexto de segurança
+         * - O token contém um identificador válido
+         * 2. O utilizador ainda não está autenticado no contexto
          */
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("DEBUG JWT: Context Auth: " + auth);
+
+        // Verifica se o contexto está vazio OU se é uma autenticação anónima
+        boolean isAnonymous = auth != null && auth.getPrincipal().equals("anonymousUser");
+
+        if (userEmail != null && (auth == null || isAnonymous)) {
             // Carrega os detalhes do utilizador a partir do repositório
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            // Valida o token contra o utilizador (assinatura, expiração, claims)
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                // Cria o token de autenticação do Spring Security
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-                // Associa detalhes da request (IP, sessão, etc.)
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                // Define a autenticação no contexto global
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            UserDetails userDetails = null;
+            try {
+                System.out.println("DEBUG JWT: Calling loadUserByUsername with " + userEmail);
+                if (this.userDetailsService == null)
+                    System.out.println("DEBUG JWT: userDetailsService is NULL");
+                userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                System.out.println("DEBUG JWT: Loaded UserDetails for: " + userDetails.getUsername());
+            } catch (Throwable e) {
+                System.out.println("DEBUG JWT: Error loading user (Throwable): " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            if (userDetails != null) {
+                boolean isValid = jwtService.isTokenValid(jwt, userDetails);
+                System.out.println("DEBUG JWT: Token valid? " + isValid);
+
+                // Valida o token contra o utilizador (assinatura, expiração, claims)
+                if (isValid) {
+                    System.out.println("DEBUG JWT: Token is VALID for user " + userDetails.getUsername());
+                    // Cria o token de autenticação do Spring Security
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities());
+                    // Associa detalhes da request (IP, sessão, etc.)
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request));
+                    // Define a autenticação no contexto global
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
         }
         // Continua a cadeia de filtros

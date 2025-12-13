@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,12 +31,12 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
  * Serviço central de gestão de marcações.
  *
  * Este serviço concentra a maior parte da lógica de negócio do sistema:
- *  - Criação de marcações (presenciais e remotas)
- *  - Gestão de estados e respetivas transições
- *  - Controlo de concorrência (versões)
- *  - Reservas temporárias de slots
- *  - Consultas de agenda, histórico e bloqueios
- *  - Conversão de entidades para DTOs
+ * - Criação de marcações (presenciais e remotas)
+ * - Gestão de estados e respetivas transições
+ * - Controlo de concorrência (versões)
+ * - Reservas temporárias de slots
+ * - Consultas de agenda, histórico e bloqueios
+ * - Conversão de entidades para DTOs
  *
  * A anotação @Transactional garante consistência em operações complexas
  * que envolvem múltiplas entidades (Marcacao + MarcacaoSecretaria).
@@ -552,4 +553,17 @@ public class MarcacaoService {
         return converterParaDTO(marcacao);
     }
 
+    /**
+     * Tarefa agendada para limpar reservas temporárias expiradas.
+     * Executa a cada 60 segundos (fixedRate = 60000 ms).
+     * Remove marcações em estado EM_PREENCHIMENTO criadas há mais de 15 minutos.
+     */
+    @Scheduled(fixedRate = 60000)
+    public void limparReservasExpiradas() {
+        LocalDateTime limite = LocalDateTime.now().minusMinutes(15);
+        // Opcional: Logging para debug
+        // System.out.println("A verificar reservas expiradas anteriores a " + limite);
+
+        marcacaoRepository.deleteByEstadoAndCriadoEmBefore(EventoEstado.EM_PREENCHIMENTO, limite);
+    }
 }

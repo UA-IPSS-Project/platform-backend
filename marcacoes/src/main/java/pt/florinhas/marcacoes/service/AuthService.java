@@ -67,16 +67,19 @@ public class AuthService {
          * 4) Devolve AuthResponse com dados do utilizador e expiração.
          */
         public AuthResponse loginFuncionario(LoginFuncionarioRequest request) {
+                System.out.println("DEBUG: loginFuncionario started for " + request.email());
 
                 // Autenticação delegada ao Spring Security
                 authenticationManager.authenticate(
                                 new UsernamePasswordAuthenticationToken(
                                                 request.email(),
                                                 request.password()));
+                System.out.println("DEBUG: Authentication successful");
 
                 // Obter utilizador pelo email
                 var user = utilizadorRepository.findByEmail(request.email())
                                 .orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
+                System.out.println("DEBUG: User found: " + user.getId());
 
                 // Garantir que é efetivamente um Funcionário
                 if (!(user instanceof Funcionario)) {
