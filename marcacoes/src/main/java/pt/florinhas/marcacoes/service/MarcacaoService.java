@@ -519,6 +519,28 @@ public class MarcacaoService {
                 .toList();
     }
 
+    public MarcacaoResponseDTO reagendarMarcacao(Long id, pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest request) {
+        Marcacao marcacao = findById(id)
+                .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
+
+        // Validar se nova data é válida (não é no passado)
+        if (request.getNovaDataHora().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Não é possível reagendar para o passado");
+        }
+
+        // Atualizar data
+        marcacao.setData(request.getNovaDataHora());
+
+        // Se estava cancelada ou aviso, talvez voltar a agendado?
+        if (marcacao.getEstado() == EventoEstado.CANCELADO || marcacao.getEstado() == EventoEstado.NAO_COMPARECIDO
+                || marcacao.getEstado() == EventoEstado.AVISO) {
+            marcacao.setEstado(EventoEstado.AGENDADO);
+        }
+
+        Marcacao saved = marcacaoRepository.save(marcacao);
+        return converterParaDTO(saved);
+    }
+
     public MarcacaoResponseDTO converterParaDTO(Marcacao marcacao) {
         MarcacaoResponseDTO dto = new MarcacaoResponseDTO();
         dto.setId(marcacao.getId());

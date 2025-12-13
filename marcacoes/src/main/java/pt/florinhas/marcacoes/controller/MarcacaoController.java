@@ -31,11 +31,11 @@ import pt.florinhas.marcacoes.service.MarcacaoService;
  * Controller responsável pela gestão de marcações.
  *
  * Este controller expõe endpoints REST para:
- *  - criação de marcações (presenciais, remotas e temporárias)
- *  - consulta de agendas e históricos
- *  - atualização do estado das marcações
- *  - notificação de documentos inválidos
- *  - consulta de marcações por utente ou funcionário
+ * - criação de marcações (presenciais, remotas e temporárias)
+ * - consulta de agendas e históricos
+ * - atualização do estado das marcações
+ * - notificação de documentos inválidos
+ * - consulta de marcações por utente ou funcionário
  */
 @RestController
 @RequestMapping("/api/marcacoes")
@@ -52,7 +52,8 @@ public class MarcacaoController {
     /**
      * Endpoint para contar o número de marcações do dia atual.
      *
-     * Usado tipicamente para dashboards ou indicadores rápidos no frontend (ex.: número de atendimentos hoje).
+     * Usado tipicamente para dashboards ou indicadores rápidos no frontend (ex.:
+     * número de atendimentos hoje).
      *
      * return número total de marcações no dia atual
      */
@@ -82,12 +83,10 @@ public class MarcacaoController {
                     "id", marcacao.getId(),
                     "data", marcacao.getData().toString(),
                     "estado", marcacao.getEstado().toString(),
-                    "message", "Marcação criada com sucesso"
-            ));
+                    "message", "Marcação criada com sucesso"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", e.getMessage()
-            ));
+                    "error", e.getMessage()));
         }
     }
 
@@ -111,12 +110,10 @@ public class MarcacaoController {
                     "id", marcacao.getId(),
                     "data", marcacao.getData().toString(),
                     "estado", marcacao.getEstado().toString(),
-                    "message", "Marcação criada com sucesso"
-            ));
+                    "message", "Marcação criada com sucesso"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", e.getMessage()
-            ));
+                    "error", e.getMessage()));
         }
     }
 
@@ -132,17 +129,12 @@ public class MarcacaoController {
      */
     @GetMapping("/agenda")
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarAgenda(
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
 
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime dataFim) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim) {
 
         try {
-            List<MarcacaoResponseDTO> response =
-                    marcacaoService.consultarAgenda(dataInicio, dataFim);
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarAgenda(dataInicio, dataFim);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -153,32 +145,26 @@ public class MarcacaoController {
      * Consulta da agenda com filtros avançados.
      *
      * Permite filtrar marcações por:
-     *  - intervalo temporal
-     *  - criador da marcação
-     *  - utente
-     *  - estado da marcação
+     * - intervalo temporal
+     * - criador da marcação
+     * - utente
+     * - estado da marcação
      *
      * return lista de marcações que cumprem os critérios
      */
     @GetMapping("/agenda/procurar")
     public ResponseEntity<List<MarcacaoResponseDTO>> procurarAgenda(
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
 
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime dataFim,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
 
             @RequestParam(required = false) Long criadoPorId,
             @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) EventoEstado estado) {
 
         try {
-            List<MarcacaoResponseDTO> response =
-                    marcacaoService.procurarAgenda(
-                            dataInicio, dataFim, criadoPorId, utenteId, estado
-                    );
+            List<MarcacaoResponseDTO> response = marcacaoService.procurarAgenda(
+                    dataInicio, dataFim, criadoPorId, utenteId, estado);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -189,9 +175,9 @@ public class MarcacaoController {
      * Atualização do estado de uma marcação.
      *
      * Exemplo de estados:
-     *  - CONFIRMADA
-     *  - CONCLUIDA
-     *  - CANCELADA
+     * - CONFIRMADA
+     * - CONCLUIDA
+     * - CANCELADA
      *
      * param id identificador da marcação
      * param request DTO com o novo estado
@@ -203,8 +189,7 @@ public class MarcacaoController {
             @RequestBody AtualizarEstadoRequest request) {
 
         try {
-            MarcacaoResponseDTO response =
-                    marcacaoService.atualizarEstadoMarcacao(id, request);
+            MarcacaoResponseDTO response = marcacaoService.atualizarEstadoMarcacao(id, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -215,28 +200,22 @@ public class MarcacaoController {
      * Consulta do histórico de marcações (marcações passadas).
      *
      * Pode ser filtrado por:
-     *  - intervalo temporal
-     *  - utente
-     *  - estado
+     * - intervalo temporal
+     * - utente
+     * - estado
      */
     @GetMapping("/passadas")
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesPassadas(
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime dataInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
 
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime dataFim,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
 
             @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) EventoEstado estado) {
 
         try {
-            List<MarcacaoResponseDTO> response =
-                    marcacaoService.consultarMarcacoesPassadas(
-                            dataInicio, dataFim, utenteId, estado
-                    );
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadas(
+                    dataInicio, dataFim, utenteId, estado);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -259,8 +238,7 @@ public class MarcacaoController {
             @RequestBody NotificarDocumentosRequest request) {
 
         try {
-            MarcacaoResponseDTO response =
-                    marcacaoService.notificarDocumentosInvalidos(id, request);
+            MarcacaoResponseDTO response = marcacaoService.notificarDocumentosInvalidos(id, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -278,8 +256,7 @@ public class MarcacaoController {
             @PathVariable Long utenteId) {
 
         try {
-            List<MarcacaoResponseDTO> response =
-                    marcacaoService.consultarMarcacoesUtente(utenteId);
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesUtente(utenteId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -300,8 +277,7 @@ public class MarcacaoController {
             @PathVariable Long utenteId) {
 
         try {
-            List<Map<String, Object>> marcacoesBloqueadas =
-                    marcacaoService.consultarMarcacoesBloqueadas(utenteId);
+            List<Map<String, Object>> marcacoesBloqueadas = marcacaoService.consultarMarcacoesBloqueadas(utenteId);
             return ResponseEntity.ok(marcacoesBloqueadas);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -319,8 +295,7 @@ public class MarcacaoController {
             @PathVariable Long funcionarioId) {
 
         try {
-            List<MarcacaoResponseDTO> response =
-                    marcacaoService.consultarMarcacoesFuncionario(funcionarioId);
+            List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesFuncionario(funcionarioId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -338,8 +313,7 @@ public class MarcacaoController {
             @PathVariable Long id) {
 
         try {
-            MarcacaoResponseDTO response =
-                    marcacaoService.obterMarcacaoDTO(id);
+            MarcacaoResponseDTO response = marcacaoService.obterMarcacaoDTO(id);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -357,8 +331,7 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> listarTodasMarcacoes() {
 
         try {
-            List<MarcacaoResponseDTO> response =
-                    marcacaoService.listarTodasMarcacoesDTO();
+            List<MarcacaoResponseDTO> response = marcacaoService.listarTodasMarcacoesDTO();
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -383,8 +356,7 @@ public class MarcacaoController {
         try {
             Long tempId = marcacaoService.criarReservaTemporaria(request);
             return ResponseEntity.ok(
-                    Map.of("tempId", tempId, "message", "Slot bloqueado por 10 minutos")
-            );
+                    Map.of("tempId", tempId, "message", "Slot bloqueado por 10 minutos"));
         } catch (Exception e) {
             // Caso o slot já esteja ocupado
             return ResponseEntity
@@ -407,5 +379,21 @@ public class MarcacaoController {
 
         marcacaoService.apagarReservaTemporaria(id);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Reagendamento de uma marcação (alterar data/hora).
+     */
+    @PutMapping("/{id}/reagendar")
+    public ResponseEntity<MarcacaoResponseDTO> reagendarMarcacao(
+            @PathVariable Long id,
+            @RequestBody pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest request) {
+
+        try {
+            MarcacaoResponseDTO response = marcacaoService.reagendarMarcacao(id, request);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }
