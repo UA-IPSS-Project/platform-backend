@@ -43,6 +43,7 @@ public class Utilizador implements UserDetails {
     @Column(name = "dataNasc")
     private LocalDate dataNasc;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "passHash", length = 60)
     private String passHash;
 
@@ -60,12 +61,14 @@ public class Utilizador implements UserDetails {
     // Implementação UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Se for Funcionario retorna ROLE_FUNCIONARIO, se for Utente retorna ROLE_UTENTE
+        // Se for Funcionario retorna ROLE_FUNCIONARIO, se for Utente retorna
+        // ROLE_UTENTE
         String role = this instanceof Funcionario ? "ROLE_FUNCIONARIO" : "ROLE_UTENTE";
         return List.of(new SimpleGrantedAuthority(role));
     }
 
     @Override
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public String getPassword() {
         return passHash;
     }

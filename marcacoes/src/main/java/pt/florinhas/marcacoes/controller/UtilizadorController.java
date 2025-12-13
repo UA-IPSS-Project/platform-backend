@@ -32,17 +32,16 @@ public class UtilizadorController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(404).body(java.util.Map.of(
-                "error", e.getMessage()
-            ));
+                    "error", e.getMessage()));
         }
     }
 
-    // Buscar utilizador por NIF
     @GetMapping("/nif/{nif}")
-    public ResponseEntity<Utilizador> buscarPorNif(@PathVariable String nif) {
+    public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         try {
-            Utilizador utilizador = utilizadorService.buscarPorNif(nif).orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + nif));
-            return ResponseEntity.ok(utilizador);
+            Utilizador utilizador = utilizadorService.buscarPorNif(nif)
+                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + nif));
+            return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
         } catch (Exception e) {
             return ResponseEntity.status(404).build();
         }
@@ -59,8 +58,7 @@ public class UtilizadorController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(java.util.Map.of(
-                "error", e.getMessage()
-            ));
+                    "error", e.getMessage()));
         }
     }
 
