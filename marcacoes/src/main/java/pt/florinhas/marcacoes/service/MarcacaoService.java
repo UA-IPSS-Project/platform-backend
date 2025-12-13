@@ -254,8 +254,10 @@ public class MarcacaoService {
         if (atualizadoPor instanceof Funcionario funcionario) {
             validarFuncionarioSecretaria(funcionario); // Apenas secretaria pode atualizar estado
 
-            // Se o estado for CONCLUIDO, registar quem atendeu
-            if (novoEstado == EventoEstado.CONCLUIDO) {
+            // Se for um estado final gerado por funcionário, registar quem atendeu
+            if (novoEstado == EventoEstado.CONCLUIDO ||
+                    novoEstado == EventoEstado.NAO_COMPARECIDO ||
+                    novoEstado == EventoEstado.CANCELADO) {
                 marcacao.setAtendente(funcionario);
             }
 
@@ -368,11 +370,14 @@ public class MarcacaoService {
             throw new RuntimeException("Não é possível alterar o estado de uma marcação já concluída");
         }
 
-        // Marcação em progresso só pode ser concluída ou marcada com aviso
+        // Marcação em progresso só pode ser concluída ou marcada com aviso ou não
+        // compareceu
         if (estadoAtual == EventoEstado.EM_PROGRESSO) {
-            if (novoEstado != EventoEstado.CONCLUIDO && novoEstado != EventoEstado.AVISO) {
+            if (novoEstado != EventoEstado.CONCLUIDO &&
+                    novoEstado != EventoEstado.AVISO &&
+                    novoEstado != EventoEstado.NAO_COMPARECIDO) {
                 throw new RuntimeException(
-                        "Uma marcação em progresso só pode ser concluída ou marcada com aviso. Não é possível cancelar ou voltar ao estado agendado.");
+                        "Uma marcação em progresso só pode ser concluída, marcada com aviso ou não comparecimento.");
             }
         }
 
@@ -539,6 +544,10 @@ public class MarcacaoService {
             }
 
             dto.setMarcacaoSecretaria(secDTO);
+        }
+
+        if (marcacao.getAtendente() != null) {
+            dto.setAtendenteNome(marcacao.getAtendente().getNome());
         }
 
         return dto;

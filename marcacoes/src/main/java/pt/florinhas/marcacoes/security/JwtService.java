@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
+import jakarta.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,24 +21,40 @@ import io.jsonwebtoken.security.Keys;
  * Serviço responsável por gerar, validar e extrair informação de tokens JWT.
  *
  * Notas de desenho:
- *  - Assinatura simétrica (HMAC) com chave secreta em jwt.secret.
- *  - Subject do token = username (email ou NIF, conforme o UserDetails).
- *  - Expiração configurável via jwt.expiration (milissegundos).
- *  - API JJWT 0.12+: uso de Jwts.builder(), parser().verifyWith(...).build().
+ * - Assinatura simétrica (HMAC) com chave secreta em jwt.secret.
+ * - Subject do token = username (email ou NIF, conforme o UserDetails).
+ * - Expiração configurável via jwt.expiration (milissegundos).
+ * - API JJWT 0.12+: uso de Jwts.builder(), parser().verifyWith(...).build().
  *
  * Boas práticas:
- *  - Garantir que a chave tem entropia e comprimento adequados ao algoritmo (>= 256 bits para HS256).
- *  - Nunca expor a secret em repositórios; injetar por variável de ambiente.
+ * - Garantir que a chave tem entropia e comprimento adequados ao algoritmo (>=
+ * 256 bits para HS256).
+ * - Nunca expor a secret em repositórios; injetar por variável de ambiente.
  */
 @Service
 public class JwtService {
 
     /**
-     * Chave secreta HMAC (hex/ASCII). Por omissão, valor de fallback apenas para dev.
+     * Chave secreta HMAC (hex/ASCII). Por omissão, valor de fallback apenas para
+     * dev.
      * Em produção, **definir externamente** via variável de ambiente/propriedades.
      */
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret:}")
+    private String configuredSecret;
+
     private String secret;
+
+    @PostConstruct
+    public void init() {
+        // Se não houver segredo configurado (ou se for o default inseguro), gera um
+        // aleatório
+        if (configuredSecret == null || configuredSecret.isEmpty() || configuredSecret.length() < 32) {
+            this.secret = java.util.UUID.randomUUID().toString().replace("-", "")
+                    + java.util.UUID.randomUUID().toString().replace("-", "");
+        } else {
+            this.secret = configuredSecret;
+        }
+    }
 
     /**
      * Tempo de expiração do token em milissegundos (default: 24h).
@@ -86,7 +103,8 @@ public class JwtService {
     }
 
     /**
-     * Exposição do valor de expiração configurado (ms). Útil para o frontend saber o TTL.
+     * Exposição do valor de expiração configurado (ms). Útil para o frontend saber
+     * o TTL.
      */
     // Expor a expiração configurada (em milissegundos)
     public long getJwtExpiration() {
@@ -95,30 +113,29 @@ public class JwtService {
 
     /**
      * Constrói e assina o token:
-     *  - subject: username do UserDetails
-     *  - iat/exp: instantes de emissão e expiração
-     *  - claims: claims extra fornecidas
-     *  - assinatura: HMAC com secret configurada
+     * - subject: username do UserDetails
+     * - iat/exp: instantes de emissão e expiração
+     * - claims: claims extra fornecidas
+     * - assinatura: HMAC com secret configurada
      */
     private String buildToken(
             Map<String, Object> extraClaims,
             UserDetails userDetails,
-            long expiration
-    ) {
+            long expiration) {
         return Jwts
                 .builder()
-                .claims(extraClaims)                                   // claims customizadas
-                .subject(userDetails.getUsername())                    // "sub"
-                .issuedAt(new Date(System.currentTimeMillis()))        // "iat"
+                .claims(extraClaims) // claims customizadas
+                .subject(userDetails.getUsername()) // "sub"
+                .issuedAt(new Date(System.currentTimeMillis())) // "iat"
                 .expiration(new Date(System.currentTimeMillis() + expiration)) // "exp"
-                .signWith(getSignInKey())                              // assina com HMAC (alg inferido pela chave)
+                .signWith(getSignInKey()) // assina com HMAC (alg inferido pela chave)
                 .compact();
     }
 
     /**
      * Valida o token verificando:
-     *  - se o subject coincide com o username do utilizador,
-     *  - se o token ainda não expirou.
+     * - se o subject coincide com o username do utilizador,
+     * - se o token ainda não expirou.
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
@@ -140,13 +157,14 @@ public class JwtService {
     }
 
     /**
-     * Analisa e valida o token (assinatura + integridade) e devolve todos os claims.
+     * Analisa e valida o token (assinatura + integridade) e devolve todos os
+     * claims.
      * Usa o verificador com a SecretKey HMAC configurada.
      */
     private Claims extractAllClaims(String token) {
         return Jwts
                 .parser()
-                .verifyWith(getSignInKey())  // valida a assinatura com a chave simétrica
+                .verifyWith(getSignInKey()) // valida a assinatura com a chave simétrica
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
