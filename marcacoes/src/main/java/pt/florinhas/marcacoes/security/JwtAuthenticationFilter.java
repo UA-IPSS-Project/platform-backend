@@ -56,7 +56,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Caminho do endpoint atual
         String path = request.getServletPath();
-
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         /**
          * Regra de bypass:
          * - Permite acesso sem JWT aos endpoints de login e registo.

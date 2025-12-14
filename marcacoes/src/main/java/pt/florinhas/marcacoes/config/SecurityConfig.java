@@ -2,6 +2,7 @@ package pt.florinhas.marcacoes.config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +18,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -36,6 +39,9 @@ import pt.florinhas.marcacoes.security.JwtAuthenticationFilter;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    @Value("${cors.allowed-origins}")
+    public String allowedOrigins;
 
     /**
      * Filtro responsável por validar JWTs presentes nos pedidos HTTP.
@@ -83,13 +89,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // TEMPORÁRIO: permite todos os pedidos (útil em fase de debug)
                         // Em produção, devem existir regras por endpoint/role
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().permitAll()
                 )
-
+                
                 // Define que a aplicação não mantém estado de sessão (JWT-based auth)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
                 // Desativa frameOptions (necessário, por exemplo, para H2 Console)
                 .headers(headers ->
@@ -114,8 +123,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // Permite todas as origens (adequado apenas para desenvolvimento)
-        configuration.setAllowedOriginPatterns(List.of("*"));
-
+        configuration.setAllowedOrigins(List.of(allowedOrigins));
+        
         // Métodos HTTP permitidos
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
