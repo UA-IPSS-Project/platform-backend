@@ -81,9 +81,13 @@ public class AuthService {
                                 .orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
                 System.out.println("DEBUG: User found: " + user.getId());
 
-                // Garantir que é efetivamente um Funcionário
-                if (!(user instanceof Funcionario)) {
+                // Garantir que é efetivamente um Funcionário e que está ativo
+                if (!(user instanceof Funcionario funcionario)) {
                         throw new BadRequestException("Credenciais inválidas para funcionário");
+                }
+
+                if (!funcionario.isActivo()) {
+                        throw new BadRequestException("Conta pendente de aprovação. Contacte a secretaria.");
                 }
 
                 // Geração de token JWT
@@ -99,7 +103,7 @@ public class AuthService {
                                 user.getNif(),
                                 user.getTelefone(),
                                 expiresAt,
-                                true // Funcionários ativos por defeito
+                                true // Funcionário ativo
                 );
         }
 
@@ -220,6 +224,8 @@ public class AuthService {
                 funcionario.setPassHash(passwordEncoder.encode(request.password()));
                 funcionario.setTipo(mapFuncaoToTipo(request.funcao()));
                 funcionario.setDataNasc(request.dataNasc());
+                // Por defeito, funcionário criado via app fica pendente
+                funcionario.setActivo(false);
 
                 // Persistência
                 funcionario = funcionarioRepository.save(funcionario);
@@ -237,7 +243,7 @@ public class AuthService {
                                 funcionario.getNif(),
                                 funcionario.getTelefone(),
                                 expiresAt,
-                                true);
+                                false);
         }
 
         public void updatePassword(Long userId, String newPassword) {

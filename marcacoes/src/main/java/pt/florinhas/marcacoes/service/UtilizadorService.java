@@ -10,11 +10,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
+import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
+import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Serviço responsável pela gestão de utilizadores e utentes.
@@ -40,6 +45,9 @@ public class UtilizadorService {
 
     @Autowired
     private UtenteRepository utenteRepository;
+
+    @Autowired
+    private FuncionarioRepository funcionarioRepository;
 
     /*
      * Encoder usado para gerar passwords temporárias de utentes
@@ -296,5 +304,31 @@ public class UtilizadorService {
     private String gerarToken() {
         return String.valueOf(
                 (int) ((ThreadLocalRandom.current().nextDouble() * 900000) + 100000));
+    }
+
+    /*
+     * =========================================================
+     * GESTÃO DE APROVAÇÕES (FUNCIONÁRIOS)
+     * =========================================================
+     */
+
+    public List<UtilizadorResponseDTO> listarTodosFuncionarios() {
+        return funcionarioRepository.findAll().stream()
+                .map(UtilizadorResponseDTO::fromUtilizador)
+                .collect(Collectors.toList());
+    }
+
+    public List<UtilizadorResponseDTO> listarFuncionariosPendentes() {
+        return funcionarioRepository.findByActivoFalse().stream()
+                .map(UtilizadorResponseDTO::fromUtilizador)
+                .collect(Collectors.toList());
+    }
+
+    public void aprovarFuncionario(Long id) {
+        Funcionario funcionario = funcionarioRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado com ID: " + id));
+
+        funcionario.setActivo(true);
+        funcionarioRepository.save(funcionario);
     }
 }

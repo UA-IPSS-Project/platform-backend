@@ -124,4 +124,33 @@ public class UtilizadorController {
         long count = utilizadorService.contarUtentesAtivos();
         return ResponseEntity.ok(count);
     }
+
+    /**
+     * Lista todos os funcionários (ativos e inativos).
+     */
+    @GetMapping("/funcionarios")
+    public ResponseEntity<java.util.List<UtilizadorResponseDTO>> listarTodosFuncionarios() {
+        return ResponseEntity.ok(utilizadorService.listarTodosFuncionarios());
+    }
+
+    /**
+     * Lista os funcionários pendentes de aprovação.
+     */
+    @GetMapping("/funcionarios/pendentes")
+    public ResponseEntity<java.util.List<UtilizadorResponseDTO>> listarFuncionariosPendentes() {
+        return ResponseEntity.ok(utilizadorService.listarFuncionariosPendentes());
+    }
+
+    /**
+     * Aprova um funcionário pendente.
+     */
+    @PutMapping("/{id}/aprovar")
+    public ResponseEntity<?> aprovarFuncionario(@PathVariable Long id) {
+        try {
+            utilizadorService.aprovarFuncionario(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
 }
