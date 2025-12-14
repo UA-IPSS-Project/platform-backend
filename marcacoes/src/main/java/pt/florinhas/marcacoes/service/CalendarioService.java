@@ -27,15 +27,15 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
  * Serviço responsável pela gestão do calendário e disponibilidade.
  *
  * Responsabilidades principais:
- *  - Gestão de bloqueios de agenda (parciais ou de dia inteiro).
- *  - Verificação de disponibilidade de slots horários.
- *  - Integração com API externa de feriados nacionais.
- *  - Aplicação das regras de negócio de calendário:
- *       Horário de funcionamento
- *       Fins de semana
- *       Feriados
- *       Sobreposição de bloqueios
- *       Conflitos com marcações existentes
+ * - Gestão de bloqueios de agenda (parciais ou de dia inteiro).
+ * - Verificação de disponibilidade de slots horários.
+ * - Integração com API externa de feriados nacionais.
+ * - Aplicação das regras de negócio de calendário:
+ * Horário de funcionamento
+ * Fins de semana
+ * Feriados
+ * Sobreposição de bloqueios
+ * Conflitos com marcações existentes
  */
 @Service
 @RequiredArgsConstructor
@@ -44,13 +44,13 @@ public class CalendarioService {
 
     private final BloqueioRepository bloqueioRepository;
     private final MarcacaoRepository marcacaoRepository;
-    
+
     /**
      * Limites de horário do sistema.
      * Todos os bloqueios e marcações devem respeitar este intervalo.
      */
     private static final LocalTime HORA_ABERTURA = LocalTime.of(9, 0);
-    private static final LocalTime HORA_FECHO = LocalTime.of(17, 0); 
+    private static final LocalTime HORA_FECHO = LocalTime.of(17, 0);
 
     /**
      * Cache em memória dos feriados nacionais.
@@ -61,8 +61,7 @@ public class CalendarioService {
     /**
      * Endpoint público para feriados nacionais (Portugal).
      */
-    private static final String API_URL_TEMPLATE =
-            "https://date.nager.at/api/v3/publicholidays/%d/PT";
+    private static final String API_URL_TEMPLATE = "https://date.nager.at/api/v3/publicholidays/%d/PT";
 
     /**
      * Carrega os feriados do ano corrente no arranque da aplicação.
@@ -96,8 +95,8 @@ public class CalendarioService {
      * Verifica se um slot horário específico está bloqueado.
      *
      * Regras aplicadas:
-     *  - Dia inteiro indisponível (fim de semana ou feriado).
-     *  - Existência de um bloqueio que inclua o horário indicado.
+     * - Dia inteiro indisponível (fim de semana ou feriado).
+     * - Existência de um bloqueio que inclua o horário indicado.
      *
      * param data dia a verificar
      * param slotTime hora do slot (ex.: 14:00)
@@ -106,23 +105,23 @@ public class CalendarioService {
     public boolean isSlotBloqueado(LocalDate data, LocalTime slotTime) {
 
         // Se o dia for indisponível por completo, o slot também é
-        if (isDiaInteiroIndisponivel(data)) return true;
+        if (isDiaInteiroIndisponivel(data))
+            return true;
 
         // Verificar bloqueios parciais do dia
         List<BloqueioAgenda> bloqueiosDoDia = bloqueioRepository.findByData(data);
-        
-        return bloqueiosDoDia.stream().anyMatch(b -> 
-            (slotTime.equals(b.getHoraInicio()) || slotTime.isAfter(b.getHoraInicio())) && 
-            slotTime.isBefore(b.getHoraFim())
-        );
+
+        return bloqueiosDoDia.stream()
+                .anyMatch(b -> (slotTime.equals(b.getHoraInicio()) || slotTime.isAfter(b.getHoraInicio())) &&
+                        slotTime.isBefore(b.getHoraFim()));
     }
 
     /**
      * Indica se um dia está totalmente indisponível.
      *
      * Um dia é considerado indisponível se:
-     *  - For fim de semana
-     *  - For feriado nacional
+     * - For fim de semana
+     * - For feriado nacional
      */
     private boolean isDiaInteiroIndisponivel(LocalDate data) {
         return isFimDeSemana(data) || feriadosCache.contains(data);
@@ -132,12 +131,12 @@ public class CalendarioService {
      * Cria um bloqueio de horário no calendário.
      *
      * Validações de negócio aplicadas:
-     *  1) Não permitir datas no passado.
-     *  2) Horário dentro do funcionamento (09:00–17:00).
-     *  3) Hora de início anterior à hora de fim.
-     *  4) Dia não pode ser feriado nem fim de semana.
-     *  5) Não pode existir sobreposição com outros bloqueios.
-     *  6) Não pode existir qualquer marcação ativa no intervalo.
+     * 1) Não permitir datas no passado.
+     * 2) Horário dentro do funcionamento (09:00–17:00).
+     * 3) Hora de início anterior à hora de fim.
+     * 4) Dia não pode ser feriado nem fim de semana.
+     * 5) Não pode existir sobreposição com outros bloqueios.
+     * 6) Não pode existir qualquer marcação ativa no intervalo.
      *
      * param data dia do bloqueio
      * param inicio hora de início
@@ -152,7 +151,7 @@ public class CalendarioService {
             LocalTime fim,
             String motivo,
             Utilizador funcionario) {
-        
+
         // Validação 1: Data no futuro
         if (data.isBefore(LocalDate.now())) {
             throw new BadRequestException("Não é possível bloquear datas no passado.");
@@ -161,8 +160,7 @@ public class CalendarioService {
         // Validação 2: Limites de horário
         if (inicio.isBefore(HORA_ABERTURA) || fim.isAfter(HORA_FECHO)) {
             throw new BadRequestException(
-                    "O bloqueio deve estar dentro do horário de funcionamento (09:00 às 17:00)."
-            );
+                    "O bloqueio deve estar dentro do horário de funcionamento (09:00 às 17:00).");
         }
 
         // Validação 3: Ordem temporal
@@ -187,16 +185,14 @@ public class CalendarioService {
         LocalDateTime inicioBloqueio = LocalDateTime.of(data, inicio);
         LocalDateTime fimBloqueio = LocalDateTime.of(data, fim);
 
-        List<Marcacao> marcacoesNoPeriodo =
-                marcacaoRepository.findByDataBetween(inicioBloqueio, fimBloqueio);
-        
+        List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findByDataBetween(inicioBloqueio, fimBloqueio);
+
         boolean temMarcacaoAtiva = marcacoesNoPeriodo.stream()
                 .anyMatch(m -> m.getEstado() != EventoEstado.CANCELADO);
 
         if (temMarcacaoAtiva) {
             throw new BadRequestException(
-                    "Impossível bloquear: Existem marcações agendadas neste intervalo."
-            );
+                    "Impossível bloquear: Existem marcações agendadas neste intervalo.");
         }
 
         // Criação e persistência do bloqueio
@@ -218,7 +214,7 @@ public class CalendarioService {
     public void removerBloqueio(Long id) {
         bloqueioRepository.deleteById(id);
     }
-    
+
     /**
      * Obtém todos os bloqueios de um determinado mês.
      *
@@ -226,8 +222,8 @@ public class CalendarioService {
      * (ex.: caixas cinzentas no calendário).
      *
      * Nota:
-     *  - Atualmente filtra em memória.
-     *  - Poderia ser otimizado com um findByDataBetween no repositório.
+     * - Atualmente filtra em memória.
+     * - Poderia ser otimizado com um findByDataBetween no repositório.
      */
     public List<BloqueioAgenda> getBloqueiosDoMes(int ano, int mes) {
         LocalDate inicio = LocalDate.of(ano, mes, 1);
@@ -238,7 +234,14 @@ public class CalendarioService {
                 .toList();
     }
 
-    
+    /**
+     * Obtém todos os bloqueios registados no sistema.
+     * Útil para listagens de gestão.
+     */
+    public List<BloqueioAgenda> getTodosBloqueios() {
+        return bloqueioRepository.findAll();
+    }
+
     // Verifica se uma data corresponde a fim de semana.
     private boolean isFimDeSemana(LocalDate data) {
         DayOfWeek d = data.getDayOfWeek();
