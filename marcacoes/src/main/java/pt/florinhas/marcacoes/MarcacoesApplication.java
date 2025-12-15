@@ -32,7 +32,7 @@ public class MarcacoesApplication {
 			if (!funcionarioRepository.existsByNif(adminNif)) {
 				Funcionario admin = new Funcionario();
 				admin.setNome("Admin Secretaria");
-				admin.setEmail("admin@florinhas.pt");
+				admin.setEmail("admin@florinhasdovouga.pt");
 				admin.setNif(adminNif);
 				admin.setTelefone("999999999");
 				admin.setPassHash(passwordEncoder.encode("admin123"));
