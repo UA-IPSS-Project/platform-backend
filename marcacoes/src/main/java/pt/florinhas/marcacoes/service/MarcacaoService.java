@@ -243,12 +243,21 @@ public class MarcacaoService {
         // Validar transições de estado permitidas
         validarTransicaoEstado(estadoAtual, novoEstado);
 
-        if (atualizadoPor instanceof Utente utente && utente.equals(marcacao.getCriadoPor())
-                && novoEstado.equals(EventoEstado.CANCELADO)) {
-            // Utente que criou a marcação pode apenas marcar com cancelado
-            marcacao.setEstado(novoEstado);
-            Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
-            return converterParaDTO(savedMarcacao);
+        // Permitir que utente cancele a sua própria marcação
+        if (atualizadoPor instanceof Utente utente && novoEstado.equals(EventoEstado.CANCELADO)) {
+            // Verificar se o utente é o dono da marcação (criou ou é o utente associado)
+            boolean isOwner = utente.equals(marcacao.getCriadoPor()) ||
+                    (marcacao.getMarcacaoSecretaria() != null &&
+                            marcacao.getMarcacaoSecretaria().getUtente() != null &&
+                            utente.equals(marcacao.getMarcacaoSecretaria().getUtente()));
+
+            if (isOwner) {
+                marcacao.setEstado(novoEstado);
+                Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
+                return converterParaDTO(savedMarcacao);
+            } else {
+                throw new RuntimeException("Apenas o utente dono da marcação pode cancelá-la");
+            }
         }
 
         if (atualizadoPor instanceof Funcionario funcionario) {
@@ -397,13 +406,14 @@ public class MarcacaoService {
             throw new RuntimeException("Não é possível voltar ao estado de preenchimento");
         }
 
-        // De AGENDADO pode-se ir para: EM_PROGRESSO, CANCELADO, AVISO
+        // De AGENDADO pode-se ir para: EM_PROGRESSO, CANCELADO, AVISO, NAO_COMPARECIDO
         if (estadoAtual == EventoEstado.AGENDADO) {
             if (novoEstado != EventoEstado.EM_PROGRESSO &&
                     novoEstado != EventoEstado.CANCELADO &&
-                    novoEstado != EventoEstado.AVISO) {
+                    novoEstado != EventoEstado.AVISO &&
+                    novoEstado != EventoEstado.NAO_COMPARECIDO) {
                 throw new RuntimeException(
-                        "De agendado só é possível iniciar a marcação, cancelar ou marcar como aviso");
+                        "De agendado só é possível iniciar a marcação, cancelar, marcar como aviso ou não comparecimento");
             }
         }
     }
