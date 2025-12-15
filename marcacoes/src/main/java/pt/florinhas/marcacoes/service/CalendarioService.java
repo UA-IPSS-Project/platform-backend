@@ -188,7 +188,12 @@ public class CalendarioService {
         List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findByDataBetween(inicioBloqueio, fimBloqueio);
 
         boolean temMarcacaoAtiva = marcacoesNoPeriodo.stream()
-                .anyMatch(m -> m.getEstado() != EventoEstado.CANCELADO);
+                .filter(m -> m.getEstado() != EventoEstado.CANCELADO)
+                // Ignorar marcações que começam exatamente no fim do bloqueio (m.data ==
+                // fimBloqueio)
+                // O método findByDataBetween inclui os limites, mas queremos comportamento
+                // [start, end[
+                .anyMatch(m -> m.getData().isBefore(fimBloqueio));
 
         if (temMarcacaoAtiva) {
             throw new BadRequestException(
