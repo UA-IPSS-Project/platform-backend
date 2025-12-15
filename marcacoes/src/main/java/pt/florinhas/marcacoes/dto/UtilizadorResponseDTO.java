@@ -56,6 +56,10 @@ public class UtilizadorResponseDTO {
         dto.setMorada(utilizador.getMorada());
         dto.setCodigoPostal(utilizador.getCodigoPostal());
         dto.setFreguesia(utilizador.getFreguesia());
+        dto.setProfissao(utilizador.getProfissao());
+        dto.setLocalEmprego(utilizador.getLocalEmprego());
+        dto.setMoradaEmprego(utilizador.getMoradaEmprego());
+        dto.setTelefoneEmprego(utilizador.getTelefoneEmprego());
         if (utilizador instanceof pt.florinhas.marcacoes.domain.Funcionario) {
             pt.florinhas.marcacoes.domain.Funcionario func = (pt.florinhas.marcacoes.domain.Funcionario) utilizador;
             dto.setActive(func.isActivo());
