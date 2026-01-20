@@ -3,7 +3,7 @@ package pt.florinhas.marcacoes.service;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
+import java.security.SecureRandom;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -48,6 +48,9 @@ public class UtilizadorService {
 
     @Autowired
     private FuncionarioRepository funcionarioRepository;
+
+    @Autowired
+    private pt.florinhas.marcacoes.service.email.EmailService emailService;
 
     /*
      * Encoder usado para gerar passwords temporárias de utentes
@@ -148,11 +151,21 @@ public class UtilizadorService {
         novoUtente.setEmail(email);
         novoUtente.setTelefone(telefone);
         novoUtente.setActivo(false); // Inactivo até dar login pela primeira vez
-        String passwordTemporaria = nif;
-        novoUtente.setPassHash(passwordEncoder.encode(passwordTemporaria));
+
+        // Geração de password segura e envio por email
+        String passwordInicial = gerarPasswordSegura();
+        novoUtente.setPassHash(passwordEncoder.encode(passwordInicial));
         novoUtente.setDataNasc(java.time.LocalDate.now());
 
-        System.out.println("Novo utente criado com password temporária = NIF: " + passwordTemporaria);
+        System.out.println("Novo utente criado. Enviando password para: " + email);
+
+        try {
+            emailService.sendPassword(email, passwordInicial);
+        } catch (Exception e) {
+            System.err.println("Erro ao enviar email: " + e.getMessage());
+            // Não falhamos a criação, mas logamos o erro. O utilizador terá de pedir
+            // recuperação ou contactar admin.
+        }
 
         return utenteRepository.save(novoUtente);
     }
@@ -283,27 +296,18 @@ public class UtilizadorService {
         }
     }
 
-    /**
-     * Envio de token de acesso (não usado atualmente).
-     * Poderá ser utilizado para primeiro login de utentes criados automaticamente.
-     */
-    private void enviarTokenAcesso(Utente utente) {
-        String token = gerarToken();
-        String mensagem = ("Foi criada uma conta automática para si. " +
-                "Use o token %s para aceder à plataforma. " +
-                "Será obrigatório definir uma nova palavra-passe no primeiro acesso.").formatted(token);
-
-        if (utente.getEmail() != null) {
-            // emailService.enviarEmail(...)
-            System.out.println("Email enviado para " + utente.getEmail() + " com token: " + token);
-        }
-    }
-
     // Gera um token numérico aleatório de 6 dígitos.
 
-    private String gerarToken() {
-        return String.valueOf(
-                (int) ((ThreadLocalRandom.current().nextDouble() * 900000) + 100000));
+    // Gera uma password aleatória de 8 caracteres
+    private String gerarPasswordSegura() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            int randomIndex = random.nextInt(chars.length());
+            sb.append(chars.charAt(randomIndex));
+        }
+        return sb.toString();
     }
 
     /*
