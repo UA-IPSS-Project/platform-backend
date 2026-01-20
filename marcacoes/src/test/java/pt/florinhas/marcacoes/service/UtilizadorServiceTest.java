@@ -94,4 +94,17 @@ public class UtilizadorServiceTest {
         // Assert
         assertEquals(existingStart, result);
     }
+
+    @Test
+    void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
+        // Arrange
+        String invalidNif = "123"; // Too short
+
+        // Act & Assert
+        try {
+            utilizadorService.obterOuCriarUtente(invalidNif, "Name", "email@test.com", "912345678");
+        } catch (RuntimeException e) {
+            assertEquals("NIF do utente inválido (deve ter 9 dígitos numéricos).", e.getMessage());
+        }
+    }
 }

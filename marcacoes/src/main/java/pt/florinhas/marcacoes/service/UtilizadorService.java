@@ -72,8 +72,8 @@ public class UtilizadorService {
      * throws IllegalArgumentException se o NIF for inválido
      */
     public Optional<Utilizador> buscarPorNif(String nif) {
-        if (nif == null || nif.trim().isEmpty()) {
-            throw new IllegalArgumentException("NIF não pode ser nulo ou vazio");
+        if (!validarNIF(nif)) {
+            throw new IllegalArgumentException("NIF inválido (deve ter 9 dígitos numéricos).");
         }
         return utilizadorRepository.findByNif(nif);
     }
@@ -106,8 +106,8 @@ public class UtilizadorService {
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
 
         // Validação mínima
-        if (nif == null || nif.trim().isEmpty()) {
-            throw new RuntimeException("NIF do utente é obrigatório");
+        if (!validarNIF(nif)) {
+            throw new RuntimeException("NIF do utente inválido (deve ter 9 dígitos numéricos).");
         }
 
         // 1. Verificar se JÁ existe algum utilizador com este NIF (Seja Utente ou
@@ -127,16 +127,10 @@ public class UtilizadorService {
         // 2. Se não existir, criar novo utente
         System.out.println("Utente com NIF " + nif + " não encontrado. Criando novo utente...");
 
-        // Validar campos necessários para criar utente
-        if (nome == null || nome.trim().isEmpty()) {
-            throw new RuntimeException("Nome do utente é obrigatório para criar novo registo");
-        }
-        if (email == null || email.trim().isEmpty()) {
-            throw new RuntimeException("Email do utente é obrigatório para criar novo registo");
-        }
-        if (telefone == null || telefone.trim().isEmpty()) {
-            throw new RuntimeException("Telefone do utente é obrigatório para criar novo registo");
-        }
+        // Validar campos obrigatórios
+        validarCampoObrigatorio(nome, "Nome do utente é obrigatório para criar novo registo");
+        validarCampoObrigatorio(email, "Email do utente é obrigatório para criar novo registo");
+        validarCampoObrigatorio(telefone, "Telefone do utente é obrigatório para criar novo registo");
 
         // Verificar se email já existe
         if (utenteRepository.existsByEmail(email)) {
@@ -195,8 +189,7 @@ public class UtilizadorService {
      */
     public Utilizador atualizarUtilizador(Long utilizadorId, UtilizadorInfoDTO request) {
 
-        Utilizador utilizador = utilizadorRepository.findById(utilizadorId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + utilizadorId));
+        Utilizador utilizador = obterUtilizadorPorId(utilizadorId);
 
         // Atualizar campos se forem fornecidos
         if (request.getNome() != null && !request.getNome().trim().isEmpty()) {
@@ -296,8 +289,6 @@ public class UtilizadorService {
         }
     }
 
-    // Gera um token numérico aleatório de 6 dígitos.
-
     // Gera uma password aleatória de 8 caracteres
     private String gerarPasswordSegura() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -308,6 +299,12 @@ public class UtilizadorService {
             sb.append(chars.charAt(randomIndex));
         }
         return sb.toString();
+    }
+
+    private void validarCampoObrigatorio(String valor, String mensagemErro) {
+        if (valor == null || valor.trim().isEmpty()) {
+            throw new RuntimeException(mensagemErro);
+        }
     }
 
     /*
