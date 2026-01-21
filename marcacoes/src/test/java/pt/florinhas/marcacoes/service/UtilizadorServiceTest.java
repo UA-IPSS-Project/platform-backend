@@ -23,6 +23,7 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.marcacoes.service.nif.NifValidationService;
 
 @ExtendWith(MockitoExtension.class)
 public class UtilizadorServiceTest {
@@ -39,6 +40,9 @@ public class UtilizadorServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private NifValidationService nifValidationService;
+
     @InjectMocks
     private UtilizadorService utilizadorService;
 
@@ -50,6 +54,7 @@ public class UtilizadorServiceTest {
         String email = "test@example.com";
         String telefone = "912345678";
 
+        when(nifValidationService.validate(nif)).thenReturn(true);
         when(utilizadorRepository.findByNif(nif)).thenReturn(Optional.empty());
         when(utenteRepository.existsByEmail(email)).thenReturn(false);
         when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
@@ -86,6 +91,7 @@ public class UtilizadorServiceTest {
         existingStart.setNif(nif);
         existingStart.setId(1L);
 
+        when(nifValidationService.validate(nif)).thenReturn(true);
         when(utilizadorRepository.findByNif(nif)).thenReturn(Optional.of(existingStart));
 
         // Act
@@ -99,6 +105,13 @@ public class UtilizadorServiceTest {
     void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
         // Arrange
         String invalidNif = "123"; // Too short
+        // Configurar o mock para retornar false (opcional se o default for false, mas
+        // explícito é melhor)
+        // No caso do teste antigo, o mock retorna false por defeito para strings nao
+        // configuradas?
+        // Sim, defaults do mockito para boolean é false.
+        // Mas vamos forçar para garantir:
+        when(nifValidationService.validate(invalidNif)).thenReturn(false);
 
         // Act & Assert
         try {

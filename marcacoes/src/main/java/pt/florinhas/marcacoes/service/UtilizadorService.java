@@ -52,6 +52,9 @@ public class UtilizadorService {
     @Autowired
     private pt.florinhas.marcacoes.service.email.EmailService emailService;
 
+    @Autowired
+    private pt.florinhas.marcacoes.service.nif.NifValidationService nifValidationService;
+
     /*
      * Encoder usado para gerar passwords temporárias de utentes
      * criados automaticamente pela secretaria.
@@ -273,20 +276,10 @@ public class UtilizadorService {
      */
 
     /**
-     * Validação simples de NIF.
-     * Pode ser melhorada com APIs externas oficiais.
+     * Validação de NIF usando serviço externo.
      */
     private boolean validarNIF(String nif) {
-        if (nif == null || nif.length() != 9) {
-            return false;
-        }
-
-        try {
-            Integer.valueOf(nif);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+        return nifValidationService.validate(nif);
     }
 
     // Gera uma password aleatória de 8 caracteres
