@@ -2,7 +2,7 @@ package pt.florinhas.marcacoes.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,7 +34,7 @@ import pt.florinhas.marcacoes.service.UtilizadorService;
  */
 @RestController
 @RequestMapping("/api/utilizadores")
-@CrossOrigin(origins = "*")
+
 public class UtilizadorController {
 
     /**
@@ -52,16 +52,10 @@ public class UtilizadorController {
      */
     // Buscar utilizador por ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> obterUtilizadorPorId(@PathVariable Long id) {
-        try {
-            Utilizador utilizador = utilizadorService.obterUtilizadorPorId(id);
-            UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            // Mapeia exceções de negócio em 404 com mensagem informativa
-            return ResponseEntity.status(404).body(java.util.Map.of(
-                    "error", e.getMessage()));
-        }
+    public ResponseEntity<UtilizadorResponseDTO> obterUtilizadorPorId(@PathVariable Long id) {
+        Utilizador utilizador = utilizadorService.obterUtilizadorPorId(id);
+        UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -76,14 +70,10 @@ public class UtilizadorController {
     // Buscar utilizador por NIF
     @GetMapping("/nif/{nif}")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
-        try {
-            Utilizador utilizador = utilizadorService.buscarPorNif(nif)
-                    .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + nif));
-            return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
-        } catch (Exception e) {
-            // Em caso de ausência, responde com 404 sem corpo
-            return ResponseEntity.status(404).build();
-        }
+        Utilizador utilizador = utilizadorService.buscarPorNif(nif)
+                .orElseThrow(() -> new pt.florinhas.marcacoes.exception.NotFoundException(
+                        "Utilizador não encontrado com NIF: " + nif));
+        return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
 
     /**
@@ -99,18 +89,12 @@ public class UtilizadorController {
      */
     // Atualizar informações do utilizador
     @PutMapping("/{id}")
-    public ResponseEntity<?> atualizarUtilizador(
+    public ResponseEntity<UtilizadorResponseDTO> atualizarUtilizador(
             @PathVariable Long id,
             @RequestBody UtilizadorInfoDTO request) {
-        try {
-            Utilizador utilizador = utilizadorService.atualizarUtilizador(id, request);
-            UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            // Erros de validação/negócio são devolvidos como 400 com mensagem
-            return ResponseEntity.badRequest().body(java.util.Map.of(
-                    "error", e.getMessage()));
-        }
+        Utilizador utilizador = utilizadorService.atualizarUtilizador(id, request);
+        UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -145,12 +129,8 @@ public class UtilizadorController {
      * Aprova um funcionário pendente.
      */
     @PutMapping("/{id}/aprovar")
-    public ResponseEntity<?> aprovarFuncionario(@PathVariable Long id) {
-        try {
-            utilizadorService.aprovarFuncionario(id);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Void> aprovarFuncionario(@PathVariable Long id) {
+        utilizadorService.aprovarFuncionario(id);
+        return ResponseEntity.ok().build();
     }
 }

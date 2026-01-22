@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Funcionario;
@@ -43,6 +44,7 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
  */
 @Service
 @Transactional
+@Slf4j
 public class MarcacaoService {
 
     @Autowired
@@ -148,7 +150,7 @@ public class MarcacaoService {
 
         notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
 
-        System.out.println("Marcação presencial criada com sucesso: " + savedMarcacao.getId());
+        log.info("Marcação presencial criada com sucesso: {}", savedMarcacao.getId());
 
         return savedMarcacao;
     }
@@ -195,7 +197,7 @@ public class MarcacaoService {
 
         notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
 
-        System.out.println("Marcação remota criada com sucesso: " + savedMarcacao.getId());
+        log.info("Marcação remota criada com sucesso: {}", savedMarcacao.getId());
 
         return savedMarcacao;
     }
@@ -481,8 +483,8 @@ public class MarcacaoService {
         if (marcacao.getMarcacaoSecretaria().getUtente().getEmail() != null) {
             // emailService.enviarEmail(marcacao.getMarcacaoSecretaria().getUtente().getEmail(),
             // assunto, mensagem);
-            System.out.println("Email enviado para " + marcacao.getMarcacaoSecretaria().getUtente().getEmail()
-                    + " com assunto: " + assunto + " e mensagem: " + mensagem);
+            log.info("Email simulado para {} com assunto: '{}' e mensagem: '{}'",
+                    marcacao.getMarcacaoSecretaria().getUtente().getEmail(), assunto, mensagem);
         }
     }
 

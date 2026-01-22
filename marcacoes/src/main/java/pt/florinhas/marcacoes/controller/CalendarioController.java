@@ -56,7 +56,8 @@ public class CalendarioController {
 
                 // Obtém o funcionário responsável pelo bloqueio
                 Utilizador admin = utilizadorRepository.findById(request.getFuncionarioId())
-                                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
+                                .orElseThrow(() -> new pt.florinhas.marcacoes.exception.NotFoundException(
+                                                "Funcionário não encontrado"));
 
                 // Delegação da lógica de criação do bloqueio para o serviço
                 calendarioService.bloquearHorario(

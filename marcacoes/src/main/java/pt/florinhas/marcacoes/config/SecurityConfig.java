@@ -29,11 +29,11 @@ import pt.florinhas.marcacoes.security.JwtAuthenticationFilter;
 /**
  * Classe de configuração de segurança da aplicação.
  * Centraliza toda a configuração do Spring Security:
- *  - regras de autenticação e autorização
- *  - política de sessões
- *  - configuração de CORS
- *  - definição dos beans necessários para autenticação (AuthenticationManager,
- *    AuthenticationProvider, PasswordEncoder)
+ * - regras de autenticação e autorização
+ * - política de sessões
+ * - configuração de CORS
+ * - definição dos beans necessários para autenticação (AuthenticationManager,
+ * AuthenticationProvider, PasswordEncoder)
  */
 @Configuration
 @EnableWebSecurity
@@ -45,12 +45,14 @@ public class SecurityConfig {
 
     /**
      * Filtro responsável por validar JWTs presentes nos pedidos HTTP.
-     * Normalmente é inserido antes do filtro de autenticação padrão do Spring Security.
+     * Normalmente é inserido antes do filtro de autenticação padrão do Spring
+     * Security.
      */
     private final JwtAuthenticationFilter jwtAuthFilter;
 
     /**
-     * Serviço que carrega os utilizadores da aplicação (ex.: a partir da base de dados).
+     * Serviço que carrega os utilizadores da aplicação (ex.: a partir da base de
+     * dados).
      * É usado pelo AuthenticationProvider para validar credenciais.
      */
     private final UserDetailsService userDetailsService;
@@ -68,11 +70,11 @@ public class SecurityConfig {
     /**
      * Define a cadeia de filtros de segurança (SecurityFilterChain).
      * Aqui são configurados:
-     *  - CSRF (desativado para APIs REST)
-     *  - CORS
-     *  - regras de autorização
-     *  - política de sessões (stateless)
-     *  - cabeçalhos HTTP
+     * - CSRF (desativado para APIs REST)
+     * - CORS
+     * - regras de autorização
+     * - política de sessões (stateless)
+     * - cabeçalhos HTTP
      * param http objeto HttpSecurity fornecido pelo Spring
      * return SecurityFilterChain construída
      */
@@ -87,23 +89,20 @@ public class SecurityConfig {
 
                 // Configuração de autorização dos pedidos HTTP
                 .authorizeHttpRequests(auth -> auth
-                        // TEMPORÁRIO: permite todos os pedidos (útil em fase de debug)
-                        // Em produção, devem existir regras por endpoint/role
+                        // Permitir endpoints de autenticação públicos
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // Permitir OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().permitAll()
-                )
-                
+                        // TEMPORÁRIO: Voltando a permitir tudo para debug por pedido do user
+                        .anyRequest().permitAll())
+
                 // Define que a aplicação não mantém estado de sessão (JWT-based auth)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
                 // Desativa frameOptions (necessário, por exemplo, para H2 Console)
-                .headers(headers ->
-                        headers.frameOptions(frame -> frame.disable())
-                );
+                .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         // Constrói e devolve a configuração final de segurança
         return http.build();
@@ -112,23 +111,22 @@ public class SecurityConfig {
     /**
      * Configuração global de CORS (Cross-Origin Resource Sharing).
      * Define:
-     *  - origens permitidas
-     *  - métodos HTTP permitidos
-     *  - cabeçalhos permitidos
-     *  - se credenciais podem ser incluídas
+     * - origens permitidas
+     * - métodos HTTP permitidos
+     * - cabeçalhos permitidos
+     * - se credenciais podem ser incluídas
      * return CorsConfigurationSource a aplicar a todos os endpoints
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Permite todas as origens (adequado apenas para desenvolvimento)
-        configuration.setAllowedOrigins(List.of(allowedOrigins));
-        
+        // Permite origens configuradas (split por vírgula)
+        configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+
         // Métodos HTTP permitidos
         configuration.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
-        ));
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
         // Permite todos os cabeçalhos
         configuration.setAllowedHeaders(List.of("*"));
@@ -152,8 +150,8 @@ public class SecurityConfig {
     /**
      * Define o AuthenticationProvider usado pelo Spring Security.
      * Utiliza:
-     *  - um UserDetailsService para carregar utilizadores
-     *  - um PasswordEncoder para validar passwords
+     * - um UserDetailsService para carregar utilizadores
+     * - um PasswordEncoder para validar passwords
      * return AuthenticationProvider configurado
      */
     @Bean
@@ -184,7 +182,8 @@ public class SecurityConfig {
 
     /**
      * Define o encoder de passwords da aplicação.
-     * BCrypt é recomendado por ser adaptativo e resistente a ataques de força bruta.
+     * BCrypt é recomendado por ser adaptativo e resistente a ataques de força
+     * bruta.
      * return PasswordEncoder baseado em BCrypt
      */
     @Bean

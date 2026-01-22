@@ -5,6 +5,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Utente;
@@ -33,6 +34,7 @@ import pt.florinhas.marcacoes.security.JwtService;
  * - Segurança (PasswordEncoder + JwtService).
  */
 @Service
+@Slf4j
 public class AuthService {
 
         private final UtilizadorRepository utilizadorRepository;
@@ -67,19 +69,18 @@ public class AuthService {
          * 4) Devolve AuthResponse com dados do utilizador e expiração.
          */
         public AuthResponse loginFuncionario(LoginFuncionarioRequest request) {
-                System.out.println("DEBUG: loginFuncionario started for " + request.email());
+                log.debug("Login funcionario started for: {}", request.email());
 
                 // Autenticação delegada ao Spring Security
                 authenticationManager.authenticate(
                                 new UsernamePasswordAuthenticationToken(
                                                 request.email(),
                                                 request.password()));
-                System.out.println("DEBUG: Authentication successful");
+                log.debug("Authentication successful");
 
-                // Obter utilizador pelo email
                 var user = utilizadorRepository.findByEmail(request.email())
                                 .orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
-                System.out.println("DEBUG: User found: " + user.getId());
+                log.debug("User found: {}", user.getId());
 
                 // Garantir que é efetivamente um Funcionário e que está ativo
                 if (!(user instanceof Funcionario funcionario)) {

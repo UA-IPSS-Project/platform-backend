@@ -39,20 +39,14 @@ public class JwtService {
      * dev.
      * Em produção, **definir externamente** via variável de ambiente/propriedades.
      */
-    @Value("${jwt.secret:}")
-    private String configuredSecret;
-
+    @Value("${jwt.secret}")
     private String secret;
 
     @PostConstruct
     public void init() {
-        // Se não houver segredo configurado (ou se for o default inseguro), gera um
-        // aleatório
-        if (configuredSecret == null || configuredSecret.isEmpty() || configuredSecret.length() < 32) {
-            this.secret = java.util.UUID.randomUUID().toString().replace("-", "")
-                    + java.util.UUID.randomUUID().toString().replace("-", "");
-        } else {
-            this.secret = configuredSecret;
+        if (secret == null || secret.length() < 32) {
+            throw new IllegalStateException(
+                    "Critical Security Error: JWT Secret is properly configured. Must be at least 32 chars.");
         }
     }
 

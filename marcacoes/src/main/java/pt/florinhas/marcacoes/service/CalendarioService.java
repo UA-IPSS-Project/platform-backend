@@ -234,9 +234,7 @@ public class CalendarioService {
         LocalDate inicio = LocalDate.of(ano, mes, 1);
         LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
 
-        return bloqueioRepository.findAll().stream()
-                .filter(b -> !b.getData().isBefore(inicio) && !b.getData().isAfter(fim))
-                .toList();
+        return bloqueioRepository.findByDataBetween(inicio, fim);
     }
 
     /**
