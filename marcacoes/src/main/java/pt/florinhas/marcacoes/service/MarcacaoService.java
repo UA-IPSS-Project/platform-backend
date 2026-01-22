@@ -27,6 +27,8 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoSecretariaRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.marcacoes.service.NotificacaoService;
 
 /**
  * Serviço central de gestão de marcações.
@@ -47,29 +49,34 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 @Slf4j
 public class MarcacaoService {
 
-    @Autowired
-    private MarcacaoRepository marcacaoRepository;
+    private final MarcacaoRepository marcacaoRepository;
+    private final MarcacaoSecretariaRepository marcacaoSecretariaRepository;
+    private final UtenteRepository utenteRepository; // Keeping this as it's used in obterOuCriarUtente indirectly
+    private final FuncionarioRepository funcionarioRepository; // Keeping this as it's used
+    private final UtilizadorRepository utilizadorRepository; // Keeping this as it's used
+    private final UtilizadorService utilizadorService;
+    private final EmailService emailService; // Assuming this is now active
+    private final NotificacaoService notificacaoService; // New injection
 
-    @Autowired
-    private MarcacaoSecretariaRepository marcacaoSecretariaRepository;
-
-    @Autowired
-    private UtenteRepository utenteRepository;
-
-    @Autowired
-    private FuncionarioRepository funcionarioRepository;
-
-    @Autowired
-    private UtilizadorRepository utilizadorRepository;
-
-    @Autowired
-    private UtilizadorService utilizadorService;
-
-    // @Autowired
-    // private FuncionarioRepository funcionarioRepository;
-
-    // @Autowired
-    // private EmailService emailService;
+    // Construtor com injeção de dependências
+    public MarcacaoService(
+            MarcacaoRepository marcacaoRepository,
+            MarcacaoSecretariaRepository marcacaoSecretariaRepository,
+            UtenteRepository utenteRepository,
+            FuncionarioRepository funcionarioRepository,
+            UtilizadorRepository utilizadorRepository,
+            UtilizadorService utilizadorService,
+            EmailService emailService,
+            NotificacaoService notificacaoService) {
+        this.marcacaoRepository = marcacaoRepository;
+        this.marcacaoSecretariaRepository = marcacaoSecretariaRepository;
+        this.utenteRepository = utenteRepository;
+        this.funcionarioRepository = funcionarioRepository;
+        this.utilizadorRepository = utilizadorRepository;
+        this.utilizadorService = utilizadorService;
+        this.emailService = emailService;
+        this.notificacaoService = notificacaoService;
+    }
 
     public long contarMarcacoesDiarias(LocalDateTime data) {
         LocalDateTime inicioDia = data.toLocalDate().atStartOfDay();
@@ -150,6 +157,19 @@ public class MarcacaoService {
 
         notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
 
+        // Notificar via sistema
+        try {
+            log.info("A tentar criar notificação para utente ID: {}", utente.getId());
+            notificacaoService.criarNotificacao(
+                    utente.getId(),
+                    "Nova Marcação Agendada",
+                    "A sua marcação para " + savedMarcacao.getData() + " foi agendada com sucesso.",
+                    pt.florinhas.marcacoes.domain.NotificacaoTipo.LEMBRETE);
+            log.info("Notificação criada com sucesso para utente ID: {}", utente.getId());
+        } catch (Exception e) {
+            log.error("Erro ao criar notificação de sistema", e);
+        }
+
         log.info("Marcação presencial criada com sucesso: {}", savedMarcacao.getId());
 
         return savedMarcacao;
@@ -196,6 +216,17 @@ public class MarcacaoService {
         savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
 
         notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
+
+        // Notificar via sistema
+        try {
+            notificacaoService.criarNotificacao(
+                    utente.getId(),
+                    "Nova Marcação Agendada",
+                    "A sua marcação remota para " + savedMarcacao.getData() + " foi agendada com sucesso.",
+                    pt.florinhas.marcacoes.domain.NotificacaoTipo.LEMBRETE);
+        } catch (Exception e) {
+            log.error("Erro ao criar notificação de sistema", e);
+        }
 
         log.info("Marcação remota criada com sucesso: {}", savedMarcacao.getId());
 
@@ -256,6 +287,47 @@ public class MarcacaoService {
             if (isOwner) {
                 marcacao.setEstado(novoEstado);
                 Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
+
+                // Notificar Secretaria (Cancelado pelo Utente)
+                // Notificar Secretaria (Cancelado pelo Utente)
+                try {
+                    // Notificar quem criou a marcação (se for funcionário)
+                    if (marcacao.getCriadoPor() instanceof Funcionario funcionario) {
+                        notificacaoService.criarNotificacao(
+                                funcionario.getId(),
+                                "Marcação Cancelada pelo Utente",
+                                "O utente " + utente.getNome() + " cancelou a marcação de " + marcacao.getData(),
+                                pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
+                        log.info("Notificação de cancelamento enviada para funcionário criador: {}",
+                                funcionario.getId());
+                    } else {
+                        // Fallback: se foi criada pelo próprio utente (remota) ou não tem criador
+                        // definido
+                        // Procurar uma secretária ativa para notificar
+                        java.util.List<Funcionario> secretarias = funcionarioRepository
+                                .findByTipo(FuncionarioTipo.SECRETARIA);
+                        java.util.Optional<Funcionario> admin = secretarias.stream().filter(Funcionario::isActivo)
+                                .findFirst();
+
+                        if (admin.isPresent()) {
+                            notificacaoService.criarNotificacao(
+                                    admin.get().getId(),
+                                    "Marcação Cancelada pelo Utente",
+                                    "O utente " + utente.getNome() + " cancelou a marcação remota de "
+                                            + marcacao.getData(),
+                                    pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
+                            log.info("Notificação de cancelamento enviada para secretaria (fallback): {}",
+                                    admin.get().getId());
+                        } else {
+                            log.warn(
+                                    "Marcação {} cancelada pelo utente, mas não foi encontrada secretária ativa para notificar.",
+                                    marcacao.getId());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Erro ao criar notificação para secretaria", e);
+                }
+
                 return converterParaDTO(savedMarcacao);
             } else {
                 throw new RuntimeException("Apenas o utente dono da marcação pode cancelá-la");
@@ -274,6 +346,22 @@ public class MarcacaoService {
 
             marcacao.setEstado(novoEstado);
             Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
+
+            // Se foi cancelado pela secretaria, notificar utente
+            if (novoEstado == EventoEstado.CANCELADO && marcacao.getMarcacaoSecretaria() != null
+                    && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+                try {
+                    notificacaoService.criarNotificacao(
+                            marcacao.getMarcacaoSecretaria().getUtente().getId(),
+                            "Marcação Cancelada",
+                            "A sua marcação de " + marcacao.getData()
+                                    + " foi cancelada pelos serviços administrativos.",
+                            pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
+                } catch (Exception e) {
+                    log.error("Erro ao notificar utente do cancelamento", e);
+                }
+            }
+
             return converterParaDTO(savedMarcacao);
         } else {
             throw new RuntimeException("Apenas funcionários podem atualizar o estado da marcação");

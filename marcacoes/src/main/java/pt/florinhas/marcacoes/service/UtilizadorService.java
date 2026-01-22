@@ -61,6 +61,11 @@ public class UtilizadorService {
      */
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    public Utilizador buscarPorEmail(String email) {
+        return utilizadorRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com email: " + email));
+    }
+
     /*
      * =========================================================
      * CONSULTAS

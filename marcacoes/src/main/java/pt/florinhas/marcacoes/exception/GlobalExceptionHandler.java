@@ -24,14 +24,29 @@ public class GlobalExceptionHandler {
      * Mapeia NotFoundException para HTTP 404 (NOT_FOUND).
      *
      * Corpo de resposta:
-     *  {
-     *    "message": "<detalhe do erro>"
-     *  }
+     * {
+     * "message": "<detalhe do erro>"
+     * }
+     */
+    /**
+     * Mapeia NotFoundException para HTTP 404 (NOT_FOUND).
      */
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFoundException(NotFoundException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put("message", ex.getMessage()); // Consistência no campo "message"
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
+     * Mapeia NoResourceFoundException (Spring 6+) para HTTP 404.
+     * Evita que 404s caiam no handler genérico 500.
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNoResourceFoundException(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", "O recurso solicitado não foi encontrado: " + ex.getResourcePath());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -39,9 +54,9 @@ public class GlobalExceptionHandler {
      * Mapeia BadRequestException para HTTP 400 (BAD_REQUEST).
      *
      * Corpo de resposta:
-     *  {
-     *    "message": "<detalhe do erro>"
-     *  }
+     * {
+     * "message": "<detalhe do erro>"
+     * }
      */
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Map<String, String>> handleBadRequestException(BadRequestException ex) {
@@ -54,20 +69,20 @@ public class GlobalExceptionHandler {
      * Mapeia erros de validação Bean Validation (@Valid) para HTTP 400.
      *
      * Agrega os erros por campo e devolve um payload estruturado:
-     *  {
-     *    "message": "Erro de validação nos campos fornecidos",
-     *    "errors": {
-     *      "campo1": "mensagem de erro",
-     *      "campo2": "mensagem de erro"
-     *    }
-     *  }
+     * {
+     * "message": "Erro de validação nos campos fornecidos",
+     * "errors": {
+     * "campo1": "mensagem de erro",
+     * "campo2": "mensagem de erro"
+     * }
+     * }
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();   // nome do campo inválido
-            String errorMessage = error.getDefaultMessage();      // mensagem definida na constraint
+            String fieldName = ((FieldError) error).getField(); // nome do campo inválido
+            String errorMessage = error.getDefaultMessage(); // mensagem definida na constraint
             errors.put(fieldName, errorMessage);
         });
 
@@ -89,7 +104,8 @@ public class GlobalExceptionHandler {
         ex.printStackTrace(); // Log no servidor para diagnóstico
         Map<String, String> error = new HashMap<>();
         error.put("message", "Ocorreu um erro interno no servidor. Por favor, tente novamente mais tarde.");
-        // Em desenvolvimento, pode enviar ex.getMessage(); em produção, evitar expor detalhes.
+        // Em desenvolvimento, pode enviar ex.getMessage(); em produção, evitar expor
+        // detalhes.
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
