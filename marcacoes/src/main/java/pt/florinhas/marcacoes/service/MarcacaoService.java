@@ -158,8 +158,6 @@ public class MarcacaoService {
         // Estabelecer relação bidirecional
         savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
 
-        notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
-
         // Notificar via sistema
         try {
             java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
@@ -221,8 +219,6 @@ public class MarcacaoService {
 
         // Estabelecer relacionamento bidirecional
         savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
-
-        notificarUtenteMarcacao(savedMarcacao, "NOVA_MARCACAO");
 
         // Notificar via sistema
         try {
@@ -304,13 +300,8 @@ public class MarcacaoService {
                 try {
                     // Notificar quem criou a marcação (se for funcionário)
                     if (marcacao.getCriadoPor() instanceof Funcionario funcionario) {
-                        notificacaoService.criarNotificacao(
-                                funcionario.getId(),
-                                "Marcação Cancelada pelo Utente",
-                                "O utente " + utente.getNome() + " cancelou a marcação de " + marcacao.getData(),
-                                pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
-                        log.info("Notificação de cancelamento enviada para funcionário criador: {}",
-                                funcionario.getId());
+                        notificacaoService.notificarCancelamentoPeloUtente(funcionario, utente.getNome(),
+                                marcacao.getData());
                     } else {
                         // Fallback: se foi criada pelo próprio utente (remota) ou não tem criador
                         // definido
@@ -321,17 +312,8 @@ public class MarcacaoService {
                                 .findFirst();
 
                         if (admin.isPresent()) {
-                            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
-                                    .ofPattern("dd/MM/yyyy 'às' HH:mm");
-                            String dataFormatada = marcacao.getData().format(formatter);
-
-                            notificacaoService.criarNotificacao(
-                                    admin.get().getId(),
-                                    "Marcação Cancelada pelo Utente",
-                                    "O utente " + utente.getNome() + " cancelou a marcação de " + dataFormatada,
-                                    pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
-                            log.info("Notificação de cancelamento enviada para secretaria (fallback): {}",
-                                    admin.get().getId());
+                            notificacaoService.notificarCancelamentoPeloUtente(admin.get(), utente.getNome(),
+                                    marcacao.getData());
                         } else {
                             log.warn(
                                     "Marcação {} cancelada pelo utente, mas não foi encontrada secretária ativa para notificar.",
@@ -365,16 +347,8 @@ public class MarcacaoService {
             if (novoEstado == EventoEstado.CANCELADO && marcacao.getMarcacaoSecretaria() != null
                     && marcacao.getMarcacaoSecretaria().getUtente() != null) {
                 try {
-                    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
-                            .ofPattern("dd/MM/yyyy 'às' HH:mm");
-                    String dataFormatada = marcacao.getData().format(formatter);
-
-                    notificacaoService.criarNotificacao(
-                            marcacao.getMarcacaoSecretaria().getUtente().getId(),
-                            "Marcação Cancelada",
-                            "A sua marcação de " + dataFormatada
-                                    + " foi cancelada pelos serviços administrativos.",
-                            pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
+                    notificacaoService.notificarCancelamento(marcacao.getMarcacaoSecretaria().getUtente(),
+                            marcacao.getData());
                 } catch (Exception e) {
                     log.error("Erro ao notificar utente do cancelamento", e);
                 }
@@ -445,7 +419,9 @@ public class MarcacaoService {
         // Apenas secretaria pode notificar documentos inválidos
         validarFuncionarioSecretaria(notificadoPor);
 
-        notificarUtenteMarcacao(marcacao, "DOCUMENTOS_INVALIDOS");
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            notificacaoService.notificarDocumentosInvalidos(marcacao.getMarcacaoSecretaria().getUtente());
+        }
 
         return converterParaDTO(marcacao);
     }
@@ -567,37 +543,6 @@ public class MarcacaoService {
 
     private boolean existeSobreposicao(LocalDateTime dataHora) {
         return marcacaoRepository.existsByDataAndEstadoNot(dataHora, EventoEstado.CANCELADO);
-    }
-
-    private void notificarUtenteMarcacao(Marcacao marcacao, String tipoNotificacao) {
-        String mensagem = "";
-        String assunto = "";
-
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
-                .ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String dataFormatada = marcacao.getData().format(formatter);
-
-        switch (tipoNotificacao) {
-            case "NOVA_MARCACAO" -> {
-                assunto = "Nova Marcação Criada";
-                mensagem = "A sua marcação para %s foi agendada com sucesso.".formatted(dataFormatada);
-            }
-            case "CANCELAMENTO" -> {
-                assunto = "Marcação Cancelada";
-                mensagem = "A sua marcação foi cancelada.";
-            }
-            case "DOCUMENTOS_INVALIDOS" -> {
-                assunto = "Documentos Inválidos";
-                mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria.";
-            }
-        }
-
-        if (marcacao.getMarcacaoSecretaria().getUtente().getEmail() != null) {
-            // emailService.enviarEmail(marcacao.getMarcacaoSecretaria().getUtente().getEmail(),
-            // assunto, mensagem);
-            log.info("Email simulado para {} com assunto: '{}' e mensagem: '{}'",
-                    marcacao.getMarcacaoSecretaria().getUtente().getEmail(), assunto, mensagem);
-        }
     }
 
     public List<java.util.Map<String, Object>> consultarMarcacoesBloqueadas(Long utenteId) {

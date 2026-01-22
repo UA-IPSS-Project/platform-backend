@@ -86,4 +86,64 @@ public class NotificacaoService {
     public void eliminarTodas(Long utilizadorId) {
         notificacaoRepository.deleteByUtilizadorId(utilizadorId);
     }
+
+    // --- Métodos de Negócio (Semantic Methods) ---
+
+    @Transactional
+    public void notificarNovaMarcacao(Utilizador utilizador, java.time.LocalDateTime data, boolean isRemote) {
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                .ofPattern("dd/MM/yyyy 'às' HH:mm");
+        String dataFormatada = data.format(formatter);
+
+        String tipoTexto = isRemote ? "remota " : "";
+        String mensagem = "A sua marcação " + tipoTexto + "para " + dataFormatada + " foi agendada com sucesso.";
+        String assunto = "Nova Marcação Criada";
+
+        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE);
+        logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
+    }
+
+    @Transactional
+    public void notificarCancelamento(Utilizador utilizador, java.time.LocalDateTime data) {
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                .ofPattern("dd/MM/yyyy 'às' HH:mm");
+        String dataFormatada = data.format(formatter);
+
+        String mensagem = "A sua marcação de " + dataFormatada + " foi cancelada pelos serviços administrativos.";
+        String assunto = "Marcação Cancelada";
+
+        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO);
+        logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
+    }
+
+    @Transactional
+    public void notificarCancelamentoPeloUtente(Utilizador destinatario, String nomeUtente,
+            java.time.LocalDateTime data) {
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                .ofPattern("dd/MM/yyyy 'às' HH:mm");
+        String dataFormatada = data.format(formatter);
+
+        String mensagem = "O utente " + nomeUtente + " cancelou a marcação de " + dataFormatada;
+        String assunto = "Marcação Cancelada pelo Utente";
+
+        criarNotificacao(destinatario.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO);
+        // Admin notifications might not need email simulation, but keeping consistent
+    }
+
+    @Transactional
+    public void notificarDocumentosInvalidos(Utilizador utilizador) {
+        String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria.";
+        String assunto = "Documentos Inválidos";
+
+        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE); // Using LEMBRETE as
+                                                                                           // warning/info
+        logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
+    }
+
+    private void logSimulatedEmail(String email, String assunto, String mensagem) {
+        if (email != null) {
+            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class)
+                    .info("Email simulado para {} com assunto: '{}' e mensagem: '{}'", email, assunto, mensagem);
+        }
+    }
 }
