@@ -159,7 +159,7 @@ public class AuthController {
 
         Object principal = authentication.getPrincipal();
         if (principal instanceof Utilizador u) {
-            authService.updatePassword(u.getId(), request.password());
+            authService.updatePassword(u.getId(), request.password(), request.termsAccepted());
             return ResponseEntity.ok().build();
         }
 

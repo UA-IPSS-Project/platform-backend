@@ -10,6 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -72,6 +73,21 @@ public class Utilizador implements UserDetails {
 
     @Column(name = "dataNasc")
     private LocalDate dataNasc;
+
+    /**
+     * Timestamp de aceitação dos termos de uso (RGPD).
+     * NULL = termos não aceites (conta criada pela secretaria ou ainda não ativada).
+     * NOT NULL = termos aceites, conta totalmente ativa.
+     */
+    @Column(name = "terms_accepted_at")
+    private LocalDateTime termsAcceptedAt;
+
+    /**
+     * Timestamp de criação da conta.
+     * Preenchido automaticamente na primeira persistência.
+     */
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
     /**
      * Hash da palavra-passe (ex.: BCrypt -> 60 chars).
@@ -171,5 +187,14 @@ public class Utilizador implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    /**
+     * Lifecycle callback executado antes da primeira persistência.
+     * Define o timestamp de criação.
+     */
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
     }
 }

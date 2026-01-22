@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 
 /**
  * DTO (Java record) para pedido de registo de Utente.
@@ -44,5 +45,13 @@ public record UtenteRegisterRequest(
 
     // Data de nascimento (obrigatória). 
     @NotNull(message = "Data de nascimento é obrigatória")
-    LocalDate dataNasc
+    LocalDate dataNasc,
+
+    /**
+     * Indicador de aceitação dos termos de uso (RGPD).
+     * Obrigatório ser true para completar o registo.
+     */
+    @NotNull(message = "Deve aceitar os termos de uso")
+    @AssertTrue(message = "Deve aceitar os termos de uso para se registar")
+    Boolean termsAccepted
 ) {}

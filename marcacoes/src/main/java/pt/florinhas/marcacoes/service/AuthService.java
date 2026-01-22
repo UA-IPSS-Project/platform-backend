@@ -20,6 +20,8 @@ import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
 
+import java.time.LocalDateTime;
+
 /**
  * Serviço responsável por autenticação e registo de utilizadores.
  *
@@ -153,10 +155,12 @@ public class AuthService {
          * Validações:
          * - Email único.
          * - NIF único.
+         * - Termos de uso aceites (termsAccepted = true).
          *
          * Após criação:
          * - Password é guardada com hash (BCrypt).
          * - Utente é marcado como ativo.
+         * - termsAcceptedAt é definido com timestamp atual.
          * - JWT é gerado automaticamente.
          */
         public AuthResponse registerUtente(UtenteRegisterRequest request) {
@@ -169,6 +173,12 @@ public class AuthService {
                         throw new BadRequestException("NIF já está em uso");
                 }
 
+                // Validação de aceitação de termos já feita por @AssertTrue no DTO,
+                // mas reforçamos aqui por segurança
+                if (!request.termsAccepted()) {
+                        throw new BadRequestException("Deve aceitar os termos de uso para se registar");
+                }
+
                 // Construção da entidade Utente
                 Utente utente = new Utente();
                 utente.setNome(request.nome());
@@ -178,6 +188,9 @@ public class AuthService {
                 utente.setPassHash(passwordEncoder.encode(request.password()));
                 utente.setDataNasc(request.dataNasc());
                 utente.setActivo(true);
+                
+                // Define o timestamp de aceitação dos termos
+                utente.setTermsAcceptedAt(LocalDateTime.now());
 
                 // Persistência
                 utente = utenteRepository.save(utente);
@@ -204,6 +217,8 @@ public class AuthService {
          * Particularidades:
          * - Tipo de funcionário é inferido a partir da string "funcao".
          * - Password é armazenada com hash.
+         * - Termos de uso devem ser aceites (similar a utentes).
+         * - termsAcceptedAt é definido com timestamp atual.
          * - JWT é devolvido após criação.
          */
         public AuthResponse registerFuncionario(FuncionarioRegisterRequest request) {
@@ -214,6 +229,11 @@ public class AuthService {
                 }
                 if (utilizadorRepository.existsByNif(request.nif())) {
                         throw new BadRequestException("NIF já está em uso");
+                }
+
+                // Validação de aceitação de termos
+                if (!request.termsAccepted()) {
+                        throw new BadRequestException("Deve aceitar os termos de uso para se registar");
                 }
 
                 // Construção da entidade Funcionário
@@ -227,6 +247,9 @@ public class AuthService {
                 funcionario.setDataNasc(request.dataNasc());
                 // Por defeito, funcionário criado via app fica pendente
                 funcionario.setActivo(false);
+                
+                // Define o timestamp de aceitação dos termos
+                funcionario.setTermsAcceptedAt(LocalDateTime.now());
 
                 // Persistência
                 funcionario = funcionarioRepository.save(funcionario);
@@ -247,17 +270,47 @@ public class AuthService {
                                 false);
         }
 
-        public void updatePassword(Long userId, String newPassword) {
+        /**
+         * Atualiza a password de um utilizador.
+         * 
+         * Cenários:
+         * 1. Utente criado pela secretaria define password pela primeira vez
+         *    -> Aceita termos (obrigatório) e ativa a conta
+         * 2. Utilizador faz reset de password
+         *    -> Se já tinha termos aceites, mantém; se não, exige aceitação
+         * 
+         * @param userId ID do utilizador
+         * @param newPassword Nova password
+         * @param termsAccepted Aceitação dos termos (obrigatório se ainda não aceites)
+         */
+        public void updatePassword(Long userId, String newPassword, Boolean termsAccepted) {
                 var user = utilizadorRepository.findById(userId)
                                 .orElseThrow(() -> new BadRequestException("Utilizador não encontrado"));
 
+                // Verificar se precisa aceitar termos
+                if (user.getTermsAcceptedAt() == null) {
+                        // Conta criada pela secretaria ou sem termos aceites
+                        if (termsAccepted == null || !termsAccepted) {
+                                throw new BadRequestException("Deve aceitar os termos de uso para ativar a conta");
+                        }
+                        // Define timestamp de aceitação dos termos
+                        user.setTermsAcceptedAt(LocalDateTime.now());
+                }
+
+                // Atualiza a password
                 user.setPassHash(passwordEncoder.encode(newPassword));
 
                 if (user instanceof Utente utente) {
+                        // Ativa a conta do utente (caso ainda não estivesse ativa)
                         utente.setActivo(true);
                         utenteRepository.save(utente);
+                } else if (user instanceof Funcionario funcionario) {
+                        // Para funcionários, define timestamp de termos se fornecido
+                        if (termsAccepted != null && termsAccepted && funcionario.getTermsAcceptedAt() == null) {
+                                funcionario.setTermsAcceptedAt(LocalDateTime.now());
+                        }
+                        funcionarioRepository.save(funcionario);
                 } else {
-                        // Funcionários assumimos que já estão ativos ou lógica diferente
                         utilizadorRepository.save(user);
                 }
         }
