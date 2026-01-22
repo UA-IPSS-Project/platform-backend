@@ -75,7 +75,9 @@ public class UtilizadorService {
      * throws IllegalArgumentException se o NIF for inválido
      */
     public Optional<Utilizador> buscarPorNif(String nif) {
-        if (!validarNIF(nif)) {
+        // Validação apenas de formato para pesquisa (evitar custos externos e bloqueio
+        // de dados existentes)
+        if (nif == null || !nif.matches("\\d{9}")) {
             throw new IllegalArgumentException("NIF inválido (deve ter 9 dígitos numéricos).");
         }
         return utilizadorRepository.findByNif(nif);
@@ -108,9 +110,10 @@ public class UtilizadorService {
      */
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
 
-        // Validação mínima
-        if (!validarNIF(nif)) {
-            throw new RuntimeException("NIF do utente inválido (deve ter 9 dígitos numéricos).");
+        // Validação Apenas de Formato (para aceitar legados válidos mas tecnicamente
+        // incorretos, se já existirem)
+        if (nif == null || !nif.matches("\\d{9}")) {
+            throw new RuntimeException("NIF inválido (deve ter 9 dígitos numéricos).");
         }
 
         // 1. Verificar se JÁ existe algum utilizador com este NIF (Seja Utente ou
@@ -128,6 +131,12 @@ public class UtilizadorService {
         }
 
         // 2. Se não existir, criar novo utente
+
+        // Validação RIGOROSA para NOVOS utilizadores
+        if (!validarNIF(nif)) {
+            throw new RuntimeException("NIF inválido/inexistente. Verifique o número ou utilize um NIF válido.");
+        }
+
         System.out.println("Utente com NIF " + nif + " não encontrado. Criando novo utente...");
 
         // Validar campos obrigatórios
