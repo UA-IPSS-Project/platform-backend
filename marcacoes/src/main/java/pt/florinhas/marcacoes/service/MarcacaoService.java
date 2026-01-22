@@ -56,7 +56,8 @@ public class MarcacaoService {
     private final UtilizadorRepository utilizadorRepository; // Keeping this as it's used
     private final UtilizadorService utilizadorService;
     private final EmailService emailService; // Assuming this is now active
-    private final NotificacaoService notificacaoService; // New injection
+    private final NotificacaoService notificacaoService;
+    private final CalendarioService calendarioService;
 
     // Construtor com injeção de dependências
     public MarcacaoService(
@@ -67,7 +68,8 @@ public class MarcacaoService {
             UtilizadorRepository utilizadorRepository,
             UtilizadorService utilizadorService,
             EmailService emailService,
-            NotificacaoService notificacaoService) {
+            NotificacaoService notificacaoService,
+            CalendarioService calendarioService) {
         this.marcacaoRepository = marcacaoRepository;
         this.marcacaoSecretariaRepository = marcacaoSecretariaRepository;
         this.utenteRepository = utenteRepository;
@@ -76,6 +78,7 @@ public class MarcacaoService {
         this.utilizadorService = utilizadorService;
         this.emailService = emailService;
         this.notificacaoService = notificacaoService;
+        this.calendarioService = calendarioService;
     }
 
     public long contarMarcacoesDiarias(LocalDateTime data) {
@@ -159,11 +162,15 @@ public class MarcacaoService {
 
         // Notificar via sistema
         try {
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                    .ofPattern("dd/MM/yyyy 'às' HH:mm");
+            String dataFormatada = savedMarcacao.getData().format(formatter);
+
             log.info("A tentar criar notificação para utente ID: {}", utente.getId());
             notificacaoService.criarNotificacao(
                     utente.getId(),
                     "Nova Marcação Agendada",
-                    "A sua marcação para " + savedMarcacao.getData() + " foi agendada com sucesso.",
+                    "A sua marcação para " + dataFormatada + " foi agendada com sucesso.",
                     pt.florinhas.marcacoes.domain.NotificacaoTipo.LEMBRETE);
             log.info("Notificação criada com sucesso para utente ID: {}", utente.getId());
         } catch (Exception e) {
@@ -219,16 +226,20 @@ public class MarcacaoService {
 
         // Notificar via sistema
         try {
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                    .ofPattern("dd/MM/yyyy 'às' HH:mm");
+            String dataFormatada = savedMarcacao.getData().format(formatter);
+
             notificacaoService.criarNotificacao(
                     utente.getId(),
                     "Nova Marcação Agendada",
-                    "A sua marcação remota para " + savedMarcacao.getData() + " foi agendada com sucesso.",
+                    "A sua marcação para " + dataFormatada + " foi agendada com sucesso.",
                     pt.florinhas.marcacoes.domain.NotificacaoTipo.LEMBRETE);
         } catch (Exception e) {
             log.error("Erro ao criar notificação de sistema", e);
         }
 
-        log.info("Marcação remota criada com sucesso: {}", savedMarcacao.getId());
+        log.info("Marcação criada com sucesso: {}", savedMarcacao.getId());
 
         return savedMarcacao;
     }
@@ -310,11 +321,14 @@ public class MarcacaoService {
                                 .findFirst();
 
                         if (admin.isPresent()) {
+                            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                                    .ofPattern("dd/MM/yyyy 'às' HH:mm");
+                            String dataFormatada = marcacao.getData().format(formatter);
+
                             notificacaoService.criarNotificacao(
                                     admin.get().getId(),
                                     "Marcação Cancelada pelo Utente",
-                                    "O utente " + utente.getNome() + " cancelou a marcação remota de "
-                                            + marcacao.getData(),
+                                    "O utente " + utente.getNome() + " cancelou a marcação de " + dataFormatada,
                                     pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
                             log.info("Notificação de cancelamento enviada para secretaria (fallback): {}",
                                     admin.get().getId());
@@ -351,10 +365,14 @@ public class MarcacaoService {
             if (novoEstado == EventoEstado.CANCELADO && marcacao.getMarcacaoSecretaria() != null
                     && marcacao.getMarcacaoSecretaria().getUtente() != null) {
                 try {
+                    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                            .ofPattern("dd/MM/yyyy 'às' HH:mm");
+                    String dataFormatada = marcacao.getData().format(formatter);
+
                     notificacaoService.criarNotificacao(
                             marcacao.getMarcacaoSecretaria().getUtente().getId(),
                             "Marcação Cancelada",
-                            "A sua marcação de " + marcacao.getData()
+                            "A sua marcação de " + dataFormatada
                                     + " foi cancelada pelos serviços administrativos.",
                             pt.florinhas.marcacoes.domain.NotificacaoTipo.CANCELAMENTO);
                 } catch (Exception e) {
@@ -453,7 +471,10 @@ public class MarcacaoService {
         if (data.isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Não é possível agendar marcações para datas passadas");
         }
-        // TODO: Lógica de matriz de horários pode ser adicionada aqui
+        if (calendarioService.isSlotBloqueado(data.toLocalDate(), data.toLocalTime())) {
+            throw new RuntimeException(
+                    "O horário selecionado não está disponível (Feriado, Fim de Semana ou Bloqueado).");
+        }
     }
 
     private void validarFuncionarioSecretaria(Funcionario funcionario) {
@@ -552,11 +573,14 @@ public class MarcacaoService {
         String mensagem = "";
         String assunto = "";
 
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+                .ofPattern("dd/MM/yyyy 'às' HH:mm");
+        String dataFormatada = marcacao.getData().format(formatter);
+
         switch (tipoNotificacao) {
             case "NOVA_MARCACAO" -> {
                 assunto = "Nova Marcação Criada";
-                mensagem = "A sua marcação para %s foi agendada com sucesso.".formatted(
-                        marcacao.getData());
+                mensagem = "A sua marcação para %s foi agendada com sucesso.".formatted(dataFormatada);
             }
             case "CANCELAMENTO" -> {
                 assunto = "Marcação Cancelada";

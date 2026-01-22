@@ -49,4 +49,17 @@ public class NotificacaoController {
         notificacaoService.marcarTodasComoLidas(user.getId());
         return ResponseEntity.ok().build();
     }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarNotificacao(@PathVariable Long id) {
+        notificacaoService.eliminarNotificacao(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping
+    public ResponseEntity<Void> eliminarTodas(@AuthenticationPrincipal UserDetails userDetails) {
+        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        notificacaoService.eliminarTodas(user.getId());
+        return ResponseEntity.ok().build();
+    }
 }

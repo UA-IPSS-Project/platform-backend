@@ -73,4 +73,17 @@ public class NotificacaoService {
         notificacoes.forEach(n -> n.setLida(true));
         notificacaoRepository.saveAll(notificacoes);
     }
+
+    @Transactional
+    public void eliminarNotificacao(Long id) {
+        if (!notificacaoRepository.existsById(id)) {
+            throw new NotFoundException("Notificação não encontrada");
+        }
+        notificacaoRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void eliminarTodas(Long utilizadorId) {
+        notificacaoRepository.deleteByUtilizadorId(utilizadorId);
+    }
 }

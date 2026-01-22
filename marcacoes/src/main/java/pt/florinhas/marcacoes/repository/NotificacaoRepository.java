@@ -14,5 +14,9 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, Long> 
     List<Notificacao> findByUtilizadorIdOrderByDataCriacaoDesc(Long utilizadorId);
 
     // Contar notificações não lidas
+    // Contar notificações não lidas
     long countByUtilizadorIdAndLidaFalse(Long utilizadorId);
+
+    // Apagar todas as notificações de um utilizador
+    void deleteByUtilizadorId(Long utilizadorId);
 }
