@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import lombok.RequiredArgsConstructor;
 import pt.florinhas.marcacoes.domain.Utilizador;
@@ -50,13 +51,13 @@ public class NotificacaoController {
         return ResponseEntity.ok().build();
     }
 
-    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarNotificacao(@PathVariable Long id) {
         notificacaoService.eliminarNotificacao(id);
         return ResponseEntity.ok().build();
     }
 
-    @org.springframework.web.bind.annotation.DeleteMapping
+    @DeleteMapping
     public ResponseEntity<Void> eliminarTodas(@AuthenticationPrincipal UserDetails userDetails) {
         Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
         notificacaoService.eliminarTodas(user.getId());

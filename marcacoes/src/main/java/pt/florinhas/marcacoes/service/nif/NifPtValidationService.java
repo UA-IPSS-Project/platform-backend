@@ -45,7 +45,8 @@ public class NifPtValidationService implements NifValidationService {
             if (response != null && response.containsKey("records")) {
                 Object recordsObj = response.get("records");
                 if (recordsObj instanceof Map) {
-                    Map recordsMap = (Map) recordsObj;
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> recordsMap = (Map<String, Object>) recordsObj;
                     // Se o mapa de records contiver a chave do NIF, é válido
                     if (recordsMap.containsKey(nif)) {
                         return true;

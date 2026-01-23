@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.dto;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import lombok.Data;
 import pt.florinhas.marcacoes.domain.NotificacaoTipo;
@@ -14,4 +15,5 @@ public class NotificacaoResponseDTO {
     private boolean lida;
     private LocalDateTime dataCriacao;
     private Long utilizadorId;
+    private Map<String, Object> metadata;
 }

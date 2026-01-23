@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +27,6 @@ import pt.florinhas.marcacoes.repository.MarcacaoSecretariaRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
-import pt.florinhas.marcacoes.service.NotificacaoService;
 
 /**
  * Serviço central de gestão de marcações.
@@ -55,7 +53,7 @@ public class MarcacaoService {
     private final FuncionarioRepository funcionarioRepository; // Keeping this as it's used
     private final UtilizadorRepository utilizadorRepository; // Keeping this as it's used
     private final UtilizadorService utilizadorService;
-    private final EmailService emailService; // Assuming this is now active
+    //private final EmailService emailService; // Assuming this is now active
     private final NotificacaoService notificacaoService;
     private final CalendarioService calendarioService;
 
@@ -76,7 +74,7 @@ public class MarcacaoService {
         this.funcionarioRepository = funcionarioRepository;
         this.utilizadorRepository = utilizadorRepository;
         this.utilizadorService = utilizadorService;
-        this.emailService = emailService;
+        //this.emailService = emailService;
         this.notificacaoService = notificacaoService;
         this.calendarioService = calendarioService;
     }
@@ -160,22 +158,10 @@ public class MarcacaoService {
 
         // Notificar via sistema
         try {
-            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
-                    .ofPattern("dd/MM/yyyy 'às' HH:mm");
-            String dataFormatada = savedMarcacao.getData().format(formatter);
-
-            log.info("A tentar criar notificação para utente ID: {}", utente.getId());
-            notificacaoService.criarNotificacao(
-                    utente.getId(),
-                    "Nova Marcação Agendada",
-                    "A sua marcação para " + dataFormatada + " foi agendada com sucesso.",
-                    pt.florinhas.marcacoes.domain.NotificacaoTipo.LEMBRETE);
-            log.info("Notificação criada com sucesso para utente ID: {}", utente.getId());
+            notificacaoService.notificarNovaMarcacao(utente, savedMarcacao.getId(), savedMarcacao.getData(), false);
         } catch (Exception e) {
             log.error("Erro ao criar notificação de sistema", e);
         }
-
-        log.info("Marcação presencial criada com sucesso: {}", savedMarcacao.getId());
 
         return savedMarcacao;
     }
@@ -222,20 +208,10 @@ public class MarcacaoService {
 
         // Notificar via sistema
         try {
-            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
-                    .ofPattern("dd/MM/yyyy 'às' HH:mm");
-            String dataFormatada = savedMarcacao.getData().format(formatter);
-
-            notificacaoService.criarNotificacao(
-                    utente.getId(),
-                    "Nova Marcação Agendada",
-                    "A sua marcação para " + dataFormatada + " foi agendada com sucesso.",
-                    pt.florinhas.marcacoes.domain.NotificacaoTipo.LEMBRETE);
+            notificacaoService.notificarNovaMarcacao(utente, savedMarcacao.getId(), savedMarcacao.getData(), true);
         } catch (Exception e) {
             log.error("Erro ao criar notificação de sistema", e);
         }
-
-        log.info("Marcação criada com sucesso: {}", savedMarcacao.getId());
 
         return savedMarcacao;
     }

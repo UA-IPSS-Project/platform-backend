@@ -1,6 +1,9 @@
 package pt.florinhas.marcacoes.service;
 
 import java.util.List;
+import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,11 @@ public class NotificacaoService {
 
     @Transactional
     public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo) {
+        return criarNotificacao(utilizadorId, titulo, mensagem, tipo, null);
+    }
+
+    @Transactional
+    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo, Map<String, Object> metadata) {
         Utilizador user = utilizadorRepository.findById(utilizadorId)
                 .orElseThrow(() -> new NotFoundException("Utilizador não encontrado"));
 
@@ -32,6 +40,7 @@ public class NotificacaoService {
         notificacao.setMensagem(mensagem);
         notificacao.setTipo(tipo);
         notificacao.setLida(false);
+        notificacao.setMetadata(metadata);
 
         return notificacaoRepository.save(notificacao);
     }
@@ -51,6 +60,7 @@ public class NotificacaoService {
         dto.setLida(n.isLida());
         dto.setDataCriacao(n.getDataCriacao());
         dto.setUtilizadorId(n.getUtilizador().getId());
+        dto.setMetadata(n.getMetadata());
         return dto;
     }
 
@@ -90,43 +100,60 @@ public class NotificacaoService {
     // --- Métodos de Negócio (Semantic Methods) ---
 
     @Transactional
-    public void notificarNovaMarcacao(Utilizador utilizador, java.time.LocalDateTime data, boolean isRemote) {
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+    public void notificarNovaMarcacao(Utilizador utilizador, Long marcacaoId, LocalDateTime data, boolean isRemote) {
+        DateTimeFormatter formatter = DateTimeFormatter
                 .ofPattern("dd/MM/yyyy 'às' HH:mm");
         String dataFormatada = data.format(formatter);
 
         String tipoTexto = isRemote ? "remota " : "";
         String mensagem = "A sua marcação " + tipoTexto + "para " + dataFormatada + " foi agendada com sucesso.";
-        String assunto = "Nova Marcação Criada";
+        String assunto = "Nova Marcação Agendada";
 
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE);
+        Map<String, Object> metadata = Map.of("appointmentId", marcacaoId.toString());
+        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
         logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
     }
 
     @Transactional
-    public void notificarCancelamento(Utilizador utilizador, java.time.LocalDateTime data) {
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+    public void notificarCancelamento(Utilizador utilizador, LocalDateTime data) {
+        DateTimeFormatter formatter = DateTimeFormatter
                 .ofPattern("dd/MM/yyyy 'às' HH:mm");
         String dataFormatada = data.format(formatter);
 
         String mensagem = "A sua marcação de " + dataFormatada + " foi cancelada pelos serviços administrativos.";
         String assunto = "Marcação Cancelada";
 
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO);
+        // Adicionar metadata com data e hora do slot cancelado
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        Map<String, Object> metadata = Map.of(
+            "cancelledDate", data.format(dateFormatter),
+            "cancelledTime", data.format(timeFormatter)
+        );
+
+        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
         logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
     }
 
     @Transactional
     public void notificarCancelamentoPeloUtente(Utilizador destinatario, String nomeUtente,
-            java.time.LocalDateTime data) {
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter
+            LocalDateTime data) {
+        DateTimeFormatter formatter = DateTimeFormatter
                 .ofPattern("dd/MM/yyyy 'às' HH:mm");
         String dataFormatada = data.format(formatter);
 
         String mensagem = "O utente " + nomeUtente + " cancelou a marcação de " + dataFormatada;
         String assunto = "Marcação Cancelada pelo Utente";
 
-        criarNotificacao(destinatario.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO);
+        // Adicionar metadata com data e hora do slot cancelado
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        Map<String, Object> metadata = Map.of(
+            "cancelledDate", data.format(dateFormatter),
+            "cancelledTime", data.format(timeFormatter)
+        );
+
+        criarNotificacao(destinatario.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
         // Admin notifications might not need email simulation, but keeping consistent
     }
 

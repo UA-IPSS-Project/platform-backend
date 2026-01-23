@@ -1,6 +1,10 @@
 package pt.florinhas.marcacoes.domain;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,6 +48,10 @@ public class Notificacao {
 
     @Column(nullable = false)
     private boolean lida = false;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime dataCriacao;
