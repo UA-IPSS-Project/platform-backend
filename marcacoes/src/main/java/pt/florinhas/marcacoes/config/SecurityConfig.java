@@ -93,8 +93,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         // Permitir OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // TEMPORÁRIO: Voltando a permitir tudo para debug por pedido do user
-                        .anyRequest().permitAll())
+                        // Exigir autenticação para qualquer outro pedido
+                        .anyRequest().authenticated())
 
                 // Define que a aplicação não mantém estado de sessão (JWT-based auth)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

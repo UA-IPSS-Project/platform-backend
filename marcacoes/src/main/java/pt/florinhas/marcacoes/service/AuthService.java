@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Utente;
+import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AuthResponse;
 import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
 import pt.florinhas.marcacoes.dto.LoginFuncionarioRequest;
@@ -73,7 +74,6 @@ public class AuthService {
         public AuthResponse loginFuncionario(LoginFuncionarioRequest request) {
                 log.debug("Login funcionario started for: {}", request.email());
 
-                // Autenticação delegada ao Spring Security
                 authenticationManager.authenticate(
                                 new UsernamePasswordAuthenticationToken(
                                                 request.email(),
@@ -84,7 +84,6 @@ public class AuthService {
                                 .orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
                 log.debug("User found: {}", user.getId());
 
-                // Garantir que é efetivamente um Funcionário e que está ativo
                 if (!(user instanceof Funcionario funcionario)) {
                         throw new BadRequestException("Credenciais inválidas para funcionário");
                 }
@@ -93,21 +92,7 @@ public class AuthService {
                         throw new BadRequestException("Conta pendente de aprovação. Contacte a secretaria.");
                 }
 
-                // Geração de token JWT
-                var jwtToken = jwtService.generateToken(user);
-                long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-
-                return new AuthResponse(
-                                jwtToken,
-                                user.getId(),
-                                user.getEmail(),
-                                user.getNome(),
-                                "FUNCIONARIO",
-                                user.getNif(),
-                                user.getTelefone(),
-                                expiresAt,
-                                true // Funcionário ativo
-                );
+                return generateAuthResponse(user, "FUNCIONARIO", true);
         }
 
         /**
@@ -133,20 +118,7 @@ public class AuthService {
                         throw new BadRequestException("Credenciais inválidas para utente");
                 }
 
-                // Geração de token JWT
-                var jwtToken = jwtService.generateToken(user);
-                long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-
-                return new AuthResponse(
-                                jwtToken,
-                                user.getId(),
-                                user.getEmail(),
-                                user.getNome(),
-                                "UTENTE",
-                                user.getNif(),
-                                user.getTelefone(),
-                                expiresAt,
-                                ((Utente) user).isActivo());
+                return generateAuthResponse(user, "UTENTE", ((Utente) user).isActivo());
         }
 
         /**
@@ -164,17 +136,8 @@ public class AuthService {
          * - JWT é gerado automaticamente.
          */
         public AuthResponse registerUtente(UtenteRegisterRequest request) {
+                checkUserExists(request.email(), request.nif());
 
-                // Verificar unicidade de email e NIF
-                if (utilizadorRepository.existsByEmail(request.email())) {
-                        throw new BadRequestException("Email já está em uso");
-                }
-                if (utilizadorRepository.existsByNif(request.nif())) {
-                        throw new BadRequestException("NIF já está em uso");
-                }
-
-                // Validação de aceitação de termos já feita por @AssertTrue no DTO,
-                // mas reforçamos aqui por segurança
                 if (!request.termsAccepted()) {
                         throw new BadRequestException("Deve aceitar os termos de uso para se registar");
                 }
@@ -188,27 +151,11 @@ public class AuthService {
                 utente.setPassHash(passwordEncoder.encode(request.password()));
                 utente.setDataNasc(request.dataNasc());
                 utente.setActivo(true);
-                
-                // Define o timestamp de aceitação dos termos
                 utente.setTermsAcceptedAt(LocalDateTime.now());
 
-                // Persistência
                 utente = utenteRepository.save(utente);
 
-                // Token JWT pós-registo
-                var jwtToken = jwtService.generateToken(utente);
-                long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-
-                return new AuthResponse(
-                                jwtToken,
-                                utente.getId(),
-                                utente.getEmail(),
-                                utente.getNome(),
-                                "UTENTE",
-                                utente.getNif(),
-                                utente.getTelefone(),
-                                expiresAt,
-                                true);
+                return generateAuthResponse(utente, "UTENTE", true);
         }
 
         /**
@@ -222,16 +169,8 @@ public class AuthService {
          * - JWT é devolvido após criação.
          */
         public AuthResponse registerFuncionario(FuncionarioRegisterRequest request) {
+                checkUserExists(request.email(), request.nif());
 
-                // Verificar unicidade de email e NIF
-                if (utilizadorRepository.existsByEmail(request.email())) {
-                        throw new BadRequestException("Email já está em uso");
-                }
-                if (utilizadorRepository.existsByNif(request.nif())) {
-                        throw new BadRequestException("NIF já está em uso");
-                }
-
-                // Validação de aceitação de termos
                 if (!request.termsAccepted()) {
                         throw new BadRequestException("Deve aceitar os termos de uso para se registar");
                 }
@@ -245,29 +184,12 @@ public class AuthService {
                 funcionario.setPassHash(passwordEncoder.encode(request.password()));
                 funcionario.setTipo(mapFuncaoToTipo(request.funcao()));
                 funcionario.setDataNasc(request.dataNasc());
-                // Por defeito, funcionário criado via app fica pendente
                 funcionario.setActivo(false);
-                
-                // Define o timestamp de aceitação dos termos
                 funcionario.setTermsAcceptedAt(LocalDateTime.now());
 
-                // Persistência
                 funcionario = funcionarioRepository.save(funcionario);
 
-                // Token JWT pós-registo
-                var jwtToken = jwtService.generateToken(funcionario);
-                long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-
-                return new AuthResponse(
-                                jwtToken,
-                                funcionario.getId(),
-                                funcionario.getEmail(),
-                                funcionario.getNome(),
-                                "FUNCIONARIO",
-                                funcionario.getNif(),
-                                funcionario.getTelefone(),
-                                expiresAt,
-                                false);
+                return generateAuthResponse(funcionario, "FUNCIONARIO", false);
         }
 
         /**
@@ -275,12 +197,12 @@ public class AuthService {
          * 
          * Cenários:
          * 1. Utente criado pela secretaria define password pela primeira vez
-         *    -> Aceita termos (obrigatório) e ativa a conta
+         * -> Aceita termos (obrigatório) e ativa a conta
          * 2. Utilizador faz reset de password
-         *    -> Se já tinha termos aceites, mantém; se não, exige aceitação
+         * -> Se já tinha termos aceites, mantém; se não, exige aceitação
          * 
-         * @param userId ID do utilizador
-         * @param newPassword Nova password
+         * @param userId        ID do utilizador
+         * @param newPassword   Nova password
          * @param termsAccepted Aceitação dos termos (obrigatório se ainda não aceites)
          */
         public void updatePassword(Long userId, String newPassword, Boolean termsAccepted) {
@@ -322,6 +244,32 @@ public class AuthService {
          * Aceita variantes com/sem acentos.
          * Valor default: SECRETARIA.
          */
+
+        private void checkUserExists(String email, String nif) {
+                if (utilizadorRepository.existsByEmail(email)) {
+                        throw new BadRequestException("Email já está em uso");
+                }
+                if (utilizadorRepository.existsByNif(nif)) {
+                        throw new BadRequestException("NIF já está em uso");
+                }
+        }
+
+        private AuthResponse generateAuthResponse(Utilizador user, String role, boolean isActive) {
+                var jwtToken = jwtService.generateToken(user);
+                long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
+
+                return new AuthResponse(
+                                jwtToken,
+                                user.getId(),
+                                user.getEmail(),
+                                user.getNome(),
+                                role,
+                                user.getNif(),
+                                user.getTelefone(),
+                                expiresAt,
+                                isActive);
+        }
+
         private FuncionarioTipo mapFuncaoToTipo(String funcao) {
                 return switch (funcao.toUpperCase()) {
                         case "SECRETARIA", "SECRETÁRIA" -> FuncionarioTipo.SECRETARIA;

@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
+import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.service.UtilizadorService;
+import jakarta.validation.Valid;
 
 /**
  * Controller responsável por operações de consulta e atualização de
@@ -32,9 +34,10 @@ import pt.florinhas.marcacoes.service.UtilizadorService;
  * valida,
  * delega e adapta respostas HTTP/DTO.
  */
+import org.springframework.security.access.prepost.PreAuthorize;
+
 @RestController
 @RequestMapping("/api/utilizadores")
-
 public class UtilizadorController {
 
     /**
@@ -113,6 +116,7 @@ public class UtilizadorController {
      * Lista todos os funcionários (ativos e inativos).
      */
     @GetMapping("/funcionarios")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'FUNCIONARIO')")
     public ResponseEntity<java.util.List<UtilizadorResponseDTO>> listarTodosFuncionarios() {
         return ResponseEntity.ok(utilizadorService.listarTodosFuncionarios());
     }
@@ -121,6 +125,7 @@ public class UtilizadorController {
      * Lista os funcionários pendentes de aprovação.
      */
     @GetMapping("/funcionarios/pendentes")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<java.util.List<UtilizadorResponseDTO>> listarFuncionariosPendentes() {
         return ResponseEntity.ok(utilizadorService.listarFuncionariosPendentes());
     }
@@ -129,8 +134,58 @@ public class UtilizadorController {
      * Aprova um funcionário pendente.
      */
     @PutMapping("/{id}/aprovar")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> aprovarFuncionario(@PathVariable Long id) {
         utilizadorService.aprovarFuncionario(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /*
+     * =========================================================
+     * ENDPOINTS DE GESTÃO PELA SECRETARIA (Novos)
+     * =========================================================
+     */
+
+    /**
+     * Pesquisa utilizador por NIF para recuperação de conta.
+     * Devolve DTO com dados seguros para confirmação de identidade.
+     */
+    @GetMapping("/recovery/search/{nif}")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<UtilizadorResponseDTO> pesquisarPorNifParaRecuperacao(@PathVariable String nif) {
+        // Reutiliza buscarPorNif do serviço, que valida formato e existência
+        // Se serviço lançar exceção, deve ser tratado globalmente ou aqui
+        try {
+            Utilizador utilizador = utilizadorService.buscarPorNif(nif)
+                    .orElseThrow(
+                            () -> new pt.florinhas.marcacoes.exception.NotFoundException("Utilizador não encontrado"));
+            return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
+        } catch (Exception e) {
+            // Em produção, evitar detonação de enumerção de utilizadores se for público.
+            // Aqui é ferramenta interna da secretaria.
+            throw new pt.florinhas.marcacoes.exception.NotFoundException("Utilizador não encontrado");
+        }
+    }
+
+    /**
+     * Cria conta (Utente/Funcionario) pela Secretaria.
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/create-by-secretary")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<UtilizadorResponseDTO> criarPelaSecretaria(
+            @Valid @RequestBody pt.florinhas.marcacoes.dto.CreateUserRequestDTO request) {
+        Utilizador criado = utilizadorService.criarUtilizadorPelaSecretaria(request);
+        return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(criado));
+    }
+
+    /**
+     * Recupera conta (Reset password + Atualização de dados) pela Secretaria.
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/recover")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> recuperarConta(
+            @Valid @RequestBody pt.florinhas.marcacoes.dto.RecoverAccountDTO request) {
+        utilizadorService.recuperarConta(request);
         return ResponseEntity.ok().build();
     }
 }

@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.security.SecureRandom;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @Transactional
+@Slf4j
 public class UtilizadorService {
 
     @Autowired
@@ -142,7 +144,7 @@ public class UtilizadorService {
             throw new RuntimeException("NIF inválido/inexistente. Verifique o número ou utilize um NIF válido.");
         }
 
-        System.out.println("Utente com NIF " + nif + " não encontrado. Criando novo utente...");
+        log.info("Utente com NIF {} não encontrado. Criando novo utente...", nif);
 
         // Validar campos obrigatórios
         validarCampoObrigatorio(nome, "Nome do utente é obrigatório para criar novo registo");
@@ -168,12 +170,12 @@ public class UtilizadorService {
         novoUtente.setPassHash(passwordEncoder.encode(passwordInicial));
         novoUtente.setDataNasc(java.time.LocalDate.now());
 
-        System.out.println("Novo utente criado. Enviando password para: " + email);
+        log.info("Novo utente criado. Enviando password para: {}", email);
 
         try {
             emailService.sendPassword(email, passwordInicial);
         } catch (Exception e) {
-            System.err.println("Erro ao enviar email: " + e.getMessage());
+            log.error("Erro ao enviar email: {}", e.getMessage());
             // Não falhamos a criação, mas logamos o erro. O utilizador terá de pedir
             // recuperação ou contactar admin.
         }
@@ -338,5 +340,143 @@ public class UtilizadorService {
 
         funcionario.setActivo(true);
         funcionarioRepository.save(funcionario);
+    }
+
+    /*
+     * =========================================================
+     * GESTÃO PELA SECRETARIA (Novos Métodos)
+     * =========================================================
+     */
+
+    /**
+     * Cria um utilizador (Utente ou Funcionário) pela secretaria.
+     * Gera password automática e envia por email.
+     * A conta fica INATIVA até o utilizador fazer login (ou definir password).
+     */
+    public Utilizador criarUtilizadorPelaSecretaria(pt.florinhas.marcacoes.dto.CreateUserRequestDTO request) {
+        // Validação básica
+        if (!validarNIF(request.getNif())) {
+            throw new RuntimeException("NIF inválido.");
+        }
+        if (utilizadorRepository.existsByNif(request.getNif())) {
+            throw new RuntimeException("Já existe um utilizador com este NIF.");
+        }
+        if (utilizadorRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Já existe um utilizador com este Email.");
+        }
+
+        Utilizador novoUtilizador;
+
+        if (request.isEmployee()) {
+            Funcionario f = new Funcionario();
+            try {
+                // Tenta converter a string role para Enum
+                // Mapeamento simples ou direto
+                String roleStr = request.getRole();
+                // Normalizar entrada comum do frontend se necessário, ou assumir match direto
+                // Frontend envia: "Secretaria", "Balneário Social", etc.
+                // FuncionarioTipo: SECRETARIA, BALNEARIO, OUTRO, ESCOLA, INTERNOS
+
+                pt.florinhas.marcacoes.domain.FuncionarioTipo tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.OUTRO;
+                if (roleStr != null) {
+                    if (roleStr.equalsIgnoreCase("Secretaria"))
+                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.SECRETARIA;
+                    else if (roleStr.toUpperCase().contains("BALNE"))
+                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.BALNEARIO;
+                    else if (roleStr.equalsIgnoreCase("Escola"))
+                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.ESCOLA;
+                    else if (roleStr.toUpperCase().contains("INTERNOS"))
+                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.INTERNOS;
+                }
+                f.setTipo(tipo);
+            } catch (Exception e) {
+                f.setTipo(pt.florinhas.marcacoes.domain.FuncionarioTipo.OUTRO);
+            }
+            f.setActivo(false); // Inativo à espera de login/reset
+            novoUtilizador = f;
+        } else {
+            Utente u = new Utente();
+            u.setActivo(false); // Inativo à espera de login/reset
+            novoUtilizador = u;
+        }
+
+        novoUtilizador.setNif(request.getNif());
+        novoUtilizador.setNome(request.getName());
+        novoUtilizador.setTelefone(request.getContact());
+        novoUtilizador.setEmail(request.getEmail());
+
+        // Data de Nascimento
+        try {
+            LocalDate dataNasc = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.ISO_LOCAL_DATE);
+            novoUtilizador.setDataNasc(dataNasc);
+        } catch (Exception e) {
+            novoUtilizador.setDataNasc(LocalDate.now()); // Fallback ou erro? Melhor erro se for obrigatório
+        }
+
+        // Gerar Password
+        String passwordInicial = gerarPasswordSegura();
+        novoUtilizador.setPassHash(passwordEncoder.encode(passwordInicial));
+
+        Utilizador salvo = utilizadorRepository.save(novoUtilizador);
+
+        // Enviar Email
+        try {
+            emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
+        } catch (Exception e) {
+            log.error("Erro ao enviar email de criação: {}", e.getMessage());
+            // Não abortar transação, permitir retry de recuperação depois
+        }
+
+        return salvo;
+    }
+
+    /**
+     * Inicia o processo de recuperação de conta pela secretaria.
+     * Atualiza contactos se fornecidos e reenvia password (reset).
+     */
+    public void recuperarConta(pt.florinhas.marcacoes.dto.RecoverAccountDTO request) {
+        Utilizador utilizador = utilizadorRepository.findByNif(request.getNif())
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + request.getNif()));
+
+        // Atualizar Email/Telefone se fornecidos e diferentes
+        boolean changed = false;
+
+        if (request.getUpdatedEmail() != null && !request.getUpdatedEmail().isEmpty()
+                && !request.getUpdatedEmail().equals(utilizador.getEmail())) {
+
+            // Validar unicidade se mudou
+            if (utilizadorRepository.existsByEmail(request.getUpdatedEmail())) {
+                throw new RuntimeException("O novo email já está associado a outra conta.");
+            }
+            utilizador.setEmail(request.getUpdatedEmail());
+            changed = true;
+        }
+
+        if (request.getUpdatedContact() != null && !request.getUpdatedContact().isEmpty()
+                && !request.getUpdatedContact().equals(utilizador.getTelefone())) {
+            utilizador.setTelefone(request.getUpdatedContact());
+            changed = true;
+        }
+
+        // Reset Status e Password
+        if (utilizador instanceof Utente) {
+            ((Utente) utilizador).setActivo(false);
+        } else if (utilizador instanceof Funcionario) {
+            ((Funcionario) utilizador).setActivo(false);
+        }
+        // User request: "a conta passa a Inativa de novo"
+
+        String novaPassword = gerarPasswordSegura();
+        utilizador.setPassHash(passwordEncoder.encode(novaPassword));
+
+        utilizadorRepository.save(utilizador);
+
+        // Enviar Email
+        try {
+            // Usar o email (potencialmente novo)
+            emailService.sendPassword(utilizador.getEmail(), novaPassword);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao enviar email de recuperação: " + e.getMessage());
+        }
     }
 }

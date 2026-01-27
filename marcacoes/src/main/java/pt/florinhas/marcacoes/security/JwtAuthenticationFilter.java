@@ -17,6 +17,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Filtro de autenticação JWT executado uma vez por request.
  *
@@ -29,6 +31,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * Extende OncePerRequestFilter para garantir execução única por request.
  */
 @Component
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -60,7 +63,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        
+
         /**
          * Regra de bypass:
          * - Permite acesso sem JWT aos endpoints de login e registo.
@@ -78,7 +81,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Leitura do header Authorization
         final String authHeader = request.getHeader("Authorization");
-        System.out.println("DEBUG JWT: Header present? " + (authHeader != null));
+        log.trace("DEBUG JWT: Header present? {}", (authHeader != null));
         final String jwt;
         final String userEmail;
 
@@ -96,7 +99,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Extrai o username (email ou NIF) embutido no token
         userEmail = jwtService.extractUsername(jwt);
-        System.out.println("DEBUG JWT: Extracted UserEmail: " + userEmail);
+        log.trace("DEBUG JWT: Extracted UserEmail: {}", userEmail);
 
         /**
          * Apenas tenta autenticar se:
@@ -104,7 +107,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
          * 2. O utilizador ainda não está autenticado no contexto
          */
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("DEBUG JWT: Context Auth: " + auth);
+        log.trace("DEBUG JWT: Context Auth: {}", auth);
 
         // Verifica se o contexto está vazio OU se é uma autenticação anónima
         boolean isAnonymous = auth != null && auth.getPrincipal().equals("anonymousUser");
@@ -113,23 +116,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Carrega os detalhes do utilizador a partir do repositório
             UserDetails userDetails = null;
             try {
-                System.out.println("DEBUG JWT: Calling loadUserByUsername with " + userEmail);
+                log.trace("DEBUG JWT: Calling loadUserByUsername with {}", userEmail);
                 if (this.userDetailsService == null)
-                    System.out.println("DEBUG JWT: userDetailsService is NULL");
+                    log.error("DEBUG JWT: userDetailsService is NULL");
                 userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                System.out.println("DEBUG JWT: Loaded UserDetails for: " + userDetails.getUsername());
+                log.trace("DEBUG JWT: Loaded UserDetails for: {}", userDetails.getUsername());
             } catch (Throwable e) {
-                System.out.println("DEBUG JWT: Error loading user (Throwable): " + e.getMessage());
-                e.printStackTrace();
+                log.error("DEBUG JWT: Error loading user", e);
             }
 
             if (userDetails != null) {
                 boolean isValid = jwtService.isTokenValid(jwt, userDetails);
-                System.out.println("DEBUG JWT: Token valid? " + isValid);
+                log.trace("DEBUG JWT: Token valid? {}", isValid);
 
                 // Valida o token contra o utilizador (assinatura, expiração, claims)
                 if (isValid) {
-                    System.out.println("DEBUG JWT: Token is VALID for user " + userDetails.getUsername());
+                    log.debug("DEBUG JWT: Token is VALID for user {}", userDetails.getUsername());
                     // Cria o token de autenticação do Spring Security
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
