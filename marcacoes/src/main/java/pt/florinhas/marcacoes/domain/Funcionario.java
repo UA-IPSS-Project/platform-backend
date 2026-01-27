@@ -48,4 +48,15 @@ public class Funcionario extends Utilizador {
      * true = Ativo.
      */
     private boolean activo;
+
+    @Override
+    public java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> getAuthorities() {
+        if (this.tipo == FuncionarioTipo.SECRETARIA) {
+            return java.util.List.of(
+                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SECRETARIA"),
+                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+        }
+        return java.util.List
+                .of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+    }
 }

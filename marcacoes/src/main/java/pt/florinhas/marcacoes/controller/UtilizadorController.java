@@ -155,16 +155,10 @@ public class UtilizadorController {
     public ResponseEntity<UtilizadorResponseDTO> pesquisarPorNifParaRecuperacao(@PathVariable String nif) {
         // Reutiliza buscarPorNif do serviço, que valida formato e existência
         // Se serviço lançar exceção, deve ser tratado globalmente ou aqui
-        try {
-            Utilizador utilizador = utilizadorService.buscarPorNif(nif)
-                    .orElseThrow(
-                            () -> new pt.florinhas.marcacoes.exception.NotFoundException("Utilizador não encontrado"));
-            return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
-        } catch (Exception e) {
-            // Em produção, evitar detonação de enumerção de utilizadores se for público.
-            // Aqui é ferramenta interna da secretaria.
-            throw new pt.florinhas.marcacoes.exception.NotFoundException("Utilizador não encontrado");
-        }
+        Utilizador utilizador = utilizadorService.buscarPorNif(nif)
+                .orElseThrow(
+                        () -> new pt.florinhas.marcacoes.exception.NotFoundException("Utilizador não encontrado"));
+        return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
 
     /**

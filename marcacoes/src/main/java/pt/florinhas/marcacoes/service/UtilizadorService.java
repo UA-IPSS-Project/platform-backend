@@ -82,12 +82,19 @@ public class UtilizadorService {
      * throws IllegalArgumentException se o NIF for inválido
      */
     public Optional<Utilizador> buscarPorNif(String nif) {
-        // Validação apenas de formato para pesquisa (evitar custos externos e bloqueio
-        // de dados existentes)
-        if (nif == null || !nif.matches("\\d{9}")) {
-            throw new IllegalArgumentException("NIF inválido (deve ter 9 dígitos numéricos).");
+        if (nif == null || nif.trim().isEmpty()) {
+            return Optional.empty();
         }
-        return utilizadorRepository.findByNif(nif);
+        String searchNif = nif.trim();
+        log.info("Searching for user with NIF: '{}'", searchNif);
+
+        Optional<Utilizador> result = utilizadorRepository.findByNif(searchNif);
+        if (result.isPresent()) {
+            log.trace("Found user: ID={}", result.get().getId());
+        } else {
+            log.debug("User with NIF '{}' NOT FOUND in database.", searchNif);
+        }
+        return result;
     }
 
     /*
