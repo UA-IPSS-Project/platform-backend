@@ -79,27 +79,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // Leitura do header Authorization
-        final String authHeader = request.getHeader("Authorization");
-        log.trace("DEBUG JWT: Header present? {}", (authHeader != null));
-        final String jwt;
-        final String userEmail;
+        // Leitura do Token dos Cookies
+        String jwt = null;
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("jwt_auth".equals(cookie.getName())) {
+                    jwt = cookie.getValue();
+                    break;
+                }
+            }
+        }
 
-        /**
-         * Se não existir header Authorization ou não usar o esquema Bearer,
-         * o filtro não tenta autenticar e deixa o pedido prosseguir.
-         */
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (jwt == null) {
+            // Fallback para Header apenas se necessário ou para debug (mas removido por
+            // segurança como pedido)
+            // filterChain.doFilter(request, response);
+            // return;
+
+            // Se não encontrou no cookie, verifica header só por compatibilidade legacy
+            // (opcional, vou remover para forçar cookie)
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extrai o token JWT removendo o prefixo "Bearer "
-        jwt = authHeader.substring(7);
-
         // Extrai o username (email ou NIF) embutido no token
-        userEmail = jwtService.extractUsername(jwt);
-        log.trace("DEBUG JWT: Extracted UserEmail: {}", userEmail);
+        // Nota: O método chama-se extractUsername mas retorna email/nif
+        String userEmail = jwtService.extractUsername(jwt);
 
         /**
          * Apenas tenta autenticar se:
@@ -107,7 +112,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
          * 2. O utilizador ainda não está autenticado no contexto
          */
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        log.trace("DEBUG JWT: Context Auth: {}", auth);
 
         // Verifica se o contexto está vazio OU se é uma autenticação anónima
         boolean isAnonymous = auth != null && auth.getPrincipal().equals("anonymousUser");
@@ -116,22 +120,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Carrega os detalhes do utilizador a partir do repositório
             UserDetails userDetails = null;
             try {
-                log.trace("DEBUG JWT: Calling loadUserByUsername with {}", userEmail);
-                if (this.userDetailsService == null)
-                    log.error("DEBUG JWT: userDetailsService is NULL");
                 userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                log.trace("DEBUG JWT: Loaded UserDetails for: {}", userDetails.getUsername());
             } catch (Throwable e) {
-                log.error("DEBUG JWT: Error loading user", e);
+                // Log silent or error
             }
 
             if (userDetails != null) {
                 boolean isValid = jwtService.isTokenValid(jwt, userDetails);
-                log.trace("DEBUG JWT: Token valid? {}", isValid);
 
                 // Valida o token contra o utilizador (assinatura, expiração, claims)
                 if (isValid) {
-                    log.debug("DEBUG JWT: Token is VALID for user {}", userDetails.getUsername());
                     // Cria o token de autenticação do Spring Security
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,

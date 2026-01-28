@@ -49,90 +49,117 @@ public class AuthController {
     }
 
     /**
+     * Helper para criar o cookie HTTP Only com o JWT.
+     */
+    private org.springframework.http.ResponseCookie createJwtCookie(String token) {
+        return org.springframework.http.ResponseCookie.from("jwt_auth", token)
+                .httpOnly(true)
+                .secure(false) // Em produção (HTTPS) deve ser true
+                .path("/")
+                .maxAge(24 * 60 * 60) // 24 horas
+                .sameSite("Lax") // 'Strict' pode causar problemas em dev com portas diferentes
+                .build();
+    }
+
+    /**
      * Endpoint de login para funcionários.
-     *
-     * Recebe as credenciais do funcionário, valida-as e devolve
-     * um token de autenticação (ex.: JWT) juntamente com dados relevantes.
-     *
-     * param request DTO com as credenciais do funcionário
-     * return AuthResponse com token e informação do utilizador
      */
     @PostMapping("/login/funcionario")
     public ResponseEntity<AuthResponse> loginFuncionario(
-            @Valid @RequestBody LoginFuncionarioRequest request) {
+            @Valid @RequestBody LoginFuncionarioRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
 
-        return ResponseEntity.ok(authService.loginFuncionario(request));
+        var authResult = authService.loginFuncionario(request);
+
+        // Define o cookie na resposta
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
+                createJwtCookie(authResult.token()).toString());
+
+        return ResponseEntity.ok(authResult.response());
     }
 
     /**
      * Endpoint de login para utentes.
-     *
-     * Recebe as credenciais do utente, valida-as e devolve
-     * um token de autenticação.
-     *
-     * param request DTO com as credenciais do utente
-     * return AuthResponse com token e informação do utilizador
      */
     @PostMapping("/login/utente")
     public ResponseEntity<AuthResponse> loginUtente(
-            @Valid @RequestBody LoginUtenteRequest request) {
+            @Valid @RequestBody LoginUtenteRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
 
-        return ResponseEntity.ok(authService.loginUtente(request));
+        var authResult = authService.loginUtente(request);
+
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
+                createJwtCookie(authResult.token()).toString());
+
+        return ResponseEntity.ok(authResult.response());
     }
 
     /**
      * Endpoint de registo de um novo utente.
-     * Cria um novo utilizador do tipo utente e devolve automaticamente um token de
-     * autenticação após o registo.
-     * param request DTO com os dados de registo do utente
-     * return AuthResponse com token e informação do utilizador criado
      */
     @PostMapping("/register/utente")
     public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody UtenteRegisterRequest request) {
+            @Valid @RequestBody UtenteRegisterRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
 
-        return ResponseEntity.ok(authService.registerUtente(request));
+        var authResult = authService.registerUtente(request);
+
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
+                createJwtCookie(authResult.token()).toString());
+
+        return ResponseEntity.ok(authResult.response());
     }
 
     /**
      * Endpoint de registo de um novo funcionário.
-     * Cria um novo utilizador do tipo funcionário e devolve um token de
-     * autenticação associado.
-     * param request DTO com os dados de registo do funcionário
-     * return AuthResponse com token e informação do utilizador criado
      */
     @PostMapping("/register/funcionario")
     public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody FuncionarioRegisterRequest request) {
+            @Valid @RequestBody FuncionarioRegisterRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
 
-        return ResponseEntity.ok(authService.registerFuncionario(request));
+        var authResult = authService.registerFuncionario(request);
+
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
+                createJwtCookie(authResult.token()).toString());
+
+        return ResponseEntity.ok(authResult.response());
+    }
+
+    /**
+     * Endpoint de Logout.
+     * Limpa o cookie de autenticação.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletResponse response) {
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt_auth", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0) // Expira imediatamente
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
+        return ResponseEntity.ok().build();
     }
 
     /**
      * Endpoint que devolve a informação do utilizador atualmente autenticado.
-     * Utiliza o objeto Authentication injetado pelo Spring Security para obter o
-     * utilizador associado ao token JWT enviado no pedido.
-     * param authentication contexto de autenticação atual
-     * return UserResponse com os dados do utilizador autenticado, ou 401 caso não
-     * exista autenticação válida
      */
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(
             org.springframework.security.core.Authentication authentication) {
 
-        // Caso não exista autenticação ou esta não seja válida
+        // Mantém a lógica existente
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity
                     .status(org.springframework.http.HttpStatus.UNAUTHORIZED)
                     .build();
         }
-        // Obtém o principal associado à autenticação
         Object principal = authentication.getPrincipal();
-        // Verifica se o principal corresponde a um utilizador da aplicação
         if (principal instanceof Utilizador u) {
-            // Determina o role com base no tipo concreto do utilizador
             String role = u instanceof Funcionario ? "FUNCIONARIO" : "UTENTE";
-            // Constrói a resposta com os dados públicos do utilizador
             UserResponse resp = new UserResponse(
                     u.getId(),
                     u.getEmail(),
@@ -143,7 +170,6 @@ public class AuthController {
 
             return ResponseEntity.ok(resp);
         }
-        // Caso o principal não seja reconhecido
         return ResponseEntity
                 .status(org.springframework.http.HttpStatus.UNAUTHORIZED)
                 .build();

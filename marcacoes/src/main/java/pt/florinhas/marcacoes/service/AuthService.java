@@ -71,7 +71,7 @@ public class AuthService {
          * 3) Gera token JWT.
          * 4) Devolve AuthResponse com dados do utilizador e expiração.
          */
-        public AuthResponse loginFuncionario(LoginFuncionarioRequest request) {
+        public AuthResult loginFuncionario(LoginFuncionarioRequest request) {
                 log.debug("Login funcionario started for: {}", request.email());
 
                 // 1. Carregar utilizador primeiro para verificar estado "Ativo"
@@ -111,7 +111,7 @@ public class AuthService {
          * Diferença principal:
          * - Username usado na autenticação é o NIF.
          */
-        public AuthResponse loginUtente(LoginUtenteRequest request) {
+        public AuthResult loginUtente(LoginUtenteRequest request) {
 
                 // Autenticação via NIF + password
                 authenticationManager.authenticate(
@@ -145,7 +145,7 @@ public class AuthService {
          * - termsAcceptedAt é definido com timestamp atual.
          * - JWT é gerado automaticamente.
          */
-        public AuthResponse registerUtente(UtenteRegisterRequest request) {
+        public AuthResult registerUtente(UtenteRegisterRequest request) {
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -178,7 +178,7 @@ public class AuthService {
          * - termsAcceptedAt é definido com timestamp atual.
          * - JWT é devolvido após criação.
          */
-        public AuthResponse registerFuncionario(FuncionarioRegisterRequest request) {
+        public AuthResult registerFuncionario(FuncionarioRegisterRequest request) {
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -264,12 +264,11 @@ public class AuthService {
                 }
         }
 
-        private AuthResponse generateAuthResponse(Utilizador user, String role, boolean isActive) {
+        public AuthResult generateAuthResponse(Utilizador user, String role, boolean isActive) {
                 var jwtToken = jwtService.generateToken(user);
                 long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
 
-                return new AuthResponse(
-                                jwtToken,
+                AuthResponse response = new AuthResponse(
                                 user.getId(),
                                 user.getEmail(),
                                 user.getNome(),
@@ -278,6 +277,11 @@ public class AuthService {
                                 user.getTelefone(),
                                 expiresAt,
                                 isActive);
+
+                return new AuthResult(jwtToken, response);
+        }
+
+        public record AuthResult(String token, AuthResponse response) {
         }
 
         private FuncionarioTipo mapFuncaoToTipo(String funcao) {
