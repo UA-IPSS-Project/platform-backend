@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
-import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 import jakarta.validation.Valid;
 

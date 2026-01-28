@@ -103,9 +103,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
         ex.printStackTrace(); // Log no servidor para diagnóstico
         Map<String, String> error = new HashMap<>();
-        error.put("message", "Ocorreu um erro interno no servidor. Por favor, tente novamente mais tarde.");
-        // Em desenvolvimento, pode enviar ex.getMessage(); em produção, evitar expor
-        // detalhes.
+        // error.put("message", "Ocorreu um erro interno no servidor. Por favor, tente
+        // novamente mais tarde.");
+        // vv para desenvolvimento
+        error.put("message", ex.getMessage() != null ? ex.getMessage() : "Ocorreu um erro interno no servidor.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

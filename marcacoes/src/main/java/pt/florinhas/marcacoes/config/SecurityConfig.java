@@ -156,10 +156,7 @@ public class SecurityConfig {
      */
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-
-        // Serviço responsável por obter utilizadores (ex.: da base de dados)
-        authProvider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
 
         // Encoder usado para comparar passwords
         authProvider.setPasswordEncoder(passwordEncoder());
