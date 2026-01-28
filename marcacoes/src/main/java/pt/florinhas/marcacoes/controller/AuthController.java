@@ -56,7 +56,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(false) // Em produção (HTTPS) deve ser true
                 .path("/")
-                .maxAge(24 * 60 * 60) // 24 horas
+                .maxAge(-1) // Cookie de Sessão (apagado ao fechar browser)
                 .sameSite("Lax") // 'Strict' pode causar problemas em dev com portas diferentes
                 .build();
     }
