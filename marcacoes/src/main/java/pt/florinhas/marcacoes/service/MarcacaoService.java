@@ -27,6 +27,12 @@ import pt.florinhas.marcacoes.repository.MarcacaoSecretariaRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.marcacoes.exception.BusinessRuleException;
+import pt.florinhas.marcacoes.exception.ConflictException;
+import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Serviço central de gestão de marcações.
@@ -53,7 +59,7 @@ public class MarcacaoService {
     private final FuncionarioRepository funcionarioRepository; // Keeping this as it's used
     private final UtilizadorRepository utilizadorRepository; // Keeping this as it's used
     private final UtilizadorService utilizadorService;
-    //private final EmailService emailService; // Assuming this is now active
+    // private final EmailService emailService; // Assuming this is now active
     private final NotificacaoService notificacaoService;
     private final CalendarioService calendarioService;
 
@@ -74,7 +80,7 @@ public class MarcacaoService {
         this.funcionarioRepository = funcionarioRepository;
         this.utilizadorRepository = utilizadorRepository;
         this.utilizadorService = utilizadorService;
-        //this.emailService = emailService;
+        // this.emailService = emailService;
         this.notificacaoService = notificacaoService;
         this.calendarioService = calendarioService;
     }
@@ -94,14 +100,14 @@ public class MarcacaoService {
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
         // Validar campos obrigatórios
         if (request.getUtenteNif() == null || request.getUtenteNif().trim().isEmpty()) {
-            throw new RuntimeException("NIF do utente é obrigatório");
+            throw new BusinessRuleException("NIF do utente é obrigatório");
         }
 
         validarDisponibilidade(request.getData());
 
         // Obter funcionário que está a criar
         Funcionario criadoPor = funcionarioRepository.findById(request.getFuncionarioId())
-                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Funcionário não encontrado"));
 
         validarFuncionarioSecretaria(criadoPor); // Apenas secretaria pode criar
 
@@ -115,61 +121,35 @@ public class MarcacaoService {
         // Verificar se os dados do request coincidem com os dados do utente existente
         if (request.getUtenteNome() != null && !request.getUtenteNome().trim().isEmpty()
                 && !utente.getNome().equalsIgnoreCase(request.getUtenteNome())) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "O nome fornecido não coincide com o utente registado com o NIF " + request.getUtenteNif());
         }
 
         if (request.getUtenteEmail() != null && !request.getUtenteEmail().trim().isEmpty()
                 && !utente.getEmail().equalsIgnoreCase(request.getUtenteEmail())) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "O email fornecido não coincide com o utente registado com o NIF " + request.getUtenteNif());
         }
 
         if (request.getUtenteTelefone() != null && !request.getUtenteTelefone().trim().isEmpty()
                 && !utente.getTelefone().equals(request.getUtenteTelefone())) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "O telefone fornecido não coincide com o utente registado com o NIF " + request.getUtenteNif());
         }
 
-        // Criar Marcacao
-        Marcacao marcacao = new Marcacao();
-        marcacao.setData(request.getData());
-        marcacao.setEstado(EventoEstado.AGENDADO);
-        marcacao.setCriadoPor(criadoPor);
-
-        Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
-
-        // Criar MarcacaoSecretaria com OneToOne
-        MarcacaoSecretaria marcacaoSecretaria = new MarcacaoSecretaria();
-        marcacaoSecretaria.setMarcacao(savedMarcacao);
-        marcacaoSecretaria.setAssunto(request.getAssunto());
-        marcacaoSecretaria.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
-        marcacaoSecretaria.setUtente(utente);
-
-        // Se tiver descrição, adicionar
-        if (request.getDescricao() != null && !request.getDescricao().trim().isEmpty()) {
-            marcacaoSecretaria.setDescricao(request.getDescricao());
-        }
-
-        MarcacaoSecretaria savedMarcacaoSecretaria = marcacaoSecretariaRepository.save(marcacaoSecretaria);
-
-        // Estabelecer relação bidirecional
-        savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
-
-        // Notificar via sistema
-        try {
-            notificacaoService.notificarNovaMarcacao(utente, savedMarcacao.getId(), savedMarcacao.getData(), false);
-        } catch (Exception e) {
-            log.error("Erro ao criar notificação de sistema", e);
-        }
-
-        return savedMarcacao;
+        return criarMarcacaoBase(
+                request,
+                criadoPor,
+                utente,
+                AtendimentoTipo.PRESENCIAL,
+                false);
     }
 
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
         // Buscar e validar utilizador
         Utilizador utilizador = utilizadorRepository.findById(request.getUtenteId())
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + request.getUtenteId()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Utilizador não encontrado com ID: " + request.getUtenteId()));
 
         if (!(utilizador instanceof Utente)) {
             throw new RuntimeException("O utilizador com ID " + request.getUtenteId() +
@@ -181,39 +161,12 @@ public class MarcacaoService {
 
         validarDisponibilidade(request.getData());
 
-        // Criar Marcacao
-        Marcacao marcacao = new Marcacao();
-        marcacao.setData(request.getData());
-        marcacao.setEstado(EventoEstado.AGENDADO);
-        marcacao.setCriadoPor(utente); // Criado pelo próprio utente
-
-        Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
-
-        // Criar MarcacaoSecretaria com OneToOne
-        MarcacaoSecretaria marcacaoSecretaria = new MarcacaoSecretaria();
-        marcacaoSecretaria.setMarcacao(savedMarcacao);
-        marcacaoSecretaria.setAssunto(request.getAssunto());
-        marcacaoSecretaria.setTipoAtendimento(AtendimentoTipo.REMOTO);
-        marcacaoSecretaria.setUtente(utente);
-
-        // Se tiver descrição, adicionar
-        if (request.getDescricao() != null && !request.getDescricao().trim().isEmpty()) {
-            marcacaoSecretaria.setDescricao(request.getDescricao());
-        }
-
-        MarcacaoSecretaria savedMarcacaoSecretaria = marcacaoSecretariaRepository.save(marcacaoSecretaria);
-
-        // Estabelecer relacionamento bidirecional
-        savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
-
-        // Notificar via sistema
-        try {
-            notificacaoService.notificarNovaMarcacao(utente, savedMarcacao.getId(), savedMarcacao.getData(), true);
-        } catch (Exception e) {
-            log.error("Erro ao criar notificação de sistema", e);
-        }
-
-        return savedMarcacao;
+        return criarMarcacaoBase(
+                request,
+                utente, // Criado por utente
+                utente, // Utente associado
+                AtendimentoTipo.REMOTO,
+                true);
     }
 
     public List<MarcacaoResponseDTO> consultarAgenda(LocalDateTime dataInicio, LocalDateTime dataFim) {
@@ -241,16 +194,16 @@ public class MarcacaoService {
         }
 
         Utilizador atualizadoPor = utilizadorRepository.findById(request.getFuncionarioId())
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Utilizador não encontrado"));
 
         EventoEstado novoEstado = request.getNovoEstadoEnum();
 
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
-                .orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada"));
 
         // Validar versão para evitar conflitos de concorrência
         if (request.getVersion() != null && !request.getVersion().equals(marcacao.getVersion())) {
-            throw new RuntimeException(
+            throw new ConflictException(
                     "Conflito de versão: a marcação foi modificada por outro utilizador. Por favor, recarregue e tente novamente.");
         }
 
@@ -421,10 +374,10 @@ public class MarcacaoService {
     // Métodos privados auxiliares
     private void validarDisponibilidade(LocalDateTime data) {
         if (data.isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Não é possível agendar marcações para datas passadas");
+            throw new BusinessRuleException("Não é possível agendar marcações para datas passadas");
         }
         if (calendarioService.isSlotBloqueado(data.toLocalDate(), data.toLocalTime())) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "O horário selecionado não está disponível (Feriado, Fim de Semana ou Bloqueado).");
         }
     }
@@ -432,7 +385,7 @@ public class MarcacaoService {
     private void validarFuncionarioSecretaria(Funcionario funcionario) {
         // Verificar se o funcionário pertence à secretaria
         if (funcionario.getTipo() != FuncionarioTipo.SECRETARIA) {
-            throw new RuntimeException("Apenas funcionários da secretaria podem realizar esta ação");
+            throw new BusinessRuleException("Apenas funcionários da secretaria podem realizar esta ação");
         }
     }
 
@@ -481,10 +434,11 @@ public class MarcacaoService {
         }
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
-        // 1. Verificar disponibilidade
-        if (existeSobreposicao(request.getData())) {
-            throw new RuntimeException("Este horário já está a ser preenchido ou ocupado por outra pessoa.");
+        // 1. Verificar disponibilidade com LOCK
+        if (!marcacaoRepository.findConflictingWithLock(request.getData()).isEmpty()) {
+            throw new ConflictException("Este horário já está a ser preenchido ou ocupado por outra pessoa.");
         }
 
         Marcacao temp = new Marcacao();
@@ -624,6 +578,11 @@ public class MarcacaoService {
         return findAll().stream().map(this::converterParaDTO).toList();
     }
 
+    public Page<MarcacaoResponseDTO> listarTodasMarcacoesPaginated(Pageable pageable) {
+        return marcacaoRepository.findAllWithRelations(pageable)
+                .map(this::converterParaDTO);
+    }
+
     public MarcacaoResponseDTO obterMarcacaoDTO(Long id) {
         Marcacao marcacao = findById(id).orElseThrow(() -> new RuntimeException("Marcação não encontrada"));
         return converterParaDTO(marcacao);
@@ -641,5 +600,47 @@ public class MarcacaoService {
         // System.out.println("A verificar reservas expiradas anteriores a " + limite);
 
         marcacaoRepository.deleteByEstadoAndCriadoEmBefore(EventoEstado.EM_PREENCHIMENTO, limite);
+    }
+
+    private Marcacao criarMarcacaoBase(
+            CriarMarcacaoRequest request,
+            Utilizador criadoPor,
+            Utente utente,
+            AtendimentoTipo tipoAtendimento,
+            boolean isRemota) {
+
+        // Criar Marcacao
+        Marcacao marcacao = new Marcacao();
+        marcacao.setData(request.getData());
+        marcacao.setEstado(EventoEstado.AGENDADO);
+        marcacao.setCriadoPor(criadoPor);
+
+        Marcacao savedMarcacao = marcacaoRepository.save(marcacao);
+
+        // Criar MarcacaoSecretaria com OneToOne
+        MarcacaoSecretaria marcacaoSecretaria = new MarcacaoSecretaria();
+        marcacaoSecretaria.setMarcacao(savedMarcacao);
+        marcacaoSecretaria.setAssunto(request.getAssunto());
+        marcacaoSecretaria.setTipoAtendimento(tipoAtendimento);
+        marcacaoSecretaria.setUtente(utente);
+
+        // Se tiver descrição, adicionar
+        if (request.getDescricao() != null && !request.getDescricao().trim().isEmpty()) {
+            marcacaoSecretaria.setDescricao(request.getDescricao());
+        }
+
+        MarcacaoSecretaria savedMarcacaoSecretaria = marcacaoSecretariaRepository.save(marcacaoSecretaria);
+
+        // Estabelecer relacionamento bidirecional
+        savedMarcacao.setMarcacaoSecretaria(savedMarcacaoSecretaria);
+
+        // Notificar via sistema
+        try {
+            notificacaoService.notificarNovaMarcacao(utente, savedMarcacao.getId(), savedMarcacao.getData(), isRemota);
+        } catch (Exception e) {
+            log.error("Erro ao criar notificação de sistema", e);
+        }
+
+        return savedMarcacao;
     }
 }

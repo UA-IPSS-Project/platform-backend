@@ -26,6 +26,9 @@ import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.service.MarcacaoService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
 /**
  * Controller responsável pela gestão de marcações.
@@ -282,11 +285,10 @@ public class MarcacaoController {
      * return lista completa de marcações
      */
     @GetMapping
-    public ResponseEntity<List<MarcacaoResponseDTO>> listarTodasMarcacoes() {
-
-        List<MarcacaoResponseDTO> response = marcacaoService.listarTodasMarcacoesDTO();
+    public ResponseEntity<Page<MarcacaoResponseDTO>> listarTodasMarcacoes(
+            @PageableDefault(size = 20, sort = "data") Pageable pageable) {
+        Page<MarcacaoResponseDTO> response = marcacaoService.listarTodasMarcacoesPaginated(pageable);
         return ResponseEntity.ok(response);
-
     }
 
     /**

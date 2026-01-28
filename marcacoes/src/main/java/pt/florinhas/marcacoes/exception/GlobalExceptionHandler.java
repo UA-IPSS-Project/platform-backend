@@ -66,6 +66,39 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Mapeia BusinessRuleException para HTTP 400 (BAD_REQUEST) ou 422
+     * (UNPROCESSABLE_ENTITY).
+     * Optou-se por 400 para manter consistência, mas semanticamente 422 seria
+     * adequado.
+     */
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<Map<String, String>> handleBusinessRuleException(BusinessRuleException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
+     * Mapeia ConflictException para HTTP 409 (CONFLICT).
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, String>> handleConflictException(ConflictException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /**
+     * Mapeia ResourceNotFoundException para HTTP 404 (NOT_FOUND).
+     */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
      * Mapeia erros de validação Bean Validation (@Valid) para HTTP 400.
      *
      * Agrega os erros por campo e devolve um payload estruturado:
