@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 /**
  * Repositório Spring Data JPA para a entidade {@link BloqueioAgenda}.
@@ -61,6 +63,20 @@ public interface BloqueioRepository extends JpaRepository<BloqueioAgenda, Long> 
                      "AND b.horaInicio < :fim " +
                      "AND b.horaFim > :inicio")
        boolean existeSobreposicao(@Param("data") LocalDate data,
+                     @Param("inicio") LocalTime inicio,
+                     @Param("fim") LocalTime fim);
+
+       /**
+        * Verificação com Bloqueio Pessimista (SELECT FOR UPDATE).
+        * Garante que nenhuma outra transação consegue ler/escrever nestes registos
+        * enquanto esta transação não terminar.
+        */
+       @Lock(LockModeType.PESSIMISTIC_WRITE)
+       @Query("SELECT COUNT(b) FROM BloqueioAgenda b " +
+                     "WHERE b.data = :data " +
+                     "AND b.horaInicio < :fim " +
+                     "AND b.horaFim > :inicio")
+       long countConflictingWithLock(@Param("data") LocalDate data,
                      @Param("inicio") LocalTime inicio,
                      @Param("fim") LocalTime fim);
 }

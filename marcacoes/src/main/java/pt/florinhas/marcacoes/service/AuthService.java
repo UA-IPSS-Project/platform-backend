@@ -74,23 +74,33 @@ public class AuthService {
         public AuthResponse loginFuncionario(LoginFuncionarioRequest request) {
                 log.debug("Login funcionario started for: {}", request.email());
 
-                authenticationManager.authenticate(
-                                new UsernamePasswordAuthenticationToken(
-                                                request.email(),
-                                                request.password()));
-                log.debug("Authentication successful");
-
+                // 1. Carregar utilizador primeiro para verificar estado "Ativo"
+                // Isto previne que func. inativos validem credenciais (timing attack /
+                // enumeração)
                 var user = utilizadorRepository.findByEmail(request.email())
-                                .orElseThrow(() -> new BadRequestException("Funcionário não encontrado"));
-                log.debug("User found: {}", user.getId());
+                                .orElseThrow(() -> new BadRequestException("Credenciais inválidas"));
 
                 if (!(user instanceof Funcionario funcionario)) {
-                        throw new BadRequestException("Credenciais inválidas para funcionário");
+                        // Nota: Mensagem genérica para segurança, mas log específico
+                        log.debug("User found but not Funcionario: {}", user.getId());
+                        throw new BadRequestException("Credenciais inválidas");
                 }
 
                 if (!funcionario.isActivo()) {
-                        throw new BadRequestException("Conta pendente de aprovação. Contacte a secretaria.");
+                        throw new BadRequestException("Conta pendente de aprovação ou inativa. Contacte a secretaria.");
                 }
+
+                // 2. Autenticar credenciais só depois de confirmar que está ativo
+                try {
+                        authenticationManager.authenticate(
+                                        new UsernamePasswordAuthenticationToken(
+                                                        request.email(),
+                                                        request.password()));
+                } catch (Exception e) {
+                        throw new BadRequestException("Credenciais inválidas");
+                }
+
+                log.debug("Authentication successful");
 
                 return generateAuthResponse(user, "FUNCIONARIO", true);
         }

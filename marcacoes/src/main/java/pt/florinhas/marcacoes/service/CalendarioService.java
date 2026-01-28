@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import jakarta.annotation.PostConstruct;
@@ -72,23 +71,30 @@ public class CalendarioService {
      */
     @PostConstruct
     public void carregarFeriados() {
-        try {
-            int currentYear = LocalDate.now().getYear();
-            String url = String.format(API_URL_TEMPLATE, currentYear);
+        // Executar em thread separada para não bloquear o arranque
+        new Thread(() -> {
+            try {
+                log.info("A carregar feriados...");
+                int currentYear = LocalDate.now().getYear();
+                String url = String.format(API_URL_TEMPLATE, currentYear);
 
-            RestTemplate restTemplate = new RestTemplate();
-            FeriadoDTO[] response = restTemplate.getForObject(url, FeriadoDTO[].class);
+                RestTemplate restTemplate = new RestTemplate();
+                FeriadoDTO[] response = restTemplate.getForObject(url, FeriadoDTO[].class);
 
-            if (response != null) {
-                feriadosCache.clear();
-                for (FeriadoDTO h : response) {
-                    feriadosCache.add(LocalDate.parse(h.getDate()));
+                if (response != null) {
+                    synchronized (feriadosCache) {
+                        feriadosCache.clear();
+                        for (FeriadoDTO h : response) {
+                            feriadosCache.add(LocalDate.parse(h.getDate()));
+                        }
+                    }
+                    log.info("Feriados carregados com sucesso: {}", feriadosCache.size());
                 }
+            } catch (Exception e) {
+                // Em caso de erro, apenas regista no log
+                log.error("Erro ao carregar feriados (API externa): {}", e.getMessage());
             }
-        } catch (RestClientException e) {
-            // Em caso de erro, apenas regista no log
-            log.error("Erro feriados: {}", e.getMessage());
-        }
+        }).start();
     }
 
     /**
@@ -173,9 +179,10 @@ public class CalendarioService {
             throw new BadRequestException("Este dia já é um Feriado ou Fim de Semana.");
         }
 
-        // Validação 5: Sobreposição com outros bloqueios
-        if (bloqueioRepository.existeSobreposicao(data, inicio, fim)) {
-            throw new BadRequestException("Já existe um bloqueio registado para este período.");
+        // Validação 5: Sobreposição com outros bloqueios (Com Lock Pessimista)
+        // Usamos countConflictingWithLock para garantir serialização no DB
+        if (bloqueioRepository.countConflictingWithLock(data, inicio, fim) > 0) {
+            throw new BadRequestException("Já existe um bloqueio registado para este período (Conflito detetado).");
         }
 
         /**
