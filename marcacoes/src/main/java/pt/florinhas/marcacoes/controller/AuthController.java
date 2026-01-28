@@ -1,194 +1,130 @@
 package pt.florinhas.marcacoes.controller;
 
 import org.springframework.http.ResponseEntity;
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseCookie; // Added
+import org.springframework.http.HttpHeaders; // Added
 
-import jakarta.validation.Valid;
-import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AuthResponse;
 import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
 import pt.florinhas.marcacoes.dto.LoginFuncionarioRequest;
 import pt.florinhas.marcacoes.dto.LoginUtenteRequest;
-import pt.florinhas.marcacoes.dto.UserResponse;
+import pt.florinhas.marcacoes.dto.UpdatePasswordRequest;
 import pt.florinhas.marcacoes.dto.UtenteRegisterRequest;
 import pt.florinhas.marcacoes.service.AuthService;
+import pt.florinhas.marcacoes.service.AuthService.AuthResult;
 
-/**
- * Controller responsável pela autenticação e registo de utilizadores.
- *
- * Expõe endpoints REST para:
- * - login de utentes
- * - login de funcionários
- * - registo de novos utilizadores
- * - obtenção da informação do utilizador autenticado
- */
 @RestController
 @RequestMapping("/api/auth")
-
 public class AuthController {
 
-    /**
-     * Serviço de autenticação que encapsula toda a lógica de negócio
-     * relacionada com login, registo e geração de tokens JWT.
-     */
     private final AuthService authService;
 
-    /**
-     * Construtor com injeção do serviço de autenticação.
-     *
-     * param authService serviço responsável pela lógica de autenticação
-     */
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
 
-    /**
-     * Helper para criar o cookie HTTP Only com o JWT.
-     */
-    private org.springframework.http.ResponseCookie createJwtCookie(String token) {
-        return org.springframework.http.ResponseCookie.from("jwt_auth", token)
-                .httpOnly(true)
-                .secure(false) // Em produção (HTTPS) deve ser true
-                .path("/")
-                .maxAge(-1) // Cookie de Sessão (apagado ao fechar browser)
-                .sameSite("Lax") // 'Strict' pode causar problemas em dev com portas diferentes
-                .build();
-    }
-
-    /**
-     * Endpoint de login para funcionários.
-     */
     @PostMapping("/login/funcionario")
-    public ResponseEntity<AuthResponse> loginFuncionario(
-            @Valid @RequestBody LoginFuncionarioRequest request,
-            jakarta.servlet.http.HttpServletResponse response) {
-
-        var authResult = authService.loginFuncionario(request);
-
-        // Define o cookie na resposta
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
-                createJwtCookie(authResult.token()).toString());
-
-        return ResponseEntity.ok(authResult.response());
+    public ResponseEntity<AuthResponse> loginFuncionario(@RequestBody LoginFuncionarioRequest request) {
+        AuthResult result = authService.loginFuncionario(request);
+        return buildResponseWithCookie(result);
     }
 
-    /**
-     * Endpoint de login para utentes.
-     */
     @PostMapping("/login/utente")
-    public ResponseEntity<AuthResponse> loginUtente(
-            @Valid @RequestBody LoginUtenteRequest request,
-            jakarta.servlet.http.HttpServletResponse response) {
-
-        var authResult = authService.loginUtente(request);
-
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
-                createJwtCookie(authResult.token()).toString());
-
-        return ResponseEntity.ok(authResult.response());
+    public ResponseEntity<AuthResponse> loginUtente(@RequestBody LoginUtenteRequest request) {
+        AuthResult result = authService.loginUtente(request);
+        return buildResponseWithCookie(result);
     }
 
-    /**
-     * Endpoint de registo de um novo utente.
-     */
     @PostMapping("/register/utente")
-    public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody UtenteRegisterRequest request,
-            jakarta.servlet.http.HttpServletResponse response) {
-
-        var authResult = authService.registerUtente(request);
-
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
-                createJwtCookie(authResult.token()).toString());
-
-        return ResponseEntity.ok(authResult.response());
+    public ResponseEntity<AuthResponse> registerUtente(@RequestBody UtenteRegisterRequest request) {
+        AuthResult result = authService.registerUtente(request);
+        return buildResponseWithCookie(result);
     }
 
-    /**
-     * Endpoint de registo de um novo funcionário.
-     */
     @PostMapping("/register/funcionario")
-    public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody FuncionarioRegisterRequest request,
-            jakarta.servlet.http.HttpServletResponse response) {
-
-        var authResult = authService.registerFuncionario(request);
-
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE,
-                createJwtCookie(authResult.token()).toString());
-
-        return ResponseEntity.ok(authResult.response());
+    public ResponseEntity<AuthResponse> registerFuncionario(@RequestBody FuncionarioRegisterRequest request) {
+        AuthResult result = authService.registerFuncionario(request);
+        return buildResponseWithCookie(result);
     }
 
-    /**
-     * Endpoint de Logout.
-     * Limpa o cookie de autenticação.
-     */
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletResponse response) {
-        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("jwt_auth", "")
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(0) // Expira imediatamente
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
+    @PutMapping("/password")
+    public ResponseEntity<Void> updatePassword(@RequestBody UpdatePasswordRequest request,
+            @AuthenticationPrincipal Utilizador utilizador) {
+        authService.updatePassword(utilizador.getId(), request.newPassword(), request.termsAccepted());
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Endpoint que devolve a informação do utilizador atualmente autenticado.
-     */
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> me(
-            org.springframework.security.core.Authentication authentication) {
-
-        // Mantém a lógica existente
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity
-                    .status(org.springframework.http.HttpStatus.UNAUTHORIZED)
-                    .build();
+    public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal Utilizador utilizador) {
+        if (utilizador == null) {
+            return ResponseEntity.status(401).build();
         }
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof Utilizador u) {
-            String role = u instanceof Funcionario ? "FUNCIONARIO" : "UTENTE";
-            UserResponse resp = new UserResponse(
-                    u.getId(),
-                    u.getEmail(),
-                    u.getNome(),
-                    role,
-                    u.getNif(),
-                    u.getTelefone());
 
-            return ResponseEntity.ok(resp);
-        }
-        return ResponseEntity
-                .status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+        String role = utilizador.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .orElse("UTENTE");
+
+        // Return user info WITHOUT regenerating cookies
+        AuthResponse response = new AuthResponse(
+                utilizador.getId(),
+                utilizador.getEmail(),
+                utilizador.getNome(),
+                role,
+                utilizador.getNif(),
+                utilizador.getTelefone(),
+                System.currentTimeMillis() + (24 * 60 * 60 * 1000), // 24h from now
+                true);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        // Clear JWT cookie - must match exact parameters from login
+        ResponseCookie jwtCookie = ResponseCookie.from("jwt", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0) // Delete immediately
+                .sameSite("Strict")
+                .build();
+
+        // Clear CSRF cookie - must match exact parameters from SecurityConfig
+        ResponseCookie csrfCookie = ResponseCookie.from("XSRF-TOKEN", "")
+                .httpOnly(false) // MUST match login (false for CSRF)
+                .secure(false)
+                .path("/")
+                .maxAge(0) // Delete immediately
+                .sameSite("Strict")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, csrfCookie.toString())
                 .build();
     }
 
-    @PostMapping("/set-password")
-    public ResponseEntity<Void> setPassword(
-            @Valid @RequestBody pt.florinhas.marcacoes.dto.SetPasswordRequest request,
-            org.springframework.security.core.Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
-        }
+    private ResponseEntity<AuthResponse> buildResponseWithCookie(AuthResult result) {
+        // Session cookie (expires when browser closes)
+        ResponseCookie cookie = ResponseCookie.from("jwt", result.token())
+                .httpOnly(true)
+                .secure(false) // Em dev (localhost) pode ser false; em prod mudar para true
+                .path("/")
+                // NO maxAge → session cookie (deleted on browser close)
+                .sameSite("Strict")
+                .build();
 
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof Utilizador u) {
-            authService.updatePassword(u.getId(), request.password(), request.termsAccepted());
-            return ResponseEntity.ok().build();
-        }
-
-        return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(result.response());
     }
 }

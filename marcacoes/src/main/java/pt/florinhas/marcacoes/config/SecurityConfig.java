@@ -12,7 +12,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,7 +23,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import pt.florinhas.marcacoes.security.JwtAuthenticationFilter;
+import pt.florinhas.marcacoes.security.CsrfCookieFilter;
+import org.springframework.security.web.csrf.CsrfFilter;
 
 /**
  * Classe de configuração de segurança da aplicação.
@@ -78,11 +81,24 @@ public class SecurityConfig {
      * param http objeto HttpSecurity fornecido pelo Spring
      * return SecurityFilterChain construída
      */
+
+    // ... imports ...
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // Configure CSRF repository as session cookie (no maxAge)
+        CookieCsrfTokenRepository csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfRepo.setCookiePath("/");
+        csrfRepo.setCookieName("XSRF-TOKEN");
+        csrfRepo.setHeaderName("X-XSRF-TOKEN");
+        // NO setMaxAge() → session cookie
+
         http
-                // Desativa proteção CSRF, adequada para APIs REST stateless
-                .csrf(AbstractHttpConfigurer::disable)
+                // Ativa proteção CSRF com Cookie Repository (acessível pelo JS)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfRepo)
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        .ignoringRequestMatchers("/api/auth/logout")) // Logout doesn't need CSRF
 
                 // Aplica a configuração de CORS definida no bean abaixo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -99,6 +115,10 @@ public class SecurityConfig {
                 // Define que a aplicação não mantém estado de sessão (JWT-based auth)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+                // Filtro para forçar envio do cookie CSRF (Logo após o CsrfFilter)
+                .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
+
+                // Filtro JWT antes da autenticação por username/password
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
                 // Desativa frameOptions (necessário, por exemplo, para H2 Console)
