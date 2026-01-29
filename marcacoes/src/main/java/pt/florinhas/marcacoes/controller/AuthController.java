@@ -1,5 +1,6 @@
 package pt.florinhas.marcacoes.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,8 +9,13 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.ResponseCookie; // Added
-import org.springframework.http.HttpHeaders; // Added
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpHeaders;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import lombok.extern.slf4j.Slf4j;
 
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AuthResponse;
@@ -21,38 +27,57 @@ import pt.florinhas.marcacoes.dto.UtenteRegisterRequest;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.AuthService.AuthResult;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
 
+    @Value("${app.environment:production}")
+    private String environment;
+
+    @Value("${app.secure-cookies:true}")
+    private boolean secureCookies;
+
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
 
     @PostMapping("/login/funcionario")
-    public ResponseEntity<AuthResponse> loginFuncionario(@RequestBody LoginFuncionarioRequest request) {
+    public ResponseEntity<AuthResponse> loginFuncionario(
+            @RequestBody LoginFuncionarioRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         AuthResult result = authService.loginFuncionario(request);
-        return buildResponseWithCookie(result);
+        return buildResponseWithCookie(result, httpRequest, httpResponse);
     }
 
     @PostMapping("/login/utente")
-    public ResponseEntity<AuthResponse> loginUtente(@RequestBody LoginUtenteRequest request) {
+    public ResponseEntity<AuthResponse> loginUtente(
+            @RequestBody LoginUtenteRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         AuthResult result = authService.loginUtente(request);
-        return buildResponseWithCookie(result);
+        return buildResponseWithCookie(result, httpRequest, httpResponse);
     }
 
     @PostMapping("/register/utente")
-    public ResponseEntity<AuthResponse> registerUtente(@RequestBody UtenteRegisterRequest request) {
+    public ResponseEntity<AuthResponse> registerUtente(
+            @RequestBody UtenteRegisterRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         AuthResult result = authService.registerUtente(request);
-        return buildResponseWithCookie(result);
+        return buildResponseWithCookie(result, httpRequest, httpResponse);
     }
 
     @PostMapping("/register/funcionario")
-    public ResponseEntity<AuthResponse> registerFuncionario(@RequestBody FuncionarioRegisterRequest request) {
+    public ResponseEntity<AuthResponse> registerFuncionario(
+            @RequestBody FuncionarioRegisterRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         AuthResult result = authService.registerFuncionario(request);
-        return buildResponseWithCookie(result);
+        return buildResponseWithCookie(result, httpRequest, httpResponse);
     }
 
     @PutMapping("/password")
@@ -113,15 +138,34 @@ public class AuthController {
                 .build();
     }
 
-    private ResponseEntity<AuthResponse> buildResponseWithCookie(AuthResult result) {
-        // Session cookie (expires when browser closes)
+    private ResponseEntity<AuthResponse> buildResponseWithCookie(
+            AuthResult result,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        // Determine secure flag: true in production, false in dev
+        boolean isSecure = "development".equalsIgnoreCase(environment) ? false : secureCookies;
+
+        // Create JWT cookie
         ResponseCookie cookie = ResponseCookie.from("jwt", result.token())
                 .httpOnly(true)
-                .secure(false) // Em dev (localhost) pode ser false; em prod mudar para true
+                .secure(isSecure)
                 .path("/")
-                // NO maxAge → session cookie (deleted on browser close)
+                .maxAge(24 * 60 * 60) // 24 hours
                 .sameSite("Strict")
                 .build();
+
+        log.debug("JWT cookie: secure={}, env={}", isSecure, environment);
+
+        // The CsrfCookieFilter will automatically add the XSRF-TOKEN cookie to the
+        // response
+        // because we're accessing the CsrfToken attribute
+        var csrfToken = (org.springframework.security.web.csrf.CsrfToken) request
+                .getAttribute(org.springframework.security.web.csrf.CsrfToken.class.getName());
+        if (csrfToken != null) {
+            // Force token to be loaded (triggers cookie creation)
+            csrfToken.getToken();
+            log.debug("CSRF token loaded: {}", csrfToken.getHeaderName());
+        }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())

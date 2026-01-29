@@ -403,15 +403,45 @@ public class UtilizadorService {
         return nifValidationService.validate(nif);
     }
 
+    // Character sets for password generation
+    private static final String UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final String LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
+    private static final String DIGITS = "0123456789";
+    private static final String SPECIAL = "!@#$%&*()-_=+";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    /**
+     * Gera uma password temporária segura com:
+     * - 16 caracteres de comprimento
+     * - Pelo menos 1 maiúscula, 1 minúscula, 1 dígito, 1 caráter especial
+     * - Caracteres embaralhados para evitar padrões previsíveis
+     */
     private String gerarPasswordSegura() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 8; i++) {
-            int randomIndex = random.nextInt(chars.length());
-            sb.append(chars.charAt(randomIndex));
+        int length = 16;
+
+        // Garantir pelo menos um caráter de cada categoria
+        StringBuilder password = new StringBuilder(length);
+        password.append(UPPERCASE.charAt(SECURE_RANDOM.nextInt(UPPERCASE.length())));
+        password.append(LOWERCASE.charAt(SECURE_RANDOM.nextInt(LOWERCASE.length())));
+        password.append(DIGITS.charAt(SECURE_RANDOM.nextInt(DIGITS.length())));
+        password.append(SPECIAL.charAt(SECURE_RANDOM.nextInt(SPECIAL.length())));
+
+        // Preencher o resto com caracteres aleatórios de todas as categorias
+        String allChars = UPPERCASE + LOWERCASE + DIGITS + SPECIAL;
+        for (int i = 4; i < length; i++) {
+            password.append(allChars.charAt(SECURE_RANDOM.nextInt(allChars.length())));
         }
-        return sb.toString();
+
+        // Embaralhar para evitar padrão previsível (maiúscula sempre primeiro, etc)
+        char[] passwordArray = password.toString().toCharArray();
+        for (int i = passwordArray.length - 1; i > 0; i--) {
+            int j = SECURE_RANDOM.nextInt(i + 1);
+            char temp = passwordArray[i];
+            passwordArray[i] = passwordArray[j];
+            passwordArray[j] = temp;
+        }
+
+        return new String(passwordArray);
     }
 
     private void validarCampoObrigatorio(String valor, String mensagemErro) {

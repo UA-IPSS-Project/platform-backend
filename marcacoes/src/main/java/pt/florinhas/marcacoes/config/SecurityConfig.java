@@ -23,9 +23,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import pt.florinhas.marcacoes.security.JwtAuthenticationFilter;
+import pt.florinhas.marcacoes.security.StatelessCsrfTokenRepository;
 import pt.florinhas.marcacoes.security.CsrfCookieFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 
@@ -82,23 +82,24 @@ public class SecurityConfig {
      * return SecurityFilterChain construída
      */
 
-    // ... imports ...
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Configure CSRF repository as session cookie (no maxAge)
-        CookieCsrfTokenRepository csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        csrfRepo.setCookiePath("/");
-        csrfRepo.setCookieName("XSRF-TOKEN");
-        csrfRepo.setHeaderName("X-XSRF-TOKEN");
-        // NO setMaxAge() → session cookie
+        // Configurar CSRF repository stateless (Double Submit Cookie pattern)
+        // Compatível com JWT - não requer sessão do servidor
+        StatelessCsrfTokenRepository csrfRepo = new StatelessCsrfTokenRepository();
 
         http
                 // Ativa proteção CSRF com Cookie Repository (acessível pelo JS)
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepo)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers("/api/auth/logout")) // Logout doesn't need CSRF
+                        // IMPORTANTE: Estes endpoints ainda precisam de whitelist
+                        // porque são chamados ANTES do utilizador ter um CSRF token
+                        .ignoringRequestMatchers(
+                                "/api/auth/login/**", // Primeiro endpoint, sem token ainda
+                                "/api/auth/register/**", // Novo utilizador, sem token
+                                "/api/auth/me", // Chamado no reload, pode não ter token
+                                "/api/auth/logout")) // Logout pode ser chamado com token expirado
 
                 // Aplica a configuração de CORS definida no bean abaixo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -148,8 +149,14 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Permite todos os cabeçalhos
-        configuration.setAllowedHeaders(List.of("*"));
+        // Permite cabeçalhos específicos (whitelist explícita)
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-XSRF-TOKEN",
+                "Accept",
+                "Origin",
+                "X-Requested-With"));
 
         // Permite envio de cookies/credenciais
         configuration.setAllowCredentials(true);

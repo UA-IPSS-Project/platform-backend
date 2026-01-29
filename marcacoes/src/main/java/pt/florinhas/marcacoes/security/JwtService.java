@@ -17,6 +17,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Serviço responsável por gerar, validar e extrair informação de tokens JWT.
  *
@@ -31,6 +33,7 @@ import io.jsonwebtoken.security.Keys;
  * 256 bits para HS256).
  * - Nunca expor a secret em repositórios; injetar por variável de ambiente.
  */
+@Slf4j
 @Service
 public class JwtService {
 
@@ -42,12 +45,23 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secret;
 
+    private static final int MINIMUM_SECRET_LENGTH = 64; // 512 bits for HS512
+
     @PostConstruct
     public void init() {
-        if (secret == null || secret.length() < 32) {
+        if (secret == null || secret.trim().isEmpty()) {
             throw new IllegalStateException(
-                    "Critical Security Error: JWT Secret is properly configured. Must be at least 32 chars.");
+                    "Critical Security Error: JWT Secret is NOT configured.");
         }
+
+        if (secret.length() < MINIMUM_SECRET_LENGTH) {
+            throw new IllegalStateException(
+                    String.format(
+                            "Critical Security Error: JWT Secret must be at least %d characters. Current length: %d",
+                            MINIMUM_SECRET_LENGTH, secret.length()));
+        }
+
+        log.info("JWT Secret validation passed ({} characters)", secret.length());
     }
 
     /**
