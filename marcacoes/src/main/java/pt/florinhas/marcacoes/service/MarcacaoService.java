@@ -33,33 +33,24 @@ import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.domain.AtendimentoTipo;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import pt.florinhas.marcacoes.service.NotificacaoService;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class MarcacaoService {
 
-    @Autowired
-    private MarcacaoRepository marcacaoRepository;
-
-    @Autowired
-    private UtenteRepository utenteRepository;
-
-    @Autowired
-    private FuncionarioRepository funcionarioRepository;
-
-    @Autowired
-    private UtilizadorRepository utilizadorRepository;
-
-    @Autowired
-    private MarcacaoValidator marcacaoValidator;
-
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final MarcacaoRepository marcacaoRepository;
+    private final UtenteRepository utenteRepository;
+    private final FuncionarioRepository funcionarioRepository;
+    private final UtilizadorRepository utilizadorRepository;
+    private final NotificacaoService notificacaoService;
+    private final MarcacaoValidator marcacaoValidator;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
 
     private String generateRandomPassword() {
         SecureRandom random = new SecureRandom();
@@ -261,6 +252,36 @@ public class MarcacaoService {
         }
 
         marcacao = marcacaoRepository.save(marcacao);
+
+        // Notificar intervenientes se cancelado
+        if (request.getNovoEstadoEnum() == EventoEstado.CANCELADO) {
+            MarcacaoSecretaria secretariaDetails = marcacao.getMarcacaoSecretaria();
+            if (secretariaDetails != null && secretariaDetails.getUtente() != null) {
+                Utente utenteAlvo = secretariaDetails.getUtente();
+                Long atorId = request.getFuncionarioId();
+
+                if (atorId != null && atorId.equals(utenteAlvo.getId())) {
+                    // Cancelado pelo Utente -> Notificar Secretarias
+                    List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+                    for (Funcionario sec : secretarias) {
+                        try {
+                            notificacaoService.notificarCancelamentoPeloUtente(sec, utenteAlvo.getNome(),
+                                    marcacao.getData());
+                        } catch (Exception e) {
+                            System.err.println("Erro ao notificar secretaria " + sec.getId() + ": " + e.getMessage());
+                        }
+                    }
+                } else {
+                    // Cancelado pela Secretaria (ou outro) -> Notificar Utente
+                    try {
+                        notificacaoService.notificarCancelamento(utenteAlvo, marcacao.getData());
+                    } catch (Exception e) {
+                        System.err.println("Erro ao notificar utente " + utenteAlvo.getId() + ": " + e.getMessage());
+                    }
+                }
+            }
+        }
+
         return toDTO(marcacao);
     }
 
