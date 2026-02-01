@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,7 +35,6 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import pt.florinhas.marcacoes.service.NotificacaoService;
 
 @Service
 @Transactional
@@ -312,7 +310,29 @@ public class MarcacaoService {
     }
 
     public List<Map<String, Object>> consultarMarcacoesBloqueadas(Long utenteId) {
-        return Collections.emptyList();
+        LocalDateTime start = LocalDateTime.now().minusHours(1); // Include current hour
+        LocalDateTime end = start.plusMonths(6);
+        List<Marcacao> all = marcacaoRepository.findMarcacoesBetweenDates(start, end);
+
+        return all.stream()
+                .filter(m -> {
+                    // Exclude my own appointments (via Utente association)
+                    if (m.getMarcacaoSecretaria() != null && m.getMarcacaoSecretaria().getUtente() != null) {
+                        if (m.getMarcacaoSecretaria().getUtente().getId().equals(utenteId)) {
+                            return false;
+                        }
+                    }
+                    // Exclude my own appointments (via CreatedBy - for temporary slots)
+                    if (m.getCriadoPor() != null && m.getCriadoPor().getId().equals(utenteId)) {
+                        return false;
+                    }
+                    return true;
+                })
+                .map(m -> Map.<String, Object>of(
+                        "id", m.getId(),
+                        "data", m.getData().toString(),
+                        "estado", m.getEstado().toString()))
+                .collect(Collectors.toList());
     }
 
     public List<MarcacaoResponseDTO> consultarMarcacoesFuncionario(Long funcionarioId) {
@@ -328,10 +348,37 @@ public class MarcacaoService {
     }
 
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
-        return 123L;
+        Marcacao m = new Marcacao();
+        m.setData(request.getData());
+        m.setEstado(EventoEstado.EM_PREENCHIMENTO);
+
+        // Identificar quem está a reservar
+        Long criadorId = request.getCriadoPorId();
+        if (criadorId != null) {
+            Utilizador criador = utilizadorRepository.findById(criadorId)
+                    .orElse(null); // Se não encontrar, segue sem criador (menos crítico para temp)
+            m.setCriadoPor(criador);
+        } else if (request.getUtenteId() != null) {
+            // Fallback para utenteId se criadoPorId não vier
+            Utilizador criador = utilizadorRepository.findById(request.getUtenteId())
+                    .orElse(null);
+            m.setCriadoPor(criador);
+        }
+
+        // Criar estrutura mínima de secretaria se necessário para identificar utente na
+        // consulta de bloqueios
+        // A consulta usa `m.getMarcacaoSecretaria().getUtente()` ou `m.getCriadoPor()`.
+        // Se definimos `setCriadoPor`, a consulta de bloqueios já funciona (vimos na
+        // implementação que verifica ambos).
+
+        m = marcacaoRepository.save(m);
+        return m.getId();
     }
 
     public void apagarReservaTemporaria(Long id) {
+        if (marcacaoRepository.existsById(id)) {
+            marcacaoRepository.deleteById(id);
+        }
     }
 
     public MarcacaoResponseDTO reagendarMarcacao(Long id, ReagendarMarcacaoRequest request) {
