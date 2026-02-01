@@ -117,9 +117,25 @@ public class CalendarioService {
         // Verificar bloqueios parciais do dia
         List<BloqueioAgenda> bloqueiosDoDia = bloqueioRepository.findByData(data);
 
-        return bloqueiosDoDia.stream()
+        boolean bloqueadoPorAgenda = bloqueiosDoDia.stream()
                 .anyMatch(b -> (slotTime.equals(b.getHoraInicio()) || slotTime.isAfter(b.getHoraInicio())) &&
                         slotTime.isBefore(b.getHoraFim()));
+
+        if (bloqueadoPorAgenda)
+            return true;
+
+        // VERIFICAÇÃO ADICIONAL: Verificar se já existe uma marcação ativa neste slot
+        // Esta validação é crucial para o frontend saber se o slot está "reservado"
+        // antes de abrir o modal
+        LocalDateTime slotStart = LocalDateTime.of(data, slotTime);
+        // Assumindo slots de 15 minutos para verificação pontual
+        LocalDateTime slotEnd = slotStart.plusMinutes(15);
+
+        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(slotStart, slotEnd);
+
+        return marcacoes.stream()
+                .anyMatch(m -> m.getEstado() != EventoEstado.CANCELADO &&
+                        m.getData().isEqual(slotStart)); // Match exato no início do slot
     }
 
     /**

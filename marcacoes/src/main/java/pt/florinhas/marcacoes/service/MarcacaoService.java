@@ -35,6 +35,7 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 
 @Service
 @Transactional
@@ -421,5 +422,11 @@ public class MarcacaoService {
         }
 
         return dto;
+    }
+
+    @Scheduled(fixedRate = 60000) // Run every minute
+    public void limparReservasExpiradas() {
+        LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
+        marcacaoRepository.deleteByEstadoAndCriadoEmBefore(EventoEstado.EM_PREENCHIMENTO, expirationTime);
     }
 }
