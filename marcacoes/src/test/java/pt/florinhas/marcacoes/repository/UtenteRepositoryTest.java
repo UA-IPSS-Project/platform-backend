@@ -38,11 +38,11 @@ class UtenteRepositoryTest {
     @Test
     void findByNif_DeveRetornarUtente() {
         // Act
-        Optional<Utente> resultado = utenteRepository.findByNif("987654321");
+        List<Utente> resultado = utenteRepository.findByNif("987654321");
 
         // Assert
-        assertTrue(resultado.isPresent());
-        assertEquals("Maria Santos", resultado.get().getNome());
+        assertFalse(resultado.isEmpty());
+        assertEquals("Maria Santos", resultado.get(0).getNome());
     }
 
     @Test

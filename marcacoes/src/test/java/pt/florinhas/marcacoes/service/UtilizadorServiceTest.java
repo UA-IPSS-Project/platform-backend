@@ -7,8 +7,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -52,7 +50,7 @@ public class UtilizadorServiceTest {
         String telefone = "912345678";
 
         when(nifValidationService.validate(nif)).thenReturn(true);
-        when(utilizadorRepository.findByNif(nif)).thenReturn(Optional.empty());
+        when(utilizadorRepository.findByNif(nif)).thenReturn(java.util.Collections.emptyList());
         when(utenteRepository.existsByEmail(email)).thenReturn(false);
         when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
             Utente u = invocation.getArgument(0);
@@ -89,7 +87,7 @@ public class UtilizadorServiceTest {
         existingStart.setId(1L);
 
         when(nifValidationService.validate(nif)).thenReturn(true);
-        when(utilizadorRepository.findByNif(nif)).thenReturn(Optional.of(existingStart));
+        when(utilizadorRepository.findByNif(nif)).thenReturn(java.util.List.of(existingStart));
 
         // Act
         Utente result = utilizadorService.obterOuCriarUtente(nif, "Ignored", "Ignored", "Ignored");

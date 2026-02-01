@@ -22,6 +22,7 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.
@@ -75,10 +76,11 @@ public class AuthService {
                 log.debug("Login funcionario started for: {}", request.email());
 
                 // 1. Carregar utilizador primeiro para verificar estado "Ativo"
-                // Isto previne que func. inativos validem credenciais (timing attack /
-                // enumeração)
-                var user = utilizadorRepository.findByEmail(request.email())
-                                .orElseThrow(() -> new BadRequestException("Credenciais inválidas"));
+                List<Utilizador> users = utilizadorRepository.findByEmail(request.email());
+                if (users.isEmpty()) {
+                        throw new BadRequestException("Credenciais inválidas");
+                }
+                var user = users.get(0);
 
                 if (!(user instanceof Funcionario funcionario)) {
                         // Nota: Mensagem genérica para segurança, mas log específico
@@ -112,16 +114,28 @@ public class AuthService {
          * - Username usado na autenticação é o NIF.
          */
         public AuthResult loginUtente(LoginUtenteRequest request) {
+                log.debug("Login utente attempt for NIF: {}", request.nif());
 
                 // Autenticação via NIF + password
-                authenticationManager.authenticate(
-                                new UsernamePasswordAuthenticationToken(
-                                                request.nif(),
-                                                request.password()));
+                try {
+                        authenticationManager.authenticate(
+                                        new UsernamePasswordAuthenticationToken(
+                                                        request.nif(),
+                                                        request.password()));
+                } catch (Exception e) {
+                        log.error("Authentication failed for NIF: " + request.nif(), e);
+                        throw new BadRequestException("Credenciais inválidas");
+                }
 
-                // Obter utilizador pelo NIF
-                var user = utilizadorRepository.findByNif(request.nif())
-                                .orElseThrow(() -> new BadRequestException("Utente não encontrado"));
+                // Obter utilizador pelo NIF (handle duplicate data by taking first)
+                var users = utilizadorRepository.findByNif(request.nif());
+
+                if (users.isEmpty()) {
+                        throw new BadRequestException("Utente não encontrado");
+                }
+                var user = users.get(0);
+
+                log.debug("User found: {}, Active: {}", user.getEmail(), ((Utente) user).isActivo());
 
                 // Garantir que é efetivamente um Utente
                 if (!(user instanceof Utente)) {
@@ -237,9 +251,10 @@ public class AuthService {
                         utente.setActivo(true);
                         utenteRepository.save(utente);
                 } else if (user instanceof Funcionario funcionario) {
-                        // Para funcionários, define timestamp de termos se fornecido
+                        // Para funcionários, define timestamp de termos se fornecido e ATIVA a conta
                         if (termsAccepted != null && termsAccepted && funcionario.getTermsAcceptedAt() == null) {
                                 funcionario.setTermsAcceptedAt(LocalDateTime.now());
+                                funcionario.setActivo(true);
                         }
                         funcionarioRepository.save(funcionario);
                 } else {

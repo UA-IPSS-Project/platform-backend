@@ -88,9 +88,22 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal Utilizador utilizador) {
+    public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal Utilizador utilizador,
+            HttpServletRequest request, HttpServletResponse httpResponse) {
         if (utilizador == null) {
             return ResponseEntity.status(401).build();
+        }
+
+        // Force CSRF token to be loaded/generated to ensure cookie is present
+        // This fixes issues where browser restart keeps JWT but loses Session-only CSRF
+        // cookie
+        var csrfToken = (org.springframework.security.web.csrf.CsrfToken) request
+                .getAttribute(org.springframework.security.web.csrf.CsrfToken.class.getName());
+        if (csrfToken != null) {
+            // Calling getToken() triggers the StatelessCsrfTokenRepository to write the
+            // cookie
+            csrfToken.getToken();
+            log.debug("CSRF token refreshed for user: {}", utilizador.getEmail());
         }
 
         String role = utilizador.getAuthorities().stream()
@@ -98,7 +111,8 @@ public class AuthController {
                 .map(a -> a.getAuthority().replace("ROLE_", ""))
                 .orElse("UTENTE");
 
-        // Return user info WITHOUT regenerating cookies
+        // Return user info WITHOUT regenerating JWT cookie (unless we wanted to refresh
+        // it too)
         AuthResponse response = new AuthResponse(
                 utilizador.getId(),
                 utilizador.getEmail(),
@@ -150,8 +164,8 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(isSecure)
                 .path("/")
-                .maxAge(24 * 60 * 60) // 24 hours
-                .sameSite("Strict")
+                .maxAge(-1) // Session cookie (Logout on browser close)
+                .sameSite("Lax")
                 .build();
 
         log.debug("JWT cookie: secure={}, env={}", isSecure, environment);

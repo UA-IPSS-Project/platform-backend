@@ -62,8 +62,11 @@ public class UtilizadorService {
      */
 
     public Utilizador buscarPorEmail(String email) {
-        return utilizadorRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com email: " + email));
+        List<Utilizador> users = utilizadorRepository.findByEmail(email);
+        if (users.isEmpty()) {
+            throw new RuntimeException("Utilizador não encontrado com email: " + email);
+        }
+        return users.get(0);
     }
 
     /**
@@ -79,13 +82,14 @@ public class UtilizadorService {
         String searchNif = nif.trim();
         log.info("Searching for user with NIF: '{}'", searchNif);
 
-        Optional<Utilizador> result = utilizadorRepository.findByNif(searchNif);
-        if (result.isPresent()) {
-            log.trace("Found user: ID={}", result.get().getId());
+        List<Utilizador> results = utilizadorRepository.findByNif(searchNif);
+        if (!results.isEmpty()) {
+            log.trace("Found user: ID={}", results.get(0).getId());
+            return Optional.of(results.get(0));
         } else {
             log.debug("User with NIF '{}' NOT FOUND in database.", searchNif);
+            return Optional.empty();
         }
-        return result;
     }
 
     /*
@@ -113,7 +117,9 @@ public class UtilizadorService {
         }
 
         // Verificar se já existe
-        Optional<Utilizador> existingUser = utilizadorRepository.findByNif(nif);
+        List<Utilizador> existingUsers = utilizadorRepository.findByNif(nif);
+        Optional<Utilizador> existingUser = existingUsers.isEmpty() ? Optional.empty()
+                : Optional.of(existingUsers.get(0));
 
         if (existingUser.isPresent()) {
             Utilizador u = existingUser.get();
@@ -188,12 +194,13 @@ public class UtilizadorService {
         }
 
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
-            utilizadorRepository.findByEmail(request.getEmail())
-                    .ifPresent(u -> {
-                        if (!u.getId().equals(utilizadorId)) {
-                            throw new RuntimeException("Email já está em uso por outro utilizador");
-                        }
-                    });
+            List<Utilizador> users = utilizadorRepository.findByEmail(request.getEmail());
+            if (!users.isEmpty()) {
+                Utilizador u = users.get(0);
+                if (!u.getId().equals(utilizadorId)) {
+                    throw new RuntimeException("Email já está em uso por outro utilizador");
+                }
+            }
             utilizador.setEmail(request.getEmail());
         }
 
@@ -341,6 +348,7 @@ public class UtilizadorService {
             log.error("Erro ao enviar email de criação: {}", e.getMessage());
         }
 
+        System.out.println(">>> DEBUG PASSWORD (CREATE): " + passwordInicial);
         return salvo;
     }
 
@@ -348,8 +356,11 @@ public class UtilizadorService {
      * Inicia o processo de recuperação de conta pela secretaria.
      */
     public void recuperarConta(pt.florinhas.marcacoes.dto.RecoverAccountDTO request) {
-        Utilizador utilizador = utilizadorRepository.findByNif(request.getNif())
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com NIF: " + request.getNif()));
+        List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
+        if (users.isEmpty()) {
+            throw new RuntimeException("Utilizador não encontrado com NIF: " + request.getNif());
+        }
+        Utilizador utilizador = users.get(0);
 
         if (request.getUpdatedEmail() != null && !request.getUpdatedEmail().isEmpty()
                 && !request.getUpdatedEmail().equals(utilizador.getEmail())) {
@@ -377,6 +388,7 @@ public class UtilizadorService {
         utilizadorRepository.save(utilizador);
 
         try {
+            System.out.println(">>> DEBUG PASSWORD (RECOVER): " + novaPassword);
             emailService.sendPassword(utilizador.getEmail(), novaPassword);
         } catch (Exception e) {
             throw new RuntimeException("Erro ao enviar email de recuperação: " + e.getMessage());

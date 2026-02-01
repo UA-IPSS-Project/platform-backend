@@ -55,32 +55,32 @@ class UtilizadorRepositoryTest {
     @Test
     void findByEmail_DeveRetornarUtilizador_QuandoEmailExiste() {
         // Act
-        Optional<Utilizador> resultado = utilizadorRepository.findByEmail("maria@test.com");
+        List<Utilizador> resultado = utilizadorRepository.findByEmail("maria@test.com");
 
         // Assert
-        assertTrue(resultado.isPresent());
-        assertEquals("Maria Santos", resultado.get().getNome());
-        assertEquals("123456789", resultado.get().getNif());
+        assertFalse(resultado.isEmpty());
+        assertEquals("Maria Santos", resultado.get(0).getNome());
+        assertEquals("123456789", resultado.get(0).getNif());
     }
 
     @Test
     void findByEmail_DeveRetornarEmpty_QuandoEmailNaoExiste() {
         // Act
-        Optional<Utilizador> resultado = utilizadorRepository.findByEmail("naoexiste@test.com");
+        List<Utilizador> resultado = utilizadorRepository.findByEmail("naoexiste@test.com");
 
         // Assert
-        assertFalse(resultado.isPresent());
+        assertTrue(resultado.isEmpty());
     }
 
     @Test
     void findByNif_DeveRetornarUtilizador_QuandoNifExiste() {
         // Act
-        Optional<Utilizador> resultado = utilizadorRepository.findByNif("987654321");
+        List<Utilizador> resultado = utilizadorRepository.findByNif("987654321");
 
         // Assert
-        assertTrue(resultado.isPresent());
-        assertEquals("João Silva", resultado.get().getNome());
-        assertTrue(resultado.get() instanceof Funcionario);
+        assertFalse(resultado.isEmpty());
+        assertEquals("João Silva", resultado.get(0).getNome());
+        assertTrue(resultado.get(0) instanceof Funcionario);
     }
 
     @Test

@@ -53,14 +53,17 @@ public class StatelessCsrfTokenRepository implements CsrfTokenRepository {
 
         log.debug("Saving CSRF token to cookie: {}", token.getToken());
 
-        // Salvar token no cookie
-        Cookie cookie = new Cookie(CSRF_COOKIE_NAME, token.getToken());
-        cookie.setHttpOnly(false); // IMPORTANTE: JavaScript precisa ler o cookie
-        cookie.setPath("/");
-        cookie.setSecure(request.isSecure()); // true em HTTPS
-        cookie.setMaxAge(-1); // Session cookie (expira quando browser fecha)
+        // Usar ResponseCookie para controlar SameSite
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie
+                .from(CSRF_COOKIE_NAME, token.getToken())
+                .secure(request.isSecure()) // true em HTTPS
+                .path("/")
+                .maxAge(-1) // Session cookie (Strict security policy)
+                .httpOnly(false) // IMPORTANTE: Frontend precisa ler este cookie
+                .sameSite("Lax") // Lax é seguro e permite navegação normal
+                .build();
 
-        response.addCookie(cookie);
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     @Override

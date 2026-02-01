@@ -46,7 +46,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
-                        "WHERE m.data BETWEEN :dataInicio AND :dataFim " +
+                        "WHERE m.data BETWEEN :dataInicio AND :dataFim AND m.estado <> 'CANCELADO' " +
                         "ORDER BY m.data")
         List<Marcacao> findMarcacoesBetweenDates(
                         @Param("dataInicio") LocalDateTime dataInicio,
@@ -86,14 +86,13 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
                         "WHERE " +
-                        "m.data < :now AND " +
-                        "(:dataInicio IS NULL OR m.data >= :dataInicio) AND " +
-                        "(:dataFim IS NULL OR m.data <= :dataFim) AND " +
+                        "m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
+                        "m.data >= :dataInicio AND " +
+                        "m.data <= :dataFim AND " +
                         "(:utenteId IS NULL OR m.marcacaoSecretaria.utente.id = :utenteId) AND " +
                         "(:estado IS NULL OR m.estado = :estado) " +
                         "ORDER BY m.data DESC")
         List<Marcacao> findMarcacoesPassadas(
-                        @Param("now") LocalDateTime now,
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
                         @Param("utenteId") Long utenteId,
@@ -104,7 +103,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
         List<Object[]> countMarcacoesByEstado();
 
         // Contar marcações entre datas específicas
-        @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data BETWEEN :dataInicio AND :dataFim")
+        @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data BETWEEN :dataInicio AND :dataFim AND m.estado <> 'CANCELADO'")
         long countMarcacoesBetweenDates(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim);

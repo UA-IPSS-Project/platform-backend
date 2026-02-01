@@ -63,7 +63,8 @@ public class Marcacao {
     private EventoEstado estado;
 
     /**
-     * Utilizador que criou a marcação (ex.: funcionário de secretaria ou o próprio utente).
+     * Utilizador que criou a marcação (ex.: funcionário de secretaria ou o próprio
+     * utente).
      * Relação N:1. A FK é armazenada em 'utilizador_id'.
      */
     // Relacionamento ManyToOne com Funcionario
@@ -88,10 +89,16 @@ public class Marcacao {
     @JoinColumn(name = "atendente_id")
     private Utilizador atendente;
 
+    // Motivo do cancelamento (se estado for CANCELADO)
+    @Column(name = "motivo_cancelamento")
+    private String motivoCancelamento;
+
     /**
      * Detalhes específicos quando a marcação segue o fluxo de secretaria.
-     * Relação 1:1 bidirecional. 'mappedBy' indica que a FK está do lado de MarcacaoSecretaria.
-     * Cascade ALL para propagar persist/update/delete de Marcacao para MarcacaoSecretaria.
+     * Relação 1:1 bidirecional. 'mappedBy' indica que a FK está do lado de
+     * MarcacaoSecretaria.
+     * Cascade ALL para propagar persist/update/delete de Marcacao para
+     * MarcacaoSecretaria.
      */
     // Relacionamento OneToOne com Marcacao_Secretaria (relacionamento 1:1)
     @OneToOne(mappedBy = "marcacao", cascade = CascadeType.ALL)

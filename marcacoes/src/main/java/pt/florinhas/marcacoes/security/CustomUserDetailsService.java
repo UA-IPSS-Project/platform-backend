@@ -13,14 +13,14 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
  * do Spring Security com o modelo de domínio da aplicação.
  *
  * Características:
- *  - @Primary: quando existirem múltiplos UserDetailsService no contexto,
- *    este é o escolhido por defeito pelo Spring Security.
- *  - Suporta lookup por email (funcionários) e por NIF (utentes), permitindo
- *    que o "username" recebido na autenticação seja um ou outro.
+ * - @Primary: quando existirem múltiplos UserDetailsService no contexto,
+ * este é o escolhido por defeito pelo Spring Security.
+ * - Suporta lookup por email (funcionários) e por NIF (utentes), permitindo
+ * que o "username" recebido na autenticação seja um ou outro.
  *
  * Exceções:
- *  - Lança UsernameNotFoundException quando não encontra o utilizador,
- *    que é mapeada internamente pelo Spring Security para falha de autenticação.
+ * - Lança UsernameNotFoundException quando não encontra o utilizador,
+ * que é mapeada internamente pelo Spring Security para falha de autenticação.
  */
 @Service
 @Primary
@@ -36,21 +36,31 @@ public class CustomUserDetailsService implements UserDetailsService {
      * Carrega um utilizador pelo "username" fornecido ao Spring Security.
      *
      * Estratégia:
-     *  1) Tenta encontrar por email (caso comum para Funcionários).
-     *  2) Caso falhe, tenta por NIF (caso comum para Utentes).
+     * 1) Tenta encontrar por email (caso comum para Funcionários).
+     * 2) Caso falhe, tenta por NIF (caso comum para Utentes).
      *
      * param email valor do identificador fornecido (pode ser email ou NIF)
      * return UserDetails do utilizador encontrado
-     * throws UsernameNotFoundException quando não encontra nem por email nem por NIF
+     * throws UsernameNotFoundException quando não encontra nem por email nem por
+     * NIF
      */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // Tenta por email primeiro (funcionários), depois por NIF (utentes)
-        return utilizadorRepository.findByEmail(email)
-                .or(() -> utilizadorRepository.findByNif(email))
-                .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado: " + email));
+        // Tenta por email primeiro (funcionários)
+        var usersByEmail = utilizadorRepository.findByEmail(email);
+        if (!usersByEmail.isEmpty()) {
+            return usersByEmail.get(0);
+        }
+
+        // Depois por NIF (utentes) - devolve Lista
+        var usersByNif = utilizadorRepository.findByNif(email);
+        if (!usersByNif.isEmpty()) {
+            return usersByNif.get(0);
+        }
+
+        throw new UsernameNotFoundException("Utilizador não encontrado: " + email);
     }
-    
+
     /**
      * Carrega um utilizador especificamente por email.
      * Útil para fluxos onde o identificador deve ser explicitamente um email
@@ -61,10 +71,13 @@ public class CustomUserDetailsService implements UserDetailsService {
      * throws UsernameNotFoundException se não existir utilizador com esse email
      */
     public UserDetails loadUserByEmail(String email) throws UsernameNotFoundException {
-        return utilizadorRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Funcionário não encontrado com email: " + email));
+        var users = utilizadorRepository.findByEmail(email);
+        if (users.isEmpty()) {
+            throw new UsernameNotFoundException("Funcionário não encontrado com email: " + email);
+        }
+        return users.get(0);
     }
-    
+
     /**
      * Carrega um utilizador especificamente por NIF.
      * Útil para fluxos onde o identificador deve ser explicitamente um NIF
@@ -75,7 +88,10 @@ public class CustomUserDetailsService implements UserDetailsService {
      * throws UsernameNotFoundException se não existir utilizador com esse NIF
      */
     public UserDetails loadUserByNif(String nif) throws UsernameNotFoundException {
-        return utilizadorRepository.findByNif(nif)
-                .orElseThrow(() -> new UsernameNotFoundException("Utente não encontrado com NIF: " + nif));
+        var users = utilizadorRepository.findByNif(nif);
+        if (users.isEmpty()) {
+            throw new UsernameNotFoundException("Utente não encontrado com NIF: " + nif);
+        }
+        return users.get(0);
     }
 }

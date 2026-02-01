@@ -12,31 +12,34 @@ import pt.florinhas.marcacoes.domain.EventoEstado;
  * DTO de resposta para expor marcações ao frontend.
  *
  * Estrutura:
- *  - Dados da própria marcação (id, version, data, estado, atendenteNome).
- *  - Subdocumento opcional com detalhes de secretaria (MarcacaoSecretariaDTO),
- *    incluindo identificação do utente.
+ * - Dados da própria marcação (id, version, data, estado, atendenteNome).
+ * - Subdocumento opcional com detalhes de secretaria (MarcacaoSecretariaDTO),
+ * incluindo identificação do utente.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class MarcacaoResponseDTO {
 
-    // Identificador único da marcação. 
+    // Identificador único da marcação.
     private Long id;
 
-    // Versão do registo (para controlo de concorrência otimista no cliente). 
+    // Versão do registo (para controlo de concorrência otimista no cliente).
     private Long version;
 
-    //  Instante agendado (data/hora local) da marcação. 
+    // Instante agendado (data/hora local) da marcação.
     private LocalDateTime data;
 
-    // Estado atual do ciclo de vida da marcação. 
+    // Estado atual do ciclo de vida da marcação.
     private EventoEstado estado;
 
-    // Nome do funcionário que atendeu/concluiu a marcação (se aplicável). 
+    // Nome do funcionário que atendeu/concluiu a marcação (se aplicável).
     private String atendenteNome; // Nome do funcionário que atendeu
 
-    // Detalhes específicos do fluxo de secretaria, se existirem. 
+    // Motivo do cancelamento (se aplicável).
+    private String motivoCancelamento;
+
+    // Detalhes específicos do fluxo de secretaria, se existirem.
     private MarcacaoSecretariaDTO marcacaoSecretaria;
 
     /**
@@ -48,16 +51,16 @@ public class MarcacaoResponseDTO {
     @AllArgsConstructor
     public static class MarcacaoSecretariaDTO {
 
-        // Assunto curto da marcação. 
+        // Assunto curto da marcação.
         private String assunto;
 
-        // Descrição detalhada do atendimento. 
+        // Descrição detalhada do atendimento.
         private String descricao;
 
-        // Tipo de atendimento: PRESENCIAL ou REMOTO. 
+        // Tipo de atendimento: PRESENCIAL ou REMOTO.
         private AtendimentoTipo tipoAtendimento;
 
-        // Dados resumidos do utente associado. 
+        // Dados resumidos do utente associado.
         private UtenteDTO utente;
     }
 
@@ -70,19 +73,19 @@ public class MarcacaoResponseDTO {
     @AllArgsConstructor
     public static class UtenteDTO {
 
-        // Identificador do utente. 
+        // Identificador do utente.
         private Long id;
 
-        // Nome do utente. 
+        // Nome do utente.
         private String nome;
 
-        // Email do utente. 
+        // Email do utente.
         private String email;
 
-        // NIF do utente. 
+        // NIF do utente.
         private String nif;
 
-        // Telefone de contacto do utente. 
+        // Telefone de contacto do utente.
         private String telefone;
     }
 }

@@ -33,7 +33,7 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     List<Funcionario> findByTipo(FuncionarioTipo tipo);
 
     // Encontrar funcionários por email
-    Optional<Funcionario> findByEmail(String email);
+    List<Funcionario> findByEmail(String email);
 
     // Buscar funcionários por nome (case insensitive)
     @Query("SELECT f FROM Funcionario f WHERE LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")

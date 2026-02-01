@@ -50,11 +50,11 @@ class FuncionarioRepositoryTest {
     @Test
     void findByEmail_DeveRetornarFuncionario() {
         // Act
-        Optional<Funcionario> resultado = funcionarioRepository.findByEmail("joao@test.com");
+        List<Funcionario> resultado = funcionarioRepository.findByEmail("joao@test.com");
 
         // Assert
-        assertTrue(resultado.isPresent());
-        assertEquals("123456789", resultado.get().getNif());
+        assertFalse(resultado.isEmpty());
+        assertEquals("123456789", resultado.get(0).getNif());
     }
 
     @Test

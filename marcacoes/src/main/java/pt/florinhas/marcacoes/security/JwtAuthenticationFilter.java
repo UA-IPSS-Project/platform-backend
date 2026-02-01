@@ -64,24 +64,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String userEmail = jwtService.extractUsername(jwt);
-        log.debug("Extracted username from JWT: {}", userEmail);
+        try {
+            String userEmail = jwtService.extractUsername(jwt);
+            log.debug("Extracted username from JWT: {}", userEmail);
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                log.debug("JWT token is VALID for user: {}", userEmail);
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            } else {
-                log.warn("JWT token is INVALID for user: {}", userEmail);
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    log.debug("JWT token is VALID for user: {}", userEmail);
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities());
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    log.warn("JWT token is INVALID for user: {}", userEmail);
+                }
             }
+        } catch (Exception e) {
+            // Se o token for inválido (expirado, assinatura errada pois server reiniciou,
+            // etc),
+            // apenas ignoramos e deixamos o pedido seguir (como anónimo).
+            log.warn("JWT token validation failed (possibly invalid signature or expired): {}", e.getMessage());
+            // SecurityContextHolder.clearContext(); // Garante que não há lixo
         }
         filterChain.doFilter(request, response);
     }

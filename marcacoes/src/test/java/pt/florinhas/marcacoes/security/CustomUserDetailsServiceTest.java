@@ -1,7 +1,5 @@
 package pt.florinhas.marcacoes.security;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -45,7 +43,7 @@ class CustomUserDetailsServiceTest {
     void loadUserByUsername_DeveRetornarUserDetails_QuandoUtilizadorExiste() {
         // Arrange
         when(utilizadorRepository.findByEmail("test@example.com"))
-                .thenReturn(Optional.of(utente));
+                .thenReturn(java.util.List.of(utente));
 
         // Act
         UserDetails userDetails = userDetailsService.loadUserByUsername("test@example.com");
@@ -61,13 +59,12 @@ class CustomUserDetailsServiceTest {
     void loadUserByUsername_DeveLancarException_QuandoUtilizadorNaoExiste() {
         // Arrange
         when(utilizadorRepository.findByEmail(anyString()))
-                .thenReturn(Optional.empty());
+                .thenReturn(java.util.Collections.emptyList());
 
         // Act & Assert
         UsernameNotFoundException exception = assertThrows(
                 UsernameNotFoundException.class,
-                () -> userDetailsService.loadUserByUsername("nonexistent@example.com")
-        );
+                () -> userDetailsService.loadUserByUsername("nonexistent@example.com"));
 
         assertTrue(exception.getMessage().contains("Utilizador não encontrado"));
         verify(utilizadorRepository).findByEmail("nonexistent@example.com");
