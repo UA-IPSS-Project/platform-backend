@@ -29,7 +29,10 @@ import java.util.Base64;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
+import pt.florinhas.marcacoes.domain.AtendimentoTipo;
+import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import jakarta.persistence.EntityNotFoundException;
 
@@ -45,6 +48,9 @@ public class MarcacaoService {
 
     @Autowired
     private FuncionarioRepository funcionarioRepository;
+
+    @Autowired
+    private UtilizadorRepository utilizadorRepository;
 
     @Autowired
     private MarcacaoValidator marcacaoValidator;
@@ -236,15 +242,22 @@ public class MarcacaoService {
 
         // Se houver atendente a definir (funcionário que executa a alteração):
         if (request.getFuncionarioId() != null) {
-            // Nota: Se o estado for CONCLUIDO ou CANCELADO, este funcionário é o atendente
-            // (quem finalizou).
+            // Nota: Se o estado for CONCLUIDO ou CANCELADO, este funcionário (ou utente) é
+            // o atendente
             if (request.getNovoEstadoEnum() == EventoEstado.CONCLUIDO
                     || request.getNovoEstadoEnum() == EventoEstado.CANCELADO) {
-                Funcionario atendente = funcionarioRepository.findById(request.getFuncionarioId())
+                Utilizador atendente = utilizadorRepository.findById(request.getFuncionarioId())
                         .orElseThrow(() -> new EntityNotFoundException(
-                                "Funcionário não encontrado: " + request.getFuncionarioId()));
+                                "Utilizador não encontrado: " + request.getFuncionarioId()));
                 marcacao.setAtendente(atendente);
             }
+        }
+
+        System.out.println("Updating Marcacao " + id + " to state " + request.getNovoEstadoEnum());
+        if (request.getMotivoCancelamento() != null) {
+            System.out.println("Reason: " + request.getMotivoCancelamento());
+        } else {
+            System.out.println("Reason is NULL");
         }
 
         marcacao = marcacaoRepository.save(marcacao);
