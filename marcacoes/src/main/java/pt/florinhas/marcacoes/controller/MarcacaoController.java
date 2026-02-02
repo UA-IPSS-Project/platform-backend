@@ -196,6 +196,28 @@ public class MarcacaoController {
             @PathVariable Long id,
             @RequestBody AtualizarEstadoRequest request) {
 
+        // Validar permissões
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        if (!isAdmin) {
+            // Se não é admin, verificar se a marcação pertence ao utilizador
+            MarcacaoResponseDTO existing = marcacaoService.obterMarcacaoDTO(id);
+            if (existing != null && existing.getMarcacaoSecretaria() != null
+                    && existing.getMarcacaoSecretaria().getUtente() != null) {
+
+                Long ownerId = existing.getMarcacaoSecretaria().getUtente().getId();
+                if (!ownerId.equals(currentUserId)) {
+                    throw new AccessDeniedException("Não tem permissão para alterar esta marcação.");
+                }
+            } else if (existing != null) {
+                // Se não tem dados de utente (estranho), por segurança bloqueamos se não for
+                // admin
+                throw new AccessDeniedException("Não tem permissão para alterar esta marcação.");
+            }
+            // Se existing == null, deixamos o serviço lidar com o 404 normal
+        }
+
         MarcacaoResponseDTO response = marcacaoService.atualizarEstadoMarcacao(id, request);
         return ResponseEntity.ok(response);
     }
@@ -265,6 +287,13 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesUtente(
             @PathVariable Long utenteId) {
 
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        if (!isAdmin && (currentUserId == null || !currentUserId.equals(utenteId))) {
+            throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
+        }
+
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesUtente(utenteId);
         return ResponseEntity.ok(response);
     }
@@ -281,6 +310,13 @@ public class MarcacaoController {
     @GetMapping("/utente/{utenteId}/bloqueadas")
     public ResponseEntity<List<Map<String, Object>>> consultarMarcacoesBloqueadas(
             @PathVariable Long utenteId) {
+
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        if (!isAdmin && (currentUserId == null || !currentUserId.equals(utenteId))) {
+            throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
+        }
 
         List<Map<String, Object>> marcacoesBloqueadas = marcacaoService.consultarMarcacoesBloqueadas(utenteId);
         return ResponseEntity.ok(marcacoesBloqueadas);
