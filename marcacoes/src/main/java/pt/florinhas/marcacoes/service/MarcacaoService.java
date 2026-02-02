@@ -75,15 +75,7 @@ public class MarcacaoService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
-        marcacaoValidator.validarCriacao(request);
-
-        // 1. Bloquear o horário para leitura/escrita para evitar Race Conditions
-        List<Marcacao> conflitos = marcacaoRepository.findConflictingWithLock(request.getData());
-        if (!conflitos.isEmpty()) {
-            throw new ConflictException("Horário já ocupado.");
-        }
-
-        // 2. Obter ou criar Utente
+        // 1. Obter ou criar Utente
         Utente utente = null;
         if (request.getUtenteId() != null) {
             utente = utenteRepository.findById(request.getUtenteId())
@@ -124,93 +116,56 @@ public class MarcacaoService {
             throw new IllegalArgumentException("ID do Utente ou NIF é obrigatório.");
         }
 
-        // 2. Obter funcionário criador
-        Funcionario funcionario = funcionarioRepository.findById(request.getCriadoPorId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Funcionário não encontrado com ID: " + request.getCriadoPorId()));
+        Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.PRESENCIAL, utente);
 
-        // 3. Criar a Marcação
-        Marcacao marcacao = new Marcacao();
-        marcacao.setData(request.getData());
-        marcacao.setEstado(EventoEstado.AGENDADO);
-        marcacao.setCriadoPor(funcionario);
-        // marcacao.setCriadoEm() -> should be set here or via entity listener? Entity
-        // has updatable=false but no default.
-        // Assuming we rely on database default or set manually if no listener.
-        // Let's check entity, it doesn't seem to have @PrePersist. Let's set it
-        // manually if possible or ignore if DB handles.
-        // Actually Marcacao.java suggested "Should be filled in service layer".
-        // But Marcacao.java does not expose setCriadoEm? It has @Data so it should.
-        // Wait, @Data generates setters for all fields unless final.
-        // Let's assume setter exists. But checking Marcacao.java again...
-        // private LocalDateTime criadoEm; -> Yes setter exists.
-        // marcacao.setCriadoEm(LocalDateTime.now()); // Cannot resolve method
-        // 'setCriadoEm' ?
-        // @Data generates it.
+        // Associa funcionário criador (específico de presencial)
+        if (request.getCriadoPorId() != null) {
+            Funcionario funcionario = funcionarioRepository.findById(request.getCriadoPorId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Funcionário não encontrado com ID: " + request.getCriadoPorId()));
+            marcacao.setCriadoPor(funcionario);
+        }
 
-        // 4. Detalhes de Secretaria (1:1)
-        MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
-        detalhes.setAssunto(request.getAssunto());
-        detalhes.setDescricao(request.getDescricao());
-        detalhes.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
-        detalhes.setUtente(utente);
-
-        // Associação bidirecional
-        detalhes.setMarcacao(marcacao);
-        marcacao.setMarcacaoSecretaria(detalhes);
-
-        // 5. Persistir (Cascade ALL em marcacaoSecretaria vai salvar tudo)
         return marcacaoRepository.save(marcacao);
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
+        Utente utente = utenteRepository.findById(request.getUtenteId())
+                .orElseThrow(
+                        () -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
+
+        Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
+
+        // Na remota, criadoPor pode ser null ou não especificado se feito pelo utente.
+        // Se houver necessidade de setar, seria aqui.
+
+        return marcacaoRepository.save(marcacao);
+    }
+
+    private Marcacao criarMarcacaoBase(CriarMarcacaoRequest request, AtendimentoTipo tipo, Utente utente) {
         marcacaoValidator.validarCriacao(request);
 
-        // 1. Bloquear o horário para leitura/escrita para evitar Race Conditions
+        // Bloquear o horário
         List<Marcacao> conflitos = marcacaoRepository.findConflictingWithLock(request.getData());
         if (!conflitos.isEmpty()) {
             throw new ConflictException("Horário já ocupado.");
         }
 
-        // 2. Obter Utente
-        Utente utente = utenteRepository.findById(request.getUtenteId())
-                .orElseThrow(
-                        () -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
-
-        // 2. Obter funcionário (opcional para remota? assumimos null ou sistema?)
-        // Para remote booking pelo utente, criadoPor geralmente é o próprio utente se a
-        // entidade suportar,
-        // mas a entidade Marcacao exige um Funcionario em 'criadoPor'?
-        // Verificando Marcacao.java: private Funcionario criadoPor;
-        // Se for obrigatório, temos um problema. Mas o request tem criadoPorId?
-        // No ClientAppointmentDialog envia 'criadoPorId: utenteId'.
-        // Se 'criadoPor' for do tipo Funcionario, vai falhar se passarmos ID de utente.
-        // Solução temporária: Se for criado pelo utente, podemos deixar null se
-        // permitido
-        // ou associar a um funcionário 'sistema' ou mudar o modelo.
-        // Dado o tempo, vou assumir que 'criadoPor' pode ser null ou vamos buscar um
-        // funcionário default.
-        // Porem, Presencial usa check not null.
-        // Vamos verificar se existe um Funcionario com ID do utente? Improvável.
-        // Melhor: Deixar null se a entidade permitir, ou não setar.
-
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
-        // marcacao.setCriadoPor(...) - Ignorando por agora pois é autoria do utente
 
-        // 3. Detalhes (Tipo REMOTO)
         MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
         detalhes.setAssunto(request.getAssunto());
         detalhes.setDescricao(request.getDescricao());
-        detalhes.setTipoAtendimento(AtendimentoTipo.REMOTO);
+        detalhes.setTipoAtendimento(tipo);
         detalhes.setUtente(utente);
 
         detalhes.setMarcacao(marcacao);
         marcacao.setMarcacaoSecretaria(detalhes);
 
-        return marcacaoRepository.save(marcacao);
+        return marcacao;
     }
 
     public List<MarcacaoResponseDTO> consultarAgenda(LocalDateTime inicio, LocalDateTime fim) {
