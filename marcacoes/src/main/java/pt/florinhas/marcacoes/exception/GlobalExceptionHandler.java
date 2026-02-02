@@ -127,6 +127,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Mapeia AccessDeniedException para HTTP 403 (FORBIDDEN).
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDeniedException(
+            org.springframework.security.access.AccessDeniedException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /**
      * Fallback genérico para exceções não mapeadas explicitamente.
      *
      * Devolve HTTP 500 (INTERNAL_SERVER_ERROR) com uma mensagem genérica,

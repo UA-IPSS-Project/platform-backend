@@ -1,252 +1,182 @@
-// package pt.florinhas.marcacoes.controller;
+package pt.florinhas.marcacoes.controller;
 
-// import com.fasterxml.jackson.databind.ObjectMapper;
-// import org.junit.jupiter.api.BeforeEach;
-// import org.junit.jupiter.api.Test;
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-// import org.springframework.boot.test.mock.mockito.MockBean;
-// import org.springframework.context.annotation.Import;
-// import org.springframework.http.MediaType;
-// import org.springframework.test.web.servlet.MockMvc;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
 
-// import pt.florinhas.marcacoes.domain.*;
-// import pt.florinhas.marcacoes.dto.*;
-// import pt.florinhas.marcacoes.repository.*;
-// import pt.florinhas.marcacoes.service.MarcacaoService;
-// import pt.florinhas.marcacoes.config.TestSecurityConfig;
+import pt.florinhas.marcacoes.domain.*;
+import pt.florinhas.marcacoes.dto.*;
+import pt.florinhas.marcacoes.repository.*;
+import pt.florinhas.marcacoes.service.AuthService;
+import pt.florinhas.marcacoes.service.MarcacaoService;
+import pt.florinhas.marcacoes.config.TestSecurityConfig;
 
-// import java.time.LocalDateTime;
-// import java.util.List;
-// import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
-// import static org.mockito.ArgumentMatchers.any;
-// import static org.mockito.Mockito.*;
-// import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-// import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-// @WebMvcTest(controllers = MarcacaoController.class,
-//     excludeAutoConfiguration = org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class)
-// @Import(TestSecurityConfig.class)
-// class MarcacaoControllerTest {
+@WebMvcTest(controllers = MarcacaoController.class, excludeAutoConfiguration = org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class)
+@Import(TestSecurityConfig.class)
+class MarcacaoControllerTest {
 
-//     @Autowired
-//     private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-//     @Autowired
-//     private ObjectMapper objectMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-//     @MockBean
-//     private MarcacaoService marcacaoService;
+    @MockBean
+    private MarcacaoService marcacaoService;
 
-//     @MockBean
-//     private UtenteRepository utenteRepository;
+    @MockBean
+    private AuthService authService;
 
-//     @MockBean
-//     private FuncionarioRepository funcionarioRepository;
+    // Repositories needed for Application Context even if not directly used in
+    // Controller
+    @MockBean
+    private UtenteRepository utenteRepository;
+    @MockBean
+    private FuncionarioRepository funcionarioRepository;
+    @MockBean
+    private UtilizadorRepository utilizadorRepository;
+    @MockBean
+    private pt.florinhas.marcacoes.security.JwtService jwtService;
+    @MockBean(name = "customUserDetailsService")
+    private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+    @MockBean
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    @MockBean
+    private org.springframework.security.authentication.AuthenticationManager authenticationManager;
 
-//     @MockBean
-//     private UtilizadorRepository utilizadorRepository;
+    private Funcionario funcionario;
+    private Utente utente;
+    private MarcacaoResponseDTO marcacaoDTO;
 
-//     @MockBean
-//     private pt.florinhas.marcacoes.security.JwtService jwtService;
+    @BeforeEach
+    void setUp() {
+        funcionario = new Funcionario();
+        funcionario.setId(1L);
+        funcionario.setNome("João Silva");
 
-//     @MockBean
-//     private pt.florinhas.marcacoes.security.CustomUserDetailsService customUserDetailsService;
+        utente = new Utente();
+        utente.setId(2L);
+        utente.setNome("Maria Santos");
 
-//     @MockBean
-//     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+        marcacaoDTO = new MarcacaoResponseDTO();
+        marcacaoDTO.setId(1L);
+        marcacaoDTO.setData(LocalDateTime.now().plusDays(1));
+        marcacaoDTO.setEstado(EventoEstado.AGENDADO);
+    }
 
-//     @MockBean
-//     private org.springframework.security.authentication.AuthenticationManager authenticationManager;
+    @Test
+    @WithMockUser(username = "admin", roles = { "FUNCIONARIO" })
+    void procurarAgenda_AsAdmin_ShouldAllowAnyUtenteId() throws Exception {
+        // Arrange
+        when(authService.getCurrentUserId()).thenReturn(1L);
+        when(authService.isAdmin()).thenReturn(true);
+        when(marcacaoService.procurarAgenda(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(marcacaoDTO));
 
-//     private Funcionario funcionario;
-//     private Utente utente;
-//     private Marcacao marcacao;
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/agenda/procurar")
+                .param("utenteId", "99") // ID arbitrário
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1));
 
-//     @BeforeEach
-//     void setUp() {
-//         funcionario = new Funcionario();
-//         funcionario.setId(1L);
-//         funcionario.setNome("João Silva");
-//         funcionario.setTipo(FuncionarioTipo.SECRETARIA);
+        // Verifica se chamou o serviço mantendo o utenteId=99
+        verify(marcacaoService).procurarAgenda(any(), any(), any(), eq(99L), any());
+    }
 
-//         utente = new Utente();
-//         utente.setId(2L);
-//         utente.setNome("Maria Santos");
+    @Test
+    @WithMockUser(username = "user", roles = { "UTENTE" })
+    void procurarAgenda_AsUser_ShouldAllowOwnId() throws Exception {
+        // Arrange
+        Long userId = 2L;
+        when(authService.getCurrentUserId()).thenReturn(userId);
+        when(authService.isAdmin()).thenReturn(false);
+        when(marcacaoService.procurarAgenda(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(marcacaoDTO));
 
-//         marcacao = new Marcacao();
-//         marcacao.setId(1L);
-//         marcacao.setData(LocalDateTime.now().plusDays(1));
-//         marcacao.setEstado(EventoEstado.AGENDADO);
-//         marcacao.setCriadoPor(funcionario);
-//     }
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/agenda/procurar")
+                .param("utenteId", userId.toString())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
 
-//     @Test
-//     void criarMarcacaoPresencial_DeveRetornar200() throws Exception {
-//         // Arrange
-//         CriarMarcacaoRequest request = new CriarMarcacaoRequest();
-//         request.setData(LocalDateTime.now().plusDays(1));
-//         request.setAssunto("Consulta");
-//         request.setUtenteId(2L);
-//         request.setCriadoPorId(1L);
+        verify(marcacaoService).procurarAgenda(any(), any(), any(), eq(userId), any());
+    }
 
-//         when(utenteRepository.findById(2L)).thenReturn(Optional.of(utente));
-//         when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(funcionario));
-//         when(marcacaoService.criarMarcacaoPresencial(any(), any(), any(), any())).thenReturn(marcacao);
+    @Test
+    @WithMockUser(username = "user", roles = { "UTENTE" })
+    void procurarAgenda_AsUser_ShouldForbidden_OtherId() throws Exception {
+        // Arrange
+        Long userId = 2L;
+        Long otherId = 3L;
+        when(authService.getCurrentUserId()).thenReturn(userId);
+        when(authService.isAdmin()).thenReturn(false);
 
-//         // Act & Assert
-//         mockMvc.perform(post("/api/marcacoes/presencial")
-//                 .contentType(MediaType.APPLICATION_JSON)
-//                 .content(objectMapper.writeValueAsString(request)))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$.id").value(1));
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/agenda/procurar")
+                .param("utenteId", otherId.toString())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden()); // 403
 
-//         verify(marcacaoService, times(1)).criarMarcacaoPresencial(any(), any(), any(), any());
-//     }
+        verify(marcacaoService, never()).procurarAgenda(any(), any(), any(), any(), any());
+    }
 
-//     @Test
-//     void criarMarcacaoRemota_DeveRetornar200() throws Exception {
-//         // Arrange
-//         CriarMarcacaoRequest request = new CriarMarcacaoRequest();
-//         request.setData(LocalDateTime.now().plusDays(1));
-//         request.setAssunto("Consulta");
-//         request.setUtenteId(2L);
+    @Test
+    @WithMockUser(username = "user", roles = { "UTENTE" })
+    void procurarAgenda_AsUser_NoId_ShouldDefaultToSelf() throws Exception {
+        // Arrange
+        Long userId = 2L;
+        when(authService.getCurrentUserId()).thenReturn(userId);
+        when(authService.isAdmin()).thenReturn(false);
+        when(marcacaoService.procurarAgenda(any(), any(), any(), any(), any()))
+                .thenReturn(List.of(marcacaoDTO));
 
-//         when(utenteRepository.findById(2L)).thenReturn(Optional.of(utente));
-//         when(marcacaoService.criarMarcacaoRemota(any(), any(), any())).thenReturn(marcacao);
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/agenda/procurar")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
 
-//         // Act & Assert
-//         mockMvc.perform(post("/api/marcacoes/remota")
-//                 .contentType(MediaType.APPLICATION_JSON)
-//                 .content(objectMapper.writeValueAsString(request)))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$.id").value(1));
+        // Verifica se forçou utenteId = userId (2L)
+        verify(marcacaoService).procurarAgenda(any(), any(), any(), eq(userId), any());
+    }
 
-//         verify(marcacaoService, times(1)).criarMarcacaoRemota(any(), any(), any());
-//     }
+    @Test
+    @WithMockUser(username = "user", roles = { "UTENTE" })
+    void consultarAgenda_AsUser_ShouldForbidden() throws Exception {
+        // Arrange
+        when(authService.isAdmin()).thenReturn(false);
 
-//     @Test
-//     void cancelarMarcacao_DeveRetornar200() throws Exception {
-//         // Arrange
-//         CancelarMarcacaoRequest request = new CancelarMarcacaoRequest();
-//         request.setMotivo("Teste");
-//         request.setFuncionarioId(1L);
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/agenda"))
+                .andExpect(status().isForbidden());
+    }
 
-//         when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(funcionario));
-//         when(marcacaoService.findById(1L)).thenReturn(Optional.of(marcacao));
-//         doNothing().when(marcacaoService).cancelarMarcacao(any(), any(), any());
+    @Test
+    @WithMockUser(username = "admin", roles = { "FUNCIONARIO" })
+    void consultarAgenda_AsAdmin_ShouldOk() throws Exception {
+        // Arrange
+        when(authService.isAdmin()).thenReturn(true);
+        when(marcacaoService.consultarAgenda(any(), any())).thenReturn(Collections.emptyList());
 
-//         // Act & Assert
-//         mockMvc.perform(put("/api/marcacoes/1/cancelar")
-//                 .contentType(MediaType.APPLICATION_JSON)
-//                 .content(objectMapper.writeValueAsString(request)))
-//                 .andExpect(status().isOk());
-
-//         verify(marcacaoService, times(1)).cancelarMarcacao(any(), any(), any());
-//     }
-
-//     @Test
-//     void consultarAgenda_DeveRetornar200() throws Exception {
-//         // Arrange
-//         when(marcacaoService.consultarAgenda(any(), any())).thenReturn(List.of(marcacao));
-
-//         // Act & Assert
-//         mockMvc.perform(get("/api/marcacoes/agenda")
-//                 .param("dataInicio", "2025-12-09T10:00:00")
-//                 .param("dataFim", "2025-12-16T10:00:00"))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$[0].id").value(1));
-
-//         verify(marcacaoService, times(1)).consultarAgenda(any(), any());
-//     }
-
-//     @Test
-//     void procurarAgenda_DeveRetornar200() throws Exception {
-//         // Arrange
-//         when(marcacaoService.procurarAgenda(any(), any(), any(), any(), any())).thenReturn(List.of(marcacao));
-
-//         // Act & Assert
-//         mockMvc.perform(get("/api/marcacoes/agenda/procurar")
-//                 .param("dataInicio", "2025-12-09T10:00:00")
-//                 .param("dataFim", "2025-12-16T10:00:00")
-//                 .param("estado", "AGENDADO"))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$[0].id").value(1));
-
-//         verify(marcacaoService, times(1)).procurarAgenda(any(), any(), any(), any(), any());
-//     }
-
-//     @Test
-//     void atualizarEstadoMarcacao_DeveRetornar200() throws Exception {
-//         // Arrange
-//         AtualizarEstadoRequest request = new AtualizarEstadoRequest();
-//         request.setNovoEstado(EventoEstado.CONFIRMADO);
-//         request.setFuncionarioId(1L);
-
-//         when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(funcionario));
-//         when(marcacaoService.atualizarEstadoMarcacao(any(), any(), any())).thenReturn(marcacao);
-
-//         // Act & Assert
-//         mockMvc.perform(put("/api/marcacoes/1/estado")
-//                 .contentType(MediaType.APPLICATION_JSON)
-//                 .content(objectMapper.writeValueAsString(request)))
-//                 .andExpect(status().isOk());
-
-//         verify(marcacaoService, times(1)).atualizarEstadoMarcacao(any(), any(), any());
-//     }
-
-//     @Test
-//     void obterMarcacao_DeveRetornar200() throws Exception {
-//         // Arrange
-//         when(marcacaoService.findById(1L)).thenReturn(Optional.of(marcacao));
-
-//         // Act & Assert
-//         mockMvc.perform(get("/api/marcacoes/1"))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$.id").value(1));
-
-//         verify(marcacaoService, times(1)).findById(1L);
-//     }
-
-//     @Test
-//     void listarTodasMarcacoes_DeveRetornar200() throws Exception {
-//         // Arrange
-//         when(marcacaoService.findAll()).thenReturn(List.of(marcacao));
-
-//         // Act & Assert
-//         mockMvc.perform(get("/api/marcacoes"))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$[0].id").value(1));
-
-//         verify(marcacaoService, times(1)).findAll();
-//     }
-
-//     @Test
-//     void consultarMarcacoesUtente_DeveRetornar200() throws Exception {
-//         // Arrange
-//         when(utenteRepository.findById(2L)).thenReturn(Optional.of(utente));
-//         when(marcacaoService.consultarMarcacoesUtente(any())).thenReturn(List.of(marcacao));
-
-//         // Act & Assert
-//         mockMvc.perform(get("/api/marcacoes/utente/2"))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$[0].id").value(1));
-
-//         verify(marcacaoService, times(1)).consultarMarcacoesUtente(any());
-//     }
-
-//     @Test
-//     void consultarMarcacoesFuncionario_DeveRetornar200() throws Exception {
-//         // Arrange
-//         when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(funcionario));
-//         when(marcacaoService.consultarMarcacoesFuncionario(any())).thenReturn(List.of(marcacao));
-
-//         // Act & Assert
-//         mockMvc.perform(get("/api/marcacoes/funcionario/1"))
-//                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$[0].id").value(1));
-
-//         verify(marcacaoService, times(1)).consultarMarcacoesFuncionario(any());
-//     }
-// }
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/agenda"))
+                .andExpect(status().isOk());
+    }
+}
