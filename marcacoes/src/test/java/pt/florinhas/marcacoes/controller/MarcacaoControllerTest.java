@@ -1,11 +1,10 @@
 package pt.florinhas.marcacoes.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -21,7 +20,6 @@ import pt.florinhas.marcacoes.config.TestSecurityConfig;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -35,30 +33,27 @@ class MarcacaoControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @MockBean
+    @MockitoBean
     private MarcacaoService marcacaoService;
 
-    @MockBean
+    @MockitoBean
     private AuthService authService;
 
     // Repositories needed for Application Context even if not directly used in
     // Controller
-    @MockBean
+    @MockitoBean
     private UtenteRepository utenteRepository;
-    @MockBean
+    @MockitoBean
     private FuncionarioRepository funcionarioRepository;
-    @MockBean
+    @MockitoBean
     private UtilizadorRepository utilizadorRepository;
-    @MockBean
+    @MockitoBean
     private pt.florinhas.marcacoes.security.JwtService jwtService;
-    @MockBean(name = "customUserDetailsService")
+    @MockitoBean(name = "customUserDetailsService")
     private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
-    @MockBean
+    @MockitoBean
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
-    @MockBean
+    @MockitoBean
     private org.springframework.security.authentication.AuthenticationManager authenticationManager;
 
     private Funcionario funcionario;
