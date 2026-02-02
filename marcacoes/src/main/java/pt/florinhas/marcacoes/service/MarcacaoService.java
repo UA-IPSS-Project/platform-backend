@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import pt.florinhas.marcacoes.exception.ConflictException;
@@ -72,6 +73,7 @@ public class MarcacaoService {
         return marcacaoRepository.countMarcacoesBetweenDates(startOfDay, endOfDay);
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
         marcacaoValidator.validarCriacao(request);
 
@@ -161,6 +163,7 @@ public class MarcacaoService {
         return marcacaoRepository.save(marcacao);
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
         marcacaoValidator.validarCriacao(request);
 
