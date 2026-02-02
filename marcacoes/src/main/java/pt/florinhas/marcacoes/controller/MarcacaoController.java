@@ -25,7 +25,9 @@ import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
+import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.MarcacaoService;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -51,6 +53,9 @@ public class MarcacaoController {
      */
     @Autowired
     private MarcacaoService marcacaoService;
+
+    @Autowired
+    private AuthService authService;
 
     /**
      * Endpoint para contar o número de marcações do dia atual.
@@ -126,6 +131,10 @@ public class MarcacaoController {
 
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim) {
 
+        if (!authService.isAdmin()) {
+            throw new AccessDeniedException("Acesso restrito a administradores/secretaria.");
+        }
+
         List<MarcacaoResponseDTO> response = marcacaoService.consultarAgenda(dataInicio, dataFim);
         return ResponseEntity.ok(response);
     }
@@ -150,6 +159,20 @@ public class MarcacaoController {
             @RequestParam(required = false) Long criadoPorId,
             @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) EventoEstado estado) {
+
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        // Se não é admin, só pode ver os seus próprios dados
+        if (!isAdmin) {
+            if (utenteId != null && !utenteId.equals(currentUserId)) {
+                throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
+            }
+            // Se não especificou utenteId, forçamos o do utilizador atual
+            if (utenteId == null) {
+                utenteId = currentUserId;
+            }
+        }
 
         List<MarcacaoResponseDTO> response = marcacaoService.procurarAgenda(
                 dataInicio, dataFim, criadoPorId, utenteId, estado);
@@ -193,6 +216,20 @@ public class MarcacaoController {
 
             @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) EventoEstado estado) {
+
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        // Se não é admin, só pode ver os seus próprios dados
+        if (!isAdmin) {
+            if (utenteId != null && !utenteId.equals(currentUserId)) {
+                throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
+            }
+            // Se não especificou utenteId, forçamos o do utilizador atual
+            if (utenteId == null) {
+                utenteId = currentUserId;
+            }
+        }
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadas(
                 dataInicio, dataFim, utenteId, estado);
@@ -287,6 +324,10 @@ public class MarcacaoController {
     @GetMapping
     public ResponseEntity<Page<MarcacaoResponseDTO>> listarTodasMarcacoes(
             @PageableDefault(size = 20, sort = "data") Pageable pageable) {
+
+        if (!authService.isAdmin()) {
+            throw new AccessDeniedException("Acesso restrito a administradores.");
+        }
         Page<MarcacaoResponseDTO> response = marcacaoService.listarTodasMarcacoesPaginated(pageable);
         return ResponseEntity.ok(response);
     }
