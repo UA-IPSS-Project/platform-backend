@@ -103,4 +103,12 @@ public class Marcacao {
     // Relacionamento OneToOne com Marcacao_Secretaria (relacionamento 1:1)
     @OneToOne(mappedBy = "marcacao", cascade = CascadeType.ALL)
     private MarcacaoSecretaria marcacaoSecretaria;
+
+    /**
+     * Define a data de criação antes de persistir.
+     */
+    @jakarta.persistence.PrePersist
+    protected void onCreate() {
+        criadoEm = LocalDateTime.now();
+    }
 }

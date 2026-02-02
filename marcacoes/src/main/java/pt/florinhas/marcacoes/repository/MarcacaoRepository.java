@@ -120,6 +120,15 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
          */
         void deleteByEstadoAndCriadoEmBefore(EventoEstado emPreenchimento, LocalDateTime limite);
 
+        /**
+         * Remove marcações "EM_PREENCHIMENTO" que estejam expiradas OU com timestamp
+         * nulo
+         * (para corrigir bugs antigos onde o timestamp não era gravado).
+         */
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
+        void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
+
         // Consulta paginada com fetch para evitar N+1
         @Query(value = "SELECT DISTINCT m FROM Marcacao m " +
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +

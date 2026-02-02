@@ -36,6 +36,8 @@ import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.context.event.EventListener;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 @Service
 @Transactional
@@ -424,9 +426,11 @@ public class MarcacaoService {
         return dto;
     }
 
+    @EventListener(ApplicationReadyEvent.class) // Run on startup
     @Scheduled(fixedRate = 60000) // Run every minute
     public void limparReservasExpiradas() {
         LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
-        marcacaoRepository.deleteByEstadoAndCriadoEmBefore(EventoEstado.EM_PREENCHIMENTO, expirationTime);
+        // Usa o método customizado que também limpa registos com criadoEm NULL
+        marcacaoRepository.deleteExpiredOrorphan(EventoEstado.EM_PREENCHIMENTO, expirationTime);
     }
 }
