@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pt.florinhas.marcacoes.exception.ConflictException;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
@@ -74,7 +75,13 @@ public class MarcacaoService {
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
         marcacaoValidator.validarCriacao(request);
 
-        // 1. Obter ou criar Utente
+        // 1. Bloquear o horário para leitura/escrita para evitar Race Conditions
+        List<Marcacao> conflitos = marcacaoRepository.findConflictingWithLock(request.getData());
+        if (!conflitos.isEmpty()) {
+            throw new ConflictException("Horário já ocupado.");
+        }
+
+        // 2. Obter ou criar Utente
         Utente utente = null;
         if (request.getUtenteId() != null) {
             utente = utenteRepository.findById(request.getUtenteId())
@@ -157,7 +164,13 @@ public class MarcacaoService {
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
         marcacaoValidator.validarCriacao(request);
 
-        // 1. Obter Utente
+        // 1. Bloquear o horário para leitura/escrita para evitar Race Conditions
+        List<Marcacao> conflitos = marcacaoRepository.findConflictingWithLock(request.getData());
+        if (!conflitos.isEmpty()) {
+            throw new ConflictException("Horário já ocupado.");
+        }
+
+        // 2. Obter Utente
         Utente utente = utenteRepository.findById(request.getUtenteId())
                 .orElseThrow(
                         () -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
