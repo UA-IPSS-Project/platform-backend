@@ -103,4 +103,21 @@ public class MarcacaoControllerSecurityTest {
                 .content("{\"novoEstado\": \"CANCELADO\"}")) // JSON body
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(username = "user", roles = { "UTENTE" })
+    void procurarAgenda_AsUser_SearchingOtherUser_ShouldBeForbidden() throws Exception {
+        // Arrange
+        Long currentUserId = 2L;
+        Long targetUserId = 5L; // Other user
+
+        when(authService.getCurrentUserId()).thenReturn(currentUserId);
+        when(authService.isAdmin()).thenReturn(false);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/agenda/procurar")
+                .param("utenteId", targetUserId.toString())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
 }
