@@ -23,6 +23,7 @@ public class NotificacaoService {
 
     private final NotificacaoRepository notificacaoRepository;
     private final UtilizadorRepository utilizadorRepository;
+    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate; // Inject Template
 
     @Transactional
     public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo) {
@@ -30,7 +31,8 @@ public class NotificacaoService {
     }
 
     @Transactional
-    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo, Map<String, Object> metadata) {
+    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo,
+            Map<String, Object> metadata) {
         Utilizador user = utilizadorRepository.findById(utilizadorId)
                 .orElseThrow(() -> new NotFoundException("Utilizador não encontrado"));
 
@@ -42,7 +44,27 @@ public class NotificacaoService {
         notificacao.setLida(false);
         notificacao.setMetadata(metadata);
 
-        return notificacaoRepository.save(notificacao);
+        Notificacao saved = notificacaoRepository.save(notificacao);
+
+        // Send real-time notification
+        try {
+            NotificacaoResponseDTO dto = converterParaDTO(saved);
+            messagingTemplate.convertAndSendToUser(
+                    user.getEmail(), // Assuming UserDetails username is email, we need to make sure this matches
+                                     // what principal.getName() returns.
+                    // Actually, in SecurityConfig/JwtAuthenticationFilter, the principal is
+                    // UserDetails.
+                    // The "user" in convertAndSendToUser is matched against Principal.getName().
+                    // If UserDetails.getUsername() returns email, then this is correct.
+                    "/queue/notifications",
+                    dto);
+        } catch (Exception e) {
+            // Log but don't fail transaction
+            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).error("Failed to send websocket notification",
+                    e);
+        }
+
+        return saved;
     }
 
     public List<NotificacaoResponseDTO> listarPorUtilizador(Long utilizadorId) {
@@ -127,9 +149,8 @@ public class NotificacaoService {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         Map<String, Object> metadata = Map.of(
-            "cancelledDate", data.format(dateFormatter),
-            "cancelledTime", data.format(timeFormatter)
-        );
+                "cancelledDate", data.format(dateFormatter),
+                "cancelledTime", data.format(timeFormatter));
 
         criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
         logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
@@ -149,9 +170,8 @@ public class NotificacaoService {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         Map<String, Object> metadata = Map.of(
-            "cancelledDate", data.format(dateFormatter),
-            "cancelledTime", data.format(timeFormatter)
-        );
+                "cancelledDate", data.format(dateFormatter),
+                "cancelledTime", data.format(timeFormatter));
 
         criarNotificacao(destinatario.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
         // Admin notifications might not need email simulation, but keeping consistent

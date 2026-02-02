@@ -108,6 +108,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Permitir endpoints de autenticação públicos
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         // Permitir OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Exigir autenticação para qualquer outro pedido
