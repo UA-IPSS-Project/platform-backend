@@ -21,6 +21,7 @@ import java.util.Collections;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = MarcacaoController.class, excludeAutoConfiguration = org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class)
@@ -119,5 +120,147 @@ public class MarcacaoControllerSecurityTest {
                 .param("utenteId", targetUserId.toString())
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
+    }
+
+    // ==========================================================
+    // Testes para correção IDOR - Endpoint /funcionario/{id}
+    // ==========================================================
+
+    @Test
+    @WithMockUser(username = "admin", roles = { "FUNCIONARIO" })
+    void consultarMarcacoesFuncionario_AsAdmin_ShouldAllowAnyId() throws Exception {
+        // Arrange
+        Long funcionarioId = 99L;
+        when(authService.getCurrentUserId()).thenReturn(1L);
+        when(authService.isAdmin()).thenReturn(true);
+        when(marcacaoService.consultarMarcacoesFuncionario(funcionarioId))
+                .thenReturn(java.util.Collections.emptyList());
+
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/funcionario/{funcionarioId}", funcionarioId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "funcionario", roles = { "FUNCIONARIO" })
+    void consultarMarcacoesFuncionario_AsFuncionario_AccessingOwnId_ShouldSucceed() throws Exception {
+        // Arrange
+        Long funcionarioId = 5L;
+        when(authService.getCurrentUserId()).thenReturn(funcionarioId);
+        when(authService.isAdmin()).thenReturn(true); // Funcionários são admins
+        when(marcacaoService.consultarMarcacoesFuncionario(funcionarioId))
+                .thenReturn(java.util.Collections.emptyList());
+
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/funcionario/{funcionarioId}", funcionarioId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "utente", roles = { "UTENTE" })
+    void consultarMarcacoesFuncionario_AsUtente_AccessingOtherId_ShouldBeForbidden() throws Exception {
+        // Arrange
+        Long currentUserId = 2L;
+        Long funcionarioId = 5L; // Not same as currentUserId
+
+        when(authService.getCurrentUserId()).thenReturn(currentUserId);
+        when(authService.isAdmin()).thenReturn(false);
+
+        // Act & Assert - IDOR protection should block this
+        mockMvc.perform(get("/api/marcacoes/funcionario/{funcionarioId}", funcionarioId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    // ==========================================================
+    // Testes para correção IDOR - Endpoint /{id}
+    // ==========================================================
+
+    @Test
+    @WithMockUser(username = "admin", roles = { "FUNCIONARIO" })
+    void obterMarcacao_AsAdmin_ShouldAllowAnyId() throws Exception {
+        // Arrange
+        Long marcacaoId = 99L;
+        MarcacaoResponseDTO mockDto = new MarcacaoResponseDTO();
+        mockDto.setId(marcacaoId);
+
+        when(authService.getCurrentUserId()).thenReturn(1L);
+        when(authService.isAdmin()).thenReturn(true);
+        when(marcacaoService.obterMarcacaoDTO(marcacaoId)).thenReturn(mockDto);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/{id}", marcacaoId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(99));
+    }
+
+    @Test
+    @WithMockUser(username = "utente", roles = { "UTENTE" })
+    void obterMarcacao_AsUtente_AccessingOwnMarcacao_ShouldSucceed() throws Exception {
+        // Arrange
+        Long currentUserId = 2L;
+        Long marcacaoId = 10L;
+
+        MarcacaoResponseDTO mockDto = new MarcacaoResponseDTO();
+        mockDto.setId(marcacaoId);
+        MarcacaoResponseDTO.MarcacaoSecretariaDTO secDto = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
+        MarcacaoResponseDTO.UtenteDTO utenteDto = new MarcacaoResponseDTO.UtenteDTO();
+        utenteDto.setId(currentUserId); // Marcação pertence ao utilizador atual
+        secDto.setUtente(utenteDto);
+        mockDto.setMarcacaoSecretaria(secDto);
+
+        when(authService.getCurrentUserId()).thenReturn(currentUserId);
+        when(authService.isAdmin()).thenReturn(false);
+        when(marcacaoService.obterMarcacaoDTO(marcacaoId)).thenReturn(mockDto);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/{id}", marcacaoId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10));
+    }
+
+    @Test
+    @WithMockUser(username = "utente", roles = { "UTENTE" })
+    void obterMarcacao_AsUtente_AccessingOthersMarcacao_ShouldBeForbidden() throws Exception {
+        // Arrange
+        Long currentUserId = 2L;
+        Long marcacaoId = 10L;
+
+        MarcacaoResponseDTO mockDto = new MarcacaoResponseDTO();
+        mockDto.setId(marcacaoId);
+        MarcacaoResponseDTO.MarcacaoSecretariaDTO secDto = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
+        MarcacaoResponseDTO.UtenteDTO utenteDto = new MarcacaoResponseDTO.UtenteDTO();
+        utenteDto.setId(99L); // Marcação pertence a OUTRO utilizador
+        secDto.setUtente(utenteDto);
+        mockDto.setMarcacaoSecretaria(secDto);
+
+        when(authService.getCurrentUserId()).thenReturn(currentUserId);
+        when(authService.isAdmin()).thenReturn(false);
+        when(marcacaoService.obterMarcacaoDTO(marcacaoId)).thenReturn(mockDto);
+
+        // Act & Assert - IDOR protection should block this
+        mockMvc.perform(get("/api/marcacoes/{id}", marcacaoId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "utente", roles = { "UTENTE" })
+    void obterMarcacao_NotFound_ShouldReturn404() throws Exception {
+        // Arrange
+        Long marcacaoId = 999L;
+
+        when(authService.getCurrentUserId()).thenReturn(2L);
+        when(authService.isAdmin()).thenReturn(false);
+        when(marcacaoService.obterMarcacaoDTO(marcacaoId)).thenReturn(null);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/marcacoes/{id}", marcacaoId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 }

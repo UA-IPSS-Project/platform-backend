@@ -86,7 +86,8 @@ public class UtilizadorServiceTest {
         existingStart.setNif(nif);
         existingStart.setId(1L);
 
-        when(nifValidationService.validate(nif)).thenReturn(true);
+        // When user exists, the service returns immediately after findByNif
+        // without calling nifValidationService.validate() - so no stub needed
         when(utilizadorRepository.findByNif(nif)).thenReturn(java.util.List.of(existingStart));
 
         // Act
@@ -99,20 +100,15 @@ public class UtilizadorServiceTest {
     @Test
     void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
         // Arrange
-        String invalidNif = "123"; // Too short
-        // Configurar o mock para retornar false (opcional se o default for false, mas
-        // explícito é melhor)
-        // No caso do teste antigo, o mock retorna false por defeito para strings nao
-        // configuradas?
-        // Sim, defaults do mockito para boolean é false.
-        // Mas vamos forçar para garantir:
-        when(nifValidationService.validate(invalidNif)).thenReturn(false);
+        String invalidNif = "123"; // Too short - fails regex validation before service call
+        // No stub needed - the format validation (nif.matches("\\d{9}")) fails
+        // before nifValidationService.validate() is called
 
         // Act & Assert
         try {
             utilizadorService.obterOuCriarUtente(invalidNif, "Name", "email@test.com", "912345678");
         } catch (RuntimeException e) {
-            assertEquals("NIF do utente inválido (deve ter 9 dígitos numéricos).", e.getMessage());
+            assertEquals("NIF inválido (deve ter 9 dígitos numéricos).", e.getMessage());
         }
     }
 }

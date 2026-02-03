@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -82,7 +84,7 @@ public class MarcacaoController {
      */
     @PostMapping("/presencial")
     public ResponseEntity<Map<String, String>> criarMarcacaoPresencial(
-            @RequestBody CriarMarcacaoRequest request) {
+            @Valid @RequestBody CriarMarcacaoRequest request) {
 
         Marcacao marcacao = marcacaoService.criarMarcacaoPresencial(request);
 
@@ -104,7 +106,7 @@ public class MarcacaoController {
      */
     @PostMapping("/remota")
     public ResponseEntity<Map<String, String>> criarMarcacaoRemota(
-            @RequestBody CriarMarcacaoRequest request) {
+            @Valid @RequestBody CriarMarcacaoRequest request) {
 
         Marcacao marcacao = marcacaoService.criarMarcacaoRemota(request);
 
@@ -194,7 +196,7 @@ public class MarcacaoController {
     @PutMapping("/{id}/estado")
     public ResponseEntity<MarcacaoResponseDTO> atualizarEstadoMarcacao(
             @PathVariable Long id,
-            @RequestBody AtualizarEstadoRequest request) {
+            @Valid @RequestBody AtualizarEstadoRequest request) {
 
         // Validar permissões
         Long currentUserId = authService.getCurrentUserId();
@@ -332,6 +334,14 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesFuncionario(
             @PathVariable Long funcionarioId) {
 
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        // Apenas administradores ou o próprio funcionário podem consultar
+        if (!isAdmin && (currentUserId == null || !currentUserId.equals(funcionarioId))) {
+            throw new AccessDeniedException("Não tem permissão para consultar marcações deste funcionário.");
+        }
+
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesFuncionario(funcionarioId);
         return ResponseEntity.ok(response);
     }
@@ -346,7 +356,31 @@ public class MarcacaoController {
     public ResponseEntity<MarcacaoResponseDTO> obterMarcacao(
             @PathVariable Long id) {
 
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        // Obter marcação primeiro para verificar ownership
         MarcacaoResponseDTO response = marcacaoService.obterMarcacaoDTO(id);
+
+        if (response == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Se não é admin, verificar se a marcação pertence ao utilizador
+        if (!isAdmin) {
+            Long ownerId = null;
+            if (response.getMarcacaoSecretaria() != null
+                    && response.getMarcacaoSecretaria().getUtente() != null) {
+                ownerId = response.getMarcacaoSecretaria().getUtente().getId();
+            }
+
+            boolean isOwner = ownerId != null && ownerId.equals(currentUserId);
+
+            if (!isOwner) {
+                throw new AccessDeniedException("Não tem permissão para visualizar esta marcação.");
+            }
+        }
+
         return ResponseEntity.ok(response);
     }
 
