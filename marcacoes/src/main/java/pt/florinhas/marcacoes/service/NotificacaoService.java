@@ -49,6 +49,9 @@ public class NotificacaoService {
         // Send real-time notification
         try {
             NotificacaoResponseDTO dto = converterParaDTO(saved);
+            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).info(
+                    "Sending WebSocket notification to user: {} (email: {}), title: {}",
+                    utilizadorId, user.getEmail(), titulo);
             messagingTemplate.convertAndSendToUser(
                     user.getEmail(), // Assuming UserDetails username is email, we need to make sure this matches
                                      // what principal.getName() returns.
@@ -58,6 +61,8 @@ public class NotificacaoService {
                     // If UserDetails.getUsername() returns email, then this is correct.
                     "/queue/notifications",
                     dto);
+            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).info(
+                    "WebSocket notification sent successfully to: {}", user.getEmail());
         } catch (Exception e) {
             // Log but don't fail transaction
             org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).error("Failed to send websocket notification",
