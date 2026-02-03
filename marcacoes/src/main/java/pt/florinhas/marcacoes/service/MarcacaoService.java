@@ -55,9 +55,15 @@ public class MarcacaoService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Gera uma password segura com 128 bits de entropia.
+     * Usa SecureRandom (CSPRNG) e Base64 URL-safe encoding.
+     * Resultado: ~22 caracteres alfanuméricos seguros.
+     */
     private String generateRandomPassword() {
         SecureRandom random = new SecureRandom();
-        byte[] bytes = new byte[6]; // 6 bytes = 8 chars in base64 approx
+        // 16 bytes = 128 bits de entropia (padrão mínimo recomendado)
+        byte[] bytes = new byte[16];
         random.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
