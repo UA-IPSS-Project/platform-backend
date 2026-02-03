@@ -126,7 +126,18 @@ public class MarcacaoService {
             marcacao.setCriadoPor(funcionario);
         }
 
-        return marcacaoRepository.save(marcacao);
+        Marcacao saved = marcacaoRepository.save(marcacao);
+
+        // Notify utente about new appointment (when created by secretary)
+        if (utente != null && request.getCriadoPorId() != null) {
+            try {
+                notificacaoService.notificarNovaMarcacao(utente, saved.getId(), saved.getData(), false);
+            } catch (Exception e) {
+                System.err.println("Falha ao notificar utente sobre nova marcação: " + e.getMessage());
+            }
+        }
+
+        return saved;
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
