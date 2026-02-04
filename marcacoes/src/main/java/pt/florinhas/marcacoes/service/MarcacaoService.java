@@ -26,7 +26,6 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.security.SecureRandom;
-import java.util.Base64;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Funcionario;
@@ -37,10 +36,12 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -120,8 +121,7 @@ public class MarcacaoService {
                 try {
                     emailService.sendPassword(request.getUtenteEmail(), rawPassword);
                 } catch (Exception e) {
-                    System.err.println("Falha ao enviar email para: " + request.getUtenteEmail());
-                    e.printStackTrace();
+                    log.error("Falha ao enviar email para: {}", request.getUtenteEmail(), e);
                     // Não falhar a marcação se o email falhar, mas logar erro
                 }
             }
@@ -146,7 +146,7 @@ public class MarcacaoService {
             try {
                 notificacaoService.notificarNovaMarcacao(utente, saved.getId(), saved.getData(), false);
             } catch (Exception e) {
-                System.err.println("Falha ao notificar utente sobre nova marcação: " + e.getMessage());
+                log.error("Falha ao notificar utente sobre nova marcação", e);
             }
         }
 
@@ -229,23 +229,33 @@ public class MarcacaoService {
 
         // Se houver atendente a definir (funcionário que executa a alteração):
         if (request.getFuncionarioId() != null) {
-            // Nota: Se o estado for CONCLUIDO ou CANCELADO, este funcionário (ou utente) é
-            // o atendente
-            if (request.getNovoEstadoEnum() == EventoEstado.CONCLUIDO
-                    || request.getNovoEstadoEnum() == EventoEstado.CANCELADO) {
+            // Nota: Se o estado for CONCLUIDO ou CANCELADO, este funcionário é o atendente
+            // EXCEÇÃO: Se for o próprio utente a cancelar, não definir atendente (fica
+            // null)
+            if (request.getNovoEstadoEnum() == EventoEstado.CONCLUIDO) {
                 Utilizador atendente = utilizadorRepository.findById(request.getFuncionarioId())
                         .orElseThrow(() -> new EntityNotFoundException(
                                 "Utilizador não encontrado: " + request.getFuncionarioId()));
                 marcacao.setAtendente(atendente);
+            } else if (request.getNovoEstadoEnum() == EventoEstado.CANCELADO) {
+                // Verificar se é o próprio utente a cancelar
+                MarcacaoSecretaria secDetails = marcacao.getMarcacaoSecretaria();
+                boolean canceladoPeloUtente = secDetails != null
+                        && secDetails.getUtente() != null
+                        && request.getFuncionarioId().equals(secDetails.getUtente().getId());
+
+                // Só define atendente se NÃO for o próprio utente a cancelar
+                if (!canceladoPeloUtente) {
+                    Utilizador atendente = utilizadorRepository.findById(request.getFuncionarioId())
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Utilizador não encontrado: " + request.getFuncionarioId()));
+                    marcacao.setAtendente(atendente);
+                }
             }
         }
 
-        System.out.println("Updating Marcacao " + id + " to state " + request.getNovoEstadoEnum());
-        if (request.getMotivoCancelamento() != null) {
-            System.out.println("Reason: " + request.getMotivoCancelamento());
-        } else {
-            System.out.println("Reason is NULL");
-        }
+        log.debug("Updating Marcacao {} to state {}. Reason: {}",
+                id, request.getNovoEstadoEnum(), request.getMotivoCancelamento());
 
         marcacao = marcacaoRepository.save(marcacao);
 
@@ -264,7 +274,7 @@ public class MarcacaoService {
                             notificacaoService.notificarCancelamentoPeloUtente(sec, utenteAlvo.getNome(),
                                     marcacao.getData());
                         } catch (Exception e) {
-                            System.err.println("Erro ao notificar secretaria " + sec.getId() + ": " + e.getMessage());
+                            log.error("Erro ao notificar secretaria {}", sec.getId(), e);
                         }
                     }
                 } else {
@@ -272,7 +282,7 @@ public class MarcacaoService {
                     try {
                         notificacaoService.notificarCancelamento(utenteAlvo, marcacao.getData());
                     } catch (Exception e) {
-                        System.err.println("Erro ao notificar utente " + utenteAlvo.getId() + ": " + e.getMessage());
+                        log.error("Erro ao notificar utente {}", utenteAlvo.getId(), e);
                     }
                 }
             }

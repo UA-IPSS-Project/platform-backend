@@ -6,7 +6,6 @@ import java.util.Map;
 
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import org.springframework.http.ResponseEntity;
@@ -33,6 +32,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Controller responsável pela gestão de marcações.
@@ -46,18 +46,66 @@ import org.springframework.data.web.PageableDefault;
  */
 @RestController
 @RequestMapping("/api/marcacoes")
-
+@RequiredArgsConstructor
 public class MarcacaoController {
 
     /**
      * Serviço que contém toda a lógica de negócio relacionada com marcações.
      * O controller limita-se a validar pedidos e delegar a lógica no serviço.
      */
-    @Autowired
-    private MarcacaoService marcacaoService;
+    private final MarcacaoService marcacaoService;
 
-    @Autowired
-    private AuthService authService;
+    /**
+     * Serviço de autenticação para verificação de permissões.
+     */
+    private final AuthService authService;
+
+    // =====================================================================
+    // MÉTODOS AUXILIARES DE PERMISSÕES (DRY)
+    // =====================================================================
+
+    /**
+     * Verifica se o utilizador atual tem permissão para aceder aos dados de um
+     * utente.
+     * Administradores podem aceder a qualquer utente.
+     * Utentes normais só podem aceder aos seus próprios dados.
+     *
+     * @param targetUtenteId ID do utente alvo (pode ser null)
+     * @return o ID do utente a usar na query (forçado para o atual se não for
+     *         admin)
+     * @throws AccessDeniedException se não tiver permissão
+     */
+    private Long verificarPermissaoUtente(Long targetUtenteId) {
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        if (!isAdmin) {
+            if (targetUtenteId != null && !targetUtenteId.equals(currentUserId)) {
+                throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
+            }
+            return currentUserId; // Força o ID do utilizador atual
+        }
+        return targetUtenteId; // Admin pode usar qualquer ID
+    }
+
+    /**
+     * Verifica se o utilizador atual (não-admin) tem permissão de aceder a um
+     * recurso
+     * baseado no ID do proprietário.
+     *
+     * @param ownerId      ID do proprietário do recurso
+     * @param resourceType tipo de recurso para a mensagem de erro
+     * @throws AccessDeniedException se não tiver permissão
+     */
+    private void verificarPermissaoProprietario(Long ownerId, String resourceType) {
+        Long currentUserId = authService.getCurrentUserId();
+        boolean isAdmin = authService.isAdmin();
+
+        if (!isAdmin && (currentUserId == null || !currentUserId.equals(ownerId))) {
+            throw new AccessDeniedException(
+                    String.format("Não tem permissão para %s.", resourceType));
+        }
+    }
 
     /**
      * Endpoint para contar o número de marcações do dia atual.
@@ -162,22 +210,10 @@ public class MarcacaoController {
             @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) EventoEstado estado) {
 
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
-
-        // Se não é admin, só pode ver os seus próprios dados
-        if (!isAdmin) {
-            if (utenteId != null && !utenteId.equals(currentUserId)) {
-                throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
-            }
-            // Se não especificou utenteId, forçamos o do utilizador atual
-            if (utenteId == null) {
-                utenteId = currentUserId;
-            }
-        }
+        Long utenteIdFiltrado = verificarPermissaoUtente(utenteId);
 
         List<MarcacaoResponseDTO> response = marcacaoService.procurarAgenda(
-                dataInicio, dataFim, criadoPorId, utenteId, estado);
+                dataInicio, dataFim, criadoPorId, utenteIdFiltrado, estado);
         return ResponseEntity.ok(response);
     }
 
@@ -241,22 +277,10 @@ public class MarcacaoController {
             @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) EventoEstado estado) {
 
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
-
-        // Se não é admin, só pode ver os seus próprios dados
-        if (!isAdmin) {
-            if (utenteId != null && !utenteId.equals(currentUserId)) {
-                throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
-            }
-            // Se não especificou utenteId, forçamos o do utilizador atual
-            if (utenteId == null) {
-                utenteId = currentUserId;
-            }
-        }
+        Long utenteIdFiltrado = verificarPermissaoUtente(utenteId);
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadas(
-                dataInicio, dataFim, utenteId, estado);
+                dataInicio, dataFim, utenteIdFiltrado, estado);
         return ResponseEntity.ok(response);
     }
 
@@ -289,12 +313,7 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesUtente(
             @PathVariable Long utenteId) {
 
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
-
-        if (!isAdmin && (currentUserId == null || !currentUserId.equals(utenteId))) {
-            throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
-        }
+        verificarPermissaoProprietario(utenteId, "consultar dados de outro utente");
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesUtente(utenteId);
         return ResponseEntity.ok(response);
@@ -313,12 +332,7 @@ public class MarcacaoController {
     public ResponseEntity<List<Map<String, Object>>> consultarMarcacoesBloqueadas(
             @PathVariable Long utenteId) {
 
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
-
-        if (!isAdmin && (currentUserId == null || !currentUserId.equals(utenteId))) {
-            throw new AccessDeniedException("Não tem permissão para consultar dados de outro utente.");
-        }
+        verificarPermissaoProprietario(utenteId, "consultar dados de outro utente");
 
         List<Map<String, Object>> marcacoesBloqueadas = marcacaoService.consultarMarcacoesBloqueadas(utenteId);
         return ResponseEntity.ok(marcacoesBloqueadas);
@@ -334,13 +348,7 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesFuncionario(
             @PathVariable Long funcionarioId) {
 
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
-
-        // Apenas administradores ou o próprio funcionário podem consultar
-        if (!isAdmin && (currentUserId == null || !currentUserId.equals(funcionarioId))) {
-            throw new AccessDeniedException("Não tem permissão para consultar marcações deste funcionário.");
-        }
+        verificarPermissaoProprietario(funcionarioId, "consultar marcações deste funcionário");
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesFuncionario(funcionarioId);
         return ResponseEntity.ok(response);
