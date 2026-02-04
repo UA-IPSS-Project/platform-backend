@@ -56,16 +56,23 @@ public class MarcacaoService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Gera uma password segura com 128 bits de entropia.
-     * Usa SecureRandom (CSPRNG) e Base64 URL-safe encoding.
-     * Resultado: ~22 caracteres alfanuméricos seguros.
+     * Gera uma password segura com ~128 bits de entropia.
+     * Usa apenas caracteres alfanuméricos (a-z, A-Z, 0-9) para facilitar digitação.
+     * 62 caracteres possíveis × 22 posições = ~130 bits de entropia.
      */
+    private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
     private String generateRandomPassword() {
         SecureRandom random = new SecureRandom();
-        // 16 bytes = 128 bits de entropia (padrão mínimo recomendado)
-        byte[] bytes = new byte[16];
-        random.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        StringBuilder password = new StringBuilder(22);
+
+        // 22 caracteres de 62 possíveis = log2(62^22) ≈ 130 bits de entropia
+        for (int i = 0; i < 22; i++) {
+            int index = random.nextInt(ALPHANUMERIC.length());
+            password.append(ALPHANUMERIC.charAt(index));
+        }
+
+        return password.toString();
     }
 
     // Placeholder: In a real scenario, this would convert entities to DTOs
