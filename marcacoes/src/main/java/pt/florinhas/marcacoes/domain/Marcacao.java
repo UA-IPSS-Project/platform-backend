@@ -2,6 +2,9 @@ package pt.florinhas.marcacoes.domain;
 
 import java.time.LocalDateTime;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,6 +15,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -103,6 +107,15 @@ public class Marcacao {
     // Relacionamento OneToOne com Marcacao_Secretaria (relacionamento 1:1)
     @OneToOne(mappedBy = "marcacao", cascade = CascadeType.ALL)
     private MarcacaoSecretaria marcacaoSecretaria;
+
+    /**
+     * Documentos anexados a esta marcação.
+     * Relação 1:N bidirecional. 'mappedBy' indica que a FK está do lado de Documento.
+     * Cascade ALL para propagar operações de Marcacao para Documento.
+     * orphanRemoval garante que documentos removidos da lista sejam deletados da BD.
+     */
+    @OneToMany(mappedBy = "marcacao", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Documento> documentos = new ArrayList<>();
 
     /**
      * Define a data de criação antes de persistir.
