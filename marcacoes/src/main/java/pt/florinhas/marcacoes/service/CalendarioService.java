@@ -6,9 +6,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +58,7 @@ public class CalendarioService {
      * Cache em memória dos feriados nacionais.
      * Evita chamadas repetidas à API externa.
      */
-    private final List<LocalDate> feriadosCache = new ArrayList<>();
+    private final Map<Integer, List<LocalDate>> feriadosCache = new ConcurrentHashMap<>();
 
     /**
      * Endpoint público para feriados nacionais (Portugal).
@@ -76,25 +79,39 @@ public class CalendarioService {
             try {
                 log.info("A carregar feriados...");
                 int currentYear = LocalDate.now().getYear();
-                String url = String.format(API_URL_TEMPLATE, currentYear);
-
-                RestTemplate restTemplate = new RestTemplate();
-                FeriadoDTO[] response = restTemplate.getForObject(url, FeriadoDTO[].class);
-
-                if (response != null) {
-                    synchronized (feriadosCache) {
-                        feriadosCache.clear();
-                        for (FeriadoDTO h : response) {
-                            feriadosCache.add(LocalDate.parse(h.getDate()));
-                        }
-                    }
-                    log.info("Feriados carregados com sucesso: {}", feriadosCache.size());
-                }
+                List<LocalDate> feriados = fetchFeriados(currentYear);
+                feriadosCache.put(currentYear, feriados);
+                log.info("Feriados carregados com sucesso: {}", feriados.size());
             } catch (Exception e) {
                 // Em caso de erro, apenas regista no log
                 log.error("Erro ao carregar feriados (API externa): {}", e.getMessage());
             }
         }).start();
+    }
+
+    public List<LocalDate> getFeriadosDoAno(int ano) {
+        return feriadosCache.computeIfAbsent(ano, this::fetchFeriados);
+    }
+
+    private List<LocalDate> fetchFeriados(int ano) {
+        try {
+            String url = String.format(API_URL_TEMPLATE, ano);
+            RestTemplate restTemplate = new RestTemplate();
+            FeriadoDTO[] response = restTemplate.getForObject(url, FeriadoDTO[].class);
+
+            if (response == null) {
+                return List.of();
+            }
+
+            List<LocalDate> result = new ArrayList<>();
+            for (FeriadoDTO h : response) {
+                result.add(LocalDate.parse(h.getDate()));
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("Erro ao obter feriados (API externa) para ano {}: {}", ano, e.getMessage());
+            return List.of();
+        }
     }
 
     /**
@@ -110,7 +127,7 @@ public class CalendarioService {
      */
     public boolean isSlotBloqueado(LocalDate data, LocalTime slotTime) {
 
-        // Se o dia for indisponível por completo, o slot também é
+        // Se o dia for indisponível por completo, o slot também é aka feriados e fins de semana
         if (isDiaInteiroIndisponivel(data))
             return true;
 
@@ -124,11 +141,8 @@ public class CalendarioService {
         if (bloqueadoPorAgenda)
             return true;
 
-        // VERIFICAÇÃO ADICIONAL: Verificar se já existe uma marcação ativa neste slot
-        // Esta validação é crucial para o frontend saber se o slot está "reservado"
-        // antes de abrir o modal
+        // Verificar se já existe uma marcação ativa neste slot
         LocalDateTime slotStart = LocalDateTime.of(data, slotTime);
-        // Assumindo slots de 15 minutos para verificação pontual
         LocalDateTime slotEnd = slotStart.plusMinutes(15);
 
         List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(slotStart, slotEnd);
@@ -146,7 +160,7 @@ public class CalendarioService {
      * - For feriado nacional
      */
     private boolean isDiaInteiroIndisponivel(LocalDate data) {
-        return isFimDeSemana(data) || feriadosCache.contains(data);
+        return isFimDeSemana(data) || getFeriadosDoAno(data.getYear()).contains(data);
     }
 
     /**
@@ -167,6 +181,7 @@ public class CalendarioService {
      * param funcionario utilizador que cria o bloqueio
      * return bloqueio persistido
      */
+    @Transactional
     public BloqueioAgenda bloquearHorario(
             LocalDate data,
             LocalTime inicio,
@@ -195,7 +210,7 @@ public class CalendarioService {
             throw new BadRequestException("Este dia já é um Feriado ou Fim de Semana.");
         }
 
-        // Validação 5: Sobreposição com outros bloqueios (Com Lock Pessimista)
+        // Validação 5: Sobreposição com outros bloqueios
         // Usamos countConflictingWithLock para garantir serialização no DB
         if (bloqueioRepository.countConflictingWithLock(data, inicio, fim) > 0) {
             throw new BadRequestException("Já existe um bloqueio registado para este período (Conflito detetado).");

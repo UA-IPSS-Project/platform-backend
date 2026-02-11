@@ -155,6 +155,8 @@ public class UtilizadorService {
         novoUtente.setTelefone(telefone);
         novoUtente.setActivo(false); // Inactivo até dar login pela primeira vez
 
+        log.info("[AUTO-CREATE] utente nif={} setActivo=false", nif);
+
         String passwordInicial = gerarPasswordSegura();
         novoUtente.setPassHash(passwordEncoder.encode(passwordInicial));
         novoUtente.setDataNasc(java.time.LocalDate.now());
@@ -167,7 +169,9 @@ public class UtilizadorService {
             log.error("Erro ao enviar email: {}", e.getMessage());
         }
 
-        return utenteRepository.save(novoUtente);
+        Utente saved = utenteRepository.save(novoUtente);
+        log.info("[AUTO-CREATE] utente id={} nif={} activo={}", saved.getId(), saved.getNif(), saved.isActivo());
+        return saved;
     }
 
     /*

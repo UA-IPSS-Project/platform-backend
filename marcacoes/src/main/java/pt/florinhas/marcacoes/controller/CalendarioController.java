@@ -8,10 +8,13 @@ import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.BloquearHorarioRequest;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.CalendarioService;
+import pt.florinhas.marcacoes.exception.NotFoundException;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Controller responsável pela gestão do calendário e dos bloqueios de agenda.
@@ -55,9 +58,8 @@ public class CalendarioController {
         public ResponseEntity<?> bloquearHorario(@RequestBody BloquearHorarioRequest request) {
 
                 // Obtém o funcionário responsável pelo bloqueio
-                Utilizador admin = utilizadorRepository.findById(request.getFuncionarioId())
-                                .orElseThrow(() -> new pt.florinhas.marcacoes.exception.NotFoundException(
-                                                "Funcionário não encontrado"));
+                Utilizador funcionario = utilizadorRepository.findById(request.getFuncionarioId())
+                        .orElseThrow(() -> new NotFoundException("Funcionário não encontrado"));
 
                 // Delegação da lógica de criação do bloqueio para o serviço
                 calendarioService.bloquearHorario(
@@ -65,7 +67,7 @@ public class CalendarioController {
                                 request.getHoraInicio(),
                                 request.getHoraFim(),
                                 request.getMotivo(),
-                                admin);
+                                funcionario);
 
                 // Resposta simples para o frontend
                 return ResponseEntity.ok(
@@ -113,6 +115,24 @@ public class CalendarioController {
         }
 
         /**
+         * Endpoint para listar feriados de um ano.
+         *
+         * param ano ano pretendido
+         * return lista de datas (YYYY-MM-DD)
+         */
+        @GetMapping("/feriados")
+        public ResponseEntity<List<String>> listarFeriados(@RequestParam Integer ano) {
+                if (ano == null) {
+                        return ResponseEntity.ok(List.of());
+                }
+
+                List<String> dates = calendarioService.getFeriadosDoAno(ano).stream()
+                                .map(java.time.LocalDate::toString)
+                                .collect(Collectors.toList());
+                return ResponseEntity.ok(dates);
+        }
+
+        /**
          * Endpoint rápido para verificar se um slot específico está bloqueado.
          *
          * É tipicamente chamado quando o utilizador abre o modal de criação
@@ -129,7 +149,7 @@ public class CalendarioController {
                 // Converte os parâmetros recebidos para tipos temporais
                 boolean bloqueado = calendarioService.isSlotBloqueado(
                                 LocalDate.parse(data),
-                                java.time.LocalTime.parse(hora));
+                                LocalTime.parse(hora));
                 // Retorna true se o horário estiver bloqueado
                 return ResponseEntity.ok(bloqueado);
         }

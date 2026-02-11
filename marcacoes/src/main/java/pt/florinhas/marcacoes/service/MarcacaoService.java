@@ -109,7 +109,7 @@ public class MarcacaoService {
                 utente.setNif(request.getUtenteNif());
                 utente.setEmail(request.getUtenteEmail());
                 utente.setTelefone(request.getUtenteTelefone());
-                utente.setActivo(true);
+                utente.setActivo(false); 
 
                 // Gerar password segura
                 String rawPassword = generateRandomPassword();
@@ -391,7 +391,13 @@ public class MarcacaoService {
 
     public MarcacaoResponseDTO reagendarMarcacao(Long id, ReagendarMarcacaoRequest request) {
         marcacaoValidator.validarReagendamento(request);
-        return new MarcacaoResponseDTO();
+        Marcacao marcacao = marcacaoRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
+
+        marcacao.setData(request.getNovaDataHora());
+
+        Marcacao saved = marcacaoRepository.save(marcacao);
+        return toDTO(saved);
     }
 
     private MarcacaoResponseDTO toDTO(Marcacao m) {

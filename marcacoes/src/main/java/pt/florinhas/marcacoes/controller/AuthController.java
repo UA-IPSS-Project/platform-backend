@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.web.csrf.CsrfToken;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +27,7 @@ import pt.florinhas.marcacoes.dto.UpdatePasswordRequest;
 import pt.florinhas.marcacoes.dto.UtenteRegisterRequest;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.AuthService.AuthResult;
+import pt.florinhas.marcacoes.service.UtilizadorService;
 
 @Slf4j
 @RestController
@@ -33,6 +35,7 @@ import pt.florinhas.marcacoes.service.AuthService.AuthResult;
 public class AuthController {
 
     private final AuthService authService;
+    private final UtilizadorService utilizadorService;
 
     @Value("${app.environment:production}")
     private String environment;
@@ -40,8 +43,9 @@ public class AuthController {
     @Value("${app.secure-cookies:true}")
     private boolean secureCookies;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, UtilizadorService utilizadorService) {
         this.authService = authService;
+        this.utilizadorService = utilizadorService;
     }
 
     @PostMapping("/login/funcionario")
@@ -97,8 +101,7 @@ public class AuthController {
         // Force CSRF token to be loaded/generated to ensure cookie is present
         // This fixes issues where browser restart keeps JWT but loses Session-only CSRF
         // cookie
-        var csrfToken = (org.springframework.security.web.csrf.CsrfToken) request
-                .getAttribute(org.springframework.security.web.csrf.CsrfToken.class.getName());
+        var csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
         if (csrfToken != null) {
             // Calling getToken() triggers the StatelessCsrfTokenRepository to write the
             // cookie
@@ -111,8 +114,15 @@ public class AuthController {
                 .map(a -> a.getAuthority().replace("ROLE_", ""))
                 .orElse("UTENTE");
 
-        // Return user info WITHOUT regenerating JWT cookie (unless we wanted to refresh
-        // it too)
+        var persistedUser = utilizadorService.obterUtilizadorPorId(utilizador.getId());
+        boolean active = true;
+        if (persistedUser instanceof pt.florinhas.marcacoes.domain.Utente u) {
+            active = u.isActivo();
+        } else if (persistedUser instanceof pt.florinhas.marcacoes.domain.Funcionario f) {
+            active = f.isActivo();
+        }
+
+        // Return user info WITHOUT regenerating JWT cookie (unless we wanted to refresh it too)
         AuthResponse response = new AuthResponse(
                 utilizador.getId(),
                 utilizador.getEmail(),
@@ -121,7 +131,7 @@ public class AuthController {
                 utilizador.getNif(),
                 utilizador.getTelefone(),
                 System.currentTimeMillis() + (24 * 60 * 60 * 1000), // 24h from now
-                true);
+                active);
 
         return ResponseEntity.ok(response);
     }
@@ -173,8 +183,8 @@ public class AuthController {
         // The CsrfCookieFilter will automatically add the XSRF-TOKEN cookie to the
         // response
         // because we're accessing the CsrfToken attribute
-        var csrfToken = (org.springframework.security.web.csrf.CsrfToken) request
-                .getAttribute(org.springframework.security.web.csrf.CsrfToken.class.getName());
+        var csrfToken = (CsrfToken) request
+                .getAttribute(CsrfToken.class.getName());
         if (csrfToken != null) {
             // Force token to be loaded (triggers cookie creation)
             csrfToken.getToken();
