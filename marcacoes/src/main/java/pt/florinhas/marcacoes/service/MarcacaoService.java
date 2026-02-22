@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-import pt.florinhas.marcacoes.exception.ConflictException;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
@@ -24,6 +23,8 @@ import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.marcacoes.validation.MarcacaoValidator;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.security.SecureRandom;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
@@ -93,8 +94,7 @@ public class MarcacaoService {
         Utente utente = null;
         if (request.getUtenteId() != null) {
             utente = utenteRepository.findById(request.getUtenteId())
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "Utente não encontrado com ID: " + request.getUtenteId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
         } else if (request.getUtenteNif() != null) {
             // Verificar se já existe por NIF
             List<Utente> users = utenteRepository.findByNif(request.getUtenteNif());
@@ -134,8 +134,8 @@ public class MarcacaoService {
         // Associa funcionário criador (específico de presencial)
         if (request.getCriadoPorId() != null) {
             Funcionario funcionario = funcionarioRepository.findById(request.getCriadoPorId())
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "Funcionário não encontrado com ID: " + request.getCriadoPorId()));
+                .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado com ID: " + request.getCriadoPorId()));
+
             marcacao.setCriadoPor(funcionario);
         }
 
@@ -156,8 +156,7 @@ public class MarcacaoService {
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
         Utente utente = utenteRepository.findById(request.getUtenteId())
-                .orElseThrow(
-                        () -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
+            .orElseThrow(() -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
 
         Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
 
@@ -168,13 +167,8 @@ public class MarcacaoService {
     }
 
     private Marcacao criarMarcacaoBase(CriarMarcacaoRequest request, AtendimentoTipo tipo, Utente utente) {
+        // Validar todos os dados (IDs, data/hora, feriados, bloqueios, conflitos, assunto)
         marcacaoValidator.validarCriacao(request);
-
-        // Bloquear o horário
-        List<Marcacao> conflitos = marcacaoRepository.findConflictingWithLock(request.getData());
-        if (!conflitos.isEmpty()) {
-            throw new ConflictException("Horário já ocupado.");
-        }
 
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
@@ -217,7 +211,7 @@ public class MarcacaoService {
 
     public MarcacaoResponseDTO atualizarEstadoMarcacao(Long id, AtualizarEstadoRequest request) {
         Marcacao marcacao = marcacaoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
+            .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
 
         // Validar transição de estado se necessário
         // Por agora permitimos atualizar direto
@@ -234,8 +228,8 @@ public class MarcacaoService {
             // null)
             if (request.getNovoEstadoEnum() == EventoEstado.CONCLUIDO) {
                 Utilizador atendente = utilizadorRepository.findById(request.getFuncionarioId())
-                        .orElseThrow(() -> new EntityNotFoundException(
-                                "Utilizador não encontrado: " + request.getFuncionarioId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Utilizador não encontrado: " + request.getFuncionarioId()));
+
                 marcacao.setAtendente(atendente);
             } else if (request.getNovoEstadoEnum() == EventoEstado.CANCELADO) {
                 // Verificar se é o próprio utente a cancelar
@@ -247,15 +241,14 @@ public class MarcacaoService {
                 // Só define atendente se NÃO for o próprio utente a cancelar
                 if (!canceladoPeloUtente) {
                     Utilizador atendente = utilizadorRepository.findById(request.getFuncionarioId())
-                            .orElseThrow(() -> new EntityNotFoundException(
-                                    "Utilizador não encontrado: " + request.getFuncionarioId()));
+                        .orElseThrow(() -> new EntityNotFoundException("Utilizador não encontrado: " + request.getFuncionarioId()));
+
                     marcacao.setAtendente(atendente);
                 }
             }
         }
 
-        log.debug("Updating Marcacao {} to state {}. Reason: {}",
-                id, request.getNovoEstadoEnum(), request.getMotivoCancelamento());
+        log.debug("Updating Marcacao {} to state {}. Reason: {}", id, request.getNovoEstadoEnum(), request.getMotivoCancelamento());
 
         marcacao = marcacaoRepository.save(marcacao);
 
@@ -278,7 +271,7 @@ public class MarcacaoService {
                         }
                     }
                 } else {
-                    // Cancelado pela Secretaria (ou outro) -> Notificar Utente
+                    // Cancelado pela Secretaria -> Notificar Utente
                     try {
                         notificacaoService.notificarCancelamento(utenteAlvo, marcacao.getData());
                     } catch (Exception e) {
@@ -300,11 +293,11 @@ public class MarcacaoService {
             dataFim = LocalDateTime.now();
         }
 
-        List<Marcacao> list = marcacaoRepository.findMarcacoesPassadas(dataInicio, dataFim,
-                utenteId, estado);
+        List<Marcacao> list = marcacaoRepository.findMarcacoesPassadas(dataInicio, dataFim, utenteId, estado);
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    // TODO: Implementar lógica real de notificação de documentos inválidos
     public MarcacaoResponseDTO notificarDocumentosInvalidos(Long id, NotificarDocumentosRequest request) {
         return new MarcacaoResponseDTO();
     }
@@ -390,12 +383,17 @@ public class MarcacaoService {
     }
 
     public MarcacaoResponseDTO reagendarMarcacao(Long id, ReagendarMarcacaoRequest request) {
-        marcacaoValidator.validarReagendamento(request);
+        // Buscar marcação existente
         Marcacao marcacao = marcacaoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
 
+        // Validar reagendamento com as mesmas verificações que criação (data, hora, feriados, bloqueios, sobreposição)
+        marcacaoValidator.validarReagendamento(request);
+
+        // Atualizar data/hora
         marcacao.setData(request.getNovaDataHora());
 
+        // Persistir alteração
         Marcacao saved = marcacaoRepository.save(marcacao);
         return toDTO(saved);
     }

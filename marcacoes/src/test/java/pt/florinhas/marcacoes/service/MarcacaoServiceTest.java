@@ -5,8 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -22,12 +20,12 @@ import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
-import pt.florinhas.marcacoes.exception.ConflictException;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.marcacoes.validation.MarcacaoValidator;
 
 @ExtendWith(MockitoExtension.class)
 class MarcacaoServiceTest {
@@ -53,48 +51,43 @@ class MarcacaoServiceTest {
     private MarcacaoService marcacaoService;
 
     @Test
-    void criarMarcacaoPresencial_DeveLancarConflictException_QuandoHorarioOcupado() {
+    void criarMarcacaoPresencial_DeveLancarIllegalArgumentException_QuandoValidacaoFalha() {
         // Arrange
         LocalDateTime now = LocalDateTime.now();
         CriarMarcacaoRequest request = new CriarMarcacaoRequest();
         request.setData(now);
         request.setUtenteId(1L);
 
-        // Mock Utente finding (needed because Utente lookup now happens before Lock
-        // check)
-        when(utenteRepository.findById(1L)).thenReturn(Optional.of(new Utente()));
-
-        // Mock lock returning conflict
-        when(marcacaoRepository.findConflictingWithLock(now))
-                .thenReturn(List.of(new Marcacao())); // Not empty
+        // Mock validator para lançar exceção (simula conflito ou validação falha)
+        doThrow(new IllegalArgumentException("Horário já ocupado ou inválido"))
+                .when(marcacaoValidator).validarCriacao(request);
 
         // Act & Assert
-        assertThrows(ConflictException.class, () -> marcacaoService.criarMarcacaoPresencial(request));
+        assertThrows(IllegalArgumentException.class, () -> marcacaoService.criarMarcacaoPresencial(request));
 
-        verify(marcacaoRepository).findConflictingWithLock(now);
+        // Ensure validacao was called
+        verify(marcacaoValidator).validarCriacao(request);
         // Ensure we didn't proceed to save
         verify(marcacaoRepository, never()).save(any());
     }
 
     @Test
-    void criarMarcacaoRemota_DeveLancarConflictException_QuandoHorarioOcupado() {
+    void criarMarcacaoRemota_DeveLancarIllegalArgumentException_QuandoValidacaoFalha() {
         // Arrange
         LocalDateTime now = LocalDateTime.now();
         CriarMarcacaoRequest request = new CriarMarcacaoRequest();
         request.setData(now);
         request.setUtenteId(1L);
 
-        // Mock Utente finding
-        when(utenteRepository.findById(1L)).thenReturn(Optional.of(new Utente()));
-
-        // Mock lock returning conflict
-        when(marcacaoRepository.findConflictingWithLock(now))
-                .thenReturn(List.of(new Marcacao())); // Not empty
+        // Mock validator para lançar exceção (simula conflito ou validação falha)
+        doThrow(new IllegalArgumentException("Horário já ocupado ou inválido"))
+                .when(marcacaoValidator).validarCriacao(request);
 
         // Act & Assert
-        assertThrows(ConflictException.class, () -> marcacaoService.criarMarcacaoRemota(request));
+        assertThrows(IllegalArgumentException.class, () -> marcacaoService.criarMarcacaoRemota(request));
 
-        verify(marcacaoRepository).findConflictingWithLock(now);
+        // Ensure validacao was called
+        verify(marcacaoValidator).validarCriacao(request);
         // Ensure we didn't proceed to save
         verify(marcacaoRepository, never()).save(any());
     }
@@ -116,7 +109,9 @@ class MarcacaoServiceTest {
         Funcionario funcionario = new Funcionario();
         funcionario.setId(2L);
 
-        when(marcacaoRepository.findConflictingWithLock(now)).thenReturn(Collections.emptyList());
+        // Mock validator para não lançar exceção (validação passa)
+        doNothing().when(marcacaoValidator).validarCriacao(request);
+        
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente));
         when(funcionarioRepository.findById(2L)).thenReturn(Optional.of(funcionario));
         when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -148,7 +143,9 @@ class MarcacaoServiceTest {
         Utente utente = new Utente();
         utente.setId(1L);
 
-        when(marcacaoRepository.findConflictingWithLock(now)).thenReturn(Collections.emptyList());
+        // Mock validator para não lançar exceção (validação passa)
+        doNothing().when(marcacaoValidator).validarCriacao(request);
+
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente));
         when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

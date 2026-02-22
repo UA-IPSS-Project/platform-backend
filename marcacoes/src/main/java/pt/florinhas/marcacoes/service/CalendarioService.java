@@ -63,7 +63,7 @@ public class CalendarioService {
     /**
      * Endpoint público para feriados nacionais (Portugal).
      */
-    private static final String API_URL_TEMPLATE = "https://date.nager.at/api/v3/publicholidays/%d/PT";
+    private static final String API_PT_HOLIDAYS = "https://date.nager.at/api/v3/publicholidays/%d/PT";
 
     /**
      * Carrega os feriados do ano corrente no arranque da aplicação.
@@ -77,11 +77,9 @@ public class CalendarioService {
         // Executar em thread separada para não bloquear o arranque
         new Thread(() -> {
             try {
-                log.info("A carregar feriados...");
                 int currentYear = LocalDate.now().getYear();
                 List<LocalDate> feriados = fetchFeriados(currentYear);
                 feriadosCache.put(currentYear, feriados);
-                log.info("Feriados carregados com sucesso: {}", feriados.size());
             } catch (Exception e) {
                 // Em caso de erro, apenas regista no log
                 log.error("Erro ao carregar feriados (API externa): {}", e.getMessage());
@@ -95,7 +93,7 @@ public class CalendarioService {
 
     private List<LocalDate> fetchFeriados(int ano) {
         try {
-            String url = String.format(API_URL_TEMPLATE, ano);
+            String url = String.format(API_PT_HOLIDAYS, ano);
             RestTemplate restTemplate = new RestTemplate();
             FeriadoDTO[] response = restTemplate.getForObject(url, FeriadoDTO[].class);
 

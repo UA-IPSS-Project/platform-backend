@@ -30,6 +30,7 @@ public class CriarMarcacaoRequest {
     private LocalDateTime data;
 
     // Assunto curto da marcação (título).
+    @NotNull(message = "O assunto é obrigatório")
     @Size(max = 200, message = "O assunto não pode exceder 200 caracteres")
     private String assunto;
 
