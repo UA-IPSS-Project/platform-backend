@@ -297,9 +297,24 @@ public class MarcacaoService {
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    // TODO: Implementar lógica real de notificação de documentos inválidos
     public MarcacaoResponseDTO notificarDocumentosInvalidos(Long id, NotificarDocumentosRequest request) {
-        return new MarcacaoResponseDTO();
+        Marcacao marcacao = marcacaoRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
+        
+        MarcacaoSecretaria secretariaDetails = marcacao.getMarcacaoSecretaria();
+        if (secretariaDetails == null || secretariaDetails.getUtente() == null) {
+            throw new IllegalStateException("Marcação sem utente associado");
+        }
+        
+        Utente utente = secretariaDetails.getUtente();
+        
+        try {
+            notificacaoService.notificarDocumentosInvalidos(utente, request.getObservacoes());
+        } catch (Exception e) {
+            log.error("Erro ao notificar utente {} sobre documentos inválidos", utente.getId(), e);
+        }
+        
+        return toDTO(marcacao);
     }
 
     public List<MarcacaoResponseDTO> consultarMarcacoesUtente(Long utenteId) {

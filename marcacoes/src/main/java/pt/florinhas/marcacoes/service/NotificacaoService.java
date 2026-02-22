@@ -182,8 +182,8 @@ public class NotificacaoService {
     }
 
     @Transactional
-    public void notificarDocumentosInvalidos(Utilizador utilizador) {
-        String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria.";
+    public void notificarDocumentosInvalidos(Utilizador utilizador, String observacoes) {
+        String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
 
         criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE); // Using LEMBRETE as
