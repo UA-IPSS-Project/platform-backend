@@ -2,6 +2,7 @@ package pt.florinhas.marcacoes.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.Utilizador;
@@ -55,6 +56,7 @@ public class CalendarioController {
          * return mensagem de confirmação da operação
          */
         @PostMapping("/bloquear")
+        @PreAuthorize("hasRole('SECRETARIA')")
         public ResponseEntity<?> bloquearHorario(@RequestBody BloquearHorarioRequest request) {
 
                 // Obtém o funcionário responsável pelo bloqueio
@@ -84,6 +86,7 @@ public class CalendarioController {
          * return mensagem de confirmação da remoção
          */
         @DeleteMapping("/{id}")
+        @PreAuthorize("hasRole('SECRETARIA')")
         public ResponseEntity<?> removerBloqueio(@PathVariable Long id) {
                 // Remove o bloqueio através do serviço
                 calendarioService.removerBloqueio(id);
@@ -102,6 +105,7 @@ public class CalendarioController {
          * return lista de bloqueios existentes no mês indicado
          */
         @GetMapping("/bloqueios")
+        @PreAuthorize("hasRole('SECRETARIA')")
         public ResponseEntity<List<BloqueioAgenda>> listarBloqueios(
                         @RequestParam(required = false) Integer ano,
                         @RequestParam(required = false) Integer mes) {

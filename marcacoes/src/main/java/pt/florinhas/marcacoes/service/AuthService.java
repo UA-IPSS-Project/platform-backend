@@ -336,7 +336,8 @@ public class AuthService {
         }
 
         /**
-         * Verifica se o utilizador autenticado é um Administrador (Funcionário).
+         * Verifica se o utilizador autenticado tem privilégios administrativos
+         * (apenas SECRETARIA).
          */
         public boolean isAdmin() {
                 var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
@@ -346,6 +347,6 @@ public class AuthService {
                 }
 
                 return authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_FUNCIONARIO"));
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_SECRETARIA"));
         }
 }

@@ -96,8 +96,8 @@ public class NotificacaoService {
     }
 
     @Transactional
-    public void marcarComoLida(Long id) {
-        Notificacao notificacao = notificacaoRepository.findById(id)
+    public void marcarComoLida(Long id, Long utilizadorId) {
+        Notificacao notificacao = notificacaoRepository.findByIdAndUtilizadorId(id, utilizadorId)
                 .orElseThrow(() -> new NotFoundException("Notificação não encontrada"));
 
         notificacao.setLida(true);
@@ -112,11 +112,10 @@ public class NotificacaoService {
     }
 
     @Transactional
-    public void eliminarNotificacao(Long id) {
-        if (!notificacaoRepository.existsById(id)) {
-            throw new NotFoundException("Notificação não encontrada");
-        }
-        notificacaoRepository.deleteById(id);
+    public void eliminarNotificacao(Long id, Long utilizadorId) {
+        Notificacao notificacao = notificacaoRepository.findByIdAndUtilizadorId(id, utilizadorId)
+                .orElseThrow(() -> new NotFoundException("Notificação não encontrada"));
+        notificacaoRepository.delete(notificacao);
     }
 
     @Transactional

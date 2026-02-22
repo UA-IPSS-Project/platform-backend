@@ -167,7 +167,25 @@ class AuthServiceTest {
     }
 
     @Test
-    void isAdmin_DeveRetornarTrue_QuandoRoleFuncionario() {
+    void isAdmin_DeveRetornarTrue_QuandoRoleSecretaria() {
+        Authentication authentication = mock(Authentication.class);
+        SecurityContext securityContext = mock(SecurityContext.class);
+
+        try (MockedStatic<SecurityContextHolder> mockedSecurityContext = mockStatic(SecurityContextHolder.class)) {
+            mockedSecurityContext.when(SecurityContextHolder::getContext).thenReturn(securityContext);
+            when(securityContext.getAuthentication()).thenReturn(authentication);
+            when(authentication.isAuthenticated()).thenReturn(true);
+            doReturn(List.of(new SimpleGrantedAuthority("ROLE_SECRETARIA")))
+                    .when(authentication).getAuthorities();
+
+            boolean isAdmin = authService.isAdmin();
+
+            assertTrue(isAdmin);
+        }
+    }
+
+    @Test
+    void isAdmin_DeveRetornarFalse_QuandoRoleFuncionario() {
         Authentication authentication = mock(Authentication.class);
         SecurityContext securityContext = mock(SecurityContext.class);
 
@@ -180,7 +198,7 @@ class AuthServiceTest {
 
             boolean isAdmin = authService.isAdmin();
 
-            assertTrue(isAdmin);
+            assertFalse(isAdmin);
         }
     }
 
