@@ -76,7 +76,6 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.7.5</version>
 			<scope>runtime</scope>
 		</dependency>
 
@@ -141,13 +140,6 @@
 			<artifactId>mockito-junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.mockito</groupId>
-			<artifactId>mockito-inline</artifactId>
-			<version>5.2.0</version>
-			<scope>test</scope>
-		</dependency>
-
 		<!-- TestContainers (opcional, para testes de integração com banco real) -->
 		<dependency>
 			<groupId>org.testcontainers</groupId>
@@ -197,7 +189,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.1.2</version>
+				<version>3.5.0\</version>
 				<configuration>
 					<useSystemClassLoader>false</useSystemClassLoader>
 				</configuration>
