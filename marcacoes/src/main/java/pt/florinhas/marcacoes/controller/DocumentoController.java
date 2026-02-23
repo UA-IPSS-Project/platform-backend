@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
+import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.DocumentoService;
@@ -109,6 +110,23 @@ public class DocumentoController {
             .header(HttpHeaders.CONTENT_DISPOSITION, 
                 "attachment; filename=\"" + documentoDTO.nomeOriginal() + "\"")
             .body(resource);
+    }
+
+    /**
+     * Obtém metadados completos de um documento.
+     *
+     * @param id ID do documento
+     * @return metadados do documento
+     */
+    @GetMapping("/{id}/metadata")
+    public ResponseEntity<DocumentoMetadataDTO> obterMetadadosDocumento(@PathVariable Long id) {
+        log.info("Obtendo metadados do documento {}", id);
+
+        DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
+        verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        DocumentoMetadataDTO metadata = documentoService.obterMetadadosDocumento(id);
+        return ResponseEntity.ok(metadata);
     }
 
     /**
