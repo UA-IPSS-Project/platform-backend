@@ -61,7 +61,7 @@ public class CalendarioController {
 
                 // Obtém o funcionário responsável pelo bloqueio
                 Utilizador funcionario = utilizadorRepository.findById(request.getFuncionarioId())
-                        .orElseThrow(() -> new NotFoundException("Funcionário não encontrado"));
+                                .orElseThrow(() -> new NotFoundException("Funcionário não encontrado"));
 
                 // Delegação da lógica de criação do bloqueio para o serviço
                 calendarioService.bloquearHorario(
@@ -105,7 +105,6 @@ public class CalendarioController {
          * return lista de bloqueios existentes no mês indicado
          */
         @GetMapping("/bloqueios")
-        @PreAuthorize("hasRole('SECRETARIA')")
         public ResponseEntity<List<BloqueioAgenda>> listarBloqueios(
                         @RequestParam(required = false) Integer ano,
                         @RequestParam(required = false) Integer mes) {
