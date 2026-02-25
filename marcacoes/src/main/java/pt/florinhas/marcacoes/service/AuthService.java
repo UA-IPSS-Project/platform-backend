@@ -104,7 +104,8 @@ public class AuthService {
 
                 log.debug("Authentication successful");
 
-                return generateAuthResponse(user, "FUNCIONARIO", true);
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                return generateAuthResponse(user, role, true);
         }
 
         /**
@@ -213,7 +214,8 @@ public class AuthService {
 
                 funcionario = funcionarioRepository.save(funcionario);
 
-                return generateAuthResponse(funcionario, "FUNCIONARIO", false);
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                return generateAuthResponse(funcionario, role, false);
         }
 
         /**
@@ -304,7 +306,8 @@ public class AuthService {
                         case "SECRETARIA", "SECRETÁRIA" -> FuncionarioTipo.SECRETARIA;
                         case "BALNEARIO", "BALNEÁRIO" -> FuncionarioTipo.BALNEARIO;
                         case "ESCOLA" -> FuncionarioTipo.ESCOLA;
-                        case "INTERNOS" -> FuncionarioTipo.INTERNOS;
+                        case "INTERNOS", "INTERNO" -> FuncionarioTipo.INTERNO;
+                        case "ADMIN", "ADMINISTRADOR" -> FuncionarioTipo.ADMIN;
                         default -> FuncionarioTipo.SECRETARIA;
                 };
         }
