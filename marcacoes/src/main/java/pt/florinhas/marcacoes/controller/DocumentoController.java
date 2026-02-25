@@ -1,8 +1,10 @@
 package pt.florinhas.marcacoes.controller;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
+import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.DocumentoService;
@@ -88,6 +91,40 @@ public class DocumentoController {
     }
 
     /**
+     * Pesquisa documentos por metadados.
+     *
+     * Regras de acesso:
+     * - com marcacaoId: utente dono da marcação ou secretaria
+     * - sem marcacaoId: apenas secretaria
+     */
+    @GetMapping("/pesquisar")
+    public ResponseEntity<List<DocumentoDTO>> pesquisarDocumentosPorMetadados(
+            @RequestParam(required = false) Long marcacaoId,
+            @RequestParam(required = false) String nomeOriginal,
+            @RequestParam(required = false) String nomeArmazenado,
+            @RequestParam(required = false) String tipoMime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedAte) {
+
+        if (marcacaoId != null) {
+            verificarPermissaoMarcacao(marcacaoId);
+        } else if (!authService.isAdmin()) {
+            throw new AccessDeniedException("Pesquisa global de documentos requer perfil de secretaria");
+        }
+
+        List<DocumentoDTO> resultados = documentoService.pesquisarDocumentosPorMetadados(
+            marcacaoId,
+            nomeOriginal,
+            nomeArmazenado,
+            tipoMime,
+            uploadedDesde,
+            uploadedAte
+        );
+
+        return ResponseEntity.ok(resultados);
+    }
+
+    /**
      * Download de um documento.
      * 
      * @param id ID do documento
@@ -109,6 +146,23 @@ public class DocumentoController {
             .header(HttpHeaders.CONTENT_DISPOSITION, 
                 "attachment; filename=\"" + documentoDTO.nomeOriginal() + "\"")
             .body(resource);
+    }
+
+    /**
+     * Obtém metadados completos de um documento.
+     *
+     * @param id ID do documento
+     * @return metadados do documento
+     */
+    @GetMapping("/{id}/metadata")
+    public ResponseEntity<DocumentoMetadataDTO> obterMetadadosDocumento(@PathVariable Long id) {
+        log.info("Obtendo metadados do documento {}", id);
+
+        DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
+        verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        DocumentoMetadataDTO metadata = documentoService.obterMetadadosDocumento(id);
+        return ResponseEntity.ok(metadata);
     }
 
     /**

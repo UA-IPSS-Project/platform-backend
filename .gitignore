@@ -104,3 +104,7 @@ Desktop.ini
 
 # Local Notes
 NOTAS.md
+
+# MinIO local data
+data/*
+!data/.gitkeep

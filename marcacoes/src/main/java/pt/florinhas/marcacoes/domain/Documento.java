@@ -14,6 +14,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import pt.florinhas.marcacoes.service.DocumentoStorageCleanupService;
 
 /**
  * Entidade JPA que representa um documento anexado a uma marcação.
@@ -88,5 +89,15 @@ public class Documento {
     @jakarta.persistence.PrePersist
     protected void onCreate() {
         uploadedEm = LocalDateTime.now();
+    }
+
+    /**
+     * Remove o ficheiro físico do MinIO antes de eliminar o registo na BD.
+     *
+     * Garante limpeza também em remoções por cascata/orphanRemoval.
+     */
+    @jakarta.persistence.PreRemove
+    protected void onRemove() {
+        DocumentoStorageCleanupService.removerDoArmazenamento(caminho, id);
     }
 }
