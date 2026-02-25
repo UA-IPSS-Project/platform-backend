@@ -35,3 +35,6 @@ build/
 ### Upload files ###
 uploads/
 !uploads/.gitkeep
+### MinIO Storage ###
+data/
+.minio.sys/
