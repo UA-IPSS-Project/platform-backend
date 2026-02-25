@@ -314,8 +314,8 @@ public class UtilizadorService {
                         tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.BALNEARIO;
                     else if (roleStr.equalsIgnoreCase("Escola"))
                         tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.ESCOLA;
-                    else if (roleStr.toUpperCase().contains("INTERNOS"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.INTERNOS;
+                    else if (roleStr.toUpperCase().contains("INTERNO"))
+                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.INTERNO;
                 }
                 f.setTipo(tipo);
             } catch (Exception e) {
