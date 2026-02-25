@@ -68,6 +68,11 @@ build/
 .env
 .env.*
 
+# MinIO
+data/
+.minio.sys/
+uploads/
+
 # Logs
 *.log
 logs/

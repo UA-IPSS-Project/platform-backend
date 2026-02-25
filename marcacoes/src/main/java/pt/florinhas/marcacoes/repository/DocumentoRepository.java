@@ -1,5 +1,6 @@
 package pt.florinhas.marcacoes.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,4 +57,35 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
      */
     @Query("SELECT COUNT(d) FROM Documento d WHERE d.marcacao.id = :marcacaoId")
     Long countByMarcacaoId(@Param("marcacaoId") Long marcacaoId);
+
+    /**
+     * Pesquisa documentos por metadados com filtros opcionais.
+     *
+     * @param marcacaoId ID da marcação
+     * @param nomeOriginal parte do nome original do ficheiro
+     * @param nomeArmazenado parte do nome armazenado
+     * @param tipoMime tipo MIME exato
+     * @param uploadedDesde limite inferior da data de upload
+     * @param uploadedAte limite superior da data de upload
+     * @return lista de documentos ordenada por upload mais recente
+     */
+    @Query("""
+        SELECT d
+        FROM Documento d
+        WHERE (:marcacaoId IS NULL OR d.marcacao.id = :marcacaoId)
+          AND (:nomeOriginal IS NULL OR LOWER(d.nomeOriginal) LIKE LOWER(CONCAT('%', :nomeOriginal, '%')))
+          AND (:nomeArmazenado IS NULL OR LOWER(d.nomeArmazenado) LIKE LOWER(CONCAT('%', :nomeArmazenado, '%')))
+          AND (:tipoMime IS NULL OR LOWER(d.tipo) = LOWER(:tipoMime))
+          AND (:uploadedDesde IS NULL OR d.uploadedEm >= :uploadedDesde)
+          AND (:uploadedAte IS NULL OR d.uploadedEm <= :uploadedAte)
+        ORDER BY d.uploadedEm DESC
+    """)
+    List<Documento> pesquisarPorMetadados(
+        @Param("marcacaoId") Long marcacaoId,
+        @Param("nomeOriginal") String nomeOriginal,
+        @Param("nomeArmazenado") String nomeArmazenado,
+        @Param("tipoMime") String tipoMime,
+        @Param("uploadedDesde") LocalDateTime uploadedDesde,
+        @Param("uploadedAte") LocalDateTime uploadedAte
+    );
 }
