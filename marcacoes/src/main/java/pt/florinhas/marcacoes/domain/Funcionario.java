@@ -51,12 +51,12 @@ public class Funcionario extends Utilizador {
 
     @Override
     public java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> getAuthorities() {
-        if (this.tipo == FuncionarioTipo.SECRETARIA) {
+        if (this.tipo == null) {
             return java.util.List.of(
-                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SECRETARIA"),
                     new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
         }
-        return java.util.List
-                .of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+        return java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + this.tipo.name()),
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
     }
 }
