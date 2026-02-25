@@ -6,10 +6,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
@@ -19,9 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import io.minio.BucketExistsArgs;
-import io.minio.CopyObjectArgs;
-import io.minio.CopySource;
-import io.minio.Directive;
 import io.minio.GetObjectArgs;
 import io.minio.GetObjectResponse;
 import io.minio.MakeBucketArgs;
@@ -33,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
 import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
@@ -112,17 +110,7 @@ public class DocumentoService {
         LocalDate hoje = LocalDate.now();
         String caminhoRelativo = String.format("%d/%02d", hoje.getYear(), hoje.getMonthValue());
         String objectName = caminhoRelativo + "/" + nomeArmazenado;
-        String tipoMime = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
-        Map<String, String> metadadosIniciais = construirMetadadosMinio(
-            null,
-            marcacaoId,
-            nomeOriginal,
-            nomeArmazenado,
-            objectName,
-            tipoMime,
-            file.getSize(),
-            null
-        );
+        String tipo = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
 
         try (InputStream inputStream = file.getInputStream()) {
             garantirBucketExiste();
@@ -132,8 +120,7 @@ public class DocumentoService {
                     .bucket(bucketName)
                     .object(objectName)
                     .stream(inputStream, file.getSize(), -1)
-                    .contentType(tipoMime)
-                    .userMetadata(metadadosIniciais)
+                    .contentType(tipo)
                     .build()
             );
         } catch (Exception e) {
@@ -147,18 +134,12 @@ public class DocumentoService {
         documento.setNomeOriginal(nomeOriginal);
         documento.setNomeArmazenado(nomeArmazenado);
         documento.setCaminho(objectName);
-        documento.setTipo(tipoMime);
+        documento.setTipo(tipo);
         documento.setTamanho(file.getSize());
         documento.setMarcacao(marcacao);
 
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);
-
-        try {
-            atualizarMetadadosMinio(documentoSalvo, tipoMime);
-        } catch (Exception e) {
-            log.warn("Não foi possível atualizar metadados completos no MinIO para documento {}", documentoSalvo.getId(), e);
-        }
 
         log.info("Documento {} salvo com sucesso para marcação {}", documentoSalvo.getId(), marcacaoId);
 
@@ -187,7 +168,9 @@ public class DocumentoService {
      * @param marcacaoId ID da marcação
      * @param nomeOriginal parte do nome original
      * @param nomeArmazenado parte do nome armazenado
-     * @param tipoMime tipo MIME
+     * @param tipo tipo MIME
+    * @param utenteNome parte do nome do utente associado
+    * @param utenteNif parte do NIF do utente associado
      * @param uploadedDesde data/hora inicial de upload
      * @param uploadedAte data/hora final de upload
      * @return lista de documentos encontrados
@@ -197,7 +180,9 @@ public class DocumentoService {
         Long marcacaoId,
         String nomeOriginal,
         String nomeArmazenado,
-        String tipoMime,
+        String tipo,
+        String utenteNome,
+        String utenteNif,
         LocalDateTime uploadedDesde,
         LocalDateTime uploadedAte
     ) {
@@ -205,18 +190,79 @@ public class DocumentoService {
             throw new IllegalArgumentException("uploadedDesde não pode ser posterior a uploadedAte");
         }
 
-        log.info("Pesquisa de documentos por metadados (marcacaoId={}, tipoMime={})", marcacaoId, tipoMime);
+        log.info("Pesquisa de documentos por metadados (marcacaoId={}, tipo={})", marcacaoId, tipo);
 
-        return documentoRepository.pesquisarPorMetadados(
-                marcacaoId,
-                nomeOriginal,
-                nomeArmazenado,
-                tipoMime,
-                uploadedDesde,
-                uploadedAte)
+        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, uploadedDesde, uploadedAte);
+
+        return documentosBase
             .stream()
+            .filter(documento -> {
+                if (nomeOriginal == null || nomeOriginal.isBlank()) {
+                    return true;
+                }
+                String valor = documento.getNomeOriginal();
+                return valor != null && valor.toLowerCase(Locale.ROOT).contains(nomeOriginal.toLowerCase(Locale.ROOT));
+            })
+            .filter(documento -> {
+                if (nomeArmazenado == null || nomeArmazenado.isBlank()) {
+                    return true;
+                }
+                String valor = documento.getNomeArmazenado();
+                return valor != null && valor.toLowerCase(Locale.ROOT).contains(nomeArmazenado.toLowerCase(Locale.ROOT));
+            })
+            .filter(documento -> {
+                if (tipo == null || tipo.isBlank()) {
+                    return true;
+                }
+                String valor = documento.getTipo();
+                return valor != null && valor.equalsIgnoreCase(tipo);
+            })
+            .filter(documento -> {
+                if (utenteNome == null || utenteNome.isBlank()) {
+                    return true;
+                }
+                String nome = obterNomeUtenteMarcacao(documento.getMarcacao());
+                return nome != null && nome.toLowerCase(Locale.ROOT).contains(utenteNome.toLowerCase(Locale.ROOT));
+            })
+            .filter(documento -> {
+                if (utenteNif == null || utenteNif.isBlank()) {
+                    return true;
+                }
+                String nif = obterNifUtenteMarcacao(documento.getMarcacao());
+                return nif != null && nif.contains(utenteNif);
+            })
             .map(DocumentoDTO::fromDocumento)
             .toList();
+    }
+
+    private List<Documento> obterDocumentosPorIntervalo(
+        Long marcacaoId,
+        LocalDateTime uploadedDesde,
+        LocalDateTime uploadedAte
+    ) {
+        if (marcacaoId != null) {
+            if (uploadedDesde != null && uploadedAte != null) {
+                return documentoRepository.findByMarcacaoIdAndUploadedEmBetweenOrderByUploadedEmDesc(marcacaoId, uploadedDesde, uploadedAte);
+            }
+            if (uploadedDesde != null) {
+                return documentoRepository.findByMarcacaoIdAndUploadedEmGreaterThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedDesde);
+            }
+            if (uploadedAte != null) {
+                return documentoRepository.findByMarcacaoIdAndUploadedEmLessThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedAte);
+            }
+            return documentoRepository.findByMarcacaoIdOrderByUploadedEmDesc(marcacaoId);
+        }
+
+        if (uploadedDesde != null && uploadedAte != null) {
+            return documentoRepository.findByUploadedEmBetweenOrderByUploadedEmDesc(uploadedDesde, uploadedAte);
+        }
+        if (uploadedDesde != null) {
+            return documentoRepository.findByUploadedEmGreaterThanEqualOrderByUploadedEmDesc(uploadedDesde);
+        }
+        if (uploadedAte != null) {
+            return documentoRepository.findByUploadedEmLessThanEqualOrderByUploadedEmDesc(uploadedAte);
+        }
+        return documentoRepository.findAllByOrderByUploadedEmDesc();
     }
 
     /**
@@ -342,8 +388,8 @@ public class DocumentoService {
         }
 
         // Verificar tipo MIME
-        String tipoMime = file.getContentType();
-        if (tipoMime == null || !ALLOWED_MIME_TYPES.contains(tipoMime)) {
+        String tipo = file.getContentType();
+        if (tipo == null || !ALLOWED_MIME_TYPES.contains(tipo)) {
             throw new IllegalArgumentException(
                 "Tipo de ficheiro não permitido. Tipos aceites: PDF, JPEG, PNG, DOC, DOCX"
             );
@@ -369,61 +415,6 @@ public class DocumentoService {
         return pontoIndex > 0 ? nomeOriginal.substring(pontoIndex) : "";
     }
 
-    private Map<String, String> construirMetadadosMinio(
-        Long documentoId,
-        Long marcacaoId,
-        String nomeOriginal,
-        String nomeArmazenado,
-        String caminho,
-        String tipoMime,
-        Long tamanhoBytes,
-        String uploadedEm
-    ) {
-        Map<String, String> userMetadata = new LinkedHashMap<>();
-        if (documentoId != null) {
-            userMetadata.put("documento-id", String.valueOf(documentoId));
-        }
-        userMetadata.put("marcacao-id", String.valueOf(marcacaoId));
-        userMetadata.put("nome-original", nomeOriginal);
-        userMetadata.put("nome-armazenado", nomeArmazenado);
-        userMetadata.put("caminho", caminho);
-        userMetadata.put("tipo-mime", tipoMime);
-        userMetadata.put("tamanho-bytes", String.valueOf(tamanhoBytes));
-        if (uploadedEm != null) {
-            userMetadata.put("uploaded-em", uploadedEm);
-        }
-        return userMetadata;
-    }
-
-    private void atualizarMetadadosMinio(Documento documento, String tipoMime) throws Exception {
-        Map<String, String> metadataCompleta = construirMetadadosMinio(
-            documento.getId(),
-            documento.getMarcacao().getId(),
-            documento.getNomeOriginal(),
-            documento.getNomeArmazenado(),
-            documento.getCaminho(),
-            tipoMime,
-            documento.getTamanho(),
-            documento.getUploadedEm() != null ? documento.getUploadedEm().toString() : null
-        );
-
-        minioClient.copyObject(
-            CopyObjectArgs.builder()
-                .bucket(bucketName)
-                .object(documento.getCaminho())
-                .source(
-                    CopySource.builder()
-                        .bucket(bucketName)
-                        .object(documento.getCaminho())
-                        .build()
-                )
-                .metadataDirective(Directive.REPLACE)
-                .userMetadata(metadataCompleta)
-                .headers(Map.of("Content-Type", tipoMime))
-                .build()
-        );
-    }
-
     private void garantirBucketExiste() throws Exception {
         boolean bucketExiste = minioClient.bucketExists(
             BucketExistsArgs.builder()
@@ -439,5 +430,31 @@ public class DocumentoService {
             );
             log.info("Bucket MinIO criado automaticamente: {}", bucketName);
         }
+    }
+
+    private String obterNomeUtenteMarcacao(Marcacao marcacao) {
+        Utilizador utente = obterUtenteMarcacao(marcacao);
+        return utente != null ? utente.getNome() : null;
+    }
+
+    private String obterNifUtenteMarcacao(Marcacao marcacao) {
+        Utilizador utente = obterUtenteMarcacao(marcacao);
+        return utente != null ? utente.getNif() : null;
+    }
+
+    private Utilizador obterUtenteMarcacao(Marcacao marcacao) {
+        if (marcacao == null) {
+            return null;
+        }
+
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            return marcacao.getMarcacaoSecretaria().getUtente();
+        }
+
+        if (marcacao.getCriadoPor() != null) {
+            return marcacao.getCriadoPor();
+        }
+
+        return null;
     }
 }

@@ -13,10 +13,12 @@ import pt.florinhas.marcacoes.domain.Documento;
 public record DocumentoDTO(
     Long id,
     String nomeOriginal,
-    String tipoMime,
+    String tipo,
     Long tamanho,
     LocalDateTime uploadedEm,
-    Long marcacaoId
+    Long marcacaoId,
+    String utenteNome,
+    String utenteNif
 ) {
     /**
      * Converte uma entidade Documento em DTO.
@@ -25,13 +27,25 @@ public record DocumentoDTO(
      * @return DTO com dados públicos do documento
      */
     public static DocumentoDTO fromDocumento(Documento documento) {
+        String utenteNome = null;
+        String utenteNif = null;
+
+        if (documento.getMarcacao() != null
+            && documento.getMarcacao().getMarcacaoSecretaria() != null
+            && documento.getMarcacao().getMarcacaoSecretaria().getUtente() != null) {
+            utenteNome = documento.getMarcacao().getMarcacaoSecretaria().getUtente().getNome();
+            utenteNif = documento.getMarcacao().getMarcacaoSecretaria().getUtente().getNif();
+        }
+
         return new DocumentoDTO(
             documento.getId(),
             documento.getNomeOriginal(),
             documento.getTipo(),
             documento.getTamanho(),
             documento.getUploadedEm(),
-            documento.getMarcacao().getId()
+            documento.getMarcacao().getId(),
+            utenteNome,
+            utenteNif
         );
     }
 }
