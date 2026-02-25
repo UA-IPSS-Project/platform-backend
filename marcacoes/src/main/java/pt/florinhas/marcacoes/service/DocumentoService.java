@@ -3,6 +3,7 @@ package pt.florinhas.marcacoes.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -26,7 +27,6 @@ import io.minio.GetObjectResponse;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
 import lombok.RequiredArgsConstructor;
@@ -182,6 +182,44 @@ public class DocumentoService {
     }
 
     /**
+     * Pesquisa documentos por metadados com filtros opcionais.
+     *
+     * @param marcacaoId ID da marcação
+     * @param nomeOriginal parte do nome original
+     * @param nomeArmazenado parte do nome armazenado
+     * @param tipoMime tipo MIME
+     * @param uploadedDesde data/hora inicial de upload
+     * @param uploadedAte data/hora final de upload
+     * @return lista de documentos encontrados
+     */
+    @Transactional(readOnly = true)
+    public List<DocumentoDTO> pesquisarDocumentosPorMetadados(
+        Long marcacaoId,
+        String nomeOriginal,
+        String nomeArmazenado,
+        String tipoMime,
+        LocalDateTime uploadedDesde,
+        LocalDateTime uploadedAte
+    ) {
+        if (uploadedDesde != null && uploadedAte != null && uploadedDesde.isAfter(uploadedAte)) {
+            throw new IllegalArgumentException("uploadedDesde não pode ser posterior a uploadedAte");
+        }
+
+        log.info("Pesquisa de documentos por metadados (marcacaoId={}, tipoMime={})", marcacaoId, tipoMime);
+
+        return documentoRepository.pesquisarPorMetadados(
+                marcacaoId,
+                nomeOriginal,
+                nomeArmazenado,
+                tipoMime,
+                uploadedDesde,
+                uploadedAte)
+            .stream()
+            .map(DocumentoDTO::fromDocumento)
+            .toList();
+    }
+
+    /**
      * Obtém um documento pelo ID.
      * 
      * @param documentoId ID do documento
@@ -278,20 +316,6 @@ public class DocumentoService {
 
         Documento documento = documentoRepository.findById(documentoId)
             .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
-
-        // Remover ficheiro do MinIO
-        try {
-            minioClient.removeObject(
-                RemoveObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(documento.getCaminho())
-                    .build()
-            );
-            log.info("Ficheiro removido do MinIO: {}", documento.getCaminho());
-        } catch (Exception e) {
-            log.error("Erro ao remover ficheiro: {}", documento.getCaminho(), e);
-            // Continua com a remoção do registo mesmo se o ficheiro não for encontrado
-        }
 
         // Remover registo da base de dados
         documentoRepository.delete(documento);

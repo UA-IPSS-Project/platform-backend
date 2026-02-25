@@ -1,8 +1,10 @@
 package pt.florinhas.marcacoes.controller;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -86,6 +88,40 @@ public class DocumentoController {
         List<DocumentoDTO> documentos = documentoService.listarDocumentosDaMarcacao(marcacaoId);
         
         return ResponseEntity.ok(documentos);
+    }
+
+    /**
+     * Pesquisa documentos por metadados.
+     *
+     * Regras de acesso:
+     * - com marcacaoId: utente dono da marcação ou secretaria
+     * - sem marcacaoId: apenas secretaria
+     */
+    @GetMapping("/pesquisar")
+    public ResponseEntity<List<DocumentoDTO>> pesquisarDocumentosPorMetadados(
+            @RequestParam(required = false) Long marcacaoId,
+            @RequestParam(required = false) String nomeOriginal,
+            @RequestParam(required = false) String nomeArmazenado,
+            @RequestParam(required = false) String tipoMime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedAte) {
+
+        if (marcacaoId != null) {
+            verificarPermissaoMarcacao(marcacaoId);
+        } else if (!authService.isAdmin()) {
+            throw new AccessDeniedException("Pesquisa global de documentos requer perfil de secretaria");
+        }
+
+        List<DocumentoDTO> resultados = documentoService.pesquisarDocumentosPorMetadados(
+            marcacaoId,
+            nomeOriginal,
+            nomeArmazenado,
+            tipoMime,
+            uploadedDesde,
+            uploadedAte
+        );
+
+        return ResponseEntity.ok(resultados);
     }
 
     /**
