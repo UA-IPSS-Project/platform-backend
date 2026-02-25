@@ -304,9 +304,10 @@ public class AuthService {
         private FuncionarioTipo mapFuncaoToTipo(String funcao) {
                 return switch (funcao.toUpperCase()) {
                         case "SECRETARIA", "SECRETÁRIA" -> FuncionarioTipo.SECRETARIA;
-                        case "BALNEARIO", "BALNEÁRIO" -> FuncionarioTipo.BALNEARIO;
+                        case "BALNEARIO", "BALNEÁRIO", "BALNEARIO SOCIAL", "BALNEÁRIO SOCIAL" ->
+                                FuncionarioTipo.BALNEARIO;
                         case "ESCOLA" -> FuncionarioTipo.ESCOLA;
-                        case "INTERNOS", "INTERNO" -> FuncionarioTipo.INTERNO;
+                        case "INTERNOS", "INTERNO", "SERVIÇOS INTERNOS", "SERVICOS INTERNOS" -> FuncionarioTipo.INTERNO;
                         case "ADMIN", "ADMINISTRADOR" -> FuncionarioTipo.ADMIN;
                         default -> FuncionarioTipo.SECRETARIA;
                 };
