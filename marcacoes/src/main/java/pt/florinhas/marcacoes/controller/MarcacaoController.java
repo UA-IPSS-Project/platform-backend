@@ -186,6 +186,23 @@ public class MarcacaoController {
     }
 
     /**
+     * Atualiza os detalhes de serviços de uma marcação de balneário.
+     */
+    @PutMapping("/balneario/{id}/detalhes")
+    public ResponseEntity<MarcacaoResponseDTO> atualizarDetalhesBalneario(
+            @PathVariable Long id,
+            @RequestBody CriarMarcacaoBalnearioRequest request) {
+
+        MarcacaoResponseDTO updated = marcacaoService.atualizarDetalhesBalneario(
+                id,
+                request.getProdutosHigiene(),
+                request.getLavagemRoupa(),
+                request.getRoupas());
+
+        return ResponseEntity.ok(updated);
+    }
+
+    /**
      * RF1.2.3 – Consulta da agenda geral.
      *
      * Permite consultar todas as marcações num intervalo temporal,

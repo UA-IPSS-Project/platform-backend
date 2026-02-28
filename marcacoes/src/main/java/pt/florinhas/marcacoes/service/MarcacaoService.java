@@ -244,6 +244,40 @@ public class MarcacaoService {
         return marcacaoRepository.save(marcacao);
     }
 
+    /**
+     * Atualiza os detalhes de uma marcação de balneário (serviços, roupa, etc.).
+     */
+    @Transactional
+    public MarcacaoResponseDTO atualizarDetalhesBalneario(Long marcacaoId,
+            Boolean produtosHigiene, Boolean lavagemRoupa, List<RoupaDTO> roupas) {
+
+        Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
+                .orElseThrow(() -> new IllegalArgumentException("Marcação não encontrada"));
+
+        MarcacaoBalneario detalhes = marcacao.getMarcacaoBalneario();
+        if (detalhes == null) {
+            throw new IllegalArgumentException("Esta marcação não tem detalhes de balneário");
+        }
+
+        detalhes.setProdutosHigiene(produtosHigiene != null ? produtosHigiene : false);
+        detalhes.setLavagemRoupa(lavagemRoupa != null ? lavagemRoupa : false);
+
+        // Clear existing clothes and add new ones (orphanRemoval handles DB deletes)
+        detalhes.getRoupas().clear();
+        if (roupas != null) {
+            for (RoupaDTO rDTO : roupas) {
+                Roupa r = new Roupa();
+                r.setCategoria(rDTO.getCategoria());
+                r.setTamanho(rDTO.getTamanho());
+                r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
+                detalhes.addRoupa(r);
+            }
+        }
+
+        marcacaoRepository.save(marcacao);
+        return toDTO(marcacao);
+    }
+
     public List<MarcacaoResponseDTO> consultarAgenda(LocalDateTime inicio, LocalDateTime fim, String tipo) {
         if (inicio == null)
             inicio = LocalDateTime.now().minusYears(1);
