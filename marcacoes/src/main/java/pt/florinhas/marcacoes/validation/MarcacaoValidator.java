@@ -36,7 +36,6 @@ public class MarcacaoValidator {
 
     // Constantes de validação
     private static final long DIAS_ANTECEDENCIA_MAXIMA = 365;
-    
 
     /**
      * Valida uma requisição de criação de marcação.
@@ -50,7 +49,7 @@ public class MarcacaoValidator {
         }
 
         // Validar data, hora e sobreposição
-        validarDataHora(request.getData());
+        validarDataHora(request.getData(), request);
 
         // Validar campos de texto
         validarAssunto(request.getAssunto());
@@ -60,10 +59,12 @@ public class MarcacaoValidator {
      * Valida uma requisição de reagendamento de marcação.
      * 
      * Realiza as mesmas validações que criação:
-     * - Data/hora (passado, máximo 365 dias, fins de semana, feriados, bloqueios, sobreposição)
+     * - Data/hora (passado, máximo 365 dias, fins de semana, feriados, bloqueios,
+     * sobreposição)
      * 
-     * @param request DTO com dados do reagendamento
-     * @param funcionarioId ID do funcionário responsável (para verificar sobreposição)
+     * @param request       DTO com dados do reagendamento
+     * @param funcionarioId ID do funcionário responsável (para verificar
+     *                      sobreposição)
      * @throws IllegalArgumentException se a validação falhar
      */
     public void validarReagendamento(ReagendarMarcacaoRequest request) {
@@ -75,11 +76,11 @@ public class MarcacaoValidator {
             throw new IllegalArgumentException("A nova data e hora são obrigatórias.");
         }
 
-        // Validar nova data/hora com mesmas regras de criação (incluindo sobreposição com mesmo funcionário)
-        validarDataHora(request.getNovaDataHora());
+        // Validar nova data/hora com mesmas regras de criação (incluindo sobreposição
+        // com mesmo funcionário)
+        validarDataHora(request.getNovaDataHora(), request);
     }
 
-   
     /**
      * Valida data e hora da marcação.
      * 
@@ -92,10 +93,10 @@ public class MarcacaoValidator {
      * - Não pode haver sobreposição com outras marcações confirmadas
      * 
      * @param dataHora Data e hora a validar
-     * @param funcionarioId ID do funcionário (para verificar conflitos, pode ser null)
+     * @param request  The request context
      * @throws IllegalArgumentException se a validação falhar
      */
-    private void validarDataHora(LocalDateTime dataHora) {
+    private void validarDataHora(LocalDateTime dataHora, Object request) {
         if (dataHora == null) {
             throw new IllegalArgumentException("A data e hora da marcação são obrigatórias.");
         }
@@ -131,17 +132,18 @@ public class MarcacaoValidator {
                     "A marcação não pode ser agendada para um feriado nacional.");
         }
 
-        // Verificar bloqueios manuais de agenda
-        if (existeBloqueioManual(data, hora)) {
+        // Verificar bloqueios manuais e dinâmicos (agenda cheia)
+        if (existeBloqueio(data, hora, request)) {
             throw new IllegalArgumentException(
-                    "O horário escolhido está bloqueado. Por favor, escolha outro horário.");
+                    "O horário escolhido está bloqueado ou preenchido. Por favor, escolha outro horário.");
         }
 
         // Verificar sobreposição com outras marcações (excluindo canceladas)
         boolean conflito = marcacaoRepository.existsByDataAndEstadoNot(dataHora, EventoEstado.CANCELADO);
         if (conflito) {
             throw new IllegalArgumentException(
-                    "Já existe uma marcação agendada para o horário " + dataHora + ". Por favor, escolha outro horário.");
+                    "Já existe uma marcação agendada para o horário " + dataHora
+                            + ". Por favor, escolha outro horário.");
         }
     }
 
@@ -179,19 +181,25 @@ public class MarcacaoValidator {
     }
 
     /**
-     * Verifica se existe bloqueio manual para uma data e hora específica.
+     * Verifica se existe bloqueio para uma data e hora específica.
      * 
-     * @param data Data a verificar
-     * @param hora Hora a verificar
-     * @return true se existir bloqueio manual
+     * @param data   Data a verificar
+     * @param hora   Hora a verificar
+     * @param record O request que contém os dados da marcação para identificar tipo
+     * @return true se existir bloqueio
      */
-    private boolean existeBloqueioManual(LocalDate data, LocalTime hora) {
-        // Buscar todos os bloqueios da data
-        var bloqueios = bloqueioRepository.findByData(data);
-        
-        // Verificar se a hora cai dentro de algum intervalo de bloqueio
-        return bloqueios.stream()
-                .anyMatch(b -> !hora.isBefore(b.getHoraInicio()) && hora.isBefore(b.getHoraFim()));
+    private boolean existeBloqueio(LocalDate data, LocalTime hora, Object request) {
+        // Buscar bloqueios no calendário (que agora incorpora manual e dinâmico base)
+        String tipo = "SECRETARIA"; // Default for CriarMarcacaoRequest context
+        if (request instanceof pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest) {
+            tipo = "BALNEARIO";
+        } else if (request instanceof pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest) {
+            // Might need logic to determine original type, but we can assume null or
+            // generic check
+            tipo = null; // Checks all blocks for rescheduling conflict
+        }
+
+        return calendarioService.isSlotBloqueado(data, hora, tipo);
     }
 
 }

@@ -109,10 +109,19 @@ public class Marcacao {
     private MarcacaoSecretaria marcacaoSecretaria;
 
     /**
+     * Detalhes específicos quando a marcação segue o fluxo do balneário.
+     * Relação 1:1 bidirecional.
+     */
+    @OneToOne(mappedBy = "marcacao", cascade = CascadeType.ALL)
+    private MarcacaoBalneario marcacaoBalneario;
+
+    /**
      * Documentos anexados a esta marcação.
-     * Relação 1:N bidirecional. 'mappedBy' indica que a FK está do lado de Documento.
+     * Relação 1:N bidirecional. 'mappedBy' indica que a FK está do lado de
+     * Documento.
      * Cascade ALL para propagar operações de Marcacao para Documento.
-     * orphanRemoval garante que documentos removidos da lista sejam deletados da BD.
+     * orphanRemoval garante que documentos removidos da lista sejam deletados da
+     * BD.
      */
     @OneToMany(mappedBy = "marcacao", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Documento> documentos = new ArrayList<>();

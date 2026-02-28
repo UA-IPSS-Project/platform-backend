@@ -45,7 +45,7 @@ class MarcacaoRepositoryTest {
 
         // Setup Marcacao
         marcacao = new Marcacao();
-        marcacao.setData(LocalDateTime.now().plusDays(1));
+        marcacao.setData(LocalDateTime.now().plusDays(1).truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
         marcacao.setEstado(EventoEstado.AGENDADO);
         marcacao.setCriadoPor(funcionario);
         marcacao = entityManager.persist(marcacao);
@@ -99,7 +99,7 @@ class MarcacaoRepositoryTest {
         LocalDateTime fim = LocalDateTime.now().plusDays(7);
 
         // Act
-        List<Marcacao> resultado = marcacaoRepository.findMarcacoesBetweenDates(inicio, fim);
+        List<Marcacao> resultado = marcacaoRepository.findMarcacoesBetweenDates(inicio, fim, null);
 
         // Assert
         assertNotNull(resultado);

@@ -148,11 +148,13 @@ public class CalendarioController {
         @GetMapping("/verificar-slot")
         public ResponseEntity<Boolean> verificarSlot(
                         @RequestParam String data,
-                        @RequestParam String hora) {
+                        @RequestParam String hora,
+                        @RequestParam(required = false) String tipo) {
                 // Converte os parâmetros recebidos para tipos temporais
                 boolean bloqueado = calendarioService.isSlotBloqueado(
                                 LocalDate.parse(data),
-                                LocalTime.parse(hora));
+                                LocalTime.parse(hora),
+                                tipo);
                 // Retorna true se o horário estiver bloqueado
                 return ResponseEntity.ok(bloqueado);
         }

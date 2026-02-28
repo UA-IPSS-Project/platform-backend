@@ -91,7 +91,7 @@ class FuncionarioRepositoryTest {
     @Test
     void existsByNif_DeveRetornarFalse() {
         // Act
-        boolean existe = funcionarioRepository.existsByNif("999999999");
+        boolean existe = funcionarioRepository.existsByNif("999999998");
 
         // Assert
         assertFalse(existe);

@@ -120,12 +120,14 @@ public class CalendarioService {
      * - Existência de um bloqueio que inclua o horário indicado.
      *
      * param data dia a verificar
-     * param slotTime hora do slot (ex.: 14:00)
+     * param hora hora do slot (ex.: 14:00)
+     * param tipo tipo de marcação a verificar
      * return true se o slot estiver bloqueado
      */
-    public boolean isSlotBloqueado(LocalDate data, LocalTime slotTime) {
+    public boolean isSlotBloqueado(LocalDate data, LocalTime hora, String tipo) {
 
-        // Se o dia for indisponível por completo, o slot também é aka feriados e fins de semana
+        // Se o dia for indisponível por completo, o slot também é aka feriados e fins
+        // de semana
         if (isDiaInteiroIndisponivel(data))
             return true;
 
@@ -133,17 +135,17 @@ public class CalendarioService {
         List<BloqueioAgenda> bloqueiosDoDia = bloqueioRepository.findByData(data);
 
         boolean bloqueadoPorAgenda = bloqueiosDoDia.stream()
-                .anyMatch(b -> (slotTime.equals(b.getHoraInicio()) || slotTime.isAfter(b.getHoraInicio())) &&
-                        slotTime.isBefore(b.getHoraFim()));
+                .anyMatch(b -> (hora.equals(b.getHoraInicio()) || hora.isAfter(b.getHoraInicio())) &&
+                        hora.isBefore(b.getHoraFim()));
 
         if (bloqueadoPorAgenda)
             return true;
 
         // Verificar se já existe uma marcação ativa neste slot
-        LocalDateTime slotStart = LocalDateTime.of(data, slotTime);
+        LocalDateTime slotStart = LocalDateTime.of(data, hora);
         LocalDateTime slotEnd = slotStart.plusMinutes(15);
 
-        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(slotStart, slotEnd);
+        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(slotStart, slotEnd, tipo);
 
         return marcacoes.stream()
                 .anyMatch(m -> m.getEstado() != EventoEstado.CANCELADO &&

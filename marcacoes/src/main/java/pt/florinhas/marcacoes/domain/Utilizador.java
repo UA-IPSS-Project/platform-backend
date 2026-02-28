@@ -76,7 +76,8 @@ public class Utilizador implements UserDetails {
 
     /**
      * Timestamp de aceitação dos termos de uso (RGPD).
-     * NULL = termos não aceites (conta criada pela secretaria ou ainda não ativada).
+     * NULL = termos não aceites (conta criada pela secretaria ou ainda não
+     * ativada).
      * NOT NULL = termos aceites, conta totalmente ativa.
      */
     @Column(name = "terms_accepted_at")
@@ -126,16 +127,15 @@ public class Utilizador implements UserDetails {
 
     /**
      * Devolve as authorities (roles) do utilizador autenticado.
-     * Lógica: se for instância de Funcionario => ROLE_FUNCIONARIO, caso contrário
-     * => ROLE_UTENTE.
-     * Em cenários com perfis mais finos, complementar com perfis/valências.
+     * Mapeia os tipos de funcionários para ROLE_SECRETARIA, ROLE_BALNEARIO, etc.
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Se for Funcionario retorna ROLE_FUNCIONARIO, se for Utente retorna
-        // ROLE_UTENTE
-        String role = this instanceof Funcionario ? "ROLE_FUNCIONARIO" : "ROLE_UTENTE";
-        return List.of(new SimpleGrantedAuthority(role));
+        if (this instanceof Funcionario f) {
+            String role = f.getTipo() != null ? "ROLE_" + f.getTipo().name() : "ROLE_FUNCIONARIO";
+            return List.of(new SimpleGrantedAuthority(role));
+        }
+        return List.of(new SimpleGrantedAuthority("ROLE_UTENTE"));
     }
 
     // Hash da palavra-passe usado pelo provider (ex.: DaoAuthenticationProvider +

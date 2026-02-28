@@ -24,8 +24,7 @@ public class MarcacoesApplication {
 	 * caso ainda não exista um funcionário com o NIF especificado.
 	 */
 	@Bean
-	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository,
-			PasswordEncoder passwordEncoder) {
+	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository) {
 		return args -> {
 			String adminNif = "999999999";
 
@@ -35,7 +34,8 @@ public class MarcacoesApplication {
 				admin.setEmail("admin@florinhasdovouga.pt");
 				admin.setNif(adminNif);
 				admin.setTelefone("999999999");
-				admin.setPassHash(passwordEncoder.encode("admin123"));
+				PasswordEncoder encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+				admin.setPassHash(encoder.encode("admin123"));
 				admin.setTipo(FuncionarioTipo.SECRETARIA);
 				admin.setActivo(true);
 
