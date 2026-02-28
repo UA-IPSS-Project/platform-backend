@@ -389,7 +389,7 @@ public class MarcacaoService {
     public List<Map<String, Object>> consultarMarcacoesBloqueadas(Long utenteId) {
         LocalDateTime start = LocalDateTime.now().minusHours(1); // Include current hour
         LocalDateTime end = start.plusMonths(6);
-        List<Marcacao> all = marcacaoRepository.findMarcacoesBetweenDates(start, end, null);
+        List<Marcacao> all = marcacaoRepository.findMarcacoesBetweenDates(start, end, "SECRETARIA");
 
         return all.stream()
                 .filter(m -> {
