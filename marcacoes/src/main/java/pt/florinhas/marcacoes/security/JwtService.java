@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
@@ -56,7 +57,7 @@ public class JwtService {
 
         // Append a random UUID to the configured secret
         // This ensures that all tokens are invalidated when the server restarts
-        secret = secret + "-" + java.util.UUID.randomUUID().toString();
+        secret = secret + "-" + UUID.randomUUID().toString();
 
         if (secret.length() < MINIMUM_SECRET_LENGTH) {
             throw new IllegalStateException(

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -125,7 +126,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
          * nulo
          * (para corrigir bugs antigos onde o timestamp não era gravado).
          */
-        @org.springframework.data.jpa.repository.Modifying
+        @Modifying
         @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
         void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
 

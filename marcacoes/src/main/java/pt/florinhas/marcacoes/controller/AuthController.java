@@ -18,6 +18,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.extern.slf4j.Slf4j;
 
+import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AuthResponse;
 import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
@@ -116,9 +118,9 @@ public class AuthController {
 
         var persistedUser = utilizadorService.obterUtilizadorPorId(utilizador.getId());
         boolean active = true;
-        if (persistedUser instanceof pt.florinhas.marcacoes.domain.Utente u) {
+        if (persistedUser instanceof Utente u) {
             active = u.isActivo();
-        } else if (persistedUser instanceof pt.florinhas.marcacoes.domain.Funcionario f) {
+        } else if (persistedUser instanceof Funcionario f) {
             active = f.isActivo();
         }
 

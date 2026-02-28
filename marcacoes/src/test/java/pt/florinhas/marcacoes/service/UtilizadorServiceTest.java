@@ -20,6 +20,9 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.service.nif.NifValidationService;
 
+import java.util.Collections;
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 public class UtilizadorServiceTest {
 
@@ -50,7 +53,7 @@ public class UtilizadorServiceTest {
         String telefone = "912345678";
 
         when(nifValidationService.validate(nif)).thenReturn(true);
-        when(utilizadorRepository.findByNif(nif)).thenReturn(java.util.Collections.emptyList());
+        when(utilizadorRepository.findByNif(nif)).thenReturn(Collections.emptyList());
         when(utenteRepository.existsByEmail(email)).thenReturn(false);
         when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
             Utente u = invocation.getArgument(0);
@@ -88,7 +91,7 @@ public class UtilizadorServiceTest {
 
         // When user exists, the service returns immediately after findByNif
         // without calling nifValidationService.validate() - so no stub needed
-        when(utilizadorRepository.findByNif(nif)).thenReturn(java.util.List.of(existingStart));
+        when(utilizadorRepository.findByNif(nif)).thenReturn(List.of(existingStart));
 
         // Act
         Utente result = utilizadorService.obterOuCriarUtente(nif, "Ignored", "Ignored", "Ignored");

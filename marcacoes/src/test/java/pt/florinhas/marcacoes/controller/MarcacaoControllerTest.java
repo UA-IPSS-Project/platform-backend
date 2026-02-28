@@ -4,15 +4,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import pt.florinhas.marcacoes.domain.*;
 import pt.florinhas.marcacoes.dto.*;
 import pt.florinhas.marcacoes.repository.*;
+import pt.florinhas.marcacoes.security.JwtService;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 import pt.florinhas.marcacoes.config.TestSecurityConfig;
@@ -26,7 +31,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = MarcacaoController.class, excludeAutoConfiguration = org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class)
+@WebMvcTest(controllers = MarcacaoController.class, excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class)
 @Import(TestSecurityConfig.class)
 class MarcacaoControllerTest {
 
@@ -48,13 +53,13 @@ class MarcacaoControllerTest {
     @MockitoBean
     private UtilizadorRepository utilizadorRepository;
     @MockitoBean
-    private pt.florinhas.marcacoes.security.JwtService jwtService;
+        private JwtService jwtService;
     @MockitoBean(name = "customUserDetailsService")
-    private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+        private UserDetailsService userDetailsService;
     @MockitoBean
-    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+        private PasswordEncoder passwordEncoder;
     @MockitoBean
-    private org.springframework.security.authentication.AuthenticationManager authenticationManager;
+        private AuthenticationManager authenticationManager;
 
     private Funcionario funcionario;
     private Utente utente;

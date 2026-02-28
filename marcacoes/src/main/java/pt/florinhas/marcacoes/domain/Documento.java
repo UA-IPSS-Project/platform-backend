@@ -9,6 +9,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -86,7 +88,7 @@ public class Documento {
     /**
      * Define a data de upload antes de persistir.
      */
-    @jakarta.persistence.PrePersist
+    @PrePersist
     protected void onCreate() {
         uploadedEm = LocalDateTime.now();
     }
@@ -96,7 +98,7 @@ public class Documento {
      *
      * Garante limpeza também em remoções por cascata/orphanRemoval.
      */
-    @jakarta.persistence.PreRemove
+    @PreRemove
     protected void onRemove() {
         DocumentoStorageCleanupService.removerDoArmazenamento(caminho, id);
     }

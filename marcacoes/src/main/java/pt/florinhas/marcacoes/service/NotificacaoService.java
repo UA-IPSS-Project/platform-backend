@@ -7,6 +7,10 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import lombok.RequiredArgsConstructor;
 import pt.florinhas.marcacoes.domain.Notificacao;
@@ -21,9 +25,11 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 @RequiredArgsConstructor
 public class NotificacaoService {
 
+    private static final Logger logger = LoggerFactory.getLogger(NotificacaoService.class);
+
     private final NotificacaoRepository notificacaoRepository;
     private final UtilizadorRepository utilizadorRepository;
-    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate; // Inject Template
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo) {
@@ -49,7 +55,7 @@ public class NotificacaoService {
         // Send real-time notification
         try {
             NotificacaoResponseDTO dto = converterParaDTO(saved);
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).info(
+                logger.info(
                     "Sending WebSocket notification to user: {} (email: {}), title: {}",
                     utilizadorId, user.getEmail(), titulo);
             messagingTemplate.convertAndSendToUser(
@@ -61,12 +67,11 @@ public class NotificacaoService {
                     // If UserDetails.getUsername() returns email, then this is correct.
                     "/queue/notifications",
                     dto);
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).info(
+                logger.info(
                     "WebSocket notification sent successfully to: {}", user.getEmail());
         } catch (Exception e) {
             // Log but don't fail transaction
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).error("Failed to send websocket notification",
-                    e);
+                logger.error("Failed to send websocket notification", e);
         }
 
         return saved;
@@ -193,8 +198,7 @@ public class NotificacaoService {
 
     private void logSimulatedEmail(String email, String assunto, String mensagem) {
         if (email != null) {
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class)
-                    .info("Email simulado para {} com assunto: '{}' e mensagem: '{}'", email, assunto, mensagem);
+            logger.info("Email simulado para {} com assunto: '{}' e mensagem: '{}'", email, assunto, mensagem);
         }
     }
 }

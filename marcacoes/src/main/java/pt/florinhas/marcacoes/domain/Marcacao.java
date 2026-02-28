@@ -17,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
@@ -120,7 +121,7 @@ public class Marcacao {
     /**
      * Define a data de criação antes de persistir.
      */
-    @jakarta.persistence.PrePersist
+    @PrePersist
     protected void onCreate() {
         criadoEm = LocalDateTime.now();
     }

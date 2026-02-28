@@ -2,10 +2,14 @@ package pt.florinhas.marcacoes.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -16,6 +20,7 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
+import pt.florinhas.marcacoes.security.JwtService;
 import java.util.Collections;
 
 import static org.mockito.Mockito.when;
@@ -24,7 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = MarcacaoController.class, excludeAutoConfiguration = org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class)
+@WebMvcTest(controllers = MarcacaoController.class, excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class)
 @Import(TestSecurityConfig.class)
 public class MarcacaoControllerSecurityTest {
 
@@ -45,13 +50,13 @@ public class MarcacaoControllerSecurityTest {
     @MockitoBean
     private UtilizadorRepository utilizadorRepository;
     @MockitoBean
-    private pt.florinhas.marcacoes.security.JwtService jwtService;
+        private JwtService jwtService;
     @MockitoBean(name = "customUserDetailsService")
-    private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+        private UserDetailsService userDetailsService;
     @MockitoBean
-    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+        private PasswordEncoder passwordEncoder;
     @MockitoBean
-    private org.springframework.security.authentication.AuthenticationManager authenticationManager;
+        private AuthenticationManager authenticationManager;
 
     @Test
     @WithMockUser(username = "user", roles = { "UTENTE" })
@@ -134,7 +139,7 @@ public class MarcacaoControllerSecurityTest {
         when(authService.getCurrentUserId()).thenReturn(1L);
         when(authService.isAdmin()).thenReturn(true);
         when(marcacaoService.consultarMarcacoesFuncionario(funcionarioId))
-                .thenReturn(java.util.Collections.emptyList());
+                .thenReturn(Collections.emptyList());
 
         // Act & Assert
         mockMvc.perform(get("/api/marcacoes/funcionario/{funcionarioId}", funcionarioId)
@@ -150,7 +155,7 @@ public class MarcacaoControllerSecurityTest {
         when(authService.getCurrentUserId()).thenReturn(funcionarioId);
         when(authService.isAdmin()).thenReturn(true); // Funcionários são admins
         when(marcacaoService.consultarMarcacoesFuncionario(funcionarioId))
-                .thenReturn(java.util.Collections.emptyList());
+                .thenReturn(Collections.emptyList());
 
         // Act & Assert
         mockMvc.perform(get("/api/marcacoes/funcionario/{funcionarioId}", funcionarioId)

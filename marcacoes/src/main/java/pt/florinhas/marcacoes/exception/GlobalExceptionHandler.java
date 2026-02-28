@@ -5,10 +5,12 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Tratamento global de exceções para os controladores REST.
@@ -42,9 +44,9 @@ public class GlobalExceptionHandler {
      * Mapeia NoResourceFoundException (Spring 6+) para HTTP 404.
      * Evita que 404s caiam no handler genérico 500.
      */
-    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+        @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, String>> handleNoResourceFoundException(
-            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+            NoResourceFoundException ex) {
         Map<String, String> error = new HashMap<>();
         error.put("message", "O recurso solicitado não foi encontrado: " + ex.getResourcePath());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
@@ -129,9 +131,9 @@ public class GlobalExceptionHandler {
     /**
      * Mapeia AccessDeniedException para HTTP 403 (FORBIDDEN).
      */
-    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+        @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAccessDeniedException(
-            org.springframework.security.access.AccessDeniedException ex) {
+            AccessDeniedException ex) {
         Map<String, String> error = new HashMap<>();
         error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);

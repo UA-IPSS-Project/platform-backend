@@ -26,6 +26,7 @@ import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
+import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 import org.springframework.security.access.AccessDeniedException;
@@ -452,7 +453,7 @@ public class MarcacaoController {
     @PutMapping("/{id}/reagendar")
     public ResponseEntity<MarcacaoResponseDTO> reagendarMarcacao(
             @PathVariable Long id,
-            @RequestBody pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest request) {
+            @RequestBody ReagendarMarcacaoRequest request) {
 
         MarcacaoResponseDTO response = marcacaoService.reagendarMarcacao(id, request);
         return ResponseEntity.ok(response);

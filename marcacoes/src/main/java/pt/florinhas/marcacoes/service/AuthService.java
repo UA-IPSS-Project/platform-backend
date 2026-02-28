@@ -1,7 +1,10 @@
 package pt.florinhas.marcacoes.service;
 
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -317,10 +320,10 @@ public class AuthService {
          * Obtém o ID do utilizador autenticado a partir do SecurityContext.
          */
         public Long getCurrentUserId() {
-                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                var authentication = SecurityContextHolder.getContext()
                                 .getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()
-                                || authentication instanceof org.springframework.security.authentication.AnonymousAuthenticationToken) {
+                                || authentication instanceof AnonymousAuthenticationToken) {
                         return null;
                 }
 
@@ -328,7 +331,7 @@ public class AuthService {
 
                 if (principal instanceof Utilizador utilizador) {
                         return utilizador.getId();
-                } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
+                } else if (principal instanceof UserDetails userDetails) {
                         // Em alguns casos pode ser apenas UserDetails, tentamos buscar pelo email
                         var users = utilizadorRepository.findByEmail(userDetails.getUsername());
                         if (!users.isEmpty()) {
@@ -344,7 +347,7 @@ public class AuthService {
          * (apenas SECRETARIA).
          */
         public boolean isAdmin() {
-                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                var authentication = SecurityContextHolder.getContext()
                                 .getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()) {
                         return false;

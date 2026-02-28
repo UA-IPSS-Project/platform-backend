@@ -14,13 +14,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
+import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.marcacoes.service.nif.NifValidationService;
 
 /**
  * Serviço responsável pela gestão de utilizadores e utentes.
@@ -48,10 +53,10 @@ public class UtilizadorService {
     private FuncionarioRepository funcionarioRepository;
 
     @Autowired
-    private pt.florinhas.marcacoes.service.email.EmailService emailService;
+    private EmailService emailService;
 
     @Autowired
-    private pt.florinhas.marcacoes.service.nif.NifValidationService nifValidationService;
+    private NifValidationService nifValidationService;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -159,7 +164,7 @@ public class UtilizadorService {
 
         String passwordInicial = gerarPasswordSegura();
         novoUtente.setPassHash(passwordEncoder.encode(passwordInicial));
-        novoUtente.setDataNasc(java.time.LocalDate.now());
+        novoUtente.setDataNasc(LocalDate.now());
 
         log.info("Novo utente criado. Enviando password para: {}", email);
 
@@ -289,7 +294,7 @@ public class UtilizadorService {
     /**
      * Cria um utilizador (Utente ou Funcionário) pela secretaria.
      */
-    public Utilizador criarUtilizadorPelaSecretaria(pt.florinhas.marcacoes.dto.CreateUserRequestDTO request) {
+    public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
         if (!validarNIF(request.getNif())) {
             throw new RuntimeException("NIF inválido.");
         }
@@ -306,20 +311,20 @@ public class UtilizadorService {
             Funcionario f = new Funcionario();
             try {
                 String roleStr = request.getRole();
-                pt.florinhas.marcacoes.domain.FuncionarioTipo tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.OUTRO;
+                FuncionarioTipo tipo = FuncionarioTipo.OUTRO;
                 if (roleStr != null) {
                     if (roleStr.equalsIgnoreCase("Secretaria"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.SECRETARIA;
+                        tipo = FuncionarioTipo.SECRETARIA;
                     else if (roleStr.toUpperCase().contains("BALNE"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.BALNEARIO;
+                        tipo = FuncionarioTipo.BALNEARIO;
                     else if (roleStr.equalsIgnoreCase("Escola"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.ESCOLA;
+                        tipo = FuncionarioTipo.ESCOLA;
                     else if (roleStr.toUpperCase().contains("INTERNO"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.INTERNO;
+                        tipo = FuncionarioTipo.INTERNO;
                 }
                 f.setTipo(tipo);
             } catch (Exception e) {
-                f.setTipo(pt.florinhas.marcacoes.domain.FuncionarioTipo.OUTRO);
+                f.setTipo(FuncionarioTipo.OUTRO);
             }
             f.setActivo(false);
             novoUtilizador = f;
@@ -359,7 +364,7 @@ public class UtilizadorService {
     /**
      * Inicia o processo de recuperação de conta pela secretaria.
      */
-    public void recuperarConta(pt.florinhas.marcacoes.dto.RecoverAccountDTO request) {
+    public void recuperarConta(RecoverAccountDTO request) {
         List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
         if (users.isEmpty()) {
             throw new RuntimeException("Utilizador não encontrado com NIF: " + request.getNif());

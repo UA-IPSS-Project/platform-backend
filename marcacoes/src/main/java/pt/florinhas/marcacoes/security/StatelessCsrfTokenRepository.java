@@ -3,6 +3,8 @@ package pt.florinhas.marcacoes.security;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.DefaultCsrfToken;
@@ -54,7 +56,7 @@ public class StatelessCsrfTokenRepository implements CsrfTokenRepository {
         log.debug("Saving CSRF token to cookie: {}", token.getToken());
 
         // Usar ResponseCookie para controlar SameSite
-        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie
+        ResponseCookie cookie = ResponseCookie
                 .from(CSRF_COOKIE_NAME, token.getToken())
                 .secure(request.isSecure()) // true em HTTPS
                 .path("/")
@@ -63,7 +65,7 @@ public class StatelessCsrfTokenRepository implements CsrfTokenRepository {
                 .sameSite("Lax") // Lax é seguro e permite navegação normal
                 .build();
 
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     @Override

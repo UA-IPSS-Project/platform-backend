@@ -130,7 +130,7 @@ public class CalendarioController {
                 }
 
                 List<String> dates = calendarioService.getFeriadosDoAno(ano).stream()
-                                .map(java.time.LocalDate::toString)
+                                .map(LocalDate::toString)
                                 .collect(Collectors.toList());
                 return ResponseEntity.ok(dates);
         }
