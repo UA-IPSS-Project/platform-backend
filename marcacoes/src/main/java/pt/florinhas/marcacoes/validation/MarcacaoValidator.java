@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
-import pt.florinhas.marcacoes.repository.BloqueioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.CalendarioService;
 
@@ -31,7 +30,6 @@ import pt.florinhas.marcacoes.service.CalendarioService;
 public class MarcacaoValidator {
 
     private final MarcacaoRepository marcacaoRepository;
-    private final BloqueioRepository bloqueioRepository;
     private final CalendarioService calendarioService;
 
     // Constantes de validação
