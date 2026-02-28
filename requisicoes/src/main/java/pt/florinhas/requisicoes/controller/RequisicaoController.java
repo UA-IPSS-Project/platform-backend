@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
+import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
+import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
@@ -35,6 +37,16 @@ public class RequisicaoController {
             return requisicaoService.listarTodas();
         }
         return requisicaoService.listarPorEstado(estado);
+    }
+
+    @GetMapping("/procurar")
+    public List<Requisicao> procurar(
+            @RequestParam(required = false) RequisicaoEstado estado,
+            @RequestParam(required = false) RequisicaoTipo tipo,
+            @RequestParam(required = false) RequisicaoPrioridade prioridade,
+            @RequestParam(required = false) Long criadoPorId,
+            @RequestParam(required = false) Long geridoPorId) {
+        return requisicaoService.procurar(estado, tipo, prioridade, criadoPorId, geridoPorId);
     }
 
     @GetMapping("/{id}")

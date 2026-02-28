@@ -9,6 +9,7 @@ import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
+import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
@@ -64,6 +65,15 @@ public class RequisicaoService {
 
     public List<Requisicao> listarPorEstado(RequisicaoEstado estado) {
         return requisicaoRepository.findByEstado(estado);
+    }
+
+    public List<Requisicao> procurar(
+            RequisicaoEstado estado,
+            RequisicaoTipo tipo,
+            RequisicaoPrioridade prioridade,
+            Long criadoPorId,
+            Long geridoPorId) {
+        return requisicaoRepository.findWithFilters(estado, tipo, prioridade, criadoPorId, geridoPorId);
     }
 
     public RequisicaoMaterial criarMaterial(CriarRequisicaoMaterialRequest request) {
