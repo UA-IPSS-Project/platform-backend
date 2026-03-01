@@ -31,97 +31,65 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CalendarioController {
 
-        /**
-         * Serviço que contém a lógica de negócio associada ao calendário,
-         * incluindo criação, remoção e consulta de bloqueios.
-         */
         private final CalendarioService calendarioService;
-
-        /**
-         * Repositório de utilizadores.
-         * É usado aqui para validar e obter o funcionário responsável pelo bloqueio.
-         */
         private final UtilizadorRepository utilizadorRepository;
 
         /**
          * Endpoint para criar um bloqueio de agenda.
-         *
-         * O bloqueio pode ser:
-         * - parcial (intervalo horário)
-         * - total (dia completo, dependendo dos valores enviados)
-         *
-         * Apenas funcionários/admins devem ter acesso a este endpoint.
-         *
-         * param request DTO com a data, intervalo horário, motivo e ID do funcionário
-         * return mensagem de confirmação da operação
+         * Acessível a funcionários de SECRETARIA e BALNEARIO.
          */
         @PostMapping("/bloquear")
-        @PreAuthorize("hasRole('SECRETARIA')")
+        @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO')")
         public ResponseEntity<?> bloquearHorario(@RequestBody BloquearHorarioRequest request) {
 
-                // Obtém o funcionário responsável pelo bloqueio
                 Utilizador funcionario = utilizadorRepository.findById(request.getFuncionarioId())
                                 .orElseThrow(() -> new NotFoundException("Funcionário não encontrado"));
 
-                // Delegação da lógica de criação do bloqueio para o serviço
+                String tipo = request.getTipo() != null ? request.getTipo() : "SECRETARIA";
+
                 calendarioService.bloquearHorario(
                                 request.getData(),
                                 request.getHoraInicio(),
                                 request.getHoraFim(),
                                 request.getMotivo(),
-                                funcionario);
+                                funcionario,
+                                tipo);
 
-                // Resposta simples para o frontend
                 return ResponseEntity.ok(
                                 Map.of("message", "Bloqueio registado com sucesso"));
         }
 
         /**
          * Endpoint para remover um bloqueio de agenda existente.
-         *
-         * Usado tipicamente quando um funcionário decide reabrir um horário
-         * previamente bloqueado.
-         *
-         * param id identificador do bloqueio a remover
-         * return mensagem de confirmação da remoção
+         * Acessível a funcionários de SECRETARIA e BALNEARIO.
          */
         @DeleteMapping("/{id}")
-        @PreAuthorize("hasRole('SECRETARIA')")
+        @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO')")
         public ResponseEntity<?> removerBloqueio(@PathVariable Long id) {
-                // Remove o bloqueio através do serviço
                 calendarioService.removerBloqueio(id);
                 return ResponseEntity.ok(
                                 Map.of("message", "Bloqueio removido"));
         }
 
         /**
-         * Endpoint para listar todos os bloqueios de um determinado mês.
-         *
-         * Este endpoint é usado pelo frontend para desenhar visualmente
-         * os períodos indisponíveis (ex.: caixas cinzentas no calendário).
-         *
-         * param ano ano pretendido
-         * param mes mês pretendido (1-12)
-         * return lista de bloqueios existentes no mês indicado
+         * Endpoint para listar bloqueios, opcionalmente filtrados por mês e tipo.
          */
         @GetMapping("/bloqueios")
         public ResponseEntity<List<BloqueioAgenda>> listarBloqueios(
                         @RequestParam(required = false) Integer ano,
-                        @RequestParam(required = false) Integer mes) {
+                        @RequestParam(required = false) Integer mes,
+                        @RequestParam(required = false) String tipo) {
 
-                if (ano == null || mes == null) {
-                        return ResponseEntity.ok(calendarioService.getTodosBloqueios());
+                if (ano != null && mes != null) {
+                        return ResponseEntity.ok(
+                                        calendarioService.getBloqueiosDoMes(ano, mes, tipo));
                 }
 
-                return ResponseEntity.ok(
-                                calendarioService.getBloqueiosDoMes(ano, mes));
+                return ResponseEntity.ok(calendarioService.getTodosBloqueios(tipo));
         }
 
         /**
          * Endpoint para listar feriados de um ano.
-         *
-         * param ano ano pretendido
-         * return lista de datas (YYYY-MM-DD)
          */
         @GetMapping("/feriados")
         public ResponseEntity<List<String>> listarFeriados(@RequestParam Integer ano) {
@@ -136,26 +104,17 @@ public class CalendarioController {
         }
 
         /**
-         * Endpoint rápido para verificar se um slot específico está bloqueado.
-         *
-         * É tipicamente chamado quando o utilizador abre o modal de criação
-         * de uma nova marcação, permitindo validar imediatamente a disponibilidade.
-         *
-         * param data data no formato ISO (YYYY-MM-DD)
-         * param hora hora no formato HH:mm
-         * return TRUE se o slot estiver bloqueado (indisponível), FALSE caso contrário
+         * Endpoint para verificar se um slot está bloqueado.
          */
         @GetMapping("/verificar-slot")
         public ResponseEntity<Boolean> verificarSlot(
                         @RequestParam String data,
                         @RequestParam String hora,
                         @RequestParam(required = false) String tipo) {
-                // Converte os parâmetros recebidos para tipos temporais
                 boolean bloqueado = calendarioService.isSlotBloqueado(
                                 LocalDate.parse(data),
                                 LocalTime.parse(hora),
                                 tipo);
-                // Retorna true se o horário estiver bloqueado
                 return ResponseEntity.ok(bloqueado);
         }
 }

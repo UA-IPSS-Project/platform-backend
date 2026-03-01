@@ -67,21 +67,15 @@ public class CalendarioService {
 
     /**
      * Carrega os feriados do ano corrente no arranque da aplicação.
-     *
-     * É executado automaticamente após a injeção de dependências (@PostConstruct).
-     * Em caso de falha da API externa, o sistema continua a funcionar
-     * (apenas sem validação de feriados).
      */
     @PostConstruct
     public void carregarFeriados() {
-        // Executar em thread separada para não bloquear o arranque
         new Thread(() -> {
             try {
                 int currentYear = LocalDate.now().getYear();
                 List<LocalDate> feriados = fetchFeriados(currentYear);
                 feriadosCache.put(currentYear, feriados);
             } catch (Exception e) {
-                // Em caso de erro, apenas regista no log
                 log.error("Erro ao carregar feriados (API externa): {}", e.getMessage());
             }
         }).start();
@@ -114,25 +108,21 @@ public class CalendarioService {
 
     /**
      * Verifica se um slot horário específico está bloqueado.
-     *
-     * Regras aplicadas:
-     * - Dia inteiro indisponível (fim de semana ou feriado).
-     * - Existência de um bloqueio que inclua o horário indicado.
-     *
-     * param data dia a verificar
-     * param hora hora do slot (ex.: 14:00)
-     * param tipo tipo de marcação a verificar
-     * return true se o slot estiver bloqueado
+     * Filtra bloqueios pelo tipo de agenda (SECRETARIA / BALNEARIO).
      */
     public boolean isSlotBloqueado(LocalDate data, LocalTime hora, String tipo) {
 
-        // Se o dia for indisponível por completo, o slot também é aka feriados e fins
-        // de semana
+        // Se o dia for indisponível por completo (feriados e fins de semana)
         if (isDiaInteiroIndisponivel(data))
             return true;
 
-        // Verificar bloqueios parciais do dia
-        List<BloqueioAgenda> bloqueiosDoDia = bloqueioRepository.findByData(data);
+        // Verificar bloqueios parciais do dia — filtrados por tipo
+        List<BloqueioAgenda> bloqueiosDoDia;
+        if (tipo != null && !tipo.isEmpty()) {
+            bloqueiosDoDia = bloqueioRepository.findByDataAndTipo(data, tipo);
+        } else {
+            bloqueiosDoDia = bloqueioRepository.findByData(data);
+        }
 
         boolean bloqueadoPorAgenda = bloqueiosDoDia.stream()
                 .anyMatch(b -> (hora.equals(b.getHoraInicio()) || hora.isAfter(b.getHoraInicio())) &&
@@ -149,15 +139,11 @@ public class CalendarioService {
 
         return marcacoes.stream()
                 .anyMatch(m -> m.getEstado() != EventoEstado.CANCELADO &&
-                        m.getData().isEqual(slotStart)); // Match exato no início do slot
+                        m.getData().isEqual(slotStart));
     }
 
     /**
      * Indica se um dia está totalmente indisponível.
-     *
-     * Um dia é considerado indisponível se:
-     * - For fim de semana
-     * - For feriado nacional
      */
     private boolean isDiaInteiroIndisponivel(LocalDate data) {
         return isFimDeSemana(data) || getFeriadosDoAno(data.getYear()).contains(data);
@@ -165,21 +151,7 @@ public class CalendarioService {
 
     /**
      * Cria um bloqueio de horário no calendário.
-     *
-     * Validações de negócio aplicadas:
-     * 1) Não permitir datas no passado.
-     * 2) Horário dentro do funcionamento (09:00–17:00).
-     * 3) Hora de início anterior à hora de fim.
-     * 4) Dia não pode ser feriado nem fim de semana.
-     * 5) Não pode existir sobreposição com outros bloqueios.
-     * 6) Não pode existir qualquer marcação ativa no intervalo.
-     *
-     * param data dia do bloqueio
-     * param inicio hora de início
-     * param fim hora de fim
-     * param motivo motivo opcional do bloqueio
-     * param funcionario utilizador que cria o bloqueio
-     * return bloqueio persistido
+     * Filtra verificações de sobreposição pelo tipo de agenda.
      */
     @Transactional
     public BloqueioAgenda bloquearHorario(
@@ -187,7 +159,8 @@ public class CalendarioService {
             LocalTime inicio,
             LocalTime fim,
             String motivo,
-            Utilizador funcionario) {
+            Utilizador funcionario,
+            String tipo) {
 
         // Validação 1: Data no futuro
         if (data.isBefore(LocalDate.now())) {
@@ -210,16 +183,13 @@ public class CalendarioService {
             throw new BadRequestException("Este dia já é um Feriado ou Fim de Semana.");
         }
 
-        // Validação 5: Sobreposição com outros bloqueios
-        // Usamos countConflictingWithLock para garantir serialização no DB
-        if (bloqueioRepository.countConflictingWithLock(data, inicio, fim) > 0) {
+        // Validação 5: Sobreposição com outros bloqueios do mesmo tipo
+        if (bloqueioRepository.countConflictingWithLockByTipo(data, inicio, fim, tipo) > 0) {
             throw new BadRequestException("Já existe um bloqueio registado para este período (Conflito detetado).");
         }
 
-        /**
-         * Validação 6 (Regra de Ouro):
-         * Não permitir bloqueios se existirem marcações ativas no intervalo.
-         */
+        // Validação 6: Não permitir bloqueios se existirem marcações ativas no
+        // intervalo
         LocalDateTime inicioBloqueio = LocalDateTime.of(data, inicio);
         LocalDateTime fimBloqueio = LocalDateTime.of(data, fim);
 
@@ -227,10 +197,6 @@ public class CalendarioService {
 
         boolean temMarcacaoAtiva = marcacoesNoPeriodo.stream()
                 .filter(m -> m.getEstado() != EventoEstado.CANCELADO)
-                // Ignorar marcações que começam exatamente no fim do bloqueio (m.data ==
-                // fimBloqueio)
-                // O método findByDataBetween inclui os limites, mas queremos comportamento
-                // [start, end[
                 .anyMatch(m -> m.getData().isBefore(fimBloqueio));
 
         if (temMarcacaoAtiva) {
@@ -238,13 +204,14 @@ public class CalendarioService {
                     "Impossível bloquear: Existem marcações agendadas neste intervalo.");
         }
 
-        // Criação e persistência do bloqueio
+        // Criação e persistência do bloqueio com tipo
         BloqueioAgenda bloqueio = BloqueioAgenda.builder()
                 .data(data)
                 .horaInicio(inicio)
                 .horaFim(fim)
                 .motivo(motivo)
                 .bloqueadoPor(funcionario)
+                .tipo(tipo)
                 .build();
 
         return bloqueioRepository.save(bloqueio);
@@ -252,34 +219,31 @@ public class CalendarioService {
 
     /**
      * Remove um bloqueio de agenda pelo seu ID.
-     * param id identificador do bloqueio
      */
     public void removerBloqueio(Long id) {
         bloqueioRepository.deleteById(id);
     }
 
     /**
-     * Obtém todos os bloqueios de um determinado mês.
-     *
-     * Utilizado pelo frontend para desenhar áreas indisponíveis
-     * (ex.: caixas cinzentas no calendário).
-     *
-     * Nota:
-     * - Atualmente filtra em memória.
-     * - Poderia ser otimizado com um findByDataBetween no repositório.
+     * Obtém bloqueios de um determinado mês, filtrados por tipo.
      */
-    public List<BloqueioAgenda> getBloqueiosDoMes(int ano, int mes) {
+    public List<BloqueioAgenda> getBloqueiosDoMes(int ano, int mes, String tipo) {
         LocalDate inicio = LocalDate.of(ano, mes, 1);
         LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
 
+        if (tipo != null && !tipo.isEmpty()) {
+            return bloqueioRepository.findByDataBetweenAndTipo(inicio, fim, tipo);
+        }
         return bloqueioRepository.findByDataBetween(inicio, fim);
     }
 
     /**
-     * Obtém todos os bloqueios registados no sistema.
-     * Útil para listagens de gestão.
+     * Obtém todos os bloqueios, opcionalmente filtrados por tipo.
      */
-    public List<BloqueioAgenda> getTodosBloqueios() {
+    public List<BloqueioAgenda> getTodosBloqueios(String tipo) {
+        if (tipo != null && !tipo.isEmpty()) {
+            return bloqueioRepository.findByTipo(tipo);
+        }
         return bloqueioRepository.findAll();
     }
 
