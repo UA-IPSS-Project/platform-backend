@@ -8,9 +8,11 @@ import java.time.LocalTime;
 /**
  * Entidade JPA que representa um bloqueio de agenda.
  *
- * Um bloqueio define um intervalo temporal (numa data específica) durante o qual
+ * Um bloqueio define um intervalo temporal (numa data específica) durante o
+ * qual
  * não é possível criar marcações. É tipicamente criado por um funcionário/admin
- * para assinalar indisponibilidade (reuniões internas, manutenção, feriados, etc.).
+ * para assinalar indisponibilidade (reuniões internas, manutenção, feriados,
+ * etc.).
  */
 @Entity
 @Table(name = "bloqueios_agenda")
@@ -54,11 +56,20 @@ public class BloqueioAgenda {
     private String motivo;
 
     /**
+     * Tipo de agenda a que o bloqueio pertence: SECRETARIA ou BALNEARIO.
+     * Permite que cada departamento gere os seus bloqueios de forma independente.
+     */
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'SECRETARIA'")
+    @Builder.Default
+    private String tipo = "SECRETARIA";
+
+    /**
      * Utilizador (tipicamente funcionário/admin) que criou o bloqueio.
      * Relação N:1 — vários bloqueios podem ser criados pelo mesmo utilizador.
      *
      * A FK é armazenada na coluna 'bloqueado_por_id'.
-     * Caso o seu modelo permita bloqueios sem autor explícito, esta relação pode ser opcional.
+     * Caso o seu modelo permita bloqueios sem autor explícito, esta relação pode
+     * ser opcional.
      */
     @ManyToOne
     @JoinColumn(name = "bloqueado_por_id")

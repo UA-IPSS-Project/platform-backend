@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -42,6 +43,9 @@ public class MarcacaoResponseDTO {
     // Detalhes específicos do fluxo de secretaria, se existirem.
     private MarcacaoSecretariaDTO marcacaoSecretaria;
 
+    // Detalhes específicos do fluxo de balneário, se existirem.
+    private MarcacaoBalnearioDTO marcacaoBalneario;
+
     /**
      * Subdocumento com metadados de secretaria associados à marcação.
      * Reflete campos da entidade MarcacaoSecretaria, já preparados para o frontend.
@@ -62,6 +66,20 @@ public class MarcacaoResponseDTO {
 
         // Dados resumidos do utente associado.
         private UtenteDTO utente;
+    }
+
+    /**
+     * Subdocumento com metadados de balneário associados à marcação.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MarcacaoBalnearioDTO {
+        private String nomeUtente;
+        private Boolean produtosHigiene;
+        private Boolean lavagemRoupa;
+        private String responsavelNome;
+        private List<pt.florinhas.marcacoes.dto.RoupaDTO> roupas;
     }
 
     /**
