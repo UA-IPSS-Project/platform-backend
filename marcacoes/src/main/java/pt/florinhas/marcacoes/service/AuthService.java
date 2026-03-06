@@ -354,6 +354,7 @@ public class AuthService {
                 }
 
                 return authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_SECRETARIA"));
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_SECRETARIA") ||
+                                                a.getAuthority().equals("ROLE_BALNEARIO"));
         }
 }
