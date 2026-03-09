@@ -1,9 +1,8 @@
 package pt.florinhas.requisicoes.domain;
 
 public enum RequisicaoEstado {
-    ABERTA,
+    ENVIADA,
     EM_ANALISE,
-    EM_EXECUCAO,
     CONCLUIDA,
     CANCELADA
 }

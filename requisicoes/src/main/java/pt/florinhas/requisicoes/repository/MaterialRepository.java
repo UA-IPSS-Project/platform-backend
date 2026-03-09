@@ -7,4 +7,6 @@ import pt.florinhas.requisicoes.domain.Material;
 
 @Repository
 public interface MaterialRepository extends JpaRepository<Material, Long> {
+
+	boolean existsByNomeIgnoreCase(String nome);
 }

@@ -62,11 +62,15 @@ public abstract class Requisicao {
     @Column(name = "criado_em", updatable = false, nullable = false)
     private LocalDateTime criadoEm;
 
+    @Column(name = "ultima_alteracao_estado_em", nullable = false)
+    private LocalDateTime ultimaAlteracaoEstadoEm;
+
     @PrePersist
     protected void onCreate() {
         if (estado == null) {
-            estado = RequisicaoEstado.ABERTA;
+            estado = RequisicaoEstado.ENVIADA;
         }
         criadoEm = LocalDateTime.now();
+        ultimaAlteracaoEstadoEm = criadoEm;
     }
 }

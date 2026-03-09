@@ -169,7 +169,8 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
         // Determine secure flag: true in production, false in dev
-        boolean isSecure = "development".equalsIgnoreCase(environment) ? false : secureCookies;
+        boolean isDevelopment = environment != null && "development".equalsIgnoreCase(environment.trim());
+        boolean isSecure = isDevelopment ? false : secureCookies;
 
         // Create JWT cookie
         ResponseCookie cookie = ResponseCookie.from("jwt", result.token())

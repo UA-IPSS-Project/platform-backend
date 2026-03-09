@@ -19,20 +19,20 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
 
     List<Requisicao> findByTipo(RequisicaoTipo tipo);
 
-    List<Requisicao> findByCriadoPorId(Long funcionarioId);
+        List<Requisicao> findByCriadoPorNomeContainingIgnoreCase(String nome);
 
     @Query("SELECT r FROM Requisicao r " +
             "WHERE " +
             "(:estado IS NULL OR r.estado = :estado) AND " +
             "(:tipo IS NULL OR r.tipo = :tipo) AND " +
             "(:prioridade IS NULL OR r.prioridade = :prioridade) AND " +
-            "(:criadoPorId IS NULL OR r.criadoPor.id = :criadoPorId) AND " +
-            "(:geridoPorId IS NULL OR r.geridoPor.id = :geridoPorId) " +
+            "(:criadoPorNome IS NULL OR LOWER(r.criadoPor.nome) LIKE :criadoPorNome) AND " +
+            "(:geridoPorNome IS NULL OR (r.geridoPor IS NOT NULL AND LOWER(r.geridoPor.nome) LIKE :geridoPorNome)) " +
             "ORDER BY r.criadoEm DESC")
     List<Requisicao> findWithFilters(
             @Param("estado") RequisicaoEstado estado,
             @Param("tipo") RequisicaoTipo tipo,
             @Param("prioridade") RequisicaoPrioridade prioridade,
-            @Param("criadoPorId") Long criadoPorId,
-            @Param("geridoPorId") Long geridoPorId);
+            @Param("criadoPorNome") String criadoPorNome,
+            @Param("geridoPorNome") String geridoPorNome);
 }

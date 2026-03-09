@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
@@ -36,8 +35,6 @@ public class JwtService {
         if (secret == null || secret.trim().isEmpty()) {
             throw new IllegalStateException("JWT secret não configurada");
         }
-
-        secret = secret + "-" + UUID.randomUUID();
 
         if (secret.length() < MINIMUM_SECRET_LENGTH) {
             throw new IllegalStateException("JWT secret deve ter pelo menos 64 caracteres");
