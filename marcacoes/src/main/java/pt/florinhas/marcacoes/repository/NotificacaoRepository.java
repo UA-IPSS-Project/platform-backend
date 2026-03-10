@@ -20,6 +20,9 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, Long> 
 
     Optional<Notificacao> findByIdAndUtilizadorId(Long id, Long utilizadorId);
 
+    boolean existsByUtilizadorIdAndTituloAndMensagemAndTipo(Long utilizadorId, String titulo, String mensagem,
+            pt.florinhas.marcacoes.domain.NotificacaoTipo tipo);
+
     // Apagar todas as notificações de um utilizador
     void deleteByUtilizadorId(Long utilizadorId);
 }
