@@ -182,13 +182,16 @@ public class RequisicaoService {
     }
 
     public List<Material> listarMateriais() {
-        return materialRepository.findAll();
+        return materialRepository.findAllByOrderByCategoriaAscNomeAscAtributoAscValorAtributoAsc();
     }
 
     public Material criarMaterialCatalogo(CriarMaterialRequest request) {
         Material material = new Material();
         material.setNome(request.nome().trim());
         material.setDescricao(request.descricao() != null ? request.descricao().trim() : null);
+        material.setCategoria(request.categoria());
+        material.setAtributo(request.atributo().trim());
+        material.setValorAtributo(request.valorAtributo().trim());
         return materialRepository.save(material);
     }
 

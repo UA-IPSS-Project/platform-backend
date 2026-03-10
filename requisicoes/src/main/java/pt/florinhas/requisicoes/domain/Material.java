@@ -2,6 +2,8 @@ package pt.florinhas.requisicoes.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -24,4 +26,14 @@ public class Material {
 
     @Column(length = 255)
     private String descricao;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 40)
+    private MaterialCategoria categoria;
+
+    @Column(length = 80)
+    private String atributo;
+
+    @Column(length = 120)
+    private String valorAtributo;
 }
