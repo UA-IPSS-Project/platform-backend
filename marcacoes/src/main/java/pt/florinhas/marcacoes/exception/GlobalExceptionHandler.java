@@ -68,6 +68,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Mapeia IllegalArgumentException para HTTP 400 (BAD_REQUEST).
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
      * Mapeia BusinessRuleException para HTTP 400 (BAD_REQUEST) ou 422
      * (UNPROCESSABLE_ENTITY).
      * Optou-se por 400 para manter consistência, mas semanticamente 422 seria
@@ -121,8 +131,13 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
+        String mainMessage = ex.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(FieldError::getDefaultMessage)
+                .orElse("Erro de validação nos campos fornecidos");
+
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "Erro de validação nos campos fornecidos");
+        response.put("message", mainMessage);
         response.put("errors", errors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);

@@ -23,6 +23,7 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,6 +51,7 @@ public class AuthService {
         private final PasswordEncoder passwordEncoder;
         private final JwtService jwtService;
         private final AuthenticationManager authenticationManager;
+        private final NifValidator nifValidator;
 
         public AuthService(
                         UtilizadorRepository utilizadorRepository,
@@ -57,13 +59,15 @@ public class AuthService {
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
                         JwtService jwtService,
-                        AuthenticationManager authenticationManager) {
+                        AuthenticationManager authenticationManager,
+                        NifValidator nifValidator) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
                 this.jwtService = jwtService;
                 this.authenticationManager = authenticationManager;
+                this.nifValidator = nifValidator;
         }
 
         /**
@@ -164,6 +168,8 @@ public class AuthService {
          * - JWT é gerado automaticamente.
          */
         public AuthResult registerUtente(UtenteRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
+
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -197,6 +203,8 @@ public class AuthService {
          * - JWT é devolvido após criação.
          */
         public AuthResult registerFuncionario(FuncionarioRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
+
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {

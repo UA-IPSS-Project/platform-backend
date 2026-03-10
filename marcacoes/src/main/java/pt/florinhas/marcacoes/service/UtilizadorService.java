@@ -25,7 +25,7 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
-import pt.florinhas.marcacoes.service.nif.NifValidationService;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 /**
  * Serviço responsável pela gestão de utilizadores e utentes.
@@ -56,7 +56,7 @@ public class UtilizadorService {
     private EmailService emailService;
 
     @Autowired
-    private NifValidationService nifValidationService;
+    private NifValidator nifValidator;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -115,11 +115,7 @@ public class UtilizadorService {
      * @return utente existente ou recém-criado
      */
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
-
-        // Validação de formato básico
-        if (nif == null || !nif.matches("\\d{9}")) {
-            throw new RuntimeException("NIF inválido (deve ter 9 dígitos numéricos).");
-        }
+        nifValidator.validateRequiredOrThrow(nif);
 
         // Verificar se já existe
         List<Utilizador> existingUsers = utilizadorRepository.findByNif(nif);
@@ -137,11 +133,6 @@ public class UtilizadorService {
         }
 
         // Se não existir, criar novo utente
-
-        // Validação NIF
-        if (!validarNIF(nif)) {
-            throw new RuntimeException("NIF inválido/inexistente. Verifique o número ou utilize um NIF válido.");
-        }
 
         log.info("Utente com NIF {} não encontrado. Criando novo utente...", nif);
 
@@ -295,9 +286,7 @@ public class UtilizadorService {
      * Cria um utilizador (Utente ou Funcionário) pela secretaria.
      */
     public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
-        if (!validarNIF(request.getNif())) {
-            throw new RuntimeException("NIF inválido.");
-        }
+        nifValidator.validateRequiredOrThrow(request.getNif());
         if (utilizadorRepository.existsByNif(request.getNif())) {
             throw new RuntimeException("Já existe um utilizador com este NIF.");
         }
@@ -419,10 +408,6 @@ public class UtilizadorService {
      * MÉTODOS AUXILIARES
      * =========================================================
      */
-
-    private boolean validarNIF(String nif) {
-        return nifValidationService.validate(nif);
-    }
 
     // Character sets for password generation
     private static final String UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

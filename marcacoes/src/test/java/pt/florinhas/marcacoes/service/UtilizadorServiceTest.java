@@ -2,8 +2,11 @@ package pt.florinhas.marcacoes.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,11 +17,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import pt.florinhas.marcacoes.domain.Utente;
+import pt.florinhas.marcacoes.exception.BadRequestException;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
-import pt.florinhas.marcacoes.service.nif.NifValidationService;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +43,7 @@ public class UtilizadorServiceTest {
     private EmailService emailService;
 
     @Mock
-    private NifValidationService nifValidationService;
+    private NifValidator nifValidator;
 
     @InjectMocks
     private UtilizadorService utilizadorService;
@@ -52,7 +56,6 @@ public class UtilizadorServiceTest {
         String email = "test@example.com";
         String telefone = "912345678";
 
-        when(nifValidationService.validate(nif)).thenReturn(true);
         when(utilizadorRepository.findByNif(nif)).thenReturn(Collections.emptyList());
         when(utenteRepository.existsByEmail(email)).thenReturn(false);
         when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
@@ -90,7 +93,7 @@ public class UtilizadorServiceTest {
         existingStart.setId(1L);
 
         // When user exists, the service returns immediately after findByNif
-        // without calling nifValidationService.validate() - so no stub needed
+        // without calling external NIF validation - so no additional stub needed
         when(utilizadorRepository.findByNif(nif)).thenReturn(List.of(existingStart));
 
         // Act
@@ -103,15 +106,13 @@ public class UtilizadorServiceTest {
     @Test
     void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
         // Arrange
-        String invalidNif = "123"; // Too short - fails regex validation before service call
-        // No stub needed - the format validation (nif.matches("\\d{9}")) fails
-        // before nifValidationService.validate() is called
+        String invalidNif = "123";
+        doThrow(new BadRequestException("NIF deve conter exatamente 9 dígitos numéricos"))
+                .when(nifValidator).validateRequiredOrThrow(eq(invalidNif));
 
         // Act & Assert
-        try {
-            utilizadorService.obterOuCriarUtente(invalidNif, "Name", "email@test.com", "912345678");
-        } catch (RuntimeException e) {
-            assertEquals("NIF inválido (deve ter 9 dígitos numéricos).", e.getMessage());
-        }
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> utilizadorService.obterOuCriarUtente(invalidNif, "Name", "email@test.com", "912345678"));
+        assertEquals("NIF deve conter exatamente 9 dígitos numéricos", ex.getMessage());
     }
 }
