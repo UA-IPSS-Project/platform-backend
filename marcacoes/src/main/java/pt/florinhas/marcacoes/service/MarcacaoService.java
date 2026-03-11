@@ -376,7 +376,10 @@ public class MarcacaoService {
                 } else {
                     // Cancelado pela Secretaria -> Notificar Utente
                     try {
-                        notificacaoService.notificarCancelamento(utenteAlvo, marcacao.getData());
+                        notificacaoService.notificarCancelamento(
+                                utenteAlvo,
+                                marcacao.getData(),
+                                request.getMotivoCancelamento());
                     } catch (Exception e) {
                         log.error("Erro ao notificar utente {}", utenteAlvo.getId(), e);
                     }
