@@ -27,6 +27,7 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.security.SecureRandom;
@@ -59,6 +60,7 @@ public class MarcacaoService {
     private final UtilizadorRepository utilizadorRepository;
     private final NotificacaoService notificacaoService;
     private final MarcacaoValidator marcacaoValidator;
+    private final NifValidator nifValidator;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
@@ -107,7 +109,9 @@ public class MarcacaoService {
             utente = utenteRepository.findById(request.getUtenteId())
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Utente não encontrado com ID: " + request.getUtenteId()));
-        } else if (request.getUtenteNif() != null) {
+        } else if (hasText(request.getUtenteNif())) {
+            nifValidator.validateRequiredOrThrow(request.getUtenteNif());
+
             // Verificar se já existe por NIF
             List<Utente> users = utenteRepository.findByNif(request.getUtenteNif());
             if (!users.isEmpty()) {
@@ -164,6 +168,10 @@ public class MarcacaoService {
         }
 
         return saved;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)

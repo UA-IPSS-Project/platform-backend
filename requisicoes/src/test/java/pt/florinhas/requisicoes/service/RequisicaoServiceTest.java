@@ -2,6 +2,7 @@ package pt.florinhas.requisicoes.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 
 import pt.florinhas.requisicoes.domain.Funcionario;
 import pt.florinhas.requisicoes.domain.Material;
@@ -105,38 +107,44 @@ class RequisicaoServiceTest {
 
     @Test
     void procurar_deveDelegarFindWithFilters() {
-        when(requisicaoRepository.findWithFilters(
-                RequisicaoEstado.ABERTA,
-                RequisicaoTipo.MATERIAL,
-                RequisicaoPrioridade.ALTA,
-                1L,
-                2L)).thenReturn(List.of());
+        Requisicao requisicao = new RequisicaoManutencao();
+        requisicao.setEstado(RequisicaoEstado.ENVIADA);
+        requisicao.setTipo(RequisicaoTipo.MATERIAL);
+        requisicao.setPrioridade(RequisicaoPrioridade.ALTA);
+        Funcionario criadoPor = new Funcionario();
+        criadoPor.setNome("Maria Silva");
+        requisicao.setCriadoPor(criadoPor);
+        Funcionario geridoPor = new Funcionario();
+        geridoPor.setNome("João Costa");
+        requisicao.setGeridoPor(geridoPor);
 
-        requisicaoService.procurar(
-                RequisicaoEstado.ABERTA,
-                RequisicaoTipo.MATERIAL,
-                RequisicaoPrioridade.ALTA,
-                1L,
-                2L);
+        when(requisicaoRepository.findAll(Sort.by(Sort.Direction.DESC, "criadoEm")))
+                .thenReturn(List.of(requisicao));
 
-        verify(requisicaoRepository).findWithFilters(
-                RequisicaoEstado.ABERTA,
+        List<Requisicao> resultado = requisicaoService.procurar(
+                RequisicaoEstado.ENVIADA,
                 RequisicaoTipo.MATERIAL,
                 RequisicaoPrioridade.ALTA,
-                1L,
-                2L);
+                "Maria",
+                "João");
+
+        assertEquals(1, resultado.size());
+        assertSame(requisicao, resultado.getFirst());
+
+        verify(requisicaoRepository).findAll(Sort.by(Sort.Direction.DESC, "criadoEm"));
     }
 
     @Test
     void criarMaterial_quandoDadosValidos_deveCriarComTipoEAssociacoes() {
         Funcionario criadoPor = funcionarioComId(1L);
-        Funcionario geridoPor = funcionarioComId(2L);
         Material material = new Material();
         material.setId(3L);
+        Material material2 = new Material();
+        material2.setId(4L);
 
         when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
-        when(funcionarioRepository.findById(2L)).thenReturn(Optional.of(geridoPor));
         when(materialRepository.findById(3L)).thenReturn(Optional.of(material));
+        when(materialRepository.findById(4L)).thenReturn(Optional.of(material2));
         when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -146,8 +154,9 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 3, 1, 10, 0),
                 1L,
                 2L,
-                3L,
-                5);
+                List.of(
+                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
+                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(4L, 2)));
 
         RequisicaoMaterial resultado = requisicaoService.criarMaterial(request);
 
@@ -155,9 +164,39 @@ class RequisicaoServiceTest {
         assertEquals(RequisicaoPrioridade.MEDIA, resultado.getPrioridade());
         assertEquals(RequisicaoTipo.MATERIAL, resultado.getTipo());
         assertSame(criadoPor, resultado.getCriadoPor());
-        assertSame(geridoPor, resultado.getGeridoPor());
-        assertSame(material, resultado.getMaterial());
-        assertEquals(5, resultado.getQuantidade());
+        assertNull(resultado.getGeridoPor());
+        assertEquals(2, resultado.getItens().size());
+        assertSame(material, resultado.getItens().getFirst().getMaterial());
+        assertEquals(5, resultado.getItens().getFirst().getQuantidade());
+        assertSame(material2, resultado.getItens().get(1).getMaterial());
+        assertEquals(2, resultado.getItens().get(1).getQuantidade());
+    }
+
+    @Test
+    void criarMaterial_quandoRepetidoMaterialNoPedido_deveManterUltimaQuantidade() {
+        Funcionario criadoPor = funcionarioComId(1L);
+        Material material = new Material();
+        material.setId(3L);
+
+        when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
+        when(materialRepository.findById(3L)).thenReturn(Optional.of(material));
+        when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
+                "Pedido de material",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                1L,
+                null,
+                List.of(
+                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
+                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 8)));
+
+        RequisicaoMaterial resultado = requisicaoService.criarMaterial(request);
+
+        assertEquals(1, resultado.getItens().size());
+        assertEquals(8, resultado.getItens().getFirst().getQuantidade());
     }
 
     @Test
@@ -172,8 +211,7 @@ class RequisicaoServiceTest {
                 null,
                 1L,
                 null,
-                30L,
-                1);
+                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(30L, 1)));
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarMaterial(request));
@@ -184,12 +222,10 @@ class RequisicaoServiceTest {
     @Test
     void criarTransporte_quandoDadosValidos_deveCriarComTipoEAssociacoes() {
         Funcionario criadoPor = funcionarioComId(10L);
-        Funcionario geridoPor = funcionarioComId(20L);
         Transporte transporte = new Transporte();
         transporte.setId(30L);
 
         when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-        when(funcionarioRepository.findById(20L)).thenReturn(Optional.of(geridoPor));
         when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
         when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -206,7 +242,7 @@ class RequisicaoServiceTest {
 
         assertEquals(RequisicaoTipo.TRANSPORTE, resultado.getTipo());
         assertSame(criadoPor, resultado.getCriadoPor());
-        assertSame(geridoPor, resultado.getGeridoPor());
+                assertNull(resultado.getGeridoPor());
         assertSame(transporte, resultado.getTransporte());
     }
 
@@ -233,10 +269,7 @@ class RequisicaoServiceTest {
     @Test
     void criarManutencao_quandoDadosValidos_deveCriarComTipo() {
         Funcionario criadoPor = funcionarioComId(100L);
-        Funcionario geridoPor = funcionarioComId(200L);
-
         when(funcionarioRepository.findById(100L)).thenReturn(Optional.of(criadoPor));
-        when(funcionarioRepository.findById(200L)).thenReturn(Optional.of(geridoPor));
         when(requisicaoManutencaoRepository.save(any(RequisicaoManutencao.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -253,7 +286,7 @@ class RequisicaoServiceTest {
         assertNotNull(resultado);
         assertEquals(RequisicaoTipo.MANUTENCAO, resultado.getTipo());
         assertSame(criadoPor, resultado.getCriadoPor());
-        assertSame(geridoPor, resultado.getGeridoPor());
+                assertNull(resultado.getGeridoPor());
         assertEquals("Janela partida na sala 2", resultado.getAssunto());
     }
 

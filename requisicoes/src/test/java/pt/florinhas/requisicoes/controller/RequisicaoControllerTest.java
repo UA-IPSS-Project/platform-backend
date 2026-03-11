@@ -50,12 +50,12 @@ class RequisicaoControllerTest {
     @Test
     void listar_comEstado_deveUsarListarPorEstado() {
         List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.listarPorEstado(RequisicaoEstado.EM_EXECUCAO)).thenReturn(esperado);
+        when(requisicaoService.listarPorEstado(RequisicaoEstado.EM_ANALISE)).thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_EXECUCAO);
+        List<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_ANALISE);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).listarPorEstado(RequisicaoEstado.EM_EXECUCAO);
+        verify(requisicaoService).listarPorEstado(RequisicaoEstado.EM_ANALISE);
     }
 
     @Test
@@ -73,26 +73,26 @@ class RequisicaoControllerTest {
     void procurar_deveDelegarNoServiceComTodosOsParametros() {
         List<Requisicao> esperado = List.of(new RequisicaoManutencao());
         when(requisicaoService.procurar(
-                RequisicaoEstado.ABERTA,
+                RequisicaoEstado.ENVIADA,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
-                10L,
-                20L)).thenReturn(esperado);
+                "Maria",
+                "João")).thenReturn(esperado);
 
         List<Requisicao> resultado = requisicaoController.procurar(
-                RequisicaoEstado.ABERTA,
+                RequisicaoEstado.ENVIADA,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
-                10L,
-                20L);
+                "Maria",
+                "João");
 
         assertSame(esperado, resultado);
         verify(requisicaoService).procurar(
-                RequisicaoEstado.ABERTA,
+                RequisicaoEstado.ENVIADA,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
-                10L,
-                20L);
+                "Maria",
+                "João");
     }
 
     @Test
@@ -103,8 +103,7 @@ class RequisicaoControllerTest {
                 LocalDateTime.of(2026, 2, 28, 10, 0),
                 1L,
                 null,
-                2L,
-                3);
+            List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)));
         Requisicao resposta = new RequisicaoMaterial();
         when(requisicaoService.criarMaterial(request)).thenReturn((RequisicaoMaterial) resposta);
 

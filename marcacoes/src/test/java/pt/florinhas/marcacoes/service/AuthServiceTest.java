@@ -23,6 +23,7 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -52,6 +53,9 @@ class AuthServiceTest {
 
     @Mock
     private AuthenticationManager authenticationManager;
+
+    @Mock
+    private NifValidator nifValidator;
 
     @InjectMocks
     private AuthService authService;
