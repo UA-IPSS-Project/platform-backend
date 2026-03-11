@@ -3,7 +3,6 @@ package pt.florinhas.marcacoes.validation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import pt.florinhas.marcacoes.exception.BadRequestException;
-import pt.florinhas.marcacoes.service.nif.NifValidationService;
 
 /**
  * Validador modular de NIFs portugueses.
@@ -12,18 +11,12 @@ import pt.florinhas.marcacoes.service.nif.NifValidationService;
  * - Primeiro valida formato (9 dígitos numéricos)
  * - Valida prefixos permitidos (1,2,3,5,6,8,9)
  * - Valida dígito de controlo (módulo 11)
- * - Só depois consulta o serviço externo de validação
  */
 @Component
 @Slf4j
 public class NifValidator {
 
     private static final String NIF_REGEX = "\\d{9}";
-    private final NifValidationService nifValidationService;
-
-    public NifValidator(NifValidationService nifValidationService) {
-        this.nifValidationService = nifValidationService;
-    }
 
     public boolean isFormatValid(String nif) {
         return nif != null && nif.matches(NIF_REGEX);
@@ -41,11 +34,7 @@ public class NifValidator {
             return false;
         }
 
-        boolean externalValid = nifValidationService.validate(nif);
-        if (!externalValid) {
-            log.debug("NIF validation failed at external service. nif={}", maskNif(nif));
-        }
-        return externalValid;
+        return true;
     }
 
     public boolean isValidOptional(String nif) {
@@ -67,10 +56,6 @@ public class NifValidator {
         LocalFailureReason localFailure = getLocalFailureReason(nif);
         if (localFailure != LocalFailureReason.NONE) {
             log.debug("NIF validation failed at local rules. nif={}, reason={}", maskNif(nif), localFailure);
-            throw new BadRequestException("NIF inválido");
-        }
-        if (!nifValidationService.validate(nif)) {
-            log.debug("NIF validation failed at external service. nif={}", maskNif(nif));
             throw new BadRequestException("NIF inválido");
         }
     }
