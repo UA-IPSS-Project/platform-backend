@@ -86,10 +86,12 @@ export default function stressTest(data) {
 }
 
 export function handleSummary(data) {
-	const reportName = __ENV.REPORT_NAME || "stress-test";
+	const testName = 'stress_test';
+	const reportName = __ENV.REPORT_NAME || testName;
+	const reportDir = (__ENV.REPORT_DIR || `./results/${testName}`).replace(/\/$/, '');
 	return {
 		'stdout': textSummary(data, { indent: ' ', enableColors: true }),
-		[`./results/${reportName}.html`]: htmlReport(data, { title: `${reportName} Results` }),
-		[`./results/${reportName}.json`]: JSON.stringify(data),
+		[`${reportDir}/${reportName}.html`]: htmlReport(data, { title: `${reportName} Results` }),
+		[`${reportDir}/${reportName}.json`]: JSON.stringify(data),
 	};
 }

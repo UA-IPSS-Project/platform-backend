@@ -4,9 +4,9 @@
 # Uso: ./run-all-tests.sh
 
 # 1. Preparar pasta de resultados (CRÍTICO: Cria a pasta se não existir)
-mkdir -p results
+mkdir -p results/smoke_test results/load_test results/stress_test results/spike_test results/break_test
 # Limpa resultados antigos para não misturares relatórios de execuções passadas
-rm -f results/*.json results/*.html
+find results/smoke_test results/load_test results/stress_test results/spike_test results/break_test -type f -delete
 
 # --- MODO RIGOROSO LIGADO (Para o Setup) ---
 # Se o k6 não existir, o backend estiver em baixo ou o setup falhar, o script PARA.
@@ -74,19 +74,19 @@ echo "========================================="
 echo "SMOKE TEST (Teste básico - 30s)"
 echo "========================================="
 # REPORT_NAME define o nome dos ficheiros na pasta results
-k6 run smoke-test.js -e REPORT_NAME=smoke_test -e BASE_URL="$BASE_URL"
+k6 run smoke-test.js -e REPORT_NAME=smoke_test -e REPORT_DIR=./results/smoke_test -e BASE_URL="$BASE_URL"
 
 echo ""
 echo "========================================="
 echo "LOAD TEST (Teste de carga - ~5min)"
 echo "========================================="
-k6 run load-test.js -e REPORT_NAME=load_test -e BASE_URL="$BASE_URL"
+k6 run load-test.js -e REPORT_NAME=load_test -e REPORT_DIR=./results/load_test -e BASE_URL="$BASE_URL"
 
 echo ""
 echo "========================================="
 echo "STRESS TEST (Teste extremo - ~10min)"
 echo "========================================="
-k6 run stress-test.js -e REPORT_NAME=stress_test -e BASE_URL="$BASE_URL"
+k6 run stress-test.js -e REPORT_NAME=stress_test -e REPORT_DIR=./results/stress_test -e BASE_URL="$BASE_URL"
 
 echo ""
 echo "========================================="
