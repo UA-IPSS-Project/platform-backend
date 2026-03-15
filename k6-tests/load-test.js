@@ -1,5 +1,5 @@
 import { check, sleep } from 'k6';
-import { Counter, Rate } from 'k6/metrics';
+import { Rate } from 'k6/metrics';
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.1/index.js";
 import {
@@ -16,9 +16,6 @@ const errorRate = new Rate('errors');
 const loginErrorRate = new Rate('login_errors');
 const marcacaoErrorRate = new Rate('marcacao_errors');
 const authErrorRate = new Rate('auth_errors');
-const createMarcacaoCriada = new Counter('create_marcacao_criada');
-const createMarcacaoRejeitadaRegra = new Counter('create_marcacao_rejeitada');
-const createMarcacaoFalhaInesperada = new Counter('create_marcacao_falha_inesperada');
 
 const MAX_ERROR_SAMPLES_PER_VU = Number(__ENV.MAX_ERROR_SAMPLES || 0);
 let createErrorSamplesPrinted = 0;
@@ -86,15 +83,12 @@ function buildCompactSummary(data) {
   const p95 = metricP95(data, 'http_req_duration');
   const httpReqFailedRate = (metricRate(data, 'http_req_failed') * 100).toFixed(2);
   const flowErrorRate = (metricRate(data, 'errors') * 100).toFixed(2);
-  const created = metricCount(data, 'create_marcacao_criada');
-  const rejectedByRule = metricCount(data, 'create_marcacao_rejeitada_regra');
-  const unexpectedFail = metricCount(data, 'create_marcacao_falha_inesperada');
 
   return [
     '=== Load Test (Resumo) ===',
     `requests: ${httpReqs} | iterations: ${iterations}`,
     `latencia p95: ${p95.toFixed(2)}ms | http_req_failed: ${httpReqFailedRate}% | erros fluxo: ${flowErrorRate}%`,
-    `marcacao criada: ${created} | rejeitada por regra: ${rejectedByRule} | falha inesperada: ${unexpectedFail}`,
+    'create marcacao: ver check "load create status acceptable" no relatorio',
   ].join('\n');
 }
 
@@ -157,14 +151,6 @@ export default function loadTest(data) {
   const createOk = check(createRes, {
     'load create status acceptable': (r) => [200, 400, 409].includes(r.status),
   });
-
-  if (createRes.status === 200) {
-    createMarcacaoCriada.add(1);
-  } else if ([400, 409].includes(createRes.status)) {
-    createMarcacaoRejeitadaRegra.add(1);
-  } else {
-    createMarcacaoFalhaInesperada.add(1);
-  }
 
   const businessFailure = ![200, 400, 409].includes(createRes.status);
   marcacaoErrorRate.add(businessFailure);

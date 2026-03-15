@@ -9,6 +9,7 @@ import java.util.Locale;
 import org.springframework.data.domain.Sort;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import pt.florinhas.requisicoes.domain.Funcionario;
 import pt.florinhas.requisicoes.domain.Material;
@@ -109,6 +110,7 @@ public class RequisicaoService {
         return filtro.toLowerCase(Locale.ROOT).trim();
     }
 
+    @Transactional
     public RequisicaoMaterial criarMaterial(CriarRequisicaoMaterialRequest request) {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
 
@@ -138,6 +140,7 @@ public class RequisicaoService {
         return requisicaoMaterialRepository.save(requisicao);
     }
 
+    @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
         Transporte transporte = transporteRepository.findById(request.transporteId())
@@ -155,6 +158,7 @@ public class RequisicaoService {
         return requisicaoTransporteRepository.save(requisicao);
     }
 
+    @Transactional
     public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request) {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
 
@@ -170,6 +174,7 @@ public class RequisicaoService {
         return requisicaoManutencaoRepository.save(requisicao);
     }
 
+    @Transactional
     public Requisicao atualizarEstado(Long id, RequisicaoEstado novoEstado, Long alteradoPorId) {
         Requisicao requisicao = obterPorId(id);
         validarTransicaoEstado(requisicao.getEstado(), novoEstado);
@@ -185,6 +190,7 @@ public class RequisicaoService {
         return materialRepository.findAllByOrderByCategoriaAscNomeAscAtributoAscValorAtributoAsc();
     }
 
+    @Transactional
     public Material criarMaterialCatalogo(CriarMaterialRequest request) {
         Material material = new Material();
         material.setNome(request.nome().trim());
@@ -199,6 +205,7 @@ public class RequisicaoService {
         return transporteRepository.findAll();
     }
 
+    @Transactional
     public Transporte criarTransporteCatalogo(CriarTransporteRequest request) {
         transporteRepository.findByMatricula(request.matricula().trim())
                 .ifPresent(existing -> {

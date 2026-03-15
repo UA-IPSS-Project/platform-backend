@@ -39,7 +39,6 @@ import pt.florinhas.marcacoes.service.nif.NifValidationService;
  * - Contagem de utentes ativos.
  */
 @Service
-@Transactional
 @Slf4j
 public class UtilizadorService {
 
@@ -114,6 +113,7 @@ public class UtilizadorService {
      * @param telefone telefone do utente
      * @return utente existente ou recém-criado
      */
+    @Transactional
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
 
         // Validação de formato básico
@@ -194,6 +194,7 @@ public class UtilizadorService {
      * Atualiza dados pessoais e profissionais de um utilizador.
      * Apenas os campos fornecidos no DTO são alterados.
      */
+    @Transactional
     public Utilizador atualizarUtilizador(Long utilizadorId, UtilizadorInfoDTO request) {
 
         Utilizador utilizador = obterUtilizadorPorId(utilizadorId);
@@ -277,6 +278,7 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public void aprovarFuncionario(Long id) {
         Funcionario funcionario = funcionarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Funcionário não encontrado com ID: " + id));
@@ -294,6 +296,7 @@ public class UtilizadorService {
     /**
      * Cria um utilizador (Utente ou Funcionário) pela secretaria.
      */
+    @Transactional
     public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
         if (!validarNIF(request.getNif())) {
             throw new RuntimeException("NIF inválido.");
@@ -364,6 +367,7 @@ public class UtilizadorService {
     /**
      * Inicia o processo de recuperação de conta pela secretaria.
      */
+    @Transactional
     public void recuperarConta(RecoverAccountDTO request) {
         List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
         if (users.isEmpty()) {

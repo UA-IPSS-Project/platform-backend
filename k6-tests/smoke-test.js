@@ -1,5 +1,4 @@
 import { check, sleep } from 'k6';
-import { Counter } from 'k6/metrics';
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.1/index.js";
 import {
@@ -11,9 +10,6 @@ import {
   getCurrentUser,
   createMarcacaoRemota,
 } from './common.js';
-
-const smokeMarcacaoCriada = new Counter('smoke_marcacao_criada');
-const smokeMarcacaoNaoCriada = new Counter('smoke_marcacao_nao_criada');
 
 function metricCount(data, metricName) {
   return data.metrics?.[metricName]?.values?.count ?? 0;
@@ -32,14 +28,12 @@ function buildCompactSummary(data) {
   const iterations = metricCount(data, 'iterations');
   const p95 = metricP95(data, 'http_req_duration');
   const httpReqFailedRate = (metricRate(data, 'http_req_failed') * 100).toFixed(2);
-  const created = metricCount(data, 'smoke_marcacao_criada');
-  const notCreated = metricCount(data, 'smoke_marcacao_nao_criada');
 
   return [
     '=== Smoke Test (Resumo) ===',
     `requests: ${httpReqs} | iterations: ${iterations}`,
     `latencia p95: ${p95.toFixed(2)}ms | http_req_failed: ${httpReqFailedRate}%`,
-    `marcacao criada: ${created} | marcacao nao criada: ${notCreated}`,
+    'create marcacao: ver checks no relatorio (status 200 + id)',
   ].join('\n');
 }
 
@@ -119,12 +113,6 @@ export default function smokeTest(data) {
       }
     },
   });
-
-  if (createSucceeded) {
-    smokeMarcacaoCriada.add(1);
-  } else {
-    smokeMarcacaoNaoCriada.add(1);
-  }
 
   const afterListRes = listMarcacoesUtente(session);
   check(afterListRes, {
