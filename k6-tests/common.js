@@ -120,15 +120,15 @@ export function formatLocalDateTime(date) {
 export function getFutureBusinessDateTime(slotSeed) {
   const now = new Date();
 
-  // 358 possible day offsets × 16 half-hour slots (9:00–16:30) = 5728 unique slots.
+  // 358 possible day offsets × 32 quarter-hour slots (9:00–16:45) = 11456 unique slots.
   // This avoids exhausting the slot space under high concurrency (120 VUs × many iters).
   const DAYS = 358;
-  const HOUR_SLOTS = 16;
+  const HOUR_SLOTS = 32;
   const normalizedSeed = ((slotSeed % (DAYS * HOUR_SLOTS)) + DAYS * HOUR_SLOTS) % (DAYS * HOUR_SLOTS);
   const dayOffset = 2 + Math.floor(normalizedSeed / HOUR_SLOTS);  // 2–359 days ahead
-  const hourSlot = normalizedSeed % HOUR_SLOTS;                    // 0–15
-  const hour = 9 + Math.floor(hourSlot / 2);                       // 9:00–16:00
-  const minute = hourSlot % 2 === 0 ? 0 : 30;
+  const hourSlot = normalizedSeed % HOUR_SLOTS;                    // 0–31
+  const hour = 9 + Math.floor(hourSlot / 4);                       // 9:00–16:00
+  const minute = (hourSlot % 4) * 15;                              // 00, 15, 30, 45
 
   const d = new Date(now);
   d.setDate(d.getDate() + dayOffset);
@@ -170,10 +170,7 @@ export function createMarcacaoRemota(session, slotSeed) {
     {
       headers: buildHeaders(session, true, true),
       tags: { name: 'Create Marcacao Remota' },
-      // 500 is included because the backend maps IllegalArgumentException (slot conflict)
-      // to HTTP 500 via the generic exception handler instead of 400/409.
-      // Accepting it here prevents slot-conflict responses from polluting http_req_failed.
-      responseCallback: http.expectedStatuses(200, 400, 409, 500),
+      responseCallback: http.expectedStatuses(200, 400, 409),
     }
   );
 }

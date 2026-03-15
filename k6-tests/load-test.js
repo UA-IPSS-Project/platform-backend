@@ -73,10 +73,10 @@ export default function loadTest(data) {
 
   const createRes = createMarcacaoRemota(session, (__VU * 100000) + __ITER);
   const createOk = check(createRes, {
-    'load create status acceptable': (r) => r.status === 200 || r.status === 400 || r.status === 409,
+    'load create status acceptable': (r) => [200, 400, 409].includes(r.status),
   });
 
-  const businessFailure = !(createRes.status === 200 || createRes.status === 400 || createRes.status === 409);
+  const businessFailure = ![200, 400, 409].includes(createRes.status);
   marcacaoErrorRate.add(businessFailure);
 
   errorRate.add(!(meOk && listOk && createOk));

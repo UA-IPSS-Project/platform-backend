@@ -59,14 +59,27 @@ export default function smokeTest(data) {
     },
   });
 
-  let createRes = createMarcacaoRemota(session, Date.now() % 10000);
-  if (createRes.status !== 200) {
-    createRes = createMarcacaoRemota(session, (Date.now() % 10000) + 97);
+  const maxCreateAttempts = 64;
+  let createRes = null;
+  let createSucceeded = false;
+  const seedBase = Date.now() % 11456;
+
+  for (let attempt = 0; attempt < maxCreateAttempts; attempt += 1) {
+    const seed = seedBase + (attempt * 97);
+    createRes = createMarcacaoRemota(session, seed);
+
+    if (createRes.status === 200) {
+      createSucceeded = true;
+      break;
+    }
   }
 
-  check(createRes, {
-    'create marcacao status 200': (r) => r.status === 200,
+  check(createRes || { status: 0 }, {
+    'create marcacao status 200': () => createSucceeded,
     'create marcacao has id': (r) => {
+      if (!createSucceeded) {
+        return false;
+      }
       try {
         return !!r.json('id');
       } catch {
