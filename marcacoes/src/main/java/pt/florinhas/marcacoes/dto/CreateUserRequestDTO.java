@@ -11,7 +11,7 @@ public class CreateUserRequestDTO {
     private String name;
 
     @NotBlank(message = "O NIF é obrigatório")
-    @Pattern(regexp = "\\d{9}", message = "O NIF deve ter 9 dígitos")
+    @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos")
     private String nif;
 
     @NotBlank(message = "O contacto é obrigatório")

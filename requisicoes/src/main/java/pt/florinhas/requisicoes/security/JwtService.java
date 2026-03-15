@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret:dev-secret-dev-secret-dev-secret-dev-secret-dev-secret-dev-secret}")
+    @Value("${jwt.secret}")
     private String secret;
 
     @Value("${jwt.expiration:86400000}")

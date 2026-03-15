@@ -15,6 +15,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -70,7 +71,7 @@ public class AuthController {
 
     @PostMapping("/register/utente")
     public ResponseEntity<AuthResponse> registerUtente(
-            @RequestBody UtenteRegisterRequest request,
+            @Valid @RequestBody UtenteRegisterRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         AuthResult result = authService.registerUtente(request);
@@ -79,7 +80,7 @@ public class AuthController {
 
     @PostMapping("/register/funcionario")
     public ResponseEntity<AuthResponse> registerFuncionario(
-            @RequestBody FuncionarioRegisterRequest request,
+            @Valid @RequestBody FuncionarioRegisterRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         AuthResult result = authService.registerFuncionario(request);
