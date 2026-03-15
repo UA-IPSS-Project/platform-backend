@@ -91,6 +91,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Mapeia IllegalArgumentException para HTTP 400 (BAD_REQUEST).
+     *
+     * Cobre casos como conflitos de slot no MarcacaoValidator que lançam
+     * esta exceção diretamente (ex.: horário já ocupado, fim de semana, feriado).
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
      * Mapeia ConflictException para HTTP 409 (CONFLICT).
      */
     @ExceptionHandler(ConflictException.class)
