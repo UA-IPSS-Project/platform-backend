@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.dto;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -68,4 +69,7 @@ public class CriarMarcacaoRequest {
     // Telefone do novo utente.
     @Pattern(regexp = "^$|^[0-9+\\s-]{9,20}$", message = "Telefone inválido")
     private String utenteTelefone;
+
+    // Data de nascimento do utente (formato ISO yyyy-MM-dd).
+    private LocalDate utenteDataNasc;
 }
