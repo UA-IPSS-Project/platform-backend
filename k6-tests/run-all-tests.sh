@@ -27,15 +27,31 @@ if ! command -v k6 &> /dev/null; then
     exit 1
 fi
 
-# Verificar se o backend está rodando
+# Verificar se o backend está a responder (o /actuator/health pode estar protegido)
 echo "Verificando se o backend está rodando..."
-if curl -s -f "$BASE_URL/actuator/health" > /dev/null 2>&1; then
-    echo "Backend está online"
-else
-    echo "Backend não está acessível em $BASE_URL"
+backend_ready=false
+for i in $(seq 1 20); do
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+      -X POST "$BASE_URL/api/auth/login/utente" \
+      -H "Content-Type: application/json" \
+      -d '{}')
+
+    if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 500 ] && [ "$http_code" -ne 404 ]; then
+        backend_ready=true
+        break
+    fi
+
+    echo "A aguardar backend... tentativa $i/20"
+    sleep 2
+done
+
+if [ "$backend_ready" != true ]; then
+    echo "Backend não está acessível em $BASE_URL (último status: ${http_code:-N/A})"
     echo "Inicie o backend antes de executar os testes"
     exit 1
 fi
+
+echo "Backend está online (HTTP $http_code)"
 
 echo ""
 echo "========================================="
@@ -58,19 +74,19 @@ echo "========================================="
 echo "SMOKE TEST (Teste básico - 30s)"
 echo "========================================="
 # REPORT_NAME define o nome dos ficheiros na pasta results
-k6 run smoke-test.js -e REPORT_NAME=smoke_test
+k6 run smoke-test.js -e REPORT_NAME=smoke_test -e BASE_URL="$BASE_URL"
 
 echo ""
 echo "========================================="
 echo "LOAD TEST (Teste de carga - ~5min)"
 echo "========================================="
-k6 run load-test.js -e REPORT_NAME=load_test
+k6 run load-test.js -e REPORT_NAME=load_test -e BASE_URL="$BASE_URL"
 
 echo ""
 echo "========================================="
 echo "STRESS TEST (Teste extremo - ~10min)"
 echo "========================================="
-k6 run stress-test.js -e REPORT_NAME=stress_test
+k6 run stress-test.js -e REPORT_NAME=stress_test -e BASE_URL="$BASE_URL"
 
 echo ""
 echo "========================================="

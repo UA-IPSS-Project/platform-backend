@@ -1,110 +1,95 @@
-import http from 'k6/http';
 import { check, sleep } from 'k6';
-// Importações para relatórios
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.1/index.js";
+import {
+  USERS,
+  checkHealth,
+  seedUsers,
+  loginUtente,
+  listMarcacoesUtente,
+  getCurrentUser,
+  createMarcacaoRemota,
+} from './common.js';
 
 export const options = {
   vus: 1,
-  duration: '30s',
+  iterations: 1,
   thresholds: {
-    http_req_duration: ['p(95)<10000'],
-    http_req_failed: ['rate<0.1'],
+    http_req_duration: ['p(95)<3000'],
+    http_req_failed: ['rate<0.05'],
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+export function setup() {
+  checkHealth();
+  seedUsers(USERS);
+  return { users: USERS };
+}
 
-export default function () {
-  // 1. Health Check
-  const healthRes = http.get(`${BASE_URL}/actuator/health`);
-  const healthOk = check(healthRes, {
-    'health check OK': (r) => r.status === 200,
-  });
+export default function smokeTest(data) {
+  const user = data.users[0];
+  const session = loginUtente(user);
 
-  if (!healthOk) {
-    console.error('Health check falhou - backend pode não estar rodando');
+  if (!session) {
+    console.error('Login falhou no smoke test');
     return;
   }
 
-  sleep(1);
-
-  // 2. Registar novo utilizador
-  const randomId = Date.now() + Math.floor(Math.random() * 1000);
-  const randomNum = Math.floor(Math.random() * 9000) + 1000;
-  const newUser = {
-    nome: `Teste K6 ${randomId}`,
-    email: `k6test${randomId}@gmail.com`,
-    nif: String(randomId).slice(-9).padStart(9, '1'),
-    telefone: String(randomId).slice(-9).padStart(9, '9'),
-    password: `Test${randomNum}`,
-    dataNasc: '1990-01-01',
-  };
-
-  const registerRes = http.post(
-    `${BASE_URL}/api/auth/register/utente`,
-    JSON.stringify(newUser),
-    { 
-      headers: { 'Content-Type': 'application/json' },
-      tags: { name: 'Register' },
-    }
-  );
-
-  check(registerRes, {
-    'registro aceito ou usuário já existe': (r) => r.status === 200 || r.status === 201 || r.status === 409,
-  });
-
-  sleep(0.5);
-
-  // 3. Login
-  const loginRes = http.post(
-    `${BASE_URL}/api/auth/login/utente`,
-    JSON.stringify({
-      nif: newUser.nif,
-      password: newUser.password,
-    }),
-    { 
-      headers: { 'Content-Type': 'application/json' },
-      tags: { name: 'Login' },
-    }
-  );
-
-  const loginOk = check(loginRes, {
-    'login OK': (r) => r.status === 200,
-    'token presente': (r) => {
+  const meRes = getCurrentUser(session);
+  check(meRes, {
+    'auth me status 200': (r) => r.status === 200,
+    'auth me id matches': (r) => {
       try {
-        return r.json('token') !== undefined;
+        return r.json('id') === session.userId;
       } catch {
         return false;
       }
     },
   });
 
-  if (loginOk) {
-    const token = loginRes.json('token');
-    sleep(0.5);
+  const beforeListRes = listMarcacoesUtente(session);
+  check(beforeListRes, {
+    'list before status 200': (r) => r.status === 200,
+    'list before is array': (r) => {
+      try {
+        return Array.isArray(r.json());
+      } catch {
+        return false;
+      }
+    },
+  });
 
-    // 4. Listar marcações
-    const listRes = http.get(`${BASE_URL}/api/marcacoes`, {
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      tags: { name: 'List Appointments' },
-    });
-
-    check(listRes, {
-      'listagem OK': (r) => r.status === 200,
-      'retorna array': (r) => Array.isArray(r.json()),
-    });
-  } else {
-    console.error(`Login falhou: ${loginRes.status} - ${loginRes.body}`);
+  let createRes = createMarcacaoRemota(session, Date.now() % 10000);
+  if (createRes.status !== 200) {
+    createRes = createMarcacaoRemota(session, (Date.now() % 10000) + 97);
   }
+
+  check(createRes, {
+    'create marcacao status 200': (r) => r.status === 200,
+    'create marcacao has id': (r) => {
+      try {
+        return !!r.json('id');
+      } catch {
+        return false;
+      }
+    },
+  });
+
+  const afterListRes = listMarcacoesUtente(session);
+  check(afterListRes, {
+    'list after status 200': (r) => r.status === 200,
+    'list after is array': (r) => {
+      try {
+        return Array.isArray(r.json());
+      } catch {
+        return false;
+      }
+    },
+  });
 
   sleep(1);
 }
 
-// --- FUNÇÃO DE RELATÓRIO ---
 export function handleSummary(data) {
   const reportName = __ENV.REPORT_NAME || "smoke-test";
   return {
