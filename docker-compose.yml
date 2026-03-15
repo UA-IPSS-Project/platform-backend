@@ -9,16 +9,20 @@ services:
     depends_on:
       - postgres
       - minio
+    env_file:
+      - .env
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/florinhas
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=admin123
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000
-      - MINIO_URL=http://minio:9000
-      - MINIO_ACCESSKEY=admin
-      - MINIO_SECRETKEY=password123
-      - MINIO_BUCKET=marcacoes
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER:-jdbc:postgresql://postgres:5432/florinhas}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - MINIO_URL=${MINIO_URL_DOCKER:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET_MARCACOES:-marcacoes}
 
     restart: unless-stopped
 
@@ -39,16 +43,20 @@ services:
     depends_on:
       - postgres
       - minio
+    env_file:
+      - .env
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/florinhas
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=admin123
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000
-      - MINIO_URL=http://minio:9000
-      - MINIO_ACCESSKEY=admin
-      - MINIO_SECRETKEY=password123
-      - MINIO_BUCKET=requisicoes
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER:-jdbc:postgresql://postgres:5432/florinhas}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - MINIO_URL=${MINIO_URL_DOCKER:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET_REQUISICOES:-requisicoes}
     restart: unless-stopped
     develop:
       watch:
@@ -82,10 +90,12 @@ services:
   postgres:
     image: postgres
     container_name: florinhas_db
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: florinhas
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: ${POSTGRES_DB:-florinhas}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
 
@@ -98,9 +108,11 @@ services:
       - "9001:9001"
     volumes:
       - ./data:/data
+    env_file:
+      - .env
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
 
 
