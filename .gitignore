@@ -108,3 +108,6 @@ NOTAS.md
 # MinIO local data
 data/*
 !data/.gitkeep
+
+
+extra
