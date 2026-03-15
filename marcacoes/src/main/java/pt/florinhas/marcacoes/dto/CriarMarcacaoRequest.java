@@ -54,7 +54,7 @@ public class CriarMarcacaoRequest {
     // ===== Dados opcionais para criação “on-the-fly” de um novo utente =====
 
     // NIF do novo utente (se não existir ainda no sistema).
-    @Pattern(regexp = "^$|^[0-9]{9}$", message = "NIF deve conter 9 dígitos")
+    @Pattern(regexp = "^$|\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos")
     private String utenteNif;
 
     // Nome do novo utente.
