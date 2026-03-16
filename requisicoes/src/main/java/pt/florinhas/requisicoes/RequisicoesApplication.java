@@ -11,6 +11,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.MaterialCategoria;
@@ -121,6 +123,17 @@ public class RequisicoesApplication {
 	}
 
 	@Bean
+	@Order(0)
+	CommandLineRunner alinharConstraintCategoriaTransporte(JdbcTemplate jdbcTemplate) {
+		return args -> {
+			jdbcTemplate.execute("ALTER TABLE transporte DROP CONSTRAINT IF EXISTS transporte_categoria_check");
+			jdbcTemplate.execute(
+					"ALTER TABLE transporte ADD CONSTRAINT transporte_categoria_check CHECK (categoria IN ('PESADO_DE_PASSAGEIROS', 'LIGEIRO_DE_PASSAGEIROS', 'LIGEIRO_DE_MERCADORIAS', 'LIGEIRO_ESPECIAL', 'LIGEIRO', 'PESADO', 'PASSAGEIROS', 'ADAPTADO'))");
+		};
+	}
+
+	@Bean
+	@Order(1)
 	CommandLineRunner initTransportes(TransporteRepository transporteRepository) {
 		return args -> {
 			record TransporteSeed(
