@@ -178,21 +178,39 @@ public class RequisicoesApplication {
 
 			for (TransporteSeed seed : transportesBase) {
 				Transporte transporte = transportesPorCodigo.get(seed.codigo().toUpperCase(Locale.ROOT));
+				boolean isNew = false;
 				if (transporte == null) {
 					transporte = transportesPorMatricula.get(seed.matricula().toUpperCase(Locale.ROOT));
 				}
 				if (transporte == null) {
 					transporte = new Transporte();
+					isNew = true;
 				}
 
-				transporte.setCodigo(seed.codigo());
-				transporte.setTipo(seed.tipo());
-				transporte.setCategoria(seed.categoria());
-				transporte.setMarca(seed.marca());
-				transporte.setModelo(seed.modelo());
-				transporte.setMatricula(seed.matricula());
-				transporte.setDataMatricula(seed.dataMatricula());
-				transporte.setLotacao(seed.lotacao());
+				if (isNew || transporte.getCodigo() == null || transporte.getCodigo().isBlank()) {
+					transporte.setCodigo(seed.codigo());
+				}
+				if (isNew || transporte.getTipo() == null || transporte.getTipo().isBlank()) {
+					transporte.setTipo(seed.tipo());
+				}
+				if (isNew || transporte.getCategoria() == null) {
+					transporte.setCategoria(seed.categoria());
+				}
+				if (isNew || transporte.getMarca() == null || transporte.getMarca().isBlank()) {
+					transporte.setMarca(seed.marca());
+				}
+				if (isNew || transporte.getModelo() == null || transporte.getModelo().isBlank()) {
+					transporte.setModelo(seed.modelo());
+				}
+				if (isNew || transporte.getMatricula() == null || transporte.getMatricula().isBlank()) {
+					transporte.setMatricula(seed.matricula());
+				}
+				if (isNew || transporte.getDataMatricula() == null) {
+					transporte.setDataMatricula(seed.dataMatricula());
+				}
+				if (isNew || transporte.getLotacao() == null) {
+					transporte.setLotacao(seed.lotacao());
+				}
 
 				Transporte persisted = transporteRepository.save(transporte);
 				transportesPorCodigo.put(seed.codigo().toUpperCase(Locale.ROOT), persisted);
