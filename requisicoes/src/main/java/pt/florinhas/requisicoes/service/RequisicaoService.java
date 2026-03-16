@@ -147,6 +147,10 @@ public class RequisicaoService {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
         validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
 
+        if (request.transporteIds() == null || request.transporteIds().isEmpty()) {
+            throw new IllegalArgumentException("Pelo menos um transporte deve ser selecionado.");
+        }
+
         Set<Long> transporteIdsNormalizados = new LinkedHashSet<>(request.transporteIds());
         List<Transporte> transportesSelecionados = transporteIdsNormalizados.stream()
             .map(transporteId -> transporteRepository.findById(transporteId)
