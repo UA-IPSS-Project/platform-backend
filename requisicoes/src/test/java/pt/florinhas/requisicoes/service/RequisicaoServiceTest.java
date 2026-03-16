@@ -224,9 +224,14 @@ class RequisicaoServiceTest {
         Funcionario criadoPor = funcionarioComId(10L);
         Transporte transporte = new Transporte();
         transporte.setId(30L);
+        transporte.setLotacao(9);
+        Transporte transporte2 = new Transporte();
+        transporte2.setId(31L);
+        transporte2.setLotacao(12);
 
         when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
         when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+        when(transporteRepository.findById(31L)).thenReturn(Optional.of(transporte2));
         when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -236,14 +241,24 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 10, 8, 30),
                 10L,
                 20L,
-                30L);
+                "Porto",
+                LocalDateTime.of(2026, 4, 12, 8, 30),
+                LocalDateTime.of(2026, 4, 12, 18, 0),
+                18,
+                "Motorista interno",
+                List.of(30L, 31L));
 
         RequisicaoTransporte resultado = requisicaoService.criarTransporte(request);
 
         assertEquals(RequisicaoTipo.TRANSPORTE, resultado.getTipo());
         assertSame(criadoPor, resultado.getCriadoPor());
-                assertNull(resultado.getGeridoPor());
+        assertNull(resultado.getGeridoPor());
+        assertEquals("Porto", resultado.getDestino());
+        assertEquals(18, resultado.getNumeroPassageiros());
+        assertEquals("Motorista interno", resultado.getCondutor());
         assertSame(transporte, resultado.getTransporte());
+        assertEquals(2, resultado.getTransportes().size());
+        assertSame(transporte2, resultado.getTransportes().get(1).getTransporte());
     }
 
     @Test
@@ -258,12 +273,71 @@ class RequisicaoServiceTest {
                 null,
                 10L,
                 null,
-                90L);
+                "Lisboa",
+                LocalDateTime.of(2026, 4, 20, 9, 0),
+                LocalDateTime.of(2026, 4, 20, 19, 0),
+                5,
+                null,
+                List.of(90L));
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarTransporte(request));
 
         assertEquals("Transporte não encontrado: 90", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoLotacaoInsuficiente_deveLancarExcecao() {
+        Funcionario criadoPor = funcionarioComId(10L);
+        Transporte transporte = new Transporte();
+        transporte.setId(30L);
+        transporte.setLotacao(4);
+
+        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+        when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Coimbra",
+                LocalDateTime.of(2026, 4, 20, 9, 0),
+                LocalDateTime.of(2026, 4, 20, 12, 0),
+                8,
+                null,
+                List.of(30L));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A lotação total das viaturas selecionadas é insuficiente para o número de passageiros indicado.",
+                exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoRegressoNaoPosteriorASaida_deveLancarExcecao() {
+        Funcionario criadoPor = funcionarioComId(10L);
+        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Coimbra",
+                LocalDateTime.of(2026, 4, 20, 9, 0),
+                LocalDateTime.of(2026, 4, 20, 8, 0),
+                2,
+                null,
+                List.of(30L));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
     }
 
     @Test

@@ -1,10 +1,12 @@
 package pt.florinhas.requisicoes.service;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Set;
 
 import org.springframework.data.domain.Sort;
 
@@ -20,6 +22,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterialItem;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
@@ -140,8 +143,24 @@ public class RequisicaoService {
 
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
-        Transporte transporte = transporteRepository.findById(request.transporteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + request.transporteId()));
+        validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
+
+        Set<Long> transporteIdsNormalizados = new LinkedHashSet<>(request.transporteIds());
+        List<Transporte> transportesSelecionados = transporteIdsNormalizados.stream()
+            .map(transporteId -> transporteRepository.findById(transporteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + transporteId)))
+            .toList();
+
+        int capacidadeTotal = transportesSelecionados.stream()
+            .map(Transporte::getLotacao)
+            .filter(lotacao -> lotacao != null && lotacao > 0)
+            .mapToInt(Integer::intValue)
+            .sum();
+
+        if (capacidadeTotal < request.numeroPassageiros()) {
+            throw new IllegalArgumentException(
+                "A lotação total das viaturas selecionadas é insuficiente para o número de passageiros indicado.");
+        }
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(request.descricao());
@@ -150,9 +169,26 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        requisicao.setTransporte(transporte);
+        requisicao.setDestino(normalizarTextoObrigatorio(request.destino(), false));
+        requisicao.setDataHoraSaida(request.dataHoraSaida());
+        requisicao.setDataHoraRegresso(request.dataHoraRegresso());
+        requisicao.setNumeroPassageiros(request.numeroPassageiros());
+        requisicao.setCondutor(normalizarTextoOpcional(request.condutor(), false));
+        requisicao.setTransporte(transportesSelecionados.getFirst());
+
+        for (Transporte transporte : transportesSelecionados) {
+            RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+            item.setTransporte(transporte);
+            requisicao.getTransportes().add(item);
+        }
 
         return requisicaoTransporteRepository.save(requisicao);
+    }
+
+    private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
+        if (!dataHoraRegresso.isAfter(dataHoraSaida)) {
+            throw new IllegalArgumentException("A data/hora de regresso deve ser posterior à data/hora de saída.");
+        }
     }
 
     public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request) {
