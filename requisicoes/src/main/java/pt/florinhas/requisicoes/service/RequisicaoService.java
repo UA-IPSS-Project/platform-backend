@@ -328,7 +328,10 @@ public class RequisicaoService {
 
     public List<Transporte> listarTransportes() {
         return transporteRepository.findAll(
-                Sort.by(Sort.Order.asc("codigo"), Sort.Order.asc("tipo"), Sort.Order.asc("matricula")));
+                Sort.by(
+                        Sort.Order.asc("codigo").nullsLast(),
+                        Sort.Order.asc("tipo"),
+                        Sort.Order.asc("matricula")));
     }
 
     public Transporte criarTransporteCatalogo(CriarTransporteRequest request) {
