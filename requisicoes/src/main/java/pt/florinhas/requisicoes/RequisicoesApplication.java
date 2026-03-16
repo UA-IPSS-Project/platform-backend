@@ -11,7 +11,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -125,7 +124,6 @@ public class RequisicoesApplication {
 
 	@Bean
 	@Order(0)
-	@Profile("bootstrap")
 	CommandLineRunner alinharConstraintCategoriaTransporte(JdbcTemplate jdbcTemplate) {
 		return args -> {
 			jdbcTemplate.execute("ALTER TABLE transporte DROP CONSTRAINT IF EXISTS transporte_categoria_check");
@@ -160,16 +158,14 @@ public class RequisicoesApplication {
 					new TransporteSeed("V08", "Carrinha", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Renault", "Kangoo-Al", "90-43-LJ", LocalDate.of(1998, 7, 1), 6),
 					new TransporteSeed("V09", "Carrinha", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Mercedes", "208 D/30", "54-95-GE", LocalDate.of(1996, 1, 19), 9));
 
-			List<Transporte> transportesExistentes = transporteRepository.findAll();
-
-			Map<String, Transporte> transportesPorCodigo = transportesExistentes.stream()
+			Map<String, Transporte> transportesPorCodigo = transporteRepository.findAll().stream()
 					.filter(transporte -> transporte.getCodigo() != null && !transporte.getCodigo().isBlank())
 					.collect(Collectors.toMap(
 							transporte -> transporte.getCodigo().toUpperCase(Locale.ROOT),
 							Function.identity(),
 							(existing, ignored) -> existing));
 
-			Map<String, Transporte> transportesPorMatricula = transportesExistentes.stream()
+			Map<String, Transporte> transportesPorMatricula = transporteRepository.findAll().stream()
 					.filter(transporte -> transporte.getMatricula() != null && !transporte.getMatricula().isBlank())
 					.collect(Collectors.toMap(
 							transporte -> transporte.getMatricula().toUpperCase(Locale.ROOT),
@@ -178,39 +174,21 @@ public class RequisicoesApplication {
 
 			for (TransporteSeed seed : transportesBase) {
 				Transporte transporte = transportesPorCodigo.get(seed.codigo().toUpperCase(Locale.ROOT));
-				boolean isNew = false;
 				if (transporte == null) {
 					transporte = transportesPorMatricula.get(seed.matricula().toUpperCase(Locale.ROOT));
 				}
 				if (transporte == null) {
 					transporte = new Transporte();
-					isNew = true;
 				}
 
-				if (isNew || transporte.getCodigo() == null || transporte.getCodigo().isBlank()) {
-					transporte.setCodigo(seed.codigo());
-				}
-				if (isNew || transporte.getTipo() == null || transporte.getTipo().isBlank()) {
-					transporte.setTipo(seed.tipo());
-				}
-				if (isNew || transporte.getCategoria() == null) {
-					transporte.setCategoria(seed.categoria());
-				}
-				if (isNew || transporte.getMarca() == null || transporte.getMarca().isBlank()) {
-					transporte.setMarca(seed.marca());
-				}
-				if (isNew || transporte.getModelo() == null || transporte.getModelo().isBlank()) {
-					transporte.setModelo(seed.modelo());
-				}
-				if (isNew || transporte.getMatricula() == null || transporte.getMatricula().isBlank()) {
-					transporte.setMatricula(seed.matricula());
-				}
-				if (isNew || transporte.getDataMatricula() == null) {
-					transporte.setDataMatricula(seed.dataMatricula());
-				}
-				if (isNew || transporte.getLotacao() == null) {
-					transporte.setLotacao(seed.lotacao());
-				}
+				transporte.setCodigo(seed.codigo());
+				transporte.setTipo(seed.tipo());
+				transporte.setCategoria(seed.categoria());
+				transporte.setMarca(seed.marca());
+				transporte.setModelo(seed.modelo());
+				transporte.setMatricula(seed.matricula());
+				transporte.setDataMatricula(seed.dataMatricula());
+				transporte.setLotacao(seed.lotacao());
 
 				Transporte persisted = transporteRepository.save(transporte);
 				transportesPorCodigo.put(seed.codigo().toUpperCase(Locale.ROOT), persisted);

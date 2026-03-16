@@ -1,21 +1,22 @@
 package pt.florinhas.requisicoes.service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
@@ -28,7 +29,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
-import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
@@ -224,20 +224,9 @@ class RequisicaoServiceTest {
         Funcionario criadoPor = funcionarioComId(10L);
         Transporte transporte = new Transporte();
         transporte.setId(30L);
-        transporte.setLotacao(9);
-        Transporte transporte2 = new Transporte();
-        transporte2.setId(31L);
-        transporte2.setLotacao(12);
 
         when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
         when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
-        when(transporteRepository.findById(31L)).thenReturn(Optional.of(transporte2));
-        when(requisicaoTransporteRepository.findConflitosTransporte(
-                RequisicaoEstado.ACEITE,
-                List.of(30L, 31L),
-                LocalDateTime.of(2026, 4, 12, 8, 30),
-                LocalDateTime.of(2026, 4, 12, 18, 0),
-                null)).thenReturn(List.of());
         when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -247,24 +236,14 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 10, 8, 30),
                 10L,
                 20L,
-                "Porto",
-                LocalDateTime.of(2026, 4, 12, 8, 30),
-                LocalDateTime.of(2026, 4, 12, 18, 0),
-                18,
-                "Motorista interno",
-                List.of(30L, 31L));
+                30L);
 
         RequisicaoTransporte resultado = requisicaoService.criarTransporte(request);
 
         assertEquals(RequisicaoTipo.TRANSPORTE, resultado.getTipo());
         assertSame(criadoPor, resultado.getCriadoPor());
-        assertNull(resultado.getGeridoPor());
-        assertEquals("Porto", resultado.getDestino());
-        assertEquals(18, resultado.getNumeroPassageiros());
-        assertEquals("Motorista interno", resultado.getCondutor());
+                assertNull(resultado.getGeridoPor());
         assertSame(transporte, resultado.getTransporte());
-        assertEquals(2, resultado.getTransportes().size());
-        assertSame(transporte2, resultado.getTransportes().get(1).getTransporte());
     }
 
     @Test
@@ -279,153 +258,12 @@ class RequisicaoServiceTest {
                 null,
                 10L,
                 null,
-                "Lisboa",
-                LocalDateTime.of(2026, 4, 20, 9, 0),
-                LocalDateTime.of(2026, 4, 20, 19, 0),
-                5,
-                null,
-                List.of(90L));
+                90L);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarTransporte(request));
 
         assertEquals("Transporte não encontrado: 90", exception.getMessage());
-    }
-
-    @Test
-    void criarTransporte_quandoLotacaoInsuficiente_deveLancarExcecao() {
-        Funcionario criadoPor = funcionarioComId(10L);
-        Transporte transporte = new Transporte();
-        transporte.setId(30L);
-        transporte.setLotacao(4);
-
-        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-        when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
-        when(requisicaoTransporteRepository.findConflitosTransporte(
-                RequisicaoEstado.ACEITE,
-                List.of(30L),
-                LocalDateTime.of(2026, 4, 20, 9, 0),
-                LocalDateTime.of(2026, 4, 20, 12, 0),
-                null)).thenReturn(List.of());
-
-        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                "Pedido",
-                RequisicaoPrioridade.MEDIA,
-                null,
-                10L,
-                null,
-                "Coimbra",
-                LocalDateTime.of(2026, 4, 20, 9, 0),
-                LocalDateTime.of(2026, 4, 20, 12, 0),
-                8,
-                null,
-                List.of(30L));
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request));
-
-        assertEquals("A lotação útil das viaturas selecionadas é insuficiente para o número de passageiros indicado.",
-                exception.getMessage());
-    }
-
-    @Test
-    void criarTransporte_quandoRegressoNaoPosteriorASaida_deveLancarExcecao() {
-        Funcionario criadoPor = funcionarioComId(10L);
-        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-
-        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                "Pedido",
-                RequisicaoPrioridade.MEDIA,
-                null,
-                10L,
-                null,
-                "Coimbra",
-                LocalDateTime.of(2026, 4, 20, 9, 0),
-                LocalDateTime.of(2026, 4, 20, 8, 0),
-                2,
-                null,
-                List.of(30L));
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request));
-
-        assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
-    }
-
-    @Test
-    void criarTransporte_quandoExisteConflitoComRequisicaoAceite_deveLancarExcecao() {
-        Funcionario criadoPor = funcionarioComId(10L);
-        Transporte transporte = new Transporte();
-        transporte.setId(30L);
-        transporte.setCodigo("BUS-1");
-        transporte.setLotacao(30);
-
-        RequisicaoTransporte conflito = new RequisicaoTransporte();
-        RequisicaoTransporteItem item = new RequisicaoTransporteItem();
-        item.setTransporte(transporte);
-        conflito.getTransportes().add(item);
-
-        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-        when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
-        when(requisicaoTransporteRepository.findConflitosTransporte(
-                RequisicaoEstado.ACEITE,
-                List.of(30L),
-                LocalDateTime.of(2026, 4, 20, 10, 0),
-                LocalDateTime.of(2026, 4, 20, 17, 0),
-                null)).thenReturn(List.of(conflito));
-
-        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                "Pedido",
-                RequisicaoPrioridade.MEDIA,
-                null,
-                10L,
-                null,
-                "Coimbra",
-                LocalDateTime.of(2026, 4, 20, 10, 0),
-                LocalDateTime.of(2026, 4, 20, 17, 0),
-                8,
-                null,
-                List.of(30L));
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request));
-
-        assertEquals("As seguintes viaturas já estão indisponíveis no período indicado: BUS-1.", exception.getMessage());
-    }
-
-    @Test
-    void atualizarEstado_quandoAceitaTransporteComConflito_deveLancarExcecao() {
-        Transporte transporte = new Transporte();
-        transporte.setId(30L);
-        transporte.setCodigo("BUS-1");
-
-        RequisicaoTransporte requisicao = new RequisicaoTransporte();
-        requisicao.setId(99L);
-        requisicao.setEstado(RequisicaoEstado.EM_ANALISE);
-        requisicao.setDataHoraSaida(LocalDateTime.of(2026, 4, 20, 10, 0));
-        requisicao.setDataHoraRegresso(LocalDateTime.of(2026, 4, 20, 17, 0));
-        requisicao.setTransporte(transporte);
-        RequisicaoTransporteItem item = new RequisicaoTransporteItem();
-        item.setTransporte(transporte);
-        requisicao.getTransportes().add(item);
-
-        RequisicaoTransporte conflito = new RequisicaoTransporte();
-        RequisicaoTransporteItem itemConflito = new RequisicaoTransporteItem();
-        itemConflito.setTransporte(transporte);
-        conflito.getTransportes().add(itemConflito);
-
-        when(requisicaoRepository.findById(99L)).thenReturn(Optional.of(requisicao));
-        when(requisicaoTransporteRepository.findConflitosTransporte(
-                RequisicaoEstado.ACEITE,
-                List.of(30L),
-                LocalDateTime.of(2026, 4, 20, 10, 0),
-                LocalDateTime.of(2026, 4, 20, 17, 0),
-                99L)).thenReturn(List.of(conflito));
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.atualizarEstado(99L, RequisicaoEstado.ACEITE, 50L));
-
-        assertEquals("As seguintes viaturas já estão indisponíveis no período indicado: BUS-1.", exception.getMessage());
     }
 
     @Test

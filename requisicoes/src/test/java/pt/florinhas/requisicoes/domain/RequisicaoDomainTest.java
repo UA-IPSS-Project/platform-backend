@@ -2,6 +2,7 @@ package pt.florinhas.requisicoes.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.junit.jupiter.api.Test;
 
 class RequisicaoDomainTest {
@@ -12,7 +13,7 @@ class RequisicaoDomainTest {
 
         requisicao.onCreate();
 
-        assertEquals(RequisicaoEstado.EM_ANALISE, requisicao.getEstado());
+        assertEquals(RequisicaoEstado.ENVIADA, requisicao.getEstado());
         assertNotNull(requisicao.getCriadoEm());
         assertNotNull(requisicao.getUltimaAlteracaoEstadoEm());
     }

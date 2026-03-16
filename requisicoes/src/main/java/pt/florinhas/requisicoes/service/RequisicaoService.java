@@ -1,17 +1,13 @@
 package pt.florinhas.requisicoes.service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
 import org.springframework.data.domain.Sort;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,17 +16,18 @@ import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
+import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterialItem;
-import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
-import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
+import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
+import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
 import pt.florinhas.requisicoes.exception.ResourceNotFoundException;
 import pt.florinhas.requisicoes.repository.FuncionarioRepository;
@@ -39,6 +36,7 @@ import pt.florinhas.requisicoes.repository.RequisicaoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
+import pt.florinhas.requisicoes.repository.TipoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
 
 @Service
@@ -51,6 +49,7 @@ public class RequisicaoService {
     private final FuncionarioRepository funcionarioRepository;
     private final MaterialRepository materialRepository;
     private final TransporteRepository transporteRepository;
+    private final TipoManutencaoRepository tipoManutencaoRepository;
 
     public RequisicaoService(
             RequisicaoRepository requisicaoRepository,
@@ -59,7 +58,8 @@ public class RequisicaoService {
             RequisicaoManutencaoRepository requisicaoManutencaoRepository,
             FuncionarioRepository funcionarioRepository,
             MaterialRepository materialRepository,
-            TransporteRepository transporteRepository) {
+            TransporteRepository transporteRepository,
+            TipoManutencaoRepository tipoManutencaoRepository) {
         this.requisicaoRepository = requisicaoRepository;
         this.requisicaoMaterialRepository = requisicaoMaterialRepository;
         this.requisicaoTransporteRepository = requisicaoTransporteRepository;
@@ -67,6 +67,7 @@ public class RequisicaoService {
         this.funcionarioRepository = funcionarioRepository;
         this.materialRepository = materialRepository;
         this.transporteRepository = transporteRepository;
+        this.tipoManutencaoRepository = tipoManutencaoRepository;
     }
 
     public List<Requisicao> listarTodas() {
@@ -148,34 +149,8 @@ public class RequisicaoService {
     @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
-        validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
-
-        if (request.transporteIds() == null || request.transporteIds().isEmpty()) {
-            throw new IllegalArgumentException("Pelo menos um transporte deve ser selecionado.");
-        }
-
-        Set<Long> transporteIdsNormalizados = new LinkedHashSet<>(request.transporteIds());
-        List<Transporte> transportesSelecionados = transporteIdsNormalizados.stream()
-            .map(transporteId -> transporteRepository.findById(transporteId)
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + transporteId)))
-            .toList();
-
-        validarTransportesDisponiveis(
-                transportesSelecionados,
-                request.dataHoraSaida(),
-                request.dataHoraRegresso(),
-                null);
-
-        int capacidadeTotal = transportesSelecionados.stream()
-            .map(Transporte::getLotacao)
-            .filter(lotacao -> lotacao != null && lotacao > 0)
-            .mapToInt(lotacao -> Math.max(0, lotacao - 1))
-            .sum();
-
-        if (capacidadeTotal < request.numeroPassageiros()) {
-            throw new IllegalArgumentException(
-                "A lotação útil das viaturas selecionadas é insuficiente para o número de passageiros indicado.");
-        }
+        Transporte transporte = transporteRepository.findById(request.transporteId())
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + request.transporteId()));
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(request.descricao());
@@ -184,101 +159,9 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        requisicao.setDestino(normalizarTextoObrigatorio(request.destino(), false));
-        requisicao.setDataHoraSaida(request.dataHoraSaida());
-        requisicao.setDataHoraRegresso(request.dataHoraRegresso());
-        requisicao.setNumeroPassageiros(request.numeroPassageiros());
-        requisicao.setCondutor(normalizarTextoOpcional(request.condutor(), false));
-        requisicao.setTransporte(transportesSelecionados.getFirst());
-
-        for (Transporte transporte : transportesSelecionados) {
-            RequisicaoTransporteItem item = new RequisicaoTransporteItem();
-            item.setTransporte(transporte);
-            requisicao.getTransportes().add(item);
-        }
+        requisicao.setTransporte(transporte);
 
         return requisicaoTransporteRepository.save(requisicao);
-    }
-
-    private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
-        if (!dataHoraRegresso.isAfter(dataHoraSaida)) {
-            throw new IllegalArgumentException("A data/hora de regresso deve ser posterior à data/hora de saída.");
-        }
-    }
-
-    private List<Transporte> extrairTransportes(RequisicaoTransporte requisicao) {
-        List<Transporte> transportesSelecionados = new ArrayList<>();
-
-        if (requisicao.getTransporte() != null) {
-            transportesSelecionados.add(requisicao.getTransporte());
-        }
-
-        requisicao.getTransportes().stream()
-                .map(RequisicaoTransporteItem::getTransporte)
-                .filter(Objects::nonNull)
-                .forEach(transportesSelecionados::add);
-
-        return transportesSelecionados.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toMap(Transporte::getId, transporte -> transporte, (left, right) -> left, LinkedHashMap::new))
-                .values()
-                .stream()
-                .toList();
-    }
-
-    private void validarTransportesDisponiveis(
-            List<Transporte> transportesSelecionados,
-            LocalDateTime dataHoraSaida,
-            LocalDateTime dataHoraRegresso,
-            Long requisicaoIgnoradaId) {
-        List<Long> transporteIds = transportesSelecionados.stream()
-                .map(Transporte::getId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-
-        if (transporteIds.isEmpty()) {
-            return;
-        }
-
-        List<RequisicaoTransporte> conflitos = requisicaoTransporteRepository.findConflitosTransporte(
-                RequisicaoEstado.ACEITE,
-                transporteIds,
-                dataHoraSaida,
-                dataHoraRegresso,
-                requisicaoIgnoradaId);
-
-        if (conflitos == null || conflitos.isEmpty()) {
-            return;
-        }
-
-        Set<Long> idsEmConflito = conflitos.stream()
-                .flatMap(requisicao -> extrairTransportes(requisicao).stream())
-                .map(Transporte::getId)
-                .filter(Objects::nonNull)
-                .filter(transporteIds::contains)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        String transportesIndisponiveis = transportesSelecionados.stream()
-                .filter(transporte -> transporte.getId() != null && idsEmConflito.contains(transporte.getId()))
-                .map(this::formatarIdentificacaoTransporte)
-                .distinct()
-                .collect(Collectors.joining(", "));
-
-        throw new IllegalArgumentException(
-                transportesIndisponiveis.isBlank()
-                        ? "Uma ou mais viaturas selecionadas já estão indisponíveis no período indicado."
-                        : "As seguintes viaturas já estão indisponíveis no período indicado: " + transportesIndisponiveis + ".");
-    }
-
-    private String formatarIdentificacaoTransporte(Transporte transporte) {
-        if (transporte.getCodigo() != null && !transporte.getCodigo().isBlank()) {
-            return transporte.getCodigo().trim();
-        }
-        if (transporte.getMatricula() != null && !transporte.getMatricula().isBlank()) {
-            return transporte.getMatricula().trim();
-        }
-        return "#" + transporte.getId();
     }
 
     @Transactional
@@ -302,14 +185,6 @@ public class RequisicaoService {
         Requisicao requisicao = obterPorId(id);
         validarTransicaoEstado(requisicao.getEstado(), novoEstado);
 
-        if (novoEstado == RequisicaoEstado.ACEITE && requisicao instanceof RequisicaoTransporte requisicaoTransporte) {
-            validarTransportesDisponiveis(
-                    extrairTransportes(requisicaoTransporte),
-                    requisicaoTransporte.getDataHoraSaida(),
-                    requisicaoTransporte.getDataHoraRegresso(),
-                    requisicaoTransporte.getId());
-        }
-
         requisicao.setEstado(novoEstado);
         requisicao.setGeridoPor(obterFuncionario(alteradoPorId));
         requisicao.setUltimaAlteracaoEstadoEm(LocalDateTime.now());
@@ -325,32 +200,62 @@ public class RequisicaoService {
     public Material criarMaterialCatalogo(CriarMaterialRequest request) {
         Material material = new Material();
         material.setNome(request.nome().trim());
-        material.setDescricao(request.descricao() != null ? request.descricao().trim() : null);
         material.setCategoria(request.categoria());
         material.setAtributo(request.atributo().trim());
         material.setValorAtributo(request.valorAtributo().trim());
         return materialRepository.save(material);
     }
 
+    @Transactional
+    public Material atualizarMaterialCatalogo(Long id, CriarMaterialRequest request) {
+        Material material = materialRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Material não encontrado: " + id));
+
+        material.setNome(request.nome().trim());
+        material.setCategoria(request.categoria());
+        material.setAtributo(request.atributo().trim());
+        material.setValorAtributo(request.valorAtributo().trim());
+
+        return materialRepository.save(material);
+    }
+
+    @Transactional
+    public void apagarMaterialCatalogo(Long id) {
+        if (requisicaoMaterialRepository.existsByItensMaterialId(id)) {
+            throw new IllegalArgumentException("Não é possível apagar: material está associado a requisições.");
+        }
+
+        if (!materialRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Material não encontrado: " + id);
+        }
+
+        materialRepository.deleteById(id);
+    }
+
     public List<Transporte> listarTransportes() {
         return transporteRepository.findAll(
-                Sort.by(
-                        Sort.Order.asc("codigo").nullsLast(),
-                        Sort.Order.asc("tipo"),
-                        Sort.Order.asc("matricula")));
+                Sort.by(Sort.Order.asc("codigo"), Sort.Order.asc("tipo"), Sort.Order.asc("matricula")));
     }
 
     @Transactional
     public Transporte criarTransporteCatalogo(CriarTransporteRequest request) {
-        String codigoNormalizado = normalizarTextoOpcional(request.codigo(), true);
-        String matriculaNormalizada = normalizarTextoObrigatorio(request.matricula(), true);
+        String codigoNormalizado = normalizarTextoObrigatorio(request.codigo(), "Código interno");
+        String tipoNormalizado = normalizarTextoObrigatorio(request.tipo(), "Tipo");
+        String marcaNormalizada = normalizarTextoObrigatorio(request.marca(), "Marca");
+        String modeloNormalizado = normalizarTextoObrigatorio(request.modelo(), "Modelo");
 
-        if (codigoNormalizado != null) {
-            transporteRepository.findByCodigo(codigoNormalizado)
-                    .ifPresent(existing -> {
-                        throw new IllegalArgumentException("Já existe transporte com o código: " + request.codigo());
-                    });
+        if (request.categoria() == null) {
+            throw new IllegalArgumentException("A categoria do transporte é obrigatória.");
         }
+        if (request.lotacao() == null || request.lotacao() <= 0) {
+            throw new IllegalArgumentException("A lotação do transporte é obrigatória e deve ser maior que zero.");
+        }
+        if (request.dataMatricula() == null) {
+            throw new IllegalArgumentException("A data de matrícula do transporte é obrigatória.");
+        }
+
+        String matriculaNormalizada = normalizarTextoObrigatorio(request.matricula(), "Matrícula")
+                .toUpperCase(Locale.ROOT);
 
         transporteRepository.findByMatricula(matriculaNormalizada)
                 .ifPresent(existing -> {
@@ -359,26 +264,99 @@ public class RequisicaoService {
 
         Transporte transporte = new Transporte();
         transporte.setCodigo(codigoNormalizado);
-        transporte.setTipo(normalizarTextoObrigatorio(request.tipo(), false));
+        transporte.setTipo(tipoNormalizado);
         transporte.setCategoria(request.categoria());
         transporte.setMatricula(matriculaNormalizada);
-        transporte.setMarca(normalizarTextoOpcional(request.marca(), false));
-        transporte.setModelo(normalizarTextoOpcional(request.modelo(), false));
+        transporte.setMarca(marcaNormalizada);
+        transporte.setModelo(modeloNormalizado);
         transporte.setLotacao(request.lotacao());
         transporte.setDataMatricula(request.dataMatricula());
 
         return transporteRepository.save(transporte);
     }
 
-    private String normalizarTextoObrigatorio(String valor, boolean uppercase) {
-        return uppercase ? valor.trim().toUpperCase(Locale.ROOT) : valor.trim();
+    @Transactional
+    public Transporte atualizarTransporteCatalogo(Long id, CriarTransporteRequest request) {
+        Transporte transporte = transporteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
+
+        String matriculaNormalizada = request.matricula().trim().toUpperCase(Locale.ROOT);
+        transporteRepository.findByMatricula(matriculaNormalizada)
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Já existe transporte com a matrícula: " + request.matricula());
+                });
+
+        transporte.setCodigo(normalizarTextoOpcional(request.codigo()));
+        transporte.setTipo(request.tipo().trim());
+        transporte.setCategoria(request.categoria());
+        transporte.setMatricula(matriculaNormalizada);
+        transporte.setMarca(request.marca() != null ? request.marca().trim() : null);
+        transporte.setModelo(request.modelo() != null ? request.modelo().trim() : null);
+        transporte.setLotacao(request.lotacao());
+        transporte.setDataMatricula(request.dataMatricula());
+
+        return transporteRepository.save(transporte);
     }
 
-    private String normalizarTextoOpcional(String valor, boolean uppercase) {
-        if (valor == null || valor.isBlank()) {
-            return null;
+    @Transactional
+    public void apagarTransporteCatalogo(Long id) {
+        if (requisicaoTransporteRepository.existsByTransporteId(id)) {
+            throw new IllegalArgumentException("Não é possível apagar: transporte está associado a requisições.");
         }
-        return uppercase ? valor.trim().toUpperCase(Locale.ROOT) : valor.trim();
+
+        if (!transporteRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Transporte não encontrado: " + id);
+        }
+
+        transporteRepository.deleteById(id);
+    }
+
+    public List<TipoManutencao> listarTiposManutencao() {
+        return tipoManutencaoRepository.findAllByOrderByNomeAsc();
+    }
+
+    @Transactional
+    public TipoManutencao criarTipoManutencao(CriarTipoManutencaoRequest request) {
+        String nomeNormalizado = request.nome().trim();
+        tipoManutencaoRepository.findByNomeIgnoreCase(nomeNormalizado)
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Já existe tipo de manutenção com o nome: " + request.nome());
+                });
+
+        TipoManutencao tipo = new TipoManutencao();
+        tipo.setNome(nomeNormalizado);
+        tipo.setDescricao(request.descricao() != null ? request.descricao().trim() : null);
+        return tipoManutencaoRepository.save(tipo);
+    }
+
+    @Transactional
+    public TipoManutencao atualizarTipoManutencao(Long id, CriarTipoManutencaoRequest request) {
+        TipoManutencao tipo = tipoManutencaoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de manutenção não encontrado: " + id));
+
+        String nomeNormalizado = request.nome().trim();
+        tipoManutencaoRepository.findByNomeIgnoreCase(nomeNormalizado)
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Já existe tipo de manutenção com o nome: " + request.nome());
+                });
+
+        tipo.setNome(nomeNormalizado);
+        tipo.setDescricao(request.descricao() != null ? request.descricao().trim() : null);
+        return tipoManutencaoRepository.save(tipo);
+    }
+
+    @Transactional
+    public void apagarTipoManutencao(Long id) {
+        TipoManutencao tipo = tipoManutencaoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de manutenção não encontrado: " + id));
+
+        if (requisicaoManutencaoRepository.existsByAssuntoIgnoreCase(tipo.getNome())) {
+            throw new IllegalArgumentException("Não é possível apagar: tipo está associado a requisições de manutenção.");
+        }
+
+        tipoManutencaoRepository.delete(tipo);
     }
 
     private void validarTransicaoEstado(RequisicaoEstado estadoAtual, RequisicaoEstado novoEstado) {
@@ -386,17 +364,37 @@ public class RequisicaoService {
             throw new IllegalArgumentException("O estado novo tem de ser diferente do estado atual.");
         }
 
+        if (estadoAtual == RequisicaoEstado.ENVIADA && novoEstado == RequisicaoEstado.EM_ANALISE) {
+            return;
+        }
+
         if (estadoAtual == RequisicaoEstado.EM_ANALISE
-            && (novoEstado == RequisicaoEstado.ACEITE || novoEstado == RequisicaoEstado.RECUSADA)) {
+                && (novoEstado == RequisicaoEstado.CONCLUIDA || novoEstado == RequisicaoEstado.CANCELADA)) {
             return;
         }
 
         throw new IllegalArgumentException(
-            "Transição de estado inválida. Fluxo permitido: EM_ANALISE -> ACEITE ou EM_ANALISE -> RECUSADA.");
+                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> CONCLUIDA ou ENVIADA -> EM_ANALISE -> CANCELADA.");
     }
 
     private Funcionario obterFuncionario(Long id) {
         return funcionarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Funcionário não encontrado: " + id));
+    }
+
+    private String normalizarTextoOpcional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizarTextoObrigatorio(String value, String campo) {
+        String normalized = normalizarTextoOpcional(value);
+        if (normalized == null) {
+            throw new IllegalArgumentException(campo + " é obrigatório.");
+        }
+        return normalized;
     }
 }

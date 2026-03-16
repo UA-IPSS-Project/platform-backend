@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import jakarta.validation.Valid;
 import pt.florinhas.requisicoes.domain.Material;
@@ -20,6 +22,7 @@ import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
+import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.domain.Utilizador;
 import pt.florinhas.requisicoes.dto.AtualizarEstadoRequisicaoRequest;
@@ -27,6 +30,7 @@ import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
+import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
 import pt.florinhas.requisicoes.service.RequisicaoService;
 
@@ -69,9 +73,24 @@ public class RequisicaoController {
     }
 
     @PostMapping("/materiais")
-    @PreAuthorize("hasRole('SECRETARIA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Material> criarMaterialCatalogo(@Valid @RequestBody CriarMaterialRequest request) {
         return ResponseEntity.ok(requisicaoService.criarMaterialCatalogo(request));
+    }
+
+    @PutMapping("/materiais/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Material> atualizarMaterialCatalogo(
+            @PathVariable Long id,
+            @Valid @RequestBody CriarMaterialRequest request) {
+        return ResponseEntity.ok(requisicaoService.atualizarMaterialCatalogo(id, request));
+    }
+
+    @DeleteMapping("/materiais/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> apagarMaterialCatalogo(@PathVariable Long id) {
+        requisicaoService.apagarMaterialCatalogo(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/transportes")
@@ -80,9 +99,50 @@ public class RequisicaoController {
     }
 
     @PostMapping("/transportes")
-    @PreAuthorize("hasRole('SECRETARIA')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Transporte> criarTransporteCatalogo(@Valid @RequestBody CriarTransporteRequest request) {
         return ResponseEntity.ok(requisicaoService.criarTransporteCatalogo(request));
+    }
+
+    @PutMapping("/transportes/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Transporte> atualizarTransporteCatalogo(
+            @PathVariable Long id,
+            @Valid @RequestBody CriarTransporteRequest request) {
+        return ResponseEntity.ok(requisicaoService.atualizarTransporteCatalogo(id, request));
+    }
+
+    @DeleteMapping("/transportes/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> apagarTransporteCatalogo(@PathVariable Long id) {
+        requisicaoService.apagarTransporteCatalogo(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/tipos-manutencao")
+    public List<TipoManutencao> listarTiposManutencao() {
+        return requisicaoService.listarTiposManutencao();
+    }
+
+    @PostMapping("/tipos-manutencao")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TipoManutencao> criarTipoManutencao(@Valid @RequestBody CriarTipoManutencaoRequest request) {
+        return ResponseEntity.ok(requisicaoService.criarTipoManutencao(request));
+    }
+
+    @PutMapping("/tipos-manutencao/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TipoManutencao> atualizarTipoManutencao(
+            @PathVariable Long id,
+            @Valid @RequestBody CriarTipoManutencaoRequest request) {
+        return ResponseEntity.ok(requisicaoService.atualizarTipoManutencao(id, request));
+    }
+
+    @DeleteMapping("/tipos-manutencao/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> apagarTipoManutencao(@PathVariable Long id) {
+        requisicaoService.apagarTipoManutencao(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/material")

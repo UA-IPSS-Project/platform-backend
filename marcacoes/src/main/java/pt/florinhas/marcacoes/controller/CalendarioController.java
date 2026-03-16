@@ -127,7 +127,7 @@ public class CalendarioController {
         }
 
         @PutMapping("/configuracao-slots/{tipo}")
-        @PreAuthorize("hasAnyRole('SECRETARIA', 'ADMIN')")
+        @PreAuthorize("hasRole('ADMIN')")
         public ResponseEntity<ConfiguracaoSlotDTO> atualizarConfiguracaoSlot(
                         @PathVariable String tipo,
                         @Valid @RequestBody AtualizarConfiguracaoSlotRequest request) {

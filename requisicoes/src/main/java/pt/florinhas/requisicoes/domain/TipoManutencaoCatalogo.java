@@ -2,8 +2,6 @@ package pt.florinhas.requisicoes.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -12,25 +10,18 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "Material")
+@Table(name = "tipo_manutencao_catalogo")
 @Data
 @NoArgsConstructor
-public class Material {
+public class TipoManutencaoCatalogo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 120)
+    @Column(nullable = false, length = 120, unique = true)
     private String nome;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private MaterialCategoria categoria;
-
-    @Column(length = 80)
-    private String atributo;
-
-    @Column(length = 120)
-    private String valorAtributo;
+    @Column(length = 255)
+    private String descricao;
 }

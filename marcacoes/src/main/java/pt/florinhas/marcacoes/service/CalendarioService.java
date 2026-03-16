@@ -68,9 +68,14 @@ public class CalendarioService {
      * Endpoint público para feriados nacionais (Portugal).
      */
     private static final String API_PT_HOLIDAYS = "https://date.nager.at/api/v3/publicholidays/%d/PT";
-    private static final int CAPACIDADE_SLOT_DEFAULT = 1;
+    private static final int CAPACIDADE_SLOT_DEFAULT_SECRETARIA = 1;
+    private static final int CAPACIDADE_SLOT_DEFAULT_BALNEARIO = 2;
     private static final String TIPO_SECRETARIA = "SECRETARIA";
     private static final String TIPO_BALNEARIO = "BALNEARIO";
+
+    private int capacidadeSlotDefault(String tipo) {
+        return TIPO_BALNEARIO.equals(tipo) ? CAPACIDADE_SLOT_DEFAULT_BALNEARIO : CAPACIDADE_SLOT_DEFAULT_SECRETARIA;
+    }
 
     /**
      * Carrega os feriados do ano corrente no arranque da aplicação.
@@ -151,12 +156,12 @@ public class CalendarioService {
     public int getCapacidadePorSlot(String tipo) {
         String tipoNormalizado = normalizarTipo(tipo);
         if (tipoNormalizado == null) {
-            return CAPACIDADE_SLOT_DEFAULT;
+            return CAPACIDADE_SLOT_DEFAULT_SECRETARIA;
         }
 
         return configuracaoAgendaRepository.findByTipo(tipoNormalizado)
                 .map(ConfiguracaoAgenda::getCapacidadePorSlot)
-                .orElse(CAPACIDADE_SLOT_DEFAULT);
+                .orElse(capacidadeSlotDefault(tipoNormalizado));
     }
 
     @Transactional

@@ -6,7 +6,6 @@ import pt.florinhas.requisicoes.domain.MaterialCategoria;
 
 public record CriarMaterialRequest(
         @NotBlank String nome,
-        String descricao,
         @NotNull MaterialCategoria categoria,
         @NotBlank String atributo,
         @NotBlank String valorAtributo) {

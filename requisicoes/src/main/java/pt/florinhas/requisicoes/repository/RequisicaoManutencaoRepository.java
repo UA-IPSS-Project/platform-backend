@@ -7,4 +7,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
 
 @Repository
 public interface RequisicaoManutencaoRepository extends JpaRepository<RequisicaoManutencao, Long> {
+
+	boolean existsByAssuntoIgnoreCase(String assunto);
 }
