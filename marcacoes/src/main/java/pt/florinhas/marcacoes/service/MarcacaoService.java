@@ -49,7 +49,6 @@ import pt.florinhas.marcacoes.validation.NifValidator;
 
 @Slf4j
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class MarcacaoService {
 
@@ -309,6 +308,7 @@ public class MarcacaoService {
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional
     public MarcacaoResponseDTO atualizarEstadoMarcacao(Long id, AtualizarEstadoRequest request) {
         Marcacao marcacao = marcacaoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
@@ -469,6 +469,7 @@ public class MarcacaoService {
         return marcacaoRepository.findAllWithRelations(pageable).map(this::toDTO);
     }
 
+    @Transactional
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
         Marcacao m = new Marcacao();
         m.setData(request.getData());
@@ -497,12 +498,14 @@ public class MarcacaoService {
         return m.getId();
     }
 
+    @Transactional
     public void apagarReservaTemporaria(Long id) {
         if (marcacaoRepository.existsById(id)) {
             marcacaoRepository.deleteById(id);
         }
     }
 
+    @Transactional
     public MarcacaoResponseDTO reagendarMarcacao(Long id, ReagendarMarcacaoRequest request) {
         // Buscar marcação existente
         Marcacao marcacao = marcacaoRepository.findById(id)
@@ -585,6 +588,7 @@ public class MarcacaoService {
 
     @EventListener(ApplicationReadyEvent.class) // Run on startup
     @Scheduled(fixedRate = 60000) // Run every minute
+    @Transactional
     public void limparReservasExpiradas() {
         LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
         // Usa o método customizado que também limpa registos com criadoEm NULL
