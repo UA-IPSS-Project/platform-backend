@@ -10,5 +10,7 @@ import pt.florinhas.requisicoes.domain.Transporte;
 @Repository
 public interface TransporteRepository extends JpaRepository<Transporte, Long> {
 
+    Optional<Transporte> findByCodigo(String codigo);
+
     Optional<Transporte> findByMatricula(String matricula);
 }
