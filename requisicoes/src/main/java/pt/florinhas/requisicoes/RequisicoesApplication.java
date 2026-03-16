@@ -11,6 +11,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -124,6 +125,7 @@ public class RequisicoesApplication {
 
 	@Bean
 	@Order(0)
+	@Profile("bootstrap")
 	CommandLineRunner alinharConstraintCategoriaTransporte(JdbcTemplate jdbcTemplate) {
 		return args -> {
 			jdbcTemplate.execute("ALTER TABLE transporte DROP CONSTRAINT IF EXISTS transporte_categoria_check");
