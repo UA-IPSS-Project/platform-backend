@@ -209,6 +209,8 @@ public class MarcacaoService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Marcacao criarMarcacaoBalneario(CriarMarcacaoBalnearioRequest request) {
+        marcacaoValidator.validarCriacaoBalneario(request);
+
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
@@ -474,6 +476,7 @@ public class MarcacaoService {
         Marcacao m = new Marcacao();
         m.setData(request.getData());
         m.setEstado(EventoEstado.EM_PREENCHIMENTO);
+        String tipoAgenda = normalizarTipoAgenda(request.getTipoAgenda());
 
         // Identificar quem está a reservar
         Long criadorId = request.getCriadoPorId();
@@ -488,11 +491,25 @@ public class MarcacaoService {
             m.setCriadoPor(criador);
         }
 
-        // Criar estrutura mínima de secretaria se necessário para identificar utente na
-        // consulta de bloqueios
-        // A consulta usa `m.getMarcacaoSecretaria().getUtente()` ou `m.getCriadoPor()`.
-        // Se definimos `setCriadoPor`, a consulta de bloqueios já funciona (vimos na
-        // implementação que verifica ambos).
+        if ("BALNEARIO".equals(tipoAgenda)) {
+            MarcacaoBalneario detalhes = new MarcacaoBalneario();
+            detalhes.setNomeUtente("Reserva temporária");
+            detalhes.setProdutosHigiene(false);
+            detalhes.setLavagemRoupa(false);
+            detalhes.setMarcacao(m);
+            m.setMarcacaoBalneario(detalhes);
+        } else {
+            MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
+            detalhes.setAssunto("Reserva temporária");
+            detalhes.setDescricao("Reserva temporária de slot");
+            detalhes.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
+            if (request.getUtenteId() != null) {
+                Utente utente = utenteRepository.findById(request.getUtenteId()).orElse(null);
+                detalhes.setUtente(utente);
+            }
+            detalhes.setMarcacao(m);
+            m.setMarcacaoSecretaria(detalhes);
+        }
 
         m = marcacaoRepository.save(m);
         return m.getId();
@@ -511,9 +528,11 @@ public class MarcacaoService {
         Marcacao marcacao = marcacaoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
 
+        String tipoAgenda = marcacao.getMarcacaoBalneario() != null ? "BALNEARIO" : "SECRETARIA";
+
         // Validar reagendamento com as mesmas verificações que criação (data, hora,
         // feriados, bloqueios, sobreposição)
-        marcacaoValidator.validarReagendamento(request);
+        marcacaoValidator.validarReagendamento(request, tipoAgenda);
 
         // Atualizar data/hora
         marcacao.setData(request.getNovaDataHora());
@@ -593,5 +612,13 @@ public class MarcacaoService {
         LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
         // Usa o método customizado que também limpa registos com criadoEm NULL
         marcacaoRepository.deleteExpiredOrorphan(EventoEstado.EM_PREENCHIMENTO, expirationTime);
+    }
+
+    private String normalizarTipoAgenda(String tipoAgenda) {
+        if (tipoAgenda == null || tipoAgenda.isBlank()) {
+            return "SECRETARIA";
+        }
+        String tipo = tipoAgenda.trim().toUpperCase();
+        return "BALNEARIO".equals(tipo) ? "BALNEARIO" : "SECRETARIA";
     }
 }

@@ -63,6 +63,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         @Param("data") LocalDateTime data,
                         @Param("estado") EventoEstado estado);
 
+        @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data = :data " +
+                        "AND m.estado <> 'CANCELADO' " +
+                        "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL))")
+        long countByDataAndTipo(@Param("data") LocalDateTime data, @Param("tipo") String tipo);
+
         // Consulta com Lock Pessimista para evitar Race Conditions
         @Lock(LockModeType.PESSIMISTIC_WRITE)
         @Query("SELECT m FROM Marcacao m WHERE m.data = :data AND m.estado <> 'CANCELADO'")

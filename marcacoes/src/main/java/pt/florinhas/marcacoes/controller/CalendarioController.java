@@ -1,12 +1,15 @@
 package pt.florinhas.marcacoes.controller;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.marcacoes.dto.AtualizarConfiguracaoSlotRequest;
 import pt.florinhas.marcacoes.dto.BloquearHorarioRequest;
+import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.CalendarioService;
 import pt.florinhas.marcacoes.exception.NotFoundException;
@@ -116,5 +119,20 @@ public class CalendarioController {
                                 LocalTime.parse(hora),
                                 tipo);
                 return ResponseEntity.ok(bloqueado);
+        }
+
+        @GetMapping("/configuracao-slots")
+        public ResponseEntity<List<ConfiguracaoSlotDTO>> listarConfiguracaoSlots() {
+                return ResponseEntity.ok(calendarioService.listarConfiguracoesSlot());
+        }
+
+        @PutMapping("/configuracao-slots/{tipo}")
+        @PreAuthorize("hasAnyRole('SECRETARIA', 'ADMIN')")
+        public ResponseEntity<ConfiguracaoSlotDTO> atualizarConfiguracaoSlot(
+                        @PathVariable String tipo,
+                        @Valid @RequestBody AtualizarConfiguracaoSlotRequest request) {
+                ConfiguracaoSlotDTO dto = calendarioService.atualizarCapacidadePorSlot(tipo,
+                                request.getCapacidadePorSlot());
+                return ResponseEntity.ok(dto);
         }
 }

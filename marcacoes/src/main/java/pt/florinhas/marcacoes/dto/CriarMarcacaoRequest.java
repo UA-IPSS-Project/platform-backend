@@ -72,4 +72,7 @@ public class CriarMarcacaoRequest {
 
     // Data de nascimento do utente (formato ISO yyyy-MM-dd).
     private LocalDate utenteDataNasc;
+
+    // Tipo de agenda para operações de reserva temporária (SECRETARIA | BALNEARIO).
+    private String tipoAgenda;
 }
