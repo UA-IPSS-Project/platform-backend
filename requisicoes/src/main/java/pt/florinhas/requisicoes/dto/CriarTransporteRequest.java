@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import pt.florinhas.requisicoes.domain.TransporteCategoria;
 
 public record CriarTransporteRequest(
+        String codigo,
         @NotBlank String tipo,
         @NotNull TransporteCategoria categoria,
         @NotBlank String matricula,
