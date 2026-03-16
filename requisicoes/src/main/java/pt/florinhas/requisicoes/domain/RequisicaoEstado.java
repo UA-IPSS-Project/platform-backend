@@ -4,7 +4,7 @@ public enum RequisicaoEstado {
     ENVIADA,
     EM_ANALISE,
     ACEITE,
-    NEGADA,
+    RECUSADA,
     CONCLUIDA,
     CANCELADA
 }

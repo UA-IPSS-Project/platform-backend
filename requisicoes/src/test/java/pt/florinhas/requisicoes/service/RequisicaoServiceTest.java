@@ -28,6 +28,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
@@ -231,6 +232,12 @@ class RequisicaoServiceTest {
         when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
         when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
         when(transporteRepository.findById(31L)).thenReturn(Optional.of(transporte2));
+        when(requisicaoTransporteRepository.findConflitosTransporte(
+                RequisicaoEstado.ACEITE,
+                List.of(30L, 31L),
+                LocalDateTime.of(2026, 4, 12, 8, 30),
+                LocalDateTime.of(2026, 4, 12, 18, 0),
+                null)).thenReturn(List.of());
         when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -294,6 +301,12 @@ class RequisicaoServiceTest {
 
         when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
         when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+        when(requisicaoTransporteRepository.findConflitosTransporte(
+                RequisicaoEstado.ACEITE,
+                List.of(30L),
+                LocalDateTime.of(2026, 4, 20, 9, 0),
+                LocalDateTime.of(2026, 4, 20, 12, 0),
+                null)).thenReturn(List.of());
 
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido",
@@ -337,6 +350,82 @@ class RequisicaoServiceTest {
                 () -> requisicaoService.criarTransporte(request));
 
         assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoExisteConflitoComRequisicaoAceite_deveLancarExcecao() {
+        Funcionario criadoPor = funcionarioComId(10L);
+        Transporte transporte = new Transporte();
+        transporte.setId(30L);
+        transporte.setCodigo("BUS-1");
+        transporte.setLotacao(30);
+
+        RequisicaoTransporte conflito = new RequisicaoTransporte();
+        RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+        item.setTransporte(transporte);
+        conflito.getTransportes().add(item);
+
+        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+        when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+        when(requisicaoTransporteRepository.findConflitosTransporte(
+                RequisicaoEstado.ACEITE,
+                List.of(30L),
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 17, 0),
+                null)).thenReturn(List.of(conflito));
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Coimbra",
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 17, 0),
+                8,
+                null,
+                List.of(30L));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("As seguintes viaturas já estão indisponíveis no período indicado: BUS-1.", exception.getMessage());
+    }
+
+    @Test
+    void atualizarEstado_quandoAceitaTransporteComConflito_deveLancarExcecao() {
+        Transporte transporte = new Transporte();
+        transporte.setId(30L);
+        transporte.setCodigo("BUS-1");
+
+        RequisicaoTransporte requisicao = new RequisicaoTransporte();
+        requisicao.setId(99L);
+        requisicao.setEstado(RequisicaoEstado.EM_ANALISE);
+        requisicao.setDataHoraSaida(LocalDateTime.of(2026, 4, 20, 10, 0));
+        requisicao.setDataHoraRegresso(LocalDateTime.of(2026, 4, 20, 17, 0));
+        requisicao.setTransporte(transporte);
+        RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+        item.setTransporte(transporte);
+        requisicao.getTransportes().add(item);
+
+        RequisicaoTransporte conflito = new RequisicaoTransporte();
+        RequisicaoTransporteItem itemConflito = new RequisicaoTransporteItem();
+        itemConflito.setTransporte(transporte);
+        conflito.getTransportes().add(itemConflito);
+
+        when(requisicaoRepository.findById(99L)).thenReturn(Optional.of(requisicao));
+        when(requisicaoTransporteRepository.findConflitosTransporte(
+                RequisicaoEstado.ACEITE,
+                List.of(30L),
+                LocalDateTime.of(2026, 4, 20, 10, 0),
+                LocalDateTime.of(2026, 4, 20, 17, 0),
+                99L)).thenReturn(List.of(conflito));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.atualizarEstado(99L, RequisicaoEstado.ACEITE, 50L));
+
+        assertEquals("As seguintes viaturas já estão indisponíveis no período indicado: BUS-1.", exception.getMessage());
     }
 
     @Test
