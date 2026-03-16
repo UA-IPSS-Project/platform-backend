@@ -1,13 +1,17 @@
 package pt.florinhas.requisicoes.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Sort;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +20,12 @@ import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
-import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterialItem;
+import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
@@ -143,8 +148,34 @@ public class RequisicaoService {
     @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
-        Transporte transporte = transporteRepository.findById(request.transporteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + request.transporteId()));
+        validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
+
+        if (request.transporteIds() == null || request.transporteIds().isEmpty()) {
+            throw new IllegalArgumentException("Pelo menos um transporte deve ser selecionado.");
+        }
+
+        Set<Long> transporteIdsNormalizados = new LinkedHashSet<>(request.transporteIds());
+        List<Transporte> transportesSelecionados = transporteIdsNormalizados.stream()
+            .map(transporteId -> transporteRepository.findById(transporteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + transporteId)))
+            .toList();
+
+        validarTransportesDisponiveis(
+                transportesSelecionados,
+                request.dataHoraSaida(),
+                request.dataHoraRegresso(),
+                null);
+
+        int capacidadeTotal = transportesSelecionados.stream()
+            .map(Transporte::getLotacao)
+            .filter(lotacao -> lotacao != null && lotacao > 0)
+            .mapToInt(lotacao -> Math.max(0, lotacao - 1))
+            .sum();
+
+        if (capacidadeTotal < request.numeroPassageiros()) {
+            throw new IllegalArgumentException(
+                "A lotação útil das viaturas selecionadas é insuficiente para o número de passageiros indicado.");
+        }
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(request.descricao());
@@ -153,9 +184,101 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        requisicao.setTransporte(transporte);
+        requisicao.setDestino(normalizarTextoObrigatorio(request.destino(), false));
+        requisicao.setDataHoraSaida(request.dataHoraSaida());
+        requisicao.setDataHoraRegresso(request.dataHoraRegresso());
+        requisicao.setNumeroPassageiros(request.numeroPassageiros());
+        requisicao.setCondutor(normalizarTextoOpcional(request.condutor(), false));
+        requisicao.setTransporte(transportesSelecionados.getFirst());
+
+        for (Transporte transporte : transportesSelecionados) {
+            RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+            item.setTransporte(transporte);
+            requisicao.getTransportes().add(item);
+        }
 
         return requisicaoTransporteRepository.save(requisicao);
+    }
+
+    private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
+        if (!dataHoraRegresso.isAfter(dataHoraSaida)) {
+            throw new IllegalArgumentException("A data/hora de regresso deve ser posterior à data/hora de saída.");
+        }
+    }
+
+    private List<Transporte> extrairTransportes(RequisicaoTransporte requisicao) {
+        List<Transporte> transportesSelecionados = new ArrayList<>();
+
+        if (requisicao.getTransporte() != null) {
+            transportesSelecionados.add(requisicao.getTransporte());
+        }
+
+        requisicao.getTransportes().stream()
+                .map(RequisicaoTransporteItem::getTransporte)
+                .filter(Objects::nonNull)
+                .forEach(transportesSelecionados::add);
+
+        return transportesSelecionados.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(Transporte::getId, transporte -> transporte, (left, right) -> left, LinkedHashMap::new))
+                .values()
+                .stream()
+                .toList();
+    }
+
+    private void validarTransportesDisponiveis(
+            List<Transporte> transportesSelecionados,
+            LocalDateTime dataHoraSaida,
+            LocalDateTime dataHoraRegresso,
+            Long requisicaoIgnoradaId) {
+        List<Long> transporteIds = transportesSelecionados.stream()
+                .map(Transporte::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (transporteIds.isEmpty()) {
+            return;
+        }
+
+        List<RequisicaoTransporte> conflitos = requisicaoTransporteRepository.findConflitosTransporte(
+                RequisicaoEstado.ACEITE,
+                transporteIds,
+                dataHoraSaida,
+                dataHoraRegresso,
+                requisicaoIgnoradaId);
+
+        if (conflitos == null || conflitos.isEmpty()) {
+            return;
+        }
+
+        Set<Long> idsEmConflito = conflitos.stream()
+                .flatMap(requisicao -> extrairTransportes(requisicao).stream())
+                .map(Transporte::getId)
+                .filter(Objects::nonNull)
+                .filter(transporteIds::contains)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        String transportesIndisponiveis = transportesSelecionados.stream()
+                .filter(transporte -> transporte.getId() != null && idsEmConflito.contains(transporte.getId()))
+                .map(this::formatarIdentificacaoTransporte)
+                .distinct()
+                .collect(Collectors.joining(", "));
+
+        throw new IllegalArgumentException(
+                transportesIndisponiveis.isBlank()
+                        ? "Uma ou mais viaturas selecionadas já estão indisponíveis no período indicado."
+                        : "As seguintes viaturas já estão indisponíveis no período indicado: " + transportesIndisponiveis + ".");
+    }
+
+    private String formatarIdentificacaoTransporte(Transporte transporte) {
+        if (transporte.getCodigo() != null && !transporte.getCodigo().isBlank()) {
+            return transporte.getCodigo().trim();
+        }
+        if (transporte.getMatricula() != null && !transporte.getMatricula().isBlank()) {
+            return transporte.getMatricula().trim();
+        }
+        return "#" + transporte.getId();
     }
 
     @Transactional
@@ -178,6 +301,14 @@ public class RequisicaoService {
     public Requisicao atualizarEstado(Long id, RequisicaoEstado novoEstado, Long alteradoPorId) {
         Requisicao requisicao = obterPorId(id);
         validarTransicaoEstado(requisicao.getEstado(), novoEstado);
+
+        if (novoEstado == RequisicaoEstado.ACEITE && requisicao instanceof RequisicaoTransporte requisicaoTransporte) {
+            validarTransportesDisponiveis(
+                    extrairTransportes(requisicaoTransporte),
+                    requisicaoTransporte.getDataHoraSaida(),
+                    requisicaoTransporte.getDataHoraRegresso(),
+                    requisicaoTransporte.getId());
+        }
 
         requisicao.setEstado(novoEstado);
         requisicao.setGeridoPor(obterFuncionario(alteradoPorId));
@@ -203,7 +334,10 @@ public class RequisicaoService {
 
     public List<Transporte> listarTransportes() {
         return transporteRepository.findAll(
-                Sort.by(Sort.Order.asc("codigo"), Sort.Order.asc("tipo"), Sort.Order.asc("matricula")));
+                Sort.by(
+                        Sort.Order.asc("codigo").nullsLast(),
+                        Sort.Order.asc("tipo"),
+                        Sort.Order.asc("matricula")));
     }
 
     @Transactional
@@ -252,17 +386,13 @@ public class RequisicaoService {
             throw new IllegalArgumentException("O estado novo tem de ser diferente do estado atual.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ENVIADA && novoEstado == RequisicaoEstado.EM_ANALISE) {
-            return;
-        }
-
         if (estadoAtual == RequisicaoEstado.EM_ANALISE
-                && (novoEstado == RequisicaoEstado.CONCLUIDA || novoEstado == RequisicaoEstado.CANCELADA)) {
+            && (novoEstado == RequisicaoEstado.ACEITE || novoEstado == RequisicaoEstado.RECUSADA)) {
             return;
         }
 
         throw new IllegalArgumentException(
-                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> CONCLUIDA ou ENVIADA -> EM_ANALISE -> CANCELADA.");
+            "Transição de estado inválida. Fluxo permitido: EM_ANALISE -> ACEITE ou EM_ANALISE -> RECUSADA.");
     }
 
     private Funcionario obterFuncionario(Long id) {
