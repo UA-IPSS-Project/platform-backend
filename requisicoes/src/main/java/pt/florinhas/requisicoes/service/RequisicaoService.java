@@ -153,12 +153,12 @@ public class RequisicaoService {
         int capacidadeTotal = transportesSelecionados.stream()
             .map(Transporte::getLotacao)
             .filter(lotacao -> lotacao != null && lotacao > 0)
-            .mapToInt(Integer::intValue)
+            .mapToInt(lotacao -> Math.max(0, lotacao - 1))
             .sum();
 
         if (capacidadeTotal < request.numeroPassageiros()) {
             throw new IllegalArgumentException(
-                "A lotação total das viaturas selecionadas é insuficiente para o número de passageiros indicado.");
+                "A lotação útil das viaturas selecionadas é insuficiente para o número de passageiros indicado.");
         }
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();

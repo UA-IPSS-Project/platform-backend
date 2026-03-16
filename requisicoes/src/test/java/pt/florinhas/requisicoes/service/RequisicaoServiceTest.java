@@ -311,7 +311,7 @@ class RequisicaoServiceTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> requisicaoService.criarTransporte(request));
 
-        assertEquals("A lotação total das viaturas selecionadas é insuficiente para o número de passageiros indicado.",
+        assertEquals("A lotação útil das viaturas selecionadas é insuficiente para o número de passageiros indicado.",
                 exception.getMessage());
     }
 
