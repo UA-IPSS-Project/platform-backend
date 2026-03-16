@@ -23,6 +23,9 @@ public class Transporte {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 10, unique = true)
+    private String codigo;
+
     @Column(length = 80)
     private String tipo;
 

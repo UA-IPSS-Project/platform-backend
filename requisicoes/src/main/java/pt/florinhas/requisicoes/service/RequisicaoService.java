@@ -196,25 +196,48 @@ public class RequisicaoService {
     }
 
     public List<Transporte> listarTransportes() {
-        return transporteRepository.findAll();
+        return transporteRepository.findAll(
+                Sort.by(Sort.Order.asc("codigo"), Sort.Order.asc("tipo"), Sort.Order.asc("matricula")));
     }
 
     public Transporte criarTransporteCatalogo(CriarTransporteRequest request) {
-        transporteRepository.findByMatricula(request.matricula().trim())
+        String codigoNormalizado = normalizarTextoOpcional(request.codigo(), true);
+        String matriculaNormalizada = normalizarTextoObrigatorio(request.matricula(), true);
+
+        if (codigoNormalizado != null) {
+            transporteRepository.findByCodigo(codigoNormalizado)
+                    .ifPresent(existing -> {
+                        throw new IllegalArgumentException("Já existe transporte com o código: " + request.codigo());
+                    });
+        }
+
+        transporteRepository.findByMatricula(matriculaNormalizada)
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("Já existe transporte com a matrícula: " + request.matricula());
                 });
 
         Transporte transporte = new Transporte();
-        transporte.setTipo(request.tipo().trim());
+        transporte.setCodigo(codigoNormalizado);
+        transporte.setTipo(normalizarTextoObrigatorio(request.tipo(), false));
         transporte.setCategoria(request.categoria());
-        transporte.setMatricula(request.matricula().trim());
-        transporte.setMarca(request.marca() != null ? request.marca().trim() : null);
-        transporte.setModelo(request.modelo() != null ? request.modelo().trim() : null);
+        transporte.setMatricula(matriculaNormalizada);
+        transporte.setMarca(normalizarTextoOpcional(request.marca(), false));
+        transporte.setModelo(normalizarTextoOpcional(request.modelo(), false));
         transporte.setLotacao(request.lotacao());
         transporte.setDataMatricula(request.dataMatricula());
 
         return transporteRepository.save(transporte);
+    }
+
+    private String normalizarTextoObrigatorio(String valor, boolean uppercase) {
+        return uppercase ? valor.trim().toUpperCase(Locale.ROOT) : valor.trim();
+    }
+
+    private String normalizarTextoOpcional(String valor, boolean uppercase) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+        return uppercase ? valor.trim().toUpperCase(Locale.ROOT) : valor.trim();
     }
 
     private void validarTransicaoEstado(RequisicaoEstado estadoAtual, RequisicaoEstado novoEstado) {
