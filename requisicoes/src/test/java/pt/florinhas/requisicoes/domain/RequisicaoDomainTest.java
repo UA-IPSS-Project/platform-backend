@@ -13,7 +13,7 @@ class RequisicaoDomainTest {
 
         requisicao.onCreate();
 
-        assertEquals(RequisicaoEstado.ENVIADA, requisicao.getEstado());
+        assertEquals(RequisicaoEstado.EM_ANALISE, requisicao.getEstado());
         assertNotNull(requisicao.getCriadoEm());
         assertNotNull(requisicao.getUltimaAlteracaoEstadoEm());
     }

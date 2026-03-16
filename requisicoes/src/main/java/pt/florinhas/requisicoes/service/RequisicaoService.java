@@ -372,17 +372,13 @@ public class RequisicaoService {
             throw new IllegalArgumentException("O estado novo tem de ser diferente do estado atual.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ENVIADA && novoEstado == RequisicaoEstado.EM_ANALISE) {
-            return;
-        }
-
         if (estadoAtual == RequisicaoEstado.EM_ANALISE
             && (novoEstado == RequisicaoEstado.ACEITE || novoEstado == RequisicaoEstado.RECUSADA)) {
             return;
         }
 
         throw new IllegalArgumentException(
-            "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> ACEITE ou ENVIADA -> EM_ANALISE -> RECUSADA.");
+            "Transição de estado inválida. Fluxo permitido: EM_ANALISE -> ACEITE ou EM_ANALISE -> RECUSADA.");
     }
 
     private Funcionario obterFuncionario(Long id) {
