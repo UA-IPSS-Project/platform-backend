@@ -38,21 +38,29 @@ public class MarcacoesApplication {
 	@Bean
 	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
 		return args -> {
-			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
-					"999999999",
-					"Admin Plataforma",
-					"admin@florinhasdovouga.pt",
-					"999999999",
-					"admin123",
-					FuncionarioTipo.ADMIN));
+			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+				    "999999999",
+				    "Admin Plataforma",
+				    "admin@florinhasdovouga.pt",
+				    "999999999",
+				    "admin123",
+				    FuncionarioTipo.ADMIN));
 
-			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
-					"999999998",
-					"Funcionário Secretaria",
-					"secretaria@florinhasdovouga.pt",
-					"999999998",
-					"sec123",
-					FuncionarioTipo.SECRETARIA));
+			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+				    "999999998",
+				    "Funcionário Secretaria",
+				    "secretaria@florinhasdovouga.pt",
+				    "999999998",
+				    "sec123",
+				    FuncionarioTipo.SECRETARIA));
+
+			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+				    "999999997",
+				    "Funcionário Balneário",
+				    "balneario@florinhasdovouga.pt",
+				    "999999997",
+				    "bal123",
+				    FuncionarioTipo.BALNEARIO));
 		};
 	}
 

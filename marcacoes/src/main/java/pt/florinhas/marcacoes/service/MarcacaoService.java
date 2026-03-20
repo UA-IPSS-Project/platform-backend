@@ -214,6 +214,7 @@ public class MarcacaoService {
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
+        marcacao.setDuration(30); // Exclusivo para balneário
 
         MarcacaoBalneario detalhes = new MarcacaoBalneario();
         detalhes.setNomeUtente(request.getNomeUtente());
