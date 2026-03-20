@@ -305,14 +305,18 @@ public class UtilizadorService {
                 String roleStr = request.getRole();
                 FuncionarioTipo tipo = FuncionarioTipo.OUTRO;
                 if (roleStr != null) {
-                    if (roleStr.equalsIgnoreCase("Secretaria"))
+                    String normalizedRole = roleStr.trim().toUpperCase();
+                    if (normalizedRole.equals("SECRETARIA") || normalizedRole.equals("SECRETARY")) {
                         tipo = FuncionarioTipo.SECRETARIA;
-                    else if (roleStr.toUpperCase().contains("BALNE"))
+                    } else if (normalizedRole.equals("BALNEARIO") || normalizedRole.equals("BALNEÁRIO")
+                            || normalizedRole.contains("BALNE")) {
                         tipo = FuncionarioTipo.BALNEARIO;
-                    else if (roleStr.equalsIgnoreCase("Escola"))
+                    } else if (normalizedRole.equals("ESCOLA") || normalizedRole.equals("SCHOOL")) {
                         tipo = FuncionarioTipo.ESCOLA;
-                    else if (roleStr.toUpperCase().contains("INTERNO"))
+                    } else if (normalizedRole.equals("INTERNO") || normalizedRole.equals("INTERNOS")
+                            || normalizedRole.contains("INTERNO")) {
                         tipo = FuncionarioTipo.INTERNO;
+                    }
                 }
                 f.setTipo(tipo);
             } catch (Exception e) {
