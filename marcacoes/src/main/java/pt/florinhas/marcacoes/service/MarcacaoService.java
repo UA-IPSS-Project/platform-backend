@@ -467,12 +467,19 @@ public class MarcacaoService {
         return marcacaoRepository.findAllWithRelations(pageable).map(this::toDTO);
     }
 
+
     @Transactional
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
         Marcacao m = new Marcacao();
         m.setData(request.getData());
         m.setEstado(EventoEstado.EM_PREENCHIMENTO);
         String tipoAgenda = normalizarTipoAgenda(request.getTipoAgenda());
+        // Definir duration conforme o tipo de agenda
+        if ("BALNEARIO".equalsIgnoreCase(tipoAgenda)) {
+            m.setDuration(BALNEARIO_DEFAULT_DURATION_MINUTES);
+        } else {
+            m.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
+        }
 
         // Identificar quem está a reservar
         Long criadorId = request.getCriadoPorId();
