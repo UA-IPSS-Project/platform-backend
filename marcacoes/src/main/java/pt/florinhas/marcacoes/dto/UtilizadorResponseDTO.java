@@ -33,6 +33,7 @@ public class UtilizadorResponseDTO {
     private String telefoneEmprego;
     private boolean active;
     private String funcao;
+    private boolean createdBySecretaria;
 
     /**
      * Construtor/factory estático para converter uma entidade Utilizador
@@ -67,6 +68,8 @@ public class UtilizadorResponseDTO {
             if (func.getTipo() != null) {
                 dto.setFuncao(func.getTipo().toString());
             }
+            // Se termsAcceptedAt é null, foi criado pela secretaria
+            dto.setCreatedBySecretaria(utilizador.getTermsAcceptedAt() == null);
         } else {
             dto.setActive(true);
         }
