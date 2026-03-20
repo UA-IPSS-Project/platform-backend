@@ -473,6 +473,9 @@ public class MarcacaoService {
         m.setData(request.getData());
         m.setEstado(EventoEstado.EM_PREENCHIMENTO);
         String tipoAgenda = normalizarTipoAgenda(request.getTipoAgenda());
+        m.setDuration("BALNEARIO".equals(tipoAgenda)
+            ? BALNEARIO_DEFAULT_DURATION_MINUTES
+            : SECRETARIA_DEFAULT_DURATION_MINUTES);
 
         // Identificar quem está a reservar
         Long criadorId = request.getCriadoPorId();
