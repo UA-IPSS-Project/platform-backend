@@ -1,27 +1,38 @@
 package pt.florinhas.marcacoes.service;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
+import io.minio.GetObjectResponse;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import io.minio.StatObjectArgs;
+import io.minio.StatObjectResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
+import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
@@ -31,7 +42,7 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
  * 
  * Funcionalidades:
  * - Upload de documentos com validação de tipo e tamanho
- * - Armazenamento seguro no sistema de ficheiros
+ * - Armazenamento seguro em MinIO
  * - Recuperação de documentos para download
  * - Remoção de documentos
  */
@@ -42,13 +53,13 @@ public class DocumentoService {
 
     private final DocumentoRepository documentoRepository;
     private final MarcacaoRepository marcacaoRepository;
+    private final MinioClient minioClient;
 
     /**
-     * Diretório base onde os documentos são armazenados.
-     * Configurável via application.properties
+     * Bucket MinIO onde os documentos são armazenados.
      */
-    @Value("${app.upload.dir:uploads/documentos}")
-    private String uploadDir;
+    @Value("${minio.bucket:marcacoes}")
+    private String bucketName;
 
     /**
      * Tamanho máximo permitido para upload (em bytes).
@@ -98,25 +109,32 @@ public class DocumentoService {
         // Criar diretório organizado por ano/mês
         LocalDate hoje = LocalDate.now();
         String caminhoRelativo = String.format("%d/%02d", hoje.getYear(), hoje.getMonthValue());
-        Path diretorioDestino = Paths.get(uploadDir, caminhoRelativo);
-        
-        // Criar diretórios se não existirem
-        Files.createDirectories(diretorioDestino);
+        String objectName = caminhoRelativo + "/" + nomeArmazenado;
+        String tipo = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
 
-        // Caminho completo do ficheiro
-        Path caminhoCompleto = diretorioDestino.resolve(nomeArmazenado);
+        try (InputStream inputStream = file.getInputStream()) {
+            garantirBucketExiste();
 
-        // Copiar ficheiro para o destino
-        Files.copy(file.getInputStream(), caminhoCompleto, StandardCopyOption.REPLACE_EXISTING);
+            minioClient.putObject(
+                PutObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(objectName)
+                    .stream(inputStream, file.getSize(), -1)
+                    .contentType(tipo)
+                    .build()
+            );
+        } catch (Exception e) {
+            throw new IOException("Erro ao guardar ficheiro no MinIO", e);
+        }
 
-        log.info("Ficheiro salvo em: {}", caminhoCompleto);
+        log.info("Ficheiro salvo no MinIO: {}", objectName);
 
         // Criar entidade Documento
         Documento documento = new Documento();
         documento.setNomeOriginal(nomeOriginal);
         documento.setNomeArmazenado(nomeArmazenado);
-        documento.setCaminho(caminhoRelativo + "/" + nomeArmazenado);
-        documento.setTipo(file.getContentType());
+        documento.setCaminho(objectName);
+        documento.setTipo(tipo);
         documento.setTamanho(file.getSize());
         documento.setMarcacao(marcacao);
 
@@ -145,6 +163,109 @@ public class DocumentoService {
     }
 
     /**
+     * Pesquisa documentos por metadados com filtros opcionais.
+     *
+     * @param marcacaoId ID da marcação
+     * @param nomeOriginal parte do nome original
+     * @param nomeArmazenado parte do nome armazenado
+     * @param tipo tipo MIME
+    * @param utenteNome parte do nome do utente associado
+    * @param utenteNif parte do NIF do utente associado
+     * @param uploadedDesde data/hora inicial de upload
+     * @param uploadedAte data/hora final de upload
+     * @return lista de documentos encontrados
+     */
+    @Transactional(readOnly = true)
+    public List<DocumentoDTO> pesquisarDocumentosPorMetadados(
+        Long marcacaoId,
+        String nomeOriginal,
+        String nomeArmazenado,
+        String tipo,
+        String utenteNome,
+        String utenteNif,
+        LocalDateTime uploadedDesde,
+        LocalDateTime uploadedAte
+    ) {
+        if (uploadedDesde != null && uploadedAte != null && uploadedDesde.isAfter(uploadedAte)) {
+            throw new IllegalArgumentException("uploadedDesde não pode ser posterior a uploadedAte");
+        }
+
+        log.info("Pesquisa de documentos por metadados (marcacaoId={}, tipo={})", marcacaoId, tipo);
+
+        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, uploadedDesde, uploadedAte);
+
+        return documentosBase
+            .stream()
+            .filter(documento -> {
+                if (nomeOriginal == null || nomeOriginal.isBlank()) {
+                    return true;
+                }
+                String valor = documento.getNomeOriginal();
+                return valor != null && valor.toLowerCase(Locale.ROOT).contains(nomeOriginal.toLowerCase(Locale.ROOT));
+            })
+            .filter(documento -> {
+                if (nomeArmazenado == null || nomeArmazenado.isBlank()) {
+                    return true;
+                }
+                String valor = documento.getNomeArmazenado();
+                return valor != null && valor.toLowerCase(Locale.ROOT).contains(nomeArmazenado.toLowerCase(Locale.ROOT));
+            })
+            .filter(documento -> {
+                if (tipo == null || tipo.isBlank()) {
+                    return true;
+                }
+                String valor = documento.getTipo();
+                return valor != null && valor.equalsIgnoreCase(tipo);
+            })
+            .filter(documento -> {
+                if (utenteNome == null || utenteNome.isBlank()) {
+                    return true;
+                }
+                String nome = obterNomeUtenteMarcacao(documento.getMarcacao());
+                return nome != null && nome.toLowerCase(Locale.ROOT).contains(utenteNome.toLowerCase(Locale.ROOT));
+            })
+            .filter(documento -> {
+                if (utenteNif == null || utenteNif.isBlank()) {
+                    return true;
+                }
+                String nif = obterNifUtenteMarcacao(documento.getMarcacao());
+                return nif != null && nif.contains(utenteNif);
+            })
+            .map(DocumentoDTO::fromDocumento)
+            .toList();
+    }
+
+    private List<Documento> obterDocumentosPorIntervalo(
+        Long marcacaoId,
+        LocalDateTime uploadedDesde,
+        LocalDateTime uploadedAte
+    ) {
+        if (marcacaoId != null) {
+            if (uploadedDesde != null && uploadedAte != null) {
+                return documentoRepository.findByMarcacaoIdAndUploadedEmBetweenOrderByUploadedEmDesc(marcacaoId, uploadedDesde, uploadedAte);
+            }
+            if (uploadedDesde != null) {
+                return documentoRepository.findByMarcacaoIdAndUploadedEmGreaterThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedDesde);
+            }
+            if (uploadedAte != null) {
+                return documentoRepository.findByMarcacaoIdAndUploadedEmLessThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedAte);
+            }
+            return documentoRepository.findByMarcacaoIdOrderByUploadedEmDesc(marcacaoId);
+        }
+
+        if (uploadedDesde != null && uploadedAte != null) {
+            return documentoRepository.findByUploadedEmBetweenOrderByUploadedEmDesc(uploadedDesde, uploadedAte);
+        }
+        if (uploadedDesde != null) {
+            return documentoRepository.findByUploadedEmGreaterThanEqualOrderByUploadedEmDesc(uploadedDesde);
+        }
+        if (uploadedAte != null) {
+            return documentoRepository.findByUploadedEmLessThanEqualOrderByUploadedEmDesc(uploadedAte);
+        }
+        return documentoRepository.findAllByOrderByUploadedEmDesc();
+    }
+
+    /**
      * Obtém um documento pelo ID.
      * 
      * @param documentoId ID do documento
@@ -160,6 +281,51 @@ public class DocumentoService {
     }
 
     /**
+     * Obtém metadados completos de um documento (BD + MinIO).
+     *
+     * @param documentoId ID do documento
+     * @return DTO com metadados detalhados
+     */
+    @Transactional(readOnly = true)
+    public DocumentoMetadataDTO obterMetadadosDocumento(Long documentoId) {
+        Documento documento = documentoRepository.findById(documentoId)
+            .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+
+        try {
+            StatObjectResponse statObject = minioClient.statObject(
+                StatObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(documento.getCaminho())
+                    .build()
+            );
+
+            Map<String, String> minioUserMetadata = statObject.userMetadata() != null
+                ? statObject.userMetadata()
+                : Collections.emptyMap();
+
+            String minioLastModified = statObject.lastModified() != null
+                ? statObject.lastModified().toString()
+                : null;
+
+            return new DocumentoMetadataDTO(
+                documento.getId(),
+                documento.getNomeOriginal(),
+                documento.getNomeArmazenado(),
+                documento.getCaminho(),
+                documento.getTipo(),
+                documento.getTamanho(),
+                documento.getUploadedEm(),
+                documento.getMarcacao().getId(),
+                statObject.etag(),
+                minioLastModified,
+                minioUserMetadata
+            );
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Erro ao obter metadados do documento: " + e.getMessage());
+        }
+    }
+
+    /**
      * Carrega um ficheiro para download.
      * 
      * @param documentoId ID do documento
@@ -172,15 +338,14 @@ public class DocumentoService {
             .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
 
         try {
-            Path caminhoFicheiro = Paths.get(uploadDir).resolve(documento.getCaminho());
-            Resource resource = new UrlResource(caminhoFicheiro.toUri());
-            
-            if (resource.exists() && resource.isReadable()) {
-                return resource;
-            } else {
-                throw new ResourceNotFoundException("Ficheiro não encontrado ou não legível: " + documento.getNomeOriginal());
-            }
-        } catch (IOException e) {
+            GetObjectResponse objeto = minioClient.getObject(
+                GetObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(documento.getCaminho())
+                    .build()
+            );
+            return new InputStreamResource(objeto);
+        } catch (Exception e) {
             throw new ResourceNotFoundException("Erro ao carregar ficheiro: " + documento.getNomeOriginal() + ", " + e.getMessage());
         }
     }
@@ -197,16 +362,6 @@ public class DocumentoService {
 
         Documento documento = documentoRepository.findById(documentoId)
             .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
-
-        // Remover ficheiro do sistema de ficheiros
-        try {
-            Path caminhoFicheiro = Paths.get(uploadDir).resolve(documento.getCaminho());
-            Files.deleteIfExists(caminhoFicheiro);
-            log.info("Ficheiro removido: {}", caminhoFicheiro);
-        } catch (IOException e) {
-            log.error("Erro ao remover ficheiro: {}", documento.getCaminho(), e);
-            // Continua com a remoção do registo mesmo se o ficheiro não for encontrado
-        }
 
         // Remover registo da base de dados
         documentoRepository.delete(documento);
@@ -233,8 +388,8 @@ public class DocumentoService {
         }
 
         // Verificar tipo MIME
-        String tipoMime = file.getContentType();
-        if (tipoMime == null || !ALLOWED_MIME_TYPES.contains(tipoMime)) {
+        String tipo = file.getContentType();
+        if (tipo == null || !ALLOWED_MIME_TYPES.contains(tipo)) {
             throw new IllegalArgumentException(
                 "Tipo de ficheiro não permitido. Tipos aceites: PDF, JPEG, PNG, DOC, DOCX"
             );
@@ -258,5 +413,48 @@ public class DocumentoService {
         }
         int pontoIndex = nomeOriginal.lastIndexOf('.');
         return pontoIndex > 0 ? nomeOriginal.substring(pontoIndex) : "";
+    }
+
+    private void garantirBucketExiste() throws Exception {
+        boolean bucketExiste = minioClient.bucketExists(
+            BucketExistsArgs.builder()
+                .bucket(bucketName)
+                .build()
+        );
+
+        if (!bucketExiste) {
+            minioClient.makeBucket(
+                MakeBucketArgs.builder()
+                    .bucket(bucketName)
+                    .build()
+            );
+            log.info("Bucket MinIO criado automaticamente: {}", bucketName);
+        }
+    }
+
+    private String obterNomeUtenteMarcacao(Marcacao marcacao) {
+        Utilizador utente = obterUtenteMarcacao(marcacao);
+        return utente != null ? utente.getNome() : null;
+    }
+
+    private String obterNifUtenteMarcacao(Marcacao marcacao) {
+        Utilizador utente = obterUtenteMarcacao(marcacao);
+        return utente != null ? utente.getNif() : null;
+    }
+
+    private Utilizador obterUtenteMarcacao(Marcacao marcacao) {
+        if (marcacao == null) {
+            return null;
+        }
+
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            return marcacao.getMarcacaoSecretaria().getUtente();
+        }
+
+        if (marcacao.getCriadoPor() != null) {
+            return marcacao.getCriadoPor();
+        }
+
+        return null;
     }
 }

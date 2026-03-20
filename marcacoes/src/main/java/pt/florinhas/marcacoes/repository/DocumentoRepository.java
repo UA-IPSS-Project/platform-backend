@@ -1,5 +1,6 @@
 package pt.florinhas.marcacoes.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,4 +57,20 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
      */
     @Query("SELECT COUNT(d) FROM Documento d WHERE d.marcacao.id = :marcacaoId")
     Long countByMarcacaoId(@Param("marcacaoId") Long marcacaoId);
+
+    List<Documento> findAllByOrderByUploadedEmDesc();
+
+    List<Documento> findByMarcacaoIdOrderByUploadedEmDesc(Long marcacaoId);
+
+    List<Documento> findByUploadedEmGreaterThanEqualOrderByUploadedEmDesc(LocalDateTime uploadedDesde);
+
+    List<Documento> findByUploadedEmLessThanEqualOrderByUploadedEmDesc(LocalDateTime uploadedAte);
+
+    List<Documento> findByUploadedEmBetweenOrderByUploadedEmDesc(LocalDateTime uploadedDesde, LocalDateTime uploadedAte);
+
+    List<Documento> findByMarcacaoIdAndUploadedEmGreaterThanEqualOrderByUploadedEmDesc(Long marcacaoId, LocalDateTime uploadedDesde);
+
+    List<Documento> findByMarcacaoIdAndUploadedEmLessThanEqualOrderByUploadedEmDesc(Long marcacaoId, LocalDateTime uploadedAte);
+
+    List<Documento> findByMarcacaoIdAndUploadedEmBetweenOrderByUploadedEmDesc(Long marcacaoId, LocalDateTime uploadedDesde, LocalDateTime uploadedAte);
 }

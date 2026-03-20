@@ -3,6 +3,7 @@ package pt.florinhas.marcacoes.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Utilizador;
 
 /**
@@ -60,8 +61,8 @@ public class UtilizadorResponseDTO {
         dto.setLocalEmprego(utilizador.getLocalEmprego());
         dto.setMoradaEmprego(utilizador.getMoradaEmprego());
         dto.setTelefoneEmprego(utilizador.getTelefoneEmprego());
-        if (utilizador instanceof pt.florinhas.marcacoes.domain.Funcionario) {
-            pt.florinhas.marcacoes.domain.Funcionario func = (pt.florinhas.marcacoes.domain.Funcionario) utilizador;
+        if (utilizador instanceof Funcionario) {
+            Funcionario func = (Funcionario) utilizador;
             dto.setActive(func.isActivo());
             if (func.getTipo() != null) {
                 dto.setFuncao(func.getTipo().toString());

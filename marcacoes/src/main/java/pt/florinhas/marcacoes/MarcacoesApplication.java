@@ -4,6 +4,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -14,37 +16,66 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 @SpringBootApplication
 @EnableScheduling
 public class MarcacoesApplication {
+	private static final Logger LOGGER = LoggerFactory.getLogger(MarcacoesApplication.class);
+
+	private record SeedAccount(
+			String nif,
+			String nome,
+			String email,
+			String telefone,
+			String defaultPassword,
+			FuncionarioTipo tipo) {
+	}
 
 	public static void main(String[] args) {
 		SpringApplication.run(MarcacoesApplication.class, args);
 	}
 
 	/**
-	 * CommandLineRunner que cria uma secretária admin ativa ao iniciar a aplicação,
-	 * caso ainda não exista um funcionário com o NIF especificado.
+	 * CommandLineRunner que garante a existência de contas base para administração
+	 * e secretaria ao iniciar a aplicação.
 	 */
 	@Bean
-	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository,
-			PasswordEncoder passwordEncoder) {
+	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
 		return args -> {
-			String adminNif = "999999999";
+			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+					"999999999",
+					"Admin Plataforma",
+					"admin@florinhasdovouga.pt",
+					"999999999",
+					"admin123",
+					FuncionarioTipo.ADMIN));
 
-			if (!funcionarioRepository.existsByNif(adminNif)) {
-				Funcionario admin = new Funcionario();
-				admin.setNome("Admin Secretaria");
-				admin.setEmail("admin@florinhasdovouga.pt");
-				admin.setNif(adminNif);
-				admin.setTelefone("999999999");
-				admin.setPassHash(passwordEncoder.encode("admin123"));
-				admin.setTipo(FuncionarioTipo.SECRETARIA);
-				admin.setActivo(true);
-
-				funcionarioRepository.save(admin);
-				System.out.println(">>> Secretária admin criada com sucesso!");
-			} else {
-				System.out.println(">>> Secretária admin já existe.");
-			}
+			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+					"999999998",
+					"Funcionário Secretaria",
+					"secretaria@florinhasdovouga.pt",
+					"999999998",
+					"sec123",
+					FuncionarioTipo.SECRETARIA));
 		};
+	}
+
+	private static void upsertFuncionario(
+			FuncionarioRepository funcionarioRepository,
+			PasswordEncoder encoder,
+			SeedAccount account) {
+		Funcionario funcionario = funcionarioRepository.findByNif(account.nif()).orElseGet(Funcionario::new);
+		boolean isNew = funcionario.getId() == null;
+
+		funcionario.setNome(account.nome());
+		funcionario.setEmail(account.email());
+		funcionario.setNif(account.nif());
+		funcionario.setTelefone(account.telefone());
+		funcionario.setTipo(account.tipo());
+		funcionario.setActivo(true);
+
+		if (isNew || funcionario.getPassHash() == null || funcionario.getPassHash().isBlank()) {
+			funcionario.setPassHash(encoder.encode(account.defaultPassword()));
+		}
+
+		funcionarioRepository.save(funcionario);
+		LOGGER.info(">>> Conta base {} ({}) {}.", account.email(), account.tipo().name(), isNew ? "criada" : "atualizada");
 	}
 
 }

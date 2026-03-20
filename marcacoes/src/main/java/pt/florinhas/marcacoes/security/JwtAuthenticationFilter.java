@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -40,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Tentar obter do cookie primeiro (prioridade frontend)
         if (request.getCookies() != null) {
-            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+            for (Cookie cookie : request.getCookies()) {
                 if ("jwt".equals(cookie.getName())) {
                     jwt = cookie.getValue();
                     log.debug("JWT found in cookie for {} {}", request.getMethod(), request.getRequestURI());

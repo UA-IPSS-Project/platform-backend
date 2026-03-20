@@ -9,11 +9,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import pt.florinhas.marcacoes.service.DocumentoStorageCleanupService;
 
 /**
  * Entidade JPA que representa um documento anexado a uma marcação.
@@ -85,8 +88,18 @@ public class Documento {
     /**
      * Define a data de upload antes de persistir.
      */
-    @jakarta.persistence.PrePersist
+    @PrePersist
     protected void onCreate() {
         uploadedEm = LocalDateTime.now();
+    }
+
+    /**
+     * Remove o ficheiro físico do MinIO antes de eliminar o registo na BD.
+     *
+     * Garante limpeza também em remoções por cascata/orphanRemoval.
+     */
+    @PreRemove
+    protected void onRemove() {
+        DocumentoStorageCleanupService.removerDoArmazenamento(caminho, id);
     }
 }

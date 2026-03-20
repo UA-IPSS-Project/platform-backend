@@ -35,7 +35,7 @@ public record FuncionarioRegisterRequest(
         @NotBlank(message = "Password é obrigatória") @Size(min = 6, message = "Password deve ter pelo menos 6 caracteres") String password,
 
         // NIF com exatamente 9 dígitos (obrigatório).
-        @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve ter 9 dígitos") String nif,
+        @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos") String nif,
 
         // Contacto telefónico (obrigatório). Formato livre; validar formato se
         // necessário.

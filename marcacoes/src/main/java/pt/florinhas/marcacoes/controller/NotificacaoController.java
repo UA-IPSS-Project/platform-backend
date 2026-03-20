@@ -39,8 +39,11 @@ public class NotificacaoController {
     }
 
     @PutMapping("/{id}/ler")
-    public ResponseEntity<Void> marcarComoLida(@PathVariable Long id) {
-        notificacaoService.marcarComoLida(id);
+    public ResponseEntity<Void> marcarComoLida(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        notificacaoService.marcarComoLida(id, user.getId());
         return ResponseEntity.ok().build();
     }
 
@@ -52,8 +55,11 @@ public class NotificacaoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarNotificacao(@PathVariable Long id) {
-        notificacaoService.eliminarNotificacao(id);
+    public ResponseEntity<Void> eliminarNotificacao(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        notificacaoService.eliminarNotificacao(id, user.getId());
         return ResponseEntity.ok().build();
     }
 

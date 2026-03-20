@@ -15,9 +15,12 @@ import org.springframework.security.web.csrf.CsrfToken;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 
 import lombok.extern.slf4j.Slf4j;
 
+import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AuthResponse;
 import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
@@ -68,7 +71,7 @@ public class AuthController {
 
     @PostMapping("/register/utente")
     public ResponseEntity<AuthResponse> registerUtente(
-            @RequestBody UtenteRegisterRequest request,
+            @Valid @RequestBody UtenteRegisterRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         AuthResult result = authService.registerUtente(request);
@@ -77,7 +80,7 @@ public class AuthController {
 
     @PostMapping("/register/funcionario")
     public ResponseEntity<AuthResponse> registerFuncionario(
-            @RequestBody FuncionarioRegisterRequest request,
+            @Valid @RequestBody FuncionarioRegisterRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         AuthResult result = authService.registerFuncionario(request);
@@ -116,9 +119,9 @@ public class AuthController {
 
         var persistedUser = utilizadorService.obterUtilizadorPorId(utilizador.getId());
         boolean active = true;
-        if (persistedUser instanceof pt.florinhas.marcacoes.domain.Utente u) {
+        if (persistedUser instanceof Utente u) {
             active = u.isActivo();
-        } else if (persistedUser instanceof pt.florinhas.marcacoes.domain.Funcionario f) {
+        } else if (persistedUser instanceof Funcionario f) {
             active = f.isActivo();
         }
 
@@ -167,7 +170,8 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
         // Determine secure flag: true in production, false in dev
-        boolean isSecure = "development".equalsIgnoreCase(environment) ? false : secureCookies;
+        boolean isDevelopment = environment != null && "development".equalsIgnoreCase(environment.trim());
+        boolean isSecure = isDevelopment ? false : secureCookies;
 
         // Create JWT cookie
         ResponseCookie cookie = ResponseCookie.from("jwt", result.token())

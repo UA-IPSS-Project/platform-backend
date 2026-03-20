@@ -1,7 +1,10 @@
 package pt.florinhas.marcacoes.service;
 
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,7 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,6 +51,7 @@ public class AuthService {
         private final PasswordEncoder passwordEncoder;
         private final JwtService jwtService;
         private final AuthenticationManager authenticationManager;
+        private final NifValidator nifValidator;
 
         public AuthService(
                         UtilizadorRepository utilizadorRepository,
@@ -54,13 +59,15 @@ public class AuthService {
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
                         JwtService jwtService,
-                        AuthenticationManager authenticationManager) {
+                        AuthenticationManager authenticationManager,
+                        NifValidator nifValidator) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
                 this.jwtService = jwtService;
                 this.authenticationManager = authenticationManager;
+                this.nifValidator = nifValidator;
         }
 
         /**
@@ -104,7 +111,8 @@ public class AuthService {
 
                 log.debug("Authentication successful");
 
-                return generateAuthResponse(user, "FUNCIONARIO", true);
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                return generateAuthResponse(user, role, true);
         }
 
         /**
@@ -160,6 +168,8 @@ public class AuthService {
          * - JWT é gerado automaticamente.
          */
         public AuthResult registerUtente(UtenteRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
+
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -193,6 +203,8 @@ public class AuthService {
          * - JWT é devolvido após criação.
          */
         public AuthResult registerFuncionario(FuncionarioRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
+
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -213,7 +225,8 @@ public class AuthService {
 
                 funcionario = funcionarioRepository.save(funcionario);
 
-                return generateAuthResponse(funcionario, "FUNCIONARIO", false);
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                return generateAuthResponse(funcionario, role, false);
         }
 
         /**
@@ -302,9 +315,11 @@ public class AuthService {
         private FuncionarioTipo mapFuncaoToTipo(String funcao) {
                 return switch (funcao.toUpperCase()) {
                         case "SECRETARIA", "SECRETÁRIA" -> FuncionarioTipo.SECRETARIA;
-                        case "BALNEARIO", "BALNEÁRIO" -> FuncionarioTipo.BALNEARIO;
+                        case "BALNEARIO", "BALNEÁRIO", "BALNEARIO SOCIAL", "BALNEÁRIO SOCIAL" ->
+                                FuncionarioTipo.BALNEARIO;
                         case "ESCOLA" -> FuncionarioTipo.ESCOLA;
-                        case "INTERNOS" -> FuncionarioTipo.INTERNOS;
+                        case "INTERNOS", "INTERNO", "SERVIÇOS INTERNOS", "SERVICOS INTERNOS" -> FuncionarioTipo.INTERNO;
+                        case "ADMIN", "ADMINISTRADOR" -> FuncionarioTipo.ADMIN;
                         default -> FuncionarioTipo.SECRETARIA;
                 };
         }
@@ -313,10 +328,10 @@ public class AuthService {
          * Obtém o ID do utilizador autenticado a partir do SecurityContext.
          */
         public Long getCurrentUserId() {
-                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                var authentication = SecurityContextHolder.getContext()
                                 .getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()
-                                || authentication instanceof org.springframework.security.authentication.AnonymousAuthenticationToken) {
+                                || authentication instanceof AnonymousAuthenticationToken) {
                         return null;
                 }
 
@@ -324,7 +339,7 @@ public class AuthService {
 
                 if (principal instanceof Utilizador utilizador) {
                         return utilizador.getId();
-                } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
+                } else if (principal instanceof UserDetails userDetails) {
                         // Em alguns casos pode ser apenas UserDetails, tentamos buscar pelo email
                         var users = utilizadorRepository.findByEmail(userDetails.getUsername());
                         if (!users.isEmpty()) {
@@ -336,16 +351,18 @@ public class AuthService {
         }
 
         /**
-         * Verifica se o utilizador autenticado é um Administrador (Funcionário).
+         * Verifica se o utilizador autenticado tem privilégios administrativos
+         * (apenas SECRETARIA).
          */
         public boolean isAdmin() {
-                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                var authentication = SecurityContextHolder.getContext()
                                 .getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()) {
                         return false;
                 }
 
                 return authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_FUNCIONARIO"));
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_SECRETARIA") ||
+                                                a.getAuthority().equals("ROLE_BALNEARIO"));
         }
 }

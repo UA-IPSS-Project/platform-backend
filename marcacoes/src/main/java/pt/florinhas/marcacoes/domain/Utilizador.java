@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -76,7 +77,8 @@ public class Utilizador implements UserDetails {
 
     /**
      * Timestamp de aceitação dos termos de uso (RGPD).
-     * NULL = termos não aceites (conta criada pela secretaria ou ainda não ativada).
+     * NULL = termos não aceites (conta criada pela secretaria ou ainda não
+     * ativada).
      * NOT NULL = termos aceites, conta totalmente ativa.
      */
     @Column(name = "terms_accepted_at")
@@ -93,7 +95,7 @@ public class Utilizador implements UserDetails {
      * Hash da palavra-passe (ex.: BCrypt -> 60 chars).
      * Nunca armazenar passwords em claro.
      */
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     @Column(name = "passHash", length = 60)
     private String passHash;
 
@@ -126,22 +128,21 @@ public class Utilizador implements UserDetails {
 
     /**
      * Devolve as authorities (roles) do utilizador autenticado.
-     * Lógica: se for instância de Funcionario => ROLE_FUNCIONARIO, caso contrário
-     * => ROLE_UTENTE.
-     * Em cenários com perfis mais finos, complementar com perfis/valências.
+     * Mapeia os tipos de funcionários para ROLE_SECRETARIA, ROLE_BALNEARIO, etc.
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Se for Funcionario retorna ROLE_FUNCIONARIO, se for Utente retorna
-        // ROLE_UTENTE
-        String role = this instanceof Funcionario ? "ROLE_FUNCIONARIO" : "ROLE_UTENTE";
-        return List.of(new SimpleGrantedAuthority(role));
+        if (this instanceof Funcionario f) {
+            String role = f.getTipo() != null ? "ROLE_" + f.getTipo().name() : "ROLE_FUNCIONARIO";
+            return List.of(new SimpleGrantedAuthority(role));
+        }
+        return List.of(new SimpleGrantedAuthority("ROLE_UTENTE"));
     }
 
     // Hash da palavra-passe usado pelo provider (ex.: DaoAuthenticationProvider +
     // BCrypt).
     @Override
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     public String getPassword() {
         return passHash;
     }

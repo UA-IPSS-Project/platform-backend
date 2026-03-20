@@ -54,10 +54,6 @@ public class JwtService {
                     "Critical Security Error: JWT Secret is NOT configured.");
         }
 
-        // Append a random UUID to the configured secret
-        // This ensures that all tokens are invalidated when the server restarts
-        secret = secret + "-" + java.util.UUID.randomUUID().toString();
-
         if (secret.length() < MINIMUM_SECRET_LENGTH) {
             throw new IllegalStateException(
                     String.format(
@@ -65,7 +61,7 @@ public class JwtService {
                             MINIMUM_SECRET_LENGTH, secret.length()));
         }
 
-        log.info("JWT Secret initialized with dynamic component (Server Restart Policy applied)");
+        log.info("JWT Secret initialized");
     }
 
     /**

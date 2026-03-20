@@ -3,7 +3,12 @@ package pt.florinhas.marcacoes.domain;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Entidade JPA que representa um Funcionário.
@@ -50,13 +55,13 @@ public class Funcionario extends Utilizador {
     private boolean activo;
 
     @Override
-    public java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> getAuthorities() {
-        if (this.tipo == FuncionarioTipo.SECRETARIA) {
-            return java.util.List.of(
-                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SECRETARIA"),
-                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+        public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (this.tipo == null) {
+            return List.of(
+                new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
         }
-        return java.util.List
-                .of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+        return List.of(
+            new SimpleGrantedAuthority("ROLE_" + this.tipo.name()),
+            new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
     }
 }

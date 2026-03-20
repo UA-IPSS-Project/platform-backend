@@ -24,8 +24,10 @@ import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
+import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
+import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 import org.springframework.security.access.AccessDeniedException;
@@ -166,6 +168,42 @@ public class MarcacaoController {
     }
 
     /**
+     * Criação de uma marcação específica para o Balneário.
+     *
+     * param request DTO com os dados do utente anónimo e necessidades de higiene.
+     * return dados básicos da marcação criada
+     */
+    @PostMapping("/balneario")
+    public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
+            @Valid @RequestBody CriarMarcacaoBalnearioRequest request) {
+
+        Marcacao marcacao = marcacaoService.criarMarcacaoBalneario(request);
+
+        return ResponseEntity.ok().body(Map.of(
+                "id", marcacao.getId().toString(),
+                "data", marcacao.getData().toString(),
+                "estado", marcacao.getEstado().toString(),
+                "message", "Marcação de balneário registada com sucesso"));
+    }
+
+    /**
+     * Atualiza os detalhes de serviços de uma marcação de balneário.
+     */
+    @PutMapping("/balneario/{id}/detalhes")
+    public ResponseEntity<MarcacaoResponseDTO> atualizarDetalhesBalneario(
+            @PathVariable Long id,
+            @RequestBody CriarMarcacaoBalnearioRequest request) {
+
+        MarcacaoResponseDTO updated = marcacaoService.atualizarDetalhesBalneario(
+                id,
+                request.getProdutosHigiene(),
+                request.getLavagemRoupa(),
+                request.getRoupas());
+
+        return ResponseEntity.ok(updated);
+    }
+
+    /**
      * RF1.2.3 – Consulta da agenda geral.
      *
      * Permite consultar todas as marcações num intervalo temporal,
@@ -178,14 +216,14 @@ public class MarcacaoController {
     @GetMapping("/agenda")
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarAgenda(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
-
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
+            @RequestParam(required = false) String tipo) {
 
         if (!authService.isAdmin()) {
             throw new AccessDeniedException("Acesso restrito a administradores/secretaria.");
         }
 
-        List<MarcacaoResponseDTO> response = marcacaoService.consultarAgenda(dataInicio, dataFim);
+        List<MarcacaoResponseDTO> response = marcacaoService.consultarAgenda(dataInicio, dataFim, tipo);
         return ResponseEntity.ok(response);
     }
 
@@ -452,7 +490,7 @@ public class MarcacaoController {
     @PutMapping("/{id}/reagendar")
     public ResponseEntity<MarcacaoResponseDTO> reagendarMarcacao(
             @PathVariable Long id,
-            @RequestBody pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest request) {
+            @RequestBody ReagendarMarcacaoRequest request) {
 
         MarcacaoResponseDTO response = marcacaoService.reagendarMarcacao(id, request);
         return ResponseEntity.ok(response);

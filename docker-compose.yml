@@ -1,22 +1,69 @@
 services:
   marcacoes:
     build:
-      context: ./marcacoes
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: marcacoes/Dockerfile
     container_name: marcacoes-backend
     ports:
       - "8080:8080"
     depends_on:
       - postgres
+      - minio
+    env_file:
+      - .env
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/florinhas
-      - SPRING_DATASOURCE_USERNAME=admin
-      - SPRING_DATASOURCE_PASSWORD=admin123
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000
-    networks:
-      - backend-network
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - MINIO_URL=${MINIO_URL_DOCKER}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET_MARCACOES}
+
     restart: unless-stopped
+
+    develop:
+      watch:
+        - path: ./marcacoes/src
+          action: rebuild
+        - path: ./marcacoes/pom.xml
+          action: rebuild
+
+  requisicoes:
+    build:
+      context: .
+      dockerfile: requisicoes/Dockerfile
+    container_name: requisicoes-backend
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+      - minio
+    env_file:
+      - .env
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - MINIO_URL=${MINIO_URL_DOCKER}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET_REQUISICOES}
+    restart: unless-stopped
+    develop:
+      watch:
+        - path: ./requisicoes/src
+          action: rebuild
+        - path: ./requisicoes/pom.xml
+          action: rebuild
 
   frontend:
     build:
@@ -25,25 +72,47 @@ services:
     container_name: florinhas_frontend
     depends_on:
       - marcacoes
+      - requisicoes
     ports:
       - "3000:80"
-    networks:
-      - backend-network
+
     restart: unless-stopped
+
+    develop:
+      watch:
+        - path: ../platform-frontend/src
+          action: rebuild
+        - path: ../platform-frontend/package.json
+          action: rebuild
+        - path: ../platform-frontend/vite.config.ts
+          action: rebuild
 
   postgres:
     image: postgres
     container_name: florinhas_db
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: florinhas
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
-    networks:
-      - backend-network
 
-  
-networks:
-  backend-network:
-    driver: bridge
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+
+

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -46,17 +47,26 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.marcacaoBalneario mb " +
                         "WHERE m.data BETWEEN :dataInicio AND :dataFim AND m.estado <> 'CANCELADO' " +
+                        "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL)) "
+                        +
                         "ORDER BY m.data")
         List<Marcacao> findMarcacoesBetweenDates(
                         @Param("dataInicio") LocalDateTime dataInicio,
-                        @Param("dataFim") LocalDateTime dataFim);
+                        @Param("dataFim") LocalDateTime dataFim,
+                        @Param("tipo") String tipo);
 
         // Verificar se existe marcação no mesmo horário exato (não cancelada)
         @Query("SELECT COUNT(m) > 0 FROM Marcacao m WHERE m.data = :data AND m.estado <> :estado")
         boolean existsByDataAndEstadoNot(
                         @Param("data") LocalDateTime data,
                         @Param("estado") EventoEstado estado);
+
+        @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data = :data " +
+                        "AND m.estado <> 'CANCELADO' " +
+                        "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL))")
+        long countByDataAndTipo(@Param("data") LocalDateTime data, @Param("tipo") String tipo);
 
         // Consulta com Lock Pessimista para evitar Race Conditions
         @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -125,7 +135,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
          * nulo
          * (para corrigir bugs antigos onde o timestamp não era gravado).
          */
-        @org.springframework.data.jpa.repository.Modifying
+        @Modifying
         @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
         void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
 

@@ -19,6 +19,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 
+import java.util.Collections;
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class CustomUserDetailsServiceTest {
 
@@ -43,7 +46,7 @@ class CustomUserDetailsServiceTest {
     void loadUserByUsername_DeveRetornarUserDetails_QuandoUtilizadorExiste() {
         // Arrange
         when(utilizadorRepository.findByEmail("test@example.com"))
-                .thenReturn(java.util.List.of(utente));
+            .thenReturn(List.of(utente));
 
         // Act
         UserDetails userDetails = userDetailsService.loadUserByUsername("test@example.com");
@@ -59,7 +62,7 @@ class CustomUserDetailsServiceTest {
     void loadUserByUsername_DeveLancarException_QuandoUtilizadorNaoExiste() {
         // Arrange
         when(utilizadorRepository.findByEmail(anyString()))
-                .thenReturn(java.util.Collections.emptyList());
+            .thenReturn(Collections.emptyList());
 
         // Act & Assert
         UsernameNotFoundException exception = assertThrows(
