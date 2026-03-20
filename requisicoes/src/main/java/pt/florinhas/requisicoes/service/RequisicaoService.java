@@ -369,12 +369,12 @@ public class RequisicaoService {
         }
 
         if (estadoAtual == RequisicaoEstado.EM_ANALISE
-                && (novoEstado == RequisicaoEstado.CONCLUIDA || novoEstado == RequisicaoEstado.CANCELADA)) {
+                && (novoEstado == RequisicaoEstado.ACEITE || novoEstado == RequisicaoEstado.RECUSADA)) {
             return;
         }
 
         throw new IllegalArgumentException(
-                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> CONCLUIDA ou ENVIADA -> EM_ANALISE -> CANCELADA.");
+                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> ACEITE ou ENVIADA -> EM_ANALISE -> RECUSADA.");
     }
 
     private Funcionario obterFuncionario(Long id) {
