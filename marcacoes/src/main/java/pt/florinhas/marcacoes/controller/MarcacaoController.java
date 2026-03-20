@@ -180,7 +180,7 @@ public class MarcacaoController {
         Marcacao marcacao = marcacaoService.criarMarcacaoBalneario(request);
 
         String durationLabel = "Duração da marcação";
-        String durationBalneario = "Duração padrão para balneário: 30 minutos";
+        String durationBalneario = String.format("Duração padrão para balneário: %d minutos", marcacao.getDuration());
         return ResponseEntity.ok().body(Map.of(
             "id", marcacao.getId().toString(),
             "data", marcacao.getData().toString(),

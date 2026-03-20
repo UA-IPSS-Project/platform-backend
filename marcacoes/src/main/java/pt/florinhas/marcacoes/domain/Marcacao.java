@@ -64,7 +64,7 @@ public class Marcacao {
      * Modular para cada tipo.
      */
     @Column(name = "duration", nullable = false)
-    private Integer duration = 15;
+    private Integer duration;
 
     /**
      * Estado do ciclo de vida da marcação (AGENDADO, EM_PROGRESSO, ...).
