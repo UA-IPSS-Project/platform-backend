@@ -71,6 +71,8 @@ public class MarcacaoService {
      * 62 caracteres possíveis × 22 posições = ~130 bits de entropia.
      */
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final Integer BALNEARIO_DEFAULT_DURATION_MINUTES = 30;
+    private static final Integer SECRETARIA_DEFAULT_DURATION_MINUTES = 15;
 
     private String generateRandomPassword() {
         SecureRandom random = new SecureRandom();
@@ -183,10 +185,10 @@ public class MarcacaoService {
                         () -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
 
         Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
-
+        // Centralized duration logic: remota = 15min
+        marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
         // Na remota, criadoPor pode ser null ou não especificado se feito pelo utente.
         // Se houver necessidade de setar, seria aqui.
-
         return marcacaoRepository.save(marcacao);
     }
 
@@ -194,6 +196,8 @@ public class MarcacaoService {
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
+        // Centralized duration logic: secretaria = 15min
+        marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
 
         MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
         detalhes.setAssunto(request.getAssunto());
@@ -214,6 +218,8 @@ public class MarcacaoService {
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
+        // Use constant for balneário duration
+        marcacao.setDuration(BALNEARIO_DEFAULT_DURATION_MINUTES);
 
         MarcacaoBalneario detalhes = new MarcacaoBalneario();
         detalhes.setNomeUtente(request.getNomeUtente());
@@ -238,16 +244,6 @@ public class MarcacaoService {
         }
 
         detalhes.setMarcacao(marcacao);
-
-        // This setter doesn't exist yet on Marcacao, so we'll need to make sure to add
-        // it
-        // Since we didn't update Marcacao yet, let's just save MarcacaoBalneario via
-        // repository
-        // wait, MarcacaoBalneario is mapped via cascade on Marcacao?
-        // the prompt instructions say: "MarcacaoBalneario mappedBy=... on Marcacao".
-        // Let's rely on Marcacao save if we added the field, but we didn't add it yet
-        // Let's add it via a separate multireplace! For now, assuming the field
-        // `marcacao.setMarcacaoBalneario()` exists.
         marcacao.setMarcacaoBalneario(detalhes);
 
         return marcacaoRepository.save(marcacao);

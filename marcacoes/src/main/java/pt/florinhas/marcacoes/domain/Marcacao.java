@@ -60,6 +60,13 @@ public class Marcacao {
     private LocalDateTime data;
 
     /**
+     * Duração da marcação em minutos.
+     * Modular para cada tipo.
+     */
+    @Column(name = "duration", nullable = false)
+    private Integer duration;
+
+    /**
      * Estado do ciclo de vida da marcação (AGENDADO, EM_PROGRESSO, ...).
      * Persistido como texto (STRING) para legibilidade e robustez a reordenações.
      */
