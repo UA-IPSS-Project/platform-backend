@@ -1,18 +1,18 @@
 package pt.florinhas.marcacoes.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
-import java.security.SecureRandom;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Utente;
@@ -57,7 +57,8 @@ public class UtilizadorService {
     @Autowired
     private NifValidator nifValidator;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /*
      * =========================================================
@@ -299,20 +300,29 @@ public class UtilizadorService {
 
         Utilizador novoUtilizador;
 
-        if (request.isEmployee()) {
+        boolean employeeByRole = request.getRole() != null
+            && !request.getRole().trim().isEmpty()
+            && !"UTENTE".equalsIgnoreCase(request.getRole().trim());
+        boolean shouldCreateEmployee = request.isEmployee() || employeeByRole;
+
+        if (shouldCreateEmployee) {
             Funcionario f = new Funcionario();
             try {
                 String roleStr = request.getRole();
                 FuncionarioTipo tipo = FuncionarioTipo.OUTRO;
                 if (roleStr != null) {
-                    if (roleStr.equalsIgnoreCase("Secretaria"))
+                    String normalizedRole = roleStr.trim().toUpperCase();
+                    if (normalizedRole.equals("SECRETARIA") || normalizedRole.equals("SECRETARY")) {
                         tipo = FuncionarioTipo.SECRETARIA;
-                    else if (roleStr.toUpperCase().contains("BALNE"))
+                    } else if (normalizedRole.equals("BALNEARIO") || normalizedRole.equals("BALNEÁRIO")
+                            || normalizedRole.contains("BALNE")) {
                         tipo = FuncionarioTipo.BALNEARIO;
-                    else if (roleStr.equalsIgnoreCase("Escola"))
+                    } else if (normalizedRole.equals("ESCOLA") || normalizedRole.equals("SCHOOL")) {
                         tipo = FuncionarioTipo.ESCOLA;
-                    else if (roleStr.toUpperCase().contains("INTERNO"))
+                    } else if (normalizedRole.equals("INTERNO") || normalizedRole.equals("INTERNOS")
+                            || normalizedRole.contains("INTERNO")) {
                         tipo = FuncionarioTipo.INTERNO;
+                    }
                 }
                 f.setTipo(tipo);
             } catch (Exception e) {
@@ -413,45 +423,25 @@ public class UtilizadorService {
      * =========================================================
      */
 
-    // Character sets for password generation
-    private static final String UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final String LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
-    private static final String DIGITS = "0123456789";
-    private static final String SPECIAL = "!@#$%&*()-_=+";
+    // Character set aligned with the updated flow used in other account creation paths.
+    private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     /**
-     * Gera uma password temporária segura com:
-     * - 16 caracteres de comprimento
-     * - Pelo menos 1 maiúscula, 1 minúscula, 1 dígito, 1 caráter especial
-     * - Caracteres embaralhados para evitar padrões previsíveis
+     * Gera uma password temporária segura com ~130 bits de entropia.
+     * Usa apenas caracteres alfanuméricos para evitar ambiguidades na cópia do email
+     * no primeiro login.
      */
     private String gerarPasswordSegura() {
-        int length = 16;
-
-        // Garantir pelo menos um caráter de cada categoria
+        int length = 22;
         StringBuilder password = new StringBuilder(length);
-        password.append(UPPERCASE.charAt(SECURE_RANDOM.nextInt(UPPERCASE.length())));
-        password.append(LOWERCASE.charAt(SECURE_RANDOM.nextInt(LOWERCASE.length())));
-        password.append(DIGITS.charAt(SECURE_RANDOM.nextInt(DIGITS.length())));
-        password.append(SPECIAL.charAt(SECURE_RANDOM.nextInt(SPECIAL.length())));
 
-        // Preencher o resto com caracteres aleatórios de todas as categorias
-        String allChars = UPPERCASE + LOWERCASE + DIGITS + SPECIAL;
-        for (int i = 4; i < length; i++) {
-            password.append(allChars.charAt(SECURE_RANDOM.nextInt(allChars.length())));
+        for (int i = 0; i < length; i++) {
+            int index = SECURE_RANDOM.nextInt(ALPHANUMERIC.length());
+            password.append(ALPHANUMERIC.charAt(index));
         }
 
-        // Embaralhar para evitar padrão previsível (maiúscula sempre primeiro, etc)
-        char[] passwordArray = password.toString().toCharArray();
-        for (int i = passwordArray.length - 1; i > 0; i--) {
-            int j = SECURE_RANDOM.nextInt(i + 1);
-            char temp = passwordArray[i];
-            passwordArray[i] = passwordArray[j];
-            passwordArray[j] = temp;
-        }
-
-        return new String(passwordArray);
+        return password.toString();
     }
 
     private void validarCampoObrigatorio(String valor, String mensagemErro) {
