@@ -1,7 +1,10 @@
 package pt.florinhas.marcacoes.service;
 
-import org.springframework.security.authentication.AuthenticationManager;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,9 +27,6 @@ import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
 import pt.florinhas.marcacoes.validation.NifValidator;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.

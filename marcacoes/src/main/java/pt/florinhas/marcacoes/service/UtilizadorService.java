@@ -1,18 +1,18 @@
 package pt.florinhas.marcacoes.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
-import java.security.SecureRandom;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Utente;
@@ -300,7 +300,12 @@ public class UtilizadorService {
 
         Utilizador novoUtilizador;
 
-        if (request.isEmployee()) {
+        boolean employeeByRole = request.getRole() != null
+            && !request.getRole().trim().isEmpty()
+            && !"UTENTE".equalsIgnoreCase(request.getRole().trim());
+        boolean shouldCreateEmployee = request.isEmployee() || employeeByRole;
+
+        if (shouldCreateEmployee) {
             Funcionario f = new Funcionario();
             try {
                 String roleStr = request.getRole();
