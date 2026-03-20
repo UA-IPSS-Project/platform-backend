@@ -20,6 +20,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoMaterialItem;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
@@ -148,8 +149,20 @@ public class RequisicaoService {
     @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
-        Transporte transporte = transporteRepository.findById(request.transporteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + request.transporteId()));
+
+        List<Long> transporteIds = request.transporteIds();
+        if ((transporteIds == null || transporteIds.isEmpty()) && request.transporteId() != null) {
+            transporteIds = List.of(request.transporteId());
+        }
+        if (transporteIds == null || transporteIds.isEmpty()) {
+            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
+        }
+
+        List<Transporte> transportesSelecionados = transporteIds.stream()
+                .distinct()
+                .map(id -> transporteRepository.findById(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id)))
+                .toList();
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(request.descricao());
@@ -158,7 +171,19 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        requisicao.setTransporte(transporte);
+        requisicao.setDestino(request.destino());
+        requisicao.setDataHoraSaida(request.dataHoraSaida());
+        requisicao.setDataHoraRegresso(request.dataHoraRegresso());
+        requisicao.setNumeroPassageiros(request.numeroPassageiros());
+        requisicao.setCondutor(normalizarTextoOpcional(request.condutor()));
+        requisicao.setTransporte(transportesSelecionados.getFirst());
+
+        for (Transporte transporte : transportesSelecionados) {
+            RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+            item.setTransporte(transporte);
+            item.setRequisicao(requisicao);
+            requisicao.getTransportes().add(item);
+        }
 
         return requisicaoTransporteRepository.save(requisicao);
     }
@@ -300,7 +325,8 @@ public class RequisicaoService {
 
     @Transactional
     public void apagarTransporteCatalogo(Long id) {
-        if (requisicaoTransporteRepository.existsByTransporteId(id)) {
+        if (requisicaoTransporteRepository.existsByTransporteId(id)
+                || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
             throw new IllegalArgumentException("Não é possível apagar: transporte está associado a requisições.");
         }
 
