@@ -298,7 +298,7 @@ public class AuthService {
         public AuthResult generateAuthResponse(Utilizador user, String role, boolean isActive) {
                 var jwtToken = jwtService.generateToken(user);
                 long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
-                boolean requiresPasswordSetup = !isActive && user.getTermsAcceptedAt() == null;
+                boolean requiresPasswordSetup = requiresPasswordSetup(user, isActive);
 
                 AuthResponse response = new AuthResponse(
                                 user.getId(),
@@ -312,6 +312,16 @@ public class AuthService {
                                 requiresPasswordSetup);
 
                 return new AuthResult(jwtToken, response);
+        }
+
+        /**
+         * Regra centralizada para saber se o utilizador precisa de definir password.
+         *
+         * Cenário esperado:
+         * - Conta inativa + sem termos aceites -> requer configuração de password.
+         */
+        public boolean requiresPasswordSetup(Utilizador user, boolean isActive) {
+                return !isActive && user.getTermsAcceptedAt() == null;
         }
 
         public record AuthResult(String token, AuthResponse response) {

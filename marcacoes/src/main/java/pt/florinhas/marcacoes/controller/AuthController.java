@@ -120,11 +120,10 @@ public class AuthController {
         boolean requiresPasswordSetup = false;
         if (persistedUser instanceof Utente u) {
             active = u.isActivo();
-            requiresPasswordSetup = !u.isActivo() && u.getTermsAcceptedAt() == null;
         } else if (persistedUser instanceof Funcionario f) {
             active = f.isActivo();
-            requiresPasswordSetup = !f.isActivo() && f.getTermsAcceptedAt() == null;
         }
+        requiresPasswordSetup = authService.requiresPasswordSetup(persistedUser, active);
 
         // Return user info WITHOUT regenerating JWT cookie (unless we wanted to refresh it too)
         AuthResponse response = new AuthResponse(
