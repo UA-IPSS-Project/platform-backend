@@ -95,7 +95,10 @@ public class AuthService {
                         throw new BadRequestException("Credenciais inválidas");
                 }
 
-                if (!funcionario.isActivo()) {
+                // Funcionário inativo pode significar dois cenários distintos:
+                // 1) Criado pela secretaria (primeiro login com password temporária) -> permitir autenticar
+                // 2) Auto-registo pendente de aprovação (termos já aceites) -> bloquear login
+                if (!funcionario.isActivo() && funcionario.getTermsAcceptedAt() != null) {
                         throw new BadRequestException("Conta pendente de aprovação ou inativa. Contacte a secretaria.");
                 }
 
@@ -112,7 +115,7 @@ public class AuthService {
                 log.debug("Authentication successful");
 
                 String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
-                return generateAuthResponse(user, role, true);
+                return generateAuthResponse(user, role, funcionario.isActivo());
         }
 
         /**
@@ -295,6 +298,7 @@ public class AuthService {
         public AuthResult generateAuthResponse(Utilizador user, String role, boolean isActive) {
                 var jwtToken = jwtService.generateToken(user);
                 long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
+                boolean requiresPasswordSetup = !isActive && user.getTermsAcceptedAt() == null;
 
                 AuthResponse response = new AuthResponse(
                                 user.getId(),
@@ -304,7 +308,8 @@ public class AuthService {
                                 user.getNif(),
                                 user.getTelefone(),
                                 expiresAt,
-                                isActive);
+                                isActive,
+                                requiresPasswordSetup);
 
                 return new AuthResult(jwtToken, response);
         }

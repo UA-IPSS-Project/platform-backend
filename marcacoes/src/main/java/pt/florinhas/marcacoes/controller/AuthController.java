@@ -119,10 +119,13 @@ public class AuthController {
 
         var persistedUser = utilizadorService.obterUtilizadorPorId(utilizador.getId());
         boolean active = true;
+        boolean requiresPasswordSetup = false;
         if (persistedUser instanceof Utente u) {
             active = u.isActivo();
+            requiresPasswordSetup = !u.isActivo() && u.getTermsAcceptedAt() == null;
         } else if (persistedUser instanceof Funcionario f) {
             active = f.isActivo();
+            requiresPasswordSetup = !f.isActivo() && f.getTermsAcceptedAt() == null;
         }
 
         // Return user info WITHOUT regenerating JWT cookie (unless we wanted to refresh it too)
@@ -134,7 +137,8 @@ public class AuthController {
                 utilizador.getNif(),
                 utilizador.getTelefone(),
                 System.currentTimeMillis() + (24 * 60 * 60 * 1000), // 24h from now
-                active);
+                active,
+                requiresPasswordSetup);
 
         return ResponseEntity.ok(response);
     }
