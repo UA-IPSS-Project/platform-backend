@@ -121,7 +121,13 @@ class RequisicaoControllerTest {
                 null,
                 1L,
                 null,
-                2L);
+            "Porto",
+            LocalDateTime.of(2026, 3, 21, 9, 0),
+            LocalDateTime.of(2026, 3, 21, 12, 0),
+            4,
+            "Motorista",
+            List.of(2L),
+            null);
         Requisicao resposta = new RequisicaoTransporte();
         when(requisicaoService.criarTransporte(request)).thenReturn((RequisicaoTransporte) resposta);
 

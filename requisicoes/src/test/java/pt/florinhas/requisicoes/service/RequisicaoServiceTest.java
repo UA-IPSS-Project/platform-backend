@@ -236,7 +236,13 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 10, 8, 30),
                 10L,
                 20L,
-                30L);
+                "Centro de Dia",
+                LocalDateTime.of(2026, 4, 11, 9, 0),
+                LocalDateTime.of(2026, 4, 11, 13, 0),
+                8,
+                "Condutor 1",
+                List.of(30L),
+                null);
 
         RequisicaoTransporte resultado = requisicaoService.criarTransporte(request);
 
@@ -244,6 +250,10 @@ class RequisicaoServiceTest {
         assertSame(criadoPor, resultado.getCriadoPor());
                 assertNull(resultado.getGeridoPor());
         assertSame(transporte, resultado.getTransporte());
+        assertEquals("Centro de Dia", resultado.getDestino());
+        assertEquals(8, resultado.getNumeroPassageiros());
+        assertEquals("Condutor 1", resultado.getCondutor());
+        assertEquals(1, resultado.getTransportes().size());
     }
 
     @Test
@@ -258,7 +268,13 @@ class RequisicaoServiceTest {
                 null,
                 10L,
                 null,
-                90L);
+                "Hospital",
+                LocalDateTime.of(2026, 4, 12, 9, 0),
+                LocalDateTime.of(2026, 4, 12, 11, 0),
+                3,
+                null,
+                List.of(90L),
+                null);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarTransporte(request));
