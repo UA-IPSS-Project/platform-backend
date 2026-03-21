@@ -11,7 +11,7 @@ RUN mvn -f requisicoes/pom.xml dependency:go-offline -B
 
 # Copy source and build
 COPY requisicoes/src requisicoes/src
-RUN mvn -f requisicoes/pom.xml clean package -DskipTests
+RUN mvn -f requisicoes/pom.xml clean package -Dmaven.test.skip=true
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
