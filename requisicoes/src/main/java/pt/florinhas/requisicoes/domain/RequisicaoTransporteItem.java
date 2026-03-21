@@ -1,5 +1,7 @@
 package pt.florinhas.requisicoes.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -23,4 +25,9 @@ public class RequisicaoTransporteItem {
     @ManyToOne
     @JoinColumn(name = "transporte_id", nullable = false)
     private Transporte transporte;
+
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "requisicao_id", nullable = false)
+    private RequisicaoTransporte requisicao;
 }

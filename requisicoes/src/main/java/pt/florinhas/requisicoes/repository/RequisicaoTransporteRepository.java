@@ -9,4 +9,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
 public interface RequisicaoTransporteRepository extends JpaRepository<RequisicaoTransporte, Long> {
 
 	boolean existsByTransporteId(Long transporteId);
+
+	boolean existsByTransportesTransporteId(Long transporteId);
 }
