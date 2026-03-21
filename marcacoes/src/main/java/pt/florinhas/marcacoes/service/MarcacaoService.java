@@ -467,6 +467,7 @@ public class MarcacaoService {
         return marcacaoRepository.findAllWithRelations(pageable).map(this::toDTO);
     }
 
+
     @Transactional
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
         Marcacao m = new Marcacao();
