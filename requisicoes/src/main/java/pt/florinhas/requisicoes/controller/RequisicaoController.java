@@ -73,13 +73,13 @@ public class RequisicaoController {
     }
 
     @PostMapping("/materiais")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Material> criarMaterialCatalogo(@Valid @RequestBody CriarMaterialRequest request) {
         return ResponseEntity.ok(requisicaoService.criarMaterialCatalogo(request));
     }
 
     @PutMapping("/materiais/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Material> atualizarMaterialCatalogo(
             @PathVariable Long id,
             @Valid @RequestBody CriarMaterialRequest request) {
@@ -87,7 +87,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/materiais/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Void> apagarMaterialCatalogo(@PathVariable Long id) {
         requisicaoService.apagarMaterialCatalogo(id);
         return ResponseEntity.noContent().build();
@@ -99,13 +99,13 @@ public class RequisicaoController {
     }
 
     @PostMapping("/transportes")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Transporte> criarTransporteCatalogo(@Valid @RequestBody CriarTransporteRequest request) {
         return ResponseEntity.ok(requisicaoService.criarTransporteCatalogo(request));
     }
 
     @PutMapping("/transportes/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Transporte> atualizarTransporteCatalogo(
             @PathVariable Long id,
             @Valid @RequestBody CriarTransporteRequest request) {
@@ -113,7 +113,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/transportes/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Void> apagarTransporteCatalogo(@PathVariable Long id) {
         requisicaoService.apagarTransporteCatalogo(id);
         return ResponseEntity.noContent().build();

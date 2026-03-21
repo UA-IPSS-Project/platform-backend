@@ -137,46 +137,6 @@ public class RequisicoesApplication {
 		};
 	}
 
-	@Bean
-	@Order(2)
-	CommandLineRunner initTiposManutencao(TipoManutencaoRepository tipoManutencaoRepository) {
-		return args -> {
-			record TipoManutencaoSeed(String nome, String descricao) {
-			}
-
-			List<TipoManutencaoSeed> tiposBase = List.of(
-					new TipoManutencaoSeed("Reparação", "Conserto e reparação de equipamentos e infraestruturas"),
-					new TipoManutencaoSeed("Limpeza", "Limpeza e higienização de espaços e equipamentos"),
-					new TipoManutencaoSeed("Pintura", "Trabalhos de pintura e conservação de superfícies"),
-					new TipoManutencaoSeed("Eletricidade", "Intervenções elétricas e de iluminação"),
-					new TipoManutencaoSeed("Canalização", "Reparação de canalização, torneiras e escoamentos"),
-					new TipoManutencaoSeed("Carpintaria", "Reparação e ajuste de portas, móveis e estruturas em madeira"),
-					new TipoManutencaoSeed("Climatização", "Manutenção de equipamentos de aquecimento e ar condicionado"),
-					new TipoManutencaoSeed("Segurança", "Manutenção de alarmes, extintores e sistemas de segurança"));
-
-			Map<String, TipoManutencao> tiposExistentesPorNome = tipoManutencaoRepository.findAll().stream()
-					.collect(Collectors.toMap(
-							tipo -> tipo.getNome().toLowerCase(Locale.ROOT),
-							Function.identity(),
-							(existing, ignored) -> existing));
-
-			for (TipoManutencaoSeed seed : tiposBase) {
-				TipoManutencao existente = tiposExistentesPorNome.get(seed.nome().toLowerCase(Locale.ROOT));
-				if (existente == null) {
-					TipoManutencao tipo = new TipoManutencao();
-					tipo.setNome(seed.nome());
-					tipo.setDescricao(seed.descricao());
-					tipoManutencaoRepository.save(tipo);
-					continue;
-				}
-
-			if (existente.getDescricao() == null || existente.getDescricao().isBlank()) {
-					existente.setDescricao(seed.descricao());
-					tipoManutencaoRepository.save(existente);
-				}
-			}
-		};
-	}
 
 	@Bean
 	@Order(1)
@@ -244,7 +204,7 @@ public class RequisicoesApplication {
 	}
 
 	@Bean
-	@Order(3)
+	@Order(2)
 	CommandLineRunner initManutencaoItems(ManutencaoItemRepository manutencaoItemRepository) {
 		return args -> {
 			record ManutencaoItemSeed(ManutencaoCategoria categoria, String espaco, String itemVerificacao) {
