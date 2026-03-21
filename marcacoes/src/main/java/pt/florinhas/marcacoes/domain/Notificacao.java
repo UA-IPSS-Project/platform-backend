@@ -42,6 +42,7 @@ public class Notificacao {
     @Column(nullable = false, length = 500)
     private String mensagem;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private NotificacaoTipo tipo;
 
