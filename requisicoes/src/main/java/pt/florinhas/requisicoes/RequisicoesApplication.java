@@ -507,6 +507,95 @@ public class RequisicoesApplication {
 					manutencaoItemRepository.save(item);
 				}
 			}
+
+			List<String> verificacoes = List.of(
+					"Alumínios",
+					"Blackouts",
+					"Madeiras",
+					"Armários",
+					"Aquecedores",
+					"Torneiras",
+					"Eletricidade",
+					"Cabides",
+					"Paredes",
+					"Tetos",
+					"Chão");
+
+			Map<ManutencaoCategoria, List<String>> espacosObrigatorios = Map.of(
+					ManutencaoCategoria.CATL, List.of(
+							"WC masculino",
+							"WC feminino",
+							"Salão",
+							"Salão (palco)"),
+					ManutencaoCategoria.RC, List.of(
+							"Parque exterior",
+							"Relvado",
+							"Acolhimento pré",
+							"Acolhimento creche",
+							"Gabinete",
+							"WC deficientes",
+							"WC Rosa",
+							"WC azul",
+							"Gabinete médico",
+							"Oficina",
+							"Corredor + WC",
+							"Biblioteca",
+							"Refeitório",
+							"Lavatórios + Hall",
+							"Elevador",
+							"Escadas acesso 1º"),
+					ManutencaoCategoria.PRE_ESCOLAR, List.of(
+							"Sala acolhimento",
+							"Sala de educadoras",
+							"WC deficientes",
+							"WC azul",
+							"WC cor de rosa",
+							"Hall",
+							"Escadas acesso 2º",
+							"Corredor",
+							"Sala Amarela",
+							"Sala Azul",
+							"Sala Verde",
+							"Sala Arco-Íris",
+							"WC",
+							"Parque exterior"),
+					ManutencaoCategoria.CRECHE, List.of(
+							"Parque ext. 3º andar",
+							"S. Acolhimento grande",
+							"S. Acollhimento peq.",
+							"WC",
+							"WC azul",
+							"Corredor e hall",
+							"Escadas acesso sotão",
+							"Sala Amarela limão",
+							"Sala Verde Alface",
+							"Sala Vermelha",
+							"Refeitório",
+							"Copa",
+							"Fraldário",
+							"Sala azul turquesa",
+							"Berçário"));
+
+			Map<String, ManutencaoItem> existentesPorChave = manutencaoItemRepository.findAll().stream()
+					.collect(Collectors.toMap(
+							item -> item.getCategoria().name() + "|" + item.getEspaco() + "|" + item.getItemVerificacao(),
+							Function.identity(),
+							(existing, ignored) -> existing));
+
+			espacosObrigatorios.forEach((categoria, espacos) -> {
+				for (String espaco : espacos) {
+					for (String verificacao : verificacoes) {
+						String chave = categoria.name() + "|" + espaco + "|" + verificacao;
+						if (!existentesPorChave.containsKey(chave)) {
+							ManutencaoItem item = new ManutencaoItem();
+							item.setCategoria(categoria);
+							item.setEspaco(espaco);
+							item.setItemVerificacao(verificacao);
+							manutencaoItemRepository.save(item);
+						}
+					}
+				}
+			});
 		};
 	}
 
