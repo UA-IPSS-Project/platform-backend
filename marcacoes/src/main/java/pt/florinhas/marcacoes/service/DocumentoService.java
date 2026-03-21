@@ -422,6 +422,29 @@ public class DocumentoService {
         log.info("Documento {} removido com sucesso", documentoId);
     }
 
+        /**
+     * Notifica o utente de que os documentos enviados são inválidos.
+     * @param marcacaoId ID da marcação
+     * @param observacoes Observações/motivo da invalidação
+     */
+    @Transactional
+    public void notificarDocumentosInvalidos(Long marcacaoId, String observacoes) {
+        Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
+            .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
+        Utilizador utente = null;
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            utente = marcacao.getMarcacaoSecretaria().getUtente();
+        } else if (marcacao.getCriadoPor() != null) {
+            utente = marcacao.getCriadoPor();
+        }
+        if (utente == null) {
+            throw new IllegalArgumentException("Não foi possível identificar o utente para notificação.");
+        }
+        String titulo = "Documentos inválidos";
+        String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
+        notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.FICHEIRO);
+    }
+
     /**
      * Valida se o ficheiro atende aos critérios de upload.
      * 

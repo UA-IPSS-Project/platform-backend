@@ -129,6 +129,19 @@ public class DocumentoController {
         return ResponseEntity.ok(resultados);
     }
 
+    /**
+     * Notifica o utente de que os documentos enviados são inválidos.
+     * @param marcacaoId ID da marcação
+     * @param observacoes Observações/motivo da invalidação
+     */
+    @PostMapping("/marcacao/{marcacaoId}/notificar-invalidos")
+    public ResponseEntity<Void> notificarDocumentosInvalidos(
+            @PathVariable Long marcacaoId,
+            @RequestParam("observacoes") String observacoes) {
+        documentoService.notificarDocumentosInvalidos(marcacaoId, observacoes);
+        return ResponseEntity.ok().build();
+    }
+
     private boolean isSecretariaOuStaff() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
