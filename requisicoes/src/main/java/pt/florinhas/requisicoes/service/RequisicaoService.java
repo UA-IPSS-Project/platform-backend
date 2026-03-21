@@ -198,6 +198,16 @@ public class RequisicaoService {
     }
 
     private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
+        LocalDateTime agora = LocalDateTime.now();
+
+        if (dataHoraSaida.isBefore(agora)) {
+            throw new IllegalArgumentException("A data/hora de saída não pode estar no passado.");
+        }
+
+        if (dataHoraRegresso.isBefore(agora)) {
+            throw new IllegalArgumentException("A data/hora de regresso não pode estar no passado.");
+        }
+
         if (!dataHoraRegresso.isAfter(dataHoraSaida)) {
             throw new IllegalArgumentException("A data/hora de regresso deve ser posterior à data/hora de saída.");
         }

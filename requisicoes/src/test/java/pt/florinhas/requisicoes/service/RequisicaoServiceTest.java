@@ -404,6 +404,54 @@ class RequisicaoServiceTest {
     }
 
     @Test
+    void criarTransporte_quandoSaidaNoPassado_deveLancarErro() {
+        LocalDateTime agora = LocalDateTime.now();
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                agora.minusDays(1),
+                agora.plusDays(1),
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de saída não pode estar no passado.", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoRegressoNoPassado_deveLancarErro() {
+        LocalDateTime agora = LocalDateTime.now();
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                agora.plusDays(1),
+                agora.minusDays(1),
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de regresso não pode estar no passado.", exception.getMessage());
+    }
+
+    @Test
     void criarManutencao_quandoDadosValidos_deveCriarComTipo() {
         Funcionario criadoPor = funcionarioComId(100L);
         when(funcionarioRepository.findById(100L)).thenReturn(Optional.of(criadoPor));
