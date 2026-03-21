@@ -20,5 +20,6 @@ public record CriarRequisicaoTransporteRequest(
         @NotNull @Positive Integer numeroPassageiros,
         String condutor,
         List<Long> transporteIds,
+        @Deprecated
         Long transporteId) {
 }

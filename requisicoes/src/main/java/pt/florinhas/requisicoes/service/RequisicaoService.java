@@ -148,15 +148,8 @@ public class RequisicaoService {
 
     @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
+        List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
-
-        List<Long> transporteIds = request.transporteIds();
-        if ((transporteIds == null || transporteIds.isEmpty()) && request.transporteId() != null) {
-            transporteIds = List.of(request.transporteId());
-        }
-        if (transporteIds == null || transporteIds.isEmpty()) {
-            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
-        }
 
         List<Transporte> transportesSelecionados = transporteIds.stream()
                 .distinct()
@@ -186,6 +179,21 @@ public class RequisicaoService {
         }
 
         return requisicaoTransporteRepository.save(requisicao);
+    }
+
+    private List<Long> resolverIdsTransporte(List<Long> transporteIds, Long transporteId) {
+        boolean temLista = transporteIds != null && !transporteIds.isEmpty();
+        boolean temSingular = transporteId != null;
+
+        if (temLista && temSingular) {
+            throw new IllegalArgumentException("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.");
+        }
+
+        if (!temLista && !temSingular) {
+            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
+        }
+
+        return temLista ? transporteIds : List.of(transporteId);
     }
 
     @Transactional

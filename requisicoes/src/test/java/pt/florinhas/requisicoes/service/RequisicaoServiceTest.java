@@ -282,6 +282,82 @@ class RequisicaoServiceTest {
     }
 
     @Test
+    void criarTransporte_quandoApenasTransporteId_deveAceitarCompatibilidade() {
+        Funcionario criadoPor = funcionarioComId(10L);
+        Transporte transporte = new Transporte();
+        transporte.setId(30L);
+
+        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+        when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+        when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido compatível",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                2,
+                null,
+                null,
+                30L);
+
+        RequisicaoTransporte resultado = requisicaoService.criarTransporte(request);
+
+        assertSame(transporte, resultado.getTransporte());
+        assertEquals(1, resultado.getTransportes().size());
+    }
+
+    @Test
+    void criarTransporte_quandoTransporteIdsETransporteId_fornecidos_deveLancarErro() {
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                2,
+                null,
+                List.of(30L),
+                31L);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.",
+                exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoNenhumTransporteFornecido_deveLancarErro() {
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                2,
+                null,
+                null,
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("É obrigatório indicar pelo menos um transporte.", exception.getMessage());
+    }
+
+    @Test
     void criarManutencao_quandoDadosValidos_deveCriarComTipo() {
         Funcionario criadoPor = funcionarioComId(100L);
         when(funcionarioRepository.findById(100L)).thenReturn(Optional.of(criadoPor));
