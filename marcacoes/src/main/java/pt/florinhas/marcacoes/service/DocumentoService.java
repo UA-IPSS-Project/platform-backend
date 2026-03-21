@@ -451,8 +451,7 @@ public class DocumentoService {
             String dataMarcacao = marcacao.getData() != null ? marcacao.getData().toLocalDate().toString() : "(data desconhecida)";
             String nomeDoc = documento.getNomeOriginal();
             String mensagem = String.format("Na marcação do dia %s, o documento '%s' é inválido.%s", dataMarcacao, nomeDoc, (motivo != null && !motivo.isBlank() ? " Motivo: " + motivo : ""));
-            Map<String, Object> metadata = Map.of("appointmentId", marcacaoId);
-            notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.DOCUMENTO_INVALIDO, metadata);
+            notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.DOCUMENTO_INVALIDO);
         }
 
     /**
