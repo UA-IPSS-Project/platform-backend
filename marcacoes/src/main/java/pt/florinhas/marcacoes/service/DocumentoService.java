@@ -36,6 +36,10 @@ import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.repository.FuncionarioRepository;
+import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
+import pt.florinhas.marcacoes.domain.NotificacaoTipo;
 
 /**
  * Serviço responsável pela gestão de documentos anexados a marcações.
@@ -49,11 +53,14 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+
 public class DocumentoService {
 
     private final DocumentoRepository documentoRepository;
     private final MarcacaoRepository marcacaoRepository;
     private final MinioClient minioClient;
+    private final FuncionarioRepository funcionarioRepository;
+    private final NotificacaoService notificacaoService;
 
     /**
      * Bucket MinIO onde os documentos são armazenados.
@@ -91,6 +98,7 @@ public class DocumentoService {
      * @throws IOException se houver erro ao guardar o ficheiro
      */
     @Transactional
+
     public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file) throws IOException {
 
         log.info("Iniciando upload de documento para marcação {}", marcacaoId);
@@ -171,6 +179,23 @@ public class DocumentoService {
         Documento documentoSalvo = documentoRepository.save(documento);
 
         log.info("Documento {} salvo com sucesso para marcação {}", documentoSalvo.getId(), marcacaoId);
+
+        // Notificar todas as secretarias sobre o upload do documento
+        try {
+            List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+            String titulo = "Novo documento enviado";
+            String mensagem = String.format("Um novo documento foi enviado para a marcação #%d.", marcacaoId);
+            for (Funcionario secretaria : secretarias) {
+                notificacaoService.criarNotificacao(
+                    secretaria.getId(),
+                    titulo,
+                    mensagem,
+                    NotificacaoTipo.FICHEIRO
+                );
+            }
+        } catch (Exception e) {
+            log.error("Erro ao notificar secretarias sobre upload de documento", e);
+        }
 
         return DocumentoDTO.fromDocumento(documentoSalvo);
     }
