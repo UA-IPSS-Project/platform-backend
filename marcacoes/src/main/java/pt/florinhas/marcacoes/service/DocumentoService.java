@@ -427,30 +427,33 @@ public class DocumentoService {
     }
 
         /**
-     * Notifica o utente de que os documentos enviados são inválidos.
-     * @param marcacaoId ID da marcação
-     * @param observacoes Observações/motivo da invalidação
-     */
-    @Transactional
-    public void notificarDocumentosInvalidos(Long marcacaoId, String observacoes) {
-        Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
-            .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
-        Utilizador utente = null;
-        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
-            utente = marcacao.getMarcacaoSecretaria().getUtente();
-        } else if (marcacao.getCriadoPor() != null) {
-            utente = marcacao.getCriadoPor();
+         * Notifica o utente de que um documento enviado é inválido.
+         * @param marcacaoId ID da marcação
+         * @param documentoId ID do documento inválido
+         * @param motivo Observações/motivo da invalidação
+         */
+        @Transactional
+        public void notificarDocumentoInvalido(Long marcacaoId, Long documentoId, String motivo) {
+            Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
+            Documento documento = documentoRepository.findById(documentoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+            Utilizador utente = null;
+            if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+                utente = marcacao.getMarcacaoSecretaria().getUtente();
+            } else if (marcacao.getCriadoPor() != null) {
+                utente = marcacao.getCriadoPor();
+            }
+            if (utente == null) {
+                throw new IllegalArgumentException("Não foi possível identificar o utente para notificação.");
+            }
+            String titulo = "Documento inválido";
+            String dataMarcacao = marcacao.getData() != null ? marcacao.getData().toLocalDate().toString() : "(data desconhecida)";
+            String nomeDoc = documento.getNomeOriginal();
+            String mensagem = String.format("Na marcação do dia %s, o documento '%s' é inválido.%s", dataMarcacao, nomeDoc, (motivo != null && !motivo.isBlank() ? " Motivo: " + motivo : ""));
+            Map<String, Object> metadata = Map.of("appointmentId", marcacaoId);
+            notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.DOCUMENTO_INVALIDO, metadata);
         }
-        if (utente == null) {
-            throw new IllegalArgumentException("Não foi possível identificar o utente para notificação.");
-        }
-        String titulo = "Documentos inválidos";
-        if (titulo == null || titulo.trim().isEmpty()) {
-            throw new IllegalArgumentException("O título da notificação não pode ser nulo ou vazio.");
-        }
-        String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
-        notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.FICHEIRO);
-    }
 
     /**
      * Valida se o ficheiro atende aos critérios de upload.

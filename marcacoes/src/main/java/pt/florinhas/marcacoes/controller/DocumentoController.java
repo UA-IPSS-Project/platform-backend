@@ -135,10 +135,11 @@ public class DocumentoController {
      * @param observacoes Observações/motivo da invalidação
      */
     @PostMapping("/marcacao/{marcacaoId}/notificar-invalidos")
-    public ResponseEntity<Void> notificarDocumentosInvalidos(
+    public ResponseEntity<Void> notificarDocumentoInvalido(
             @PathVariable Long marcacaoId,
+            @RequestParam("documentoId") Long documentoId,
             @RequestParam("observacoes") String observacoes) {
-        documentoService.notificarDocumentosInvalidos(marcacaoId, observacoes);
+        documentoService.notificarDocumentoInvalido(marcacaoId, documentoId, observacoes);
         return ResponseEntity.ok().build();
     }
 
