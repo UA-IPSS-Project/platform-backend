@@ -249,6 +249,8 @@ public class AuthService {
                 var user = utilizadorRepository.findById(userId)
                                 .orElseThrow(() -> new BadRequestException("Utilizador não encontrado"));
 
+                boolean termsAcceptedNow = false;
+
                 // Verificar se precisa aceitar termos
                 if (user.getTermsAcceptedAt() == null) {
                         // Conta criada pela secretaria ou sem termos aceites
@@ -257,6 +259,7 @@ public class AuthService {
                         }
                         // Define timestamp de aceitação dos termos
                         user.setTermsAcceptedAt(LocalDateTime.now());
+                        termsAcceptedNow = true;
                 }
 
                 // Atualiza a password
@@ -267,9 +270,9 @@ public class AuthService {
                         utente.setActivo(true);
                         utenteRepository.save(utente);
                 } else if (user instanceof Funcionario funcionario) {
-                        // Para funcionários, define timestamp de termos se fornecido e ATIVA a conta
-                        if (termsAccepted != null && termsAccepted && funcionario.getTermsAcceptedAt() == null) {
-                                funcionario.setTermsAcceptedAt(LocalDateTime.now());
+                        // Funcionário fica ativo após concluir setup de password e termos,
+                        // ou quando já tinha termos aceites (ex.: recuperação de conta).
+                        if (termsAcceptedNow || funcionario.getTermsAcceptedAt() != null) {
                                 funcionario.setActivo(true);
                         }
                         funcionarioRepository.save(funcionario);
