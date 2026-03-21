@@ -14,5 +14,5 @@ public record CriarRequisicaoManutencaoRequest(
         @NotNull Long criadoPorId,
         Long geridoPorId,
         String assunto,
-        List<Long> manutencaoItemIds) {
+        List<ManutencaoItemRequest> manutencaoItens) {
 }

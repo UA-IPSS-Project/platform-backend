@@ -240,14 +240,15 @@ public class RequisicaoService {
         RequisicaoManutencao savedRequisicao = requisicaoManutencaoRepository.save(requisicao);
 
         // Process maintenance items if provided
-        if (request.manutencaoItemIds() != null && !request.manutencaoItemIds().isEmpty()) {
-            for (Long itemId : request.manutencaoItemIds()) {
-                ManutencaoItem item = manutencaoItemRepository.findById(itemId)
-                        .orElseThrow(() -> new IllegalArgumentException("ManutencaoItem not found: " + itemId));
+        if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
+            for (var itemRequest : request.manutencaoItens()) {
+                ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
+                        .orElseThrow(() -> new IllegalArgumentException("ManutencaoItem not found: " + itemRequest.itemId()));
                 
                 RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
                 requisicaoItem.setRequisicao(savedRequisicao);
                 requisicaoItem.setManutencaoItem(item);
+                requisicaoItem.setObservacoes(itemRequest.observacoes());
                 
                 requisicaoManutencaoItemRepository.save(requisicaoItem);
             }

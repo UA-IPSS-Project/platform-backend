@@ -14,10 +14,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import pt.florinhas.requisicoes.domain.Material;
-import pt.florinhas.requisicoes.domain.MaterialCategoria;
 import pt.florinhas.requisicoes.domain.ManutencaoCategoria;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
+import pt.florinhas.requisicoes.domain.Material;
+import pt.florinhas.requisicoes.domain.MaterialCategoria;
 import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.domain.TransporteCategoria;
