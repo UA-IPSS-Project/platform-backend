@@ -92,11 +92,18 @@ public class DocumentoService {
      */
     @Transactional
     public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file) throws IOException {
+
         log.info("Iniciando upload de documento para marcação {}", marcacaoId);
 
         // Validar marcação
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
             .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
+
+        // Limite de 10 ficheiros por marcação
+        Long ficheirosExistentes = documentoRepository.countByMarcacaoId(marcacaoId);
+        if (ficheirosExistentes != null && ficheirosExistentes >= 10) {
+            throw new IllegalArgumentException("Limite máximo de 10 ficheiros por marcação atingido.");
+        }
 
         // Validações do ficheiro
         validarFicheiro(file);
