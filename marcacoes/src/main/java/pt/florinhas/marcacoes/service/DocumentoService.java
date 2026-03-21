@@ -445,6 +445,9 @@ public class DocumentoService {
             throw new IllegalArgumentException("Não foi possível identificar o utente para notificação.");
         }
         String titulo = "Documentos inválidos";
+        if (titulo == null || titulo.trim().isEmpty()) {
+            throw new IllegalArgumentException("O título da notificação não pode ser nulo ou vazio.");
+        }
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.FICHEIRO);
     }
