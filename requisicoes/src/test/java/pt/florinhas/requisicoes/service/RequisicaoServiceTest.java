@@ -464,7 +464,8 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 5, 5, 9, 0),
                 100L,
                 200L,
-                "Janela partida na sala 2");
+                "Janela partida na sala 2",
+                null);
 
         RequisicaoManutencao resultado = requisicaoService.criarManutencao(request);
 
@@ -485,7 +486,8 @@ class RequisicaoServiceTest {
                 null,
                 404L,
                 null,
-                "Assunto");
+                "Assunto",
+                null);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarManutencao(request));

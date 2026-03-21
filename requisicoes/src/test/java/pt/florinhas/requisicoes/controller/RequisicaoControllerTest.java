@@ -144,7 +144,8 @@ class RequisicaoControllerTest {
                 null,
                 1L,
                 2L,
-                "porta");
+            "porta",
+            null);
         Requisicao resposta = new RequisicaoManutencao();
         when(requisicaoService.criarManutencao(request)).thenReturn((RequisicaoManutencao) resposta);
 
