@@ -160,6 +160,11 @@ public class RequisicaoController {
         return ResponseEntity.ok(requisicaoService.criarManutencao(request));
     }
 
+    @GetMapping("/manutencao-items")
+    public List<pt.florinhas.requisicoes.domain.ManutencaoItem> listarManutencaoItems() {
+        return requisicaoService.listarManutencaoItems();
+    }
+
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Requisicao> atualizarEstado(

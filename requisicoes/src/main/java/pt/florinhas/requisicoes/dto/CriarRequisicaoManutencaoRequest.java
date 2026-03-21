@@ -1,6 +1,7 @@
 package pt.florinhas.requisicoes.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,5 +13,6 @@ public record CriarRequisicaoManutencaoRequest(
         LocalDateTime tempoLimite,
         @NotNull Long criadoPorId,
         Long geridoPorId,
-        String assunto) {
+        String assunto,
+        List<Long> manutencaoItemIds) {
 }
