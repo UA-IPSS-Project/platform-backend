@@ -137,7 +137,7 @@ public class RequisicaoService {
         }
 
         RequisicaoMaterial requisicao = new RequisicaoMaterial();
-        requisicao.setDescricao(request.descricao());
+        requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MATERIAL);
@@ -170,7 +170,7 @@ public class RequisicaoService {
                 .toList();
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
-        requisicao.setDescricao(request.descricao());
+        requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
@@ -229,7 +229,7 @@ public class RequisicaoService {
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
 
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
-        requisicao.setDescricao(request.descricao());
+        requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MANUTENCAO);
@@ -482,5 +482,10 @@ public class RequisicaoService {
             throw new IllegalArgumentException(campo + " é obrigatório.");
         }
         return normalized;
+    }
+
+    private String normalizarDescricao(String descricao) {
+        String normalized = normalizarTextoOpcional(descricao);
+        return normalized != null ? normalized : "";
     }
 }

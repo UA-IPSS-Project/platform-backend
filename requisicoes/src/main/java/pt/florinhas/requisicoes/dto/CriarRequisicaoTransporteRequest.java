@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Positive;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 
 public record CriarRequisicaoTransporteRequest(
-        @NotBlank String descricao,
+        String descricao,
         @NotNull RequisicaoPrioridade prioridade,
         LocalDateTime tempoLimite,
         @NotNull Long criadoPorId,
