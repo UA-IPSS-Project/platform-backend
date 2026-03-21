@@ -1,11 +1,11 @@
 package pt.florinhas.marcacoes;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -61,6 +61,14 @@ public class MarcacoesApplication {
 				    "999999997",
 				    "bal123",
 				    FuncionarioTipo.BALNEARIO));
+
+				upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+				    "999999996",
+				    "Funcionário Escola",
+				    "escola@florinhasdovouga.pt",
+				    "999999996",
+				    "esc123",
+				    FuncionarioTipo.ESCOLA));
 		};
 	}
 

@@ -14,11 +14,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import pt.florinhas.requisicoes.domain.ManutencaoCategoria;
+import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.MaterialCategoria;
 import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.domain.TransporteCategoria;
+import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
 import pt.florinhas.requisicoes.repository.TipoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
@@ -237,6 +240,362 @@ public class RequisicoesApplication {
 				transportesPorCodigo.put(seed.codigo().toUpperCase(Locale.ROOT), persisted);
 				transportesPorMatricula.put(seed.matricula().toUpperCase(Locale.ROOT), persisted);
 			}
+		};
+	}
+
+	@Bean
+	@Order(3)
+	CommandLineRunner initManutencaoItems(ManutencaoItemRepository manutencaoItemRepository) {
+		return args -> {
+			record ManutencaoItemSeed(ManutencaoCategoria categoria, String espaco, String itemVerificacao) {
+			}
+
+			List<ManutencaoItemSeed> itemsBase = List.of(
+					// CATL
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "WC (Masc/Fem)", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CATL, "Salão e Palco", "Chão"),
+					// RC
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Parque", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Relvado", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Acolhimento", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Gabinetes", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "WCs", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Oficina", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Biblioteca", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Refeitório", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.RC, "Elevador", "Chão"),
+					// PRE_ESCOLAR
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Salas (Amarela, Azul, Verde, Arco-Íris)", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "WCs", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Hall", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Corredor", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.PRE_ESCOLAR, "Parque exterior", "Chão"),
+					// CRECHE
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Berçário", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Salas (Limão, Alface, Vermelha, Turquesa)", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Fraldário", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Copa", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Refeitório", "Chão"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Alumínios"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Blackouts"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Madeiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Armários"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Aquecedores"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Torneiras"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Eletricidade"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Cabides"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Paredes"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Tetos"),
+					new ManutencaoItemSeed(ManutencaoCategoria.CRECHE, "Parque 3º andar", "Chão"));
+
+			if (manutencaoItemRepository.count() == 0) {
+				for (ManutencaoItemSeed seed : itemsBase) {
+					ManutencaoItem item = new ManutencaoItem();
+					item.setCategoria(seed.categoria());
+					item.setEspaco(seed.espaco());
+					item.setItemVerificacao(seed.itemVerificacao());
+					manutencaoItemRepository.save(item);
+				}
+			}
+
+			List<String> verificacoes = List.of(
+					"Alumínios",
+					"Blackouts",
+					"Madeiras",
+					"Armários",
+					"Aquecedores",
+					"Torneiras",
+					"Eletricidade",
+					"Cabides",
+					"Paredes",
+					"Tetos",
+					"Chão");
+
+			Map<ManutencaoCategoria, List<String>> espacosObrigatorios = Map.of(
+					ManutencaoCategoria.CATL, List.of(
+							"WC masculino",
+							"WC feminino",
+							"Salão",
+							"Salão (palco)"),
+					ManutencaoCategoria.RC, List.of(
+							"Parque exterior",
+							"Relvado",
+							"Acolhimento pré",
+							"Acolhimento creche",
+							"Gabinete",
+							"WC deficientes",
+							"WC Rosa",
+							"WC azul",
+							"Gabinete médico",
+							"Oficina",
+							"Corredor + WC",
+							"Biblioteca",
+							"Refeitório",
+							"Lavatórios + Hall",
+							"Elevador",
+							"Escadas acesso 1º"),
+					ManutencaoCategoria.PRE_ESCOLAR, List.of(
+							"Sala acolhimento",
+							"Sala de educadoras",
+							"WC deficientes",
+							"WC azul",
+							"WC cor de rosa",
+							"Hall",
+							"Escadas acesso 2º",
+							"Corredor",
+							"Sala Amarela",
+							"Sala Azul",
+							"Sala Verde",
+							"Sala Arco-Íris",
+							"WC",
+							"Parque exterior"),
+					ManutencaoCategoria.CRECHE, List.of(
+							"Parque ext. 3º andar",
+							"S. Acolhimento grande",
+							"S. Acollhimento peq.",
+							"WC",
+							"WC azul",
+							"Corredor e hall",
+							"Escadas acesso sotão",
+							"Sala Amarela limão",
+							"Sala Verde Alface",
+							"Sala Vermelha",
+							"Refeitório",
+							"Copa",
+							"Fraldário",
+							"Sala azul turquesa",
+							"Berçário"));
+
+			Map<String, ManutencaoItem> existentesPorChave = manutencaoItemRepository.findAll().stream()
+					.collect(Collectors.toMap(
+							item -> item.getCategoria().name() + "|" + item.getEspaco() + "|" + item.getItemVerificacao(),
+							Function.identity(),
+							(existing, ignored) -> existing));
+
+			espacosObrigatorios.forEach((categoria, espacos) -> {
+				for (String espaco : espacos) {
+					for (String verificacao : verificacoes) {
+						String chave = categoria.name() + "|" + espaco + "|" + verificacao;
+						if (!existentesPorChave.containsKey(chave)) {
+							ManutencaoItem item = new ManutencaoItem();
+							item.setCategoria(categoria);
+							item.setEspaco(espaco);
+							item.setItemVerificacao(verificacao);
+							manutencaoItemRepository.save(item);
+						}
+					}
+				}
+			});
 		};
 	}
 
