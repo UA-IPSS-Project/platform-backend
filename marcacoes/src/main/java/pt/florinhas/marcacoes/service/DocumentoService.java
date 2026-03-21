@@ -101,9 +101,31 @@ public class DocumentoService {
         // Validações do ficheiro
         validarFicheiro(file);
 
-        // Gerar nome único para o ficheiro
-        String nomeOriginal = file.getOriginalFilename();
-        String extensao = obterExtensao(nomeOriginal);
+
+        // Obter NIF do utente associado à marcação (via MarcacaoSecretaria)
+        String nif = null;
+        String tipoMarcacao = null;
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            nif = marcacao.getMarcacaoSecretaria().getUtente().getNif();
+            // Tipo de marcação: usar tipoAtendimento (PRESENCIAL, REMOTO)
+            tipoMarcacao = marcacao.getMarcacaoSecretaria().getTipoAtendimento() != null
+                ? marcacao.getMarcacaoSecretaria().getTipoAtendimento().name()
+                : "SEM_TIPO";
+        } else {
+            // fallback: usar criador da marcação
+            nif = marcacao.getCriadoPor() != null ? marcacao.getCriadoPor().getNif() : "SEM_NIF";
+            tipoMarcacao = "SEM_TIPO";
+        }
+
+        // Gerar nome original no padrão NIF_TipoDeMarcacao_UUID.extensão
+        String extensao = obterExtensao(file.getOriginalFilename());
+        String nomeOriginal = String.format("%s_%s_%s%s",
+            nif != null ? nif : "SEM_NIF",
+            tipoMarcacao != null ? tipoMarcacao : "SEM_TIPO",
+            UUID.randomUUID(),
+            extensao
+        );
+        // Nome armazenado continua sendo UUID.extensão para garantir unicidade
         String nomeArmazenado = UUID.randomUUID().toString() + extensao;
 
         // Criar diretório organizado por ano/mês

@@ -148,12 +148,12 @@ public class DocumentoController {
      * @param id ID do documento
      * @return ficheiro para download
      */
+
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> downloadDocumento(@PathVariable Long id) {
         log.info("Download de documento {}", id);
 
         DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
-        
         // Verificar permissões para a marcação associada
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
 
@@ -163,6 +163,27 @@ public class DocumentoController {
             .contentType(MediaType.parseMediaType(documentoDTO.tipo()))
             .header(HttpHeaders.CONTENT_DISPOSITION, 
                 "attachment; filename=\"" + documentoDTO.nomeOriginal() + "\"")
+            .body(resource);
+    }
+
+    /**
+     * Preview inline de um documento (para visualização direta no navegador).
+     * @param id ID do documento
+     * @return ficheiro para visualização inline
+     */
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<Resource> previewDocumento(@PathVariable Long id) {
+        log.info("Preview inline de documento {}", id);
+
+        DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
+        verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        Resource resource = documentoService.carregarFicheiro(id);
+
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(documentoDTO.tipo()))
+            .header(HttpHeaders.CONTENT_DISPOSITION, 
+                "inline; filename=\"" + documentoDTO.nomeOriginal() + "\"")
             .body(resource);
     }
 
