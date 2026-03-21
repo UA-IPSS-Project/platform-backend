@@ -358,6 +358,52 @@ class RequisicaoServiceTest {
     }
 
     @Test
+    void criarTransporte_quandoRegressoAntesDaSaida_deveLancarErro() {
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoRegressoIgualSaida_deveLancarErro() {
+        LocalDateTime dataHora = LocalDateTime.of(2026, 4, 13, 10, 0);
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                dataHora,
+                dataHora,
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
+    }
+
+    @Test
     void criarManutencao_quandoDadosValidos_deveCriarComTipo() {
         Funcionario criadoPor = funcionarioComId(100L);
         when(funcionarioRepository.findById(100L)).thenReturn(Optional.of(criadoPor));

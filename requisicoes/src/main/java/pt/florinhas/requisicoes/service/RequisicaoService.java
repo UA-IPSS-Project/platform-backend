@@ -149,6 +149,7 @@ public class RequisicaoService {
     @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
         List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
+        validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
 
         List<Transporte> transportesSelecionados = transporteIds.stream()
@@ -194,6 +195,12 @@ public class RequisicaoService {
         }
 
         return temLista ? transporteIds : List.of(transporteId);
+    }
+
+    private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
+        if (!dataHoraRegresso.isAfter(dataHoraSaida)) {
+            throw new IllegalArgumentException("A data/hora de regresso deve ser posterior à data/hora de saída.");
+        }
     }
 
     @Transactional
