@@ -178,23 +178,27 @@ public class DocumentoService {
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);
 
+
         log.info("Documento {} salvo com sucesso para marcação {}", documentoSalvo.getId(), marcacaoId);
 
-        // Notificar todas as secretarias sobre o upload do documento
-        try {
-            List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
-            String titulo = "Novo documento enviado";
-            String mensagem = String.format("Um novo documento foi enviado para a marcação #%d.", marcacaoId);
-            for (Funcionario secretaria : secretarias) {
-                notificacaoService.criarNotificacao(
-                    secretaria.getId(),
-                    titulo,
-                    mensagem,
-                    NotificacaoTipo.FICHEIRO
-                );
+        // Notificar secretarias apenas se o criador da marcação for utente (não funcionário/secretaria)
+        Utilizador criador = marcacao.getCriadoPor();
+        if (criador != null && criador.getClass().getSimpleName().equals("Utente")) {
+            try {
+                List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+                String titulo = "Novo documento enviado";
+                String mensagem = String.format("Um novo documento foi enviado para a marcação #%d.", marcacaoId);
+                for (Funcionario secretaria : secretarias) {
+                    notificacaoService.criarNotificacao(
+                        secretaria.getId(),
+                        titulo,
+                        mensagem,
+                        NotificacaoTipo.FICHEIRO
+                    );
+                }
+            } catch (Exception e) {
+                log.error("Erro ao notificar secretarias sobre upload de documento", e);
             }
-        } catch (Exception e) {
-            log.error("Erro ao notificar secretarias sobre upload de documento", e);
         }
 
         return DocumentoDTO.fromDocumento(documentoSalvo);
