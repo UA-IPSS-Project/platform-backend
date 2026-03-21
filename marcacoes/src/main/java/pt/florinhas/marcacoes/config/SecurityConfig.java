@@ -22,12 +22,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
-import pt.florinhas.marcacoes.security.JwtAuthenticationFilter;
-import pt.florinhas.marcacoes.security.StatelessCsrfTokenRepository;
-import pt.florinhas.marcacoes.security.CsrfCookieFilter;
-import org.springframework.security.web.csrf.CsrfFilter;
+import pt.florinhas.marcacoes.security.GatewayHeaderAuthenticationFilter;
 
 /**
  * Classe de configuração de segurança da aplicação.
@@ -51,7 +46,7 @@ public class SecurityConfig {
      * Normalmente é inserido antes do filtro de autenticação padrão do Spring
      * Security.
      */
-    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter;
 
     /**
      * Serviço que carrega os utilizadores da aplicação (ex.: a partir da base de
@@ -65,8 +60,10 @@ public class SecurityConfig {
      * param jwtAuthFilter filtro JWT personalizado
      * param userDetailsService serviço de carregamento de utilizadores
      */
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, UserDetailsService userDetailsService) {
-        this.jwtAuthFilter = jwtAuthFilter;
+    public SecurityConfig(
+            GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter,
+            UserDetailsService userDetailsService) {
+        this.gatewayHeaderAuthenticationFilter = gatewayHeaderAuthenticationFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -84,44 +81,23 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Configurar CSRF repository stateless (Double Submit Cookie pattern)
-        // Compatível com JWT - não requer sessão do servidor
-        StatelessCsrfTokenRepository csrfRepo = new StatelessCsrfTokenRepository();
-
         http
-                // Ativa proteção CSRF com Cookie Repository (acessível pelo JS)
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(csrfRepo)
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        // IMPORTANTE: Estes endpoints ainda precisam de whitelist
-                        // porque são chamados ANTES do utilizador ter um CSRF token
-                        .ignoringRequestMatchers(
-                                "/api/auth/login/**", // Primeiro endpoint, sem token ainda
-                                "/api/auth/register/**", // Novo utilizador, sem token
-                                "/api/auth/me", // Chamado no reload, pode não ter token
-                                "/api/auth/logout")) // Logout pode ser chamado com token expirado
+            .csrf(csrf -> csrf.disable())
 
                 // Aplica a configuração de CORS definida no bean abaixo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // Configuração de autorização dos pedidos HTTP
                 .authorizeHttpRequests(auth -> auth
-                        // Permitir endpoints de autenticação públicos
-                        .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/api/auth/login/**", "/api/auth/register/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        // Permitir OPTIONS
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // Exigir autenticação para qualquer outro pedido
                         .anyRequest().authenticated())
 
                 // Define que a aplicação não mantém estado de sessão (JWT-based auth)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Filtro para forçar envio do cookie CSRF (Logo após o CsrfFilter)
-                .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
-
-                // Filtro JWT antes da autenticação por username/password
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(gatewayHeaderAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
                 // Desativa frameOptions (necessário, por exemplo, para H2 Console)
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
