@@ -1,22 +1,21 @@
 package pt.florinhas.requisicoes.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
@@ -236,7 +235,13 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 10, 8, 30),
                 10L,
                 20L,
-                30L);
+                "Centro de Dia",
+                LocalDateTime.of(2026, 4, 11, 9, 0),
+                LocalDateTime.of(2026, 4, 11, 13, 0),
+                8,
+                "Condutor 1",
+                List.of(30L),
+                null);
 
         RequisicaoTransporte resultado = requisicaoService.criarTransporte(request);
 
@@ -244,6 +249,10 @@ class RequisicaoServiceTest {
         assertSame(criadoPor, resultado.getCriadoPor());
                 assertNull(resultado.getGeridoPor());
         assertSame(transporte, resultado.getTransporte());
+        assertEquals("Centro de Dia", resultado.getDestino());
+        assertEquals(8, resultado.getNumeroPassageiros());
+        assertEquals("Condutor 1", resultado.getCondutor());
+        assertEquals(1, resultado.getTransportes().size());
     }
 
     @Test
@@ -258,12 +267,188 @@ class RequisicaoServiceTest {
                 null,
                 10L,
                 null,
-                90L);
+                "Hospital",
+                LocalDateTime.of(2026, 4, 12, 9, 0),
+                LocalDateTime.of(2026, 4, 12, 11, 0),
+                3,
+                null,
+                List.of(90L),
+                null);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarTransporte(request));
 
         assertEquals("Transporte não encontrado: 90", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoApenasTransporteId_deveAceitarCompatibilidade() {
+        Funcionario criadoPor = funcionarioComId(10L);
+        Transporte transporte = new Transporte();
+        transporte.setId(30L);
+
+        when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+        when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+        when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido compatível",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                2,
+                null,
+                null,
+                30L);
+
+        RequisicaoTransporte resultado = requisicaoService.criarTransporte(request);
+
+        assertSame(transporte, resultado.getTransporte());
+        assertEquals(1, resultado.getTransportes().size());
+    }
+
+    @Test
+    void criarTransporte_quandoTransporteIdsETransporteId_fornecidos_deveLancarErro() {
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                2,
+                null,
+                List.of(30L),
+                31L);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.",
+                exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoNenhumTransporteFornecido_deveLancarErro() {
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                2,
+                null,
+                null,
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("É obrigatório indicar pelo menos um transporte.", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoRegressoAntesDaSaida_deveLancarErro() {
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                LocalDateTime.of(2026, 4, 13, 10, 0),
+                LocalDateTime.of(2026, 4, 13, 9, 0),
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoRegressoIgualSaida_deveLancarErro() {
+        LocalDateTime dataHora = LocalDateTime.of(2026, 4, 13, 10, 0);
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                dataHora,
+                dataHora,
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoSaidaNoPassado_deveLancarErro() {
+        LocalDateTime agora = LocalDateTime.now();
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                agora.minusDays(1),
+                agora.plusDays(1),
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de saída não pode estar no passado.", exception.getMessage());
+    }
+
+    @Test
+    void criarTransporte_quandoRegressoNoPassado_deveLancarErro() {
+        LocalDateTime agora = LocalDateTime.now();
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido inválido",
+                RequisicaoPrioridade.MEDIA,
+                null,
+                10L,
+                null,
+                "Centro",
+                agora.plusDays(1),
+                agora.minusDays(1),
+                2,
+                null,
+                List.of(30L),
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> requisicaoService.criarTransporte(request));
+
+        assertEquals("A data/hora de regresso não pode estar no passado.", exception.getMessage());
     }
 
     @Test

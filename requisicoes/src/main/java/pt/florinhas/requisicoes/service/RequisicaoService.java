@@ -3,11 +3,10 @@ package pt.florinhas.requisicoes.service;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.data.domain.Sort;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +15,12 @@ import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
-import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterialItem;
+import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
@@ -148,9 +148,15 @@ public class RequisicaoService {
 
     @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
+        List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
+        validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
         Funcionario criadoPor = obterFuncionario(request.criadoPorId());
-        Transporte transporte = transporteRepository.findById(request.transporteId())
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + request.transporteId()));
+
+        List<Transporte> transportesSelecionados = transporteIds.stream()
+                .distinct()
+                .map(id -> transporteRepository.findById(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id)))
+                .toList();
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(request.descricao());
@@ -159,9 +165,52 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        requisicao.setTransporte(transporte);
+        requisicao.setDestino(request.destino());
+        requisicao.setDataHoraSaida(request.dataHoraSaida());
+        requisicao.setDataHoraRegresso(request.dataHoraRegresso());
+        requisicao.setNumeroPassageiros(request.numeroPassageiros());
+        requisicao.setCondutor(normalizarTextoOpcional(request.condutor()));
+        requisicao.setTransporte(transportesSelecionados.getFirst());
+
+        for (Transporte transporte : transportesSelecionados) {
+            RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+            item.setTransporte(transporte);
+            item.setRequisicao(requisicao);
+            requisicao.getTransportes().add(item);
+        }
 
         return requisicaoTransporteRepository.save(requisicao);
+    }
+
+    private List<Long> resolverIdsTransporte(List<Long> transporteIds, Long transporteId) {
+        boolean temLista = transporteIds != null && !transporteIds.isEmpty();
+        boolean temSingular = transporteId != null;
+
+        if (temLista && temSingular) {
+            throw new IllegalArgumentException("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.");
+        }
+
+        if (!temLista && !temSingular) {
+            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
+        }
+
+        return temLista ? transporteIds : List.of(transporteId);
+    }
+
+    private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
+        LocalDateTime agora = LocalDateTime.now();
+
+        if (dataHoraSaida.isBefore(agora)) {
+            throw new IllegalArgumentException("A data/hora de saída não pode estar no passado.");
+        }
+
+        if (dataHoraRegresso.isBefore(agora)) {
+            throw new IllegalArgumentException("A data/hora de regresso não pode estar no passado.");
+        }
+
+        if (!dataHoraRegresso.isAfter(dataHoraSaida)) {
+            throw new IllegalArgumentException("A data/hora de regresso deve ser posterior à data/hora de saída.");
+        }
     }
 
     @Transactional
@@ -301,7 +350,8 @@ public class RequisicaoService {
 
     @Transactional
     public void apagarTransporteCatalogo(Long id) {
-        if (requisicaoTransporteRepository.existsByTransporteId(id)) {
+        if (requisicaoTransporteRepository.existsByTransporteId(id)
+                || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
             throw new IllegalArgumentException("Não é possível apagar: transporte está associado a requisições.");
         }
 
@@ -369,12 +419,12 @@ public class RequisicaoService {
         }
 
         if (estadoAtual == RequisicaoEstado.EM_ANALISE
-                && (novoEstado == RequisicaoEstado.CONCLUIDA || novoEstado == RequisicaoEstado.CANCELADA)) {
+                && (novoEstado == RequisicaoEstado.ACEITE || novoEstado == RequisicaoEstado.RECUSADA)) {
             return;
         }
 
         throw new IllegalArgumentException(
-                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> CONCLUIDA ou ENVIADA -> EM_ANALISE -> CANCELADA.");
+                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> ACEITE ou ENVIADA -> EM_ANALISE -> RECUSADA.");
     }
 
     private Funcionario obterFuncionario(Long id) {
