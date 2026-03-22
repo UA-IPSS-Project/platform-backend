@@ -2,23 +2,19 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy module POM and download dependencies
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# Copy the entire backend source (parent and all modules)
+COPY .. /app
 
-# Copy source code and build
-COPY src src
-RUN mvn clean package -DskipTests
+# Build only the api-gateway module (and its dependencies)
+RUN mvn clean package -pl api-gateway -am -DskipTests
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copy jar from build stage
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/api-gateway/target/*.jar app.jar
 
-# Expose port
 EXPOSE 8080
 
-# Run application
 ENTRYPOINT ["java", "-jar", "app.jar"]

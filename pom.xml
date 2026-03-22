@@ -23,6 +23,7 @@
     <modules>
         <module>marcacoes</module>
         <module>requisicoes</module>
+        <module>api-gateway</module>
     </modules>
 
     <!-- ===== Versões centralizadas ===== -->

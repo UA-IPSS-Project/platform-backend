@@ -38,11 +38,6 @@ public class MarcacoesApplication {
 	@Bean
 	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
 		return args -> {
-			long totalFuncionarios = funcionarioRepository.count();
-			if (totalFuncionarios > 0) {
-				LOGGER.info(">>> Seed de contas base ignorado: já existem {} funcionário(s).", totalFuncionarios);
-				return;
-			}
 
 			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
 					"999999999",
@@ -84,6 +79,10 @@ public class MarcacoesApplication {
 			SeedAccount account) {
 		Funcionario funcionario = funcionarioRepository.findByNif(account.nif()).orElseGet(Funcionario::new);
 		boolean isNew = funcionario.getId() == null;
+
+		if (!isNew) {
+			return;
+		}
 
 		funcionario.setNome(account.nome());
 		funcionario.setEmail(account.email());

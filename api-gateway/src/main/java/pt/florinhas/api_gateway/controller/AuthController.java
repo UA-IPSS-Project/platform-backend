@@ -28,6 +28,12 @@ public class AuthController {
     @Value("${auth.marcacoes-base-url:http://localhost:8081}")
     private String marcacoesBaseUrl;
 
+    @Value("${app.secure-cookies:false}")
+    private boolean secureCookies;
+
+    @Value("${app.cookie-samesite:Lax}")
+    private String cookieSameSite;
+
     public AuthController(WebClient webClient, JwtService jwtService) {
         this.webClient = webClient;
         this.jwtService = jwtService;
@@ -80,11 +86,21 @@ public class AuthController {
     @PutMapping("/password")
     public Mono<ResponseEntity<Object>> updatePassword(
             @RequestBody Map<String, Object> payload,
-            @RequestHeader(value = "X-Authenticated-User", required = false) String user,
-            @RequestHeader(value = "X-Authenticated-Roles", required = false) String roles,
-            @RequestHeader(value = "X-Authenticated-User-Id", required = false) String userId) {
+            ServerHttpRequest request) {
 
-        if (!StringUtils.hasText(user)) {
+        String token = extractToken(request);
+        if (!StringUtils.hasText(token)) {
+            return Mono.just(ResponseEntity.status(401).body((Object) null));
+        }
+        String user = null;
+        String roles = null;
+        String userId = null;
+        try {
+            var claims = jwtService.parseClaims(token);
+            user = claims.get("email", String.class);
+            roles = claims.get("role", String.class);
+            userId = String.valueOf(claims.get("userId", Number.class).longValue());
+        } catch (Exception e) {
             return Mono.just(ResponseEntity.status(401).body((Object) null));
         }
 
@@ -104,12 +120,12 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
         ResponseCookie jwtCookie = ResponseCookie.from("jwt", "")
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(0)
-                .sameSite("Lax")
-                .build();
+            .httpOnly(true)
+            .secure(secureCookies)
+            .path("/")
+            .maxAge(0)
+            .sameSite(cookieSameSite)
+            .build();
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
@@ -144,11 +160,23 @@ public class AuthController {
 
                 ResponseCookie cookie = ResponseCookie.from("jwt", token)
                     .httpOnly(true)
-                    .secure(false)
+                    .secure(secureCookies)
                     .path("/")
                     .maxAge(-1)
-                    .sameSite("Lax")
+                    .sameSite(cookieSameSite)
                     .build();
+
+
+                // Derivar expiresAt do claim exp do JWT
+                long expiresAt = 0L;
+                try {
+                    var claims = jwtService.parseClaims(token);
+                    if (claims.getExpiration() != null) {
+                        expiresAt = claims.getExpiration().getTime();
+                    }
+                } catch (Exception e) {
+                    expiresAt = 0L;
+                }
 
                 AuthResponse response = new AuthResponse(
                     downstream.id(),
@@ -157,7 +185,7 @@ public class AuthController {
                     downstream.role(),
                     downstream.nif(),
                     downstream.telefone(),
-                    System.currentTimeMillis() + jwtService.getJwtExpiration(),
+                    expiresAt,
                     downstream.active());
 
                 return Mono.just(ResponseEntity.ok()
