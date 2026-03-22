@@ -38,13 +38,14 @@ public class MarcacoesApplication {
 	@Bean
 	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
 		return args -> {
-			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
-				    "999999999",
-				    "Admin Plataforma",
-				    "admin@florinhasdovouga.pt",
-				    "999999999",
-				    "admin123",
-				    FuncionarioTipo.ADMIN));
+
+			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+					"999999999",
+					"Admin Plataforma",
+					"admin@florinhasdovouga.pt",
+					"999999999",
+					"admin123",
+					FuncionarioTipo.ADMIN));
 
 			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
 				    "999999998",
@@ -78,6 +79,10 @@ public class MarcacoesApplication {
 			SeedAccount account) {
 		Funcionario funcionario = funcionarioRepository.findByNif(account.nif()).orElseGet(Funcionario::new);
 		boolean isNew = funcionario.getId() == null;
+
+		if (!isNew) {
+			return;
+		}
 
 		funcionario.setNome(account.nome());
 		funcionario.setEmail(account.email());

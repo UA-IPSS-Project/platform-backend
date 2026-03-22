@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
@@ -25,7 +26,6 @@ import pt.florinhas.marcacoes.exception.BadRequestException;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.security.JwtService;
 import pt.florinhas.marcacoes.validation.NifValidator;
 
 /**
@@ -49,23 +49,23 @@ public class AuthService {
         private final FuncionarioRepository funcionarioRepository;
         private final UtenteRepository utenteRepository;
         private final PasswordEncoder passwordEncoder;
-        private final JwtService jwtService;
         private final AuthenticationManager authenticationManager;
         private final NifValidator nifValidator;
+
+        @Value("${jwt.expiration:86400000}")
+        private long jwtExpiration;
 
         public AuthService(
                         UtilizadorRepository utilizadorRepository,
                         FuncionarioRepository funcionarioRepository,
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
-                        JwtService jwtService,
                         AuthenticationManager authenticationManager,
                         NifValidator nifValidator) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
-                this.jwtService = jwtService;
                 this.authenticationManager = authenticationManager;
                 this.nifValidator = nifValidator;
         }
@@ -294,8 +294,7 @@ public class AuthService {
         }
 
         public AuthResult generateAuthResponse(Utilizador user, String role, boolean isActive) {
-                var jwtToken = jwtService.generateToken(user);
-                long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
+                long expiresAt = System.currentTimeMillis() + jwtExpiration;
                 boolean requiresPasswordSetup = requiresPasswordSetup(user, isActive);
 
                 AuthResponse response = new AuthResponse(
@@ -309,7 +308,7 @@ public class AuthService {
                                 isActive,
                                 requiresPasswordSetup);
 
-                return new AuthResult(jwtToken, response);
+                return new AuthResult(response);
         }
 
         /**
@@ -322,7 +321,7 @@ public class AuthService {
                 return !isActive && user.getTermsAcceptedAt() == null;
         }
 
-        public record AuthResult(String token, AuthResponse response) {
+        public record AuthResult(AuthResponse response) {
         }
 
         private FuncionarioTipo mapFuncaoToTipo(String funcao) {

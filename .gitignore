@@ -28,6 +28,7 @@ target/
 **/target/
 *.iml
 /.mvn/wrapper/maven-wrapper.jar
+.mvn
 
 # IntelliJ
 .idea/

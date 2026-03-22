@@ -30,19 +30,12 @@ import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.AuthService.AuthResult;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
     private final UtilizadorService utilizadorService;
-
-    @Value("${app.environment:production}")
-    private String environment;
-
-    @Value("${app.secure-cookies:true}")
-    private boolean secureCookies;
 
     public AuthController(AuthService authService, UtilizadorService utilizadorService) {
         this.authService = authService;
@@ -51,38 +44,30 @@ public class AuthController {
 
     @PostMapping("/login/funcionario")
     public ResponseEntity<AuthResponse> loginFuncionario(
-            @RequestBody LoginFuncionarioRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+            @RequestBody LoginFuncionarioRequest request) {
         AuthResult result = authService.loginFuncionario(request);
-        return buildResponseWithCookie(result, httpRequest, httpResponse);
+        return ResponseEntity.ok(result.response());
     }
 
     @PostMapping("/login/utente")
     public ResponseEntity<AuthResponse> loginUtente(
-            @RequestBody LoginUtenteRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+            @RequestBody LoginUtenteRequest request) {
         AuthResult result = authService.loginUtente(request);
-        return buildResponseWithCookie(result, httpRequest, httpResponse);
+        return ResponseEntity.ok(result.response());
     }
 
     @PostMapping("/register/utente")
     public ResponseEntity<AuthResponse> registerUtente(
-            @Valid @RequestBody UtenteRegisterRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+            @Valid @RequestBody UtenteRegisterRequest request) {
         AuthResult result = authService.registerUtente(request);
-        return buildResponseWithCookie(result, httpRequest, httpResponse);
+        return ResponseEntity.ok(result.response());
     }
 
     @PostMapping("/register/funcionario")
     public ResponseEntity<AuthResponse> registerFuncionario(
-            @Valid @RequestBody FuncionarioRegisterRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
+            @Valid @RequestBody FuncionarioRegisterRequest request) {
         AuthResult result = authService.registerFuncionario(request);
-        return buildResponseWithCookie(result, httpRequest, httpResponse);
+        return ResponseEntity.ok(result.response());
     }
 
     @PutMapping("/password")
@@ -93,21 +78,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal Utilizador utilizador,
-            HttpServletRequest request, HttpServletResponse httpResponse) {
+    public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal Utilizador utilizador) {
         if (utilizador == null) {
             return ResponseEntity.status(401).build();
-        }
-
-        // Force CSRF token to be loaded/generated to ensure cookie is present
-        // This fixes issues where browser restart keeps JWT but loses Session-only CSRF
-        // cookie
-        var csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-        if (csrfToken != null) {
-            // Calling getToken() triggers the StatelessCsrfTokenRepository to write the
-            // cookie
-            csrfToken.getToken();
-            log.debug("CSRF token refreshed for user: {}", utilizador.getEmail());
         }
 
         String role = utilizador.getAuthorities().stream()
@@ -142,62 +115,6 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
-        // Clear JWT cookie - must match exact parameters from login
-        ResponseCookie jwtCookie = ResponseCookie.from("jwt", "")
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(0) // Delete immediately
-                .sameSite("Strict")
-                .build();
-
-        // Clear CSRF cookie - must match exact parameters from SecurityConfig
-        ResponseCookie csrfCookie = ResponseCookie.from("XSRF-TOKEN", "")
-                .httpOnly(false) // MUST match login (false for CSRF)
-                .secure(false)
-                .path("/")
-                .maxAge(0) // Delete immediately
-                .sameSite("Strict")
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, csrfCookie.toString())
-                .build();
-    }
-
-    private ResponseEntity<AuthResponse> buildResponseWithCookie(
-            AuthResult result,
-            HttpServletRequest request,
-            HttpServletResponse response) {
-        // Determine secure flag: true in production, false in dev
-        boolean isDevelopment = environment != null && "development".equalsIgnoreCase(environment.trim());
-        boolean isSecure = isDevelopment ? false : secureCookies;
-
-        // Create JWT cookie
-        ResponseCookie cookie = ResponseCookie.from("jwt", result.token())
-                .httpOnly(true)
-                .secure(isSecure)
-                .path("/")
-                .maxAge(-1) // Session cookie (Logout on browser close)
-                .sameSite("Lax")
-                .build();
-
-        log.debug("JWT cookie: secure={}, env={}", isSecure, environment);
-
-        // The CsrfCookieFilter will automatically add the XSRF-TOKEN cookie to the
-        // response
-        // because we're accessing the CsrfToken attribute
-        var csrfToken = (CsrfToken) request
-                .getAttribute(CsrfToken.class.getName());
-        if (csrfToken != null) {
-            // Force token to be loaded (triggers cookie creation)
-            csrfToken.getToken();
-            log.debug("CSRF token loaded: {}", csrfToken.getHeaderName());
-        }
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(result.response());
+        return ResponseEntity.ok().build();
     }
 }

@@ -1,19 +1,37 @@
 services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - AUTH_MARCACOES_BASE_URL=http://marcacoes:8080
+      - GATEWAY_MARCACOES_BASE_URL=http://marcacoes:8080
+      - GATEWAY_MARCACOES_WS_BASE_URL=ws://marcacoes:8080
+      - GATEWAY_REQUISICOES_BASE_URL=http://requisicoes:8080
+      - GATEWAY_REQUISICOES_WS_BASE_URL=ws://requisicoes:8080
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
+    restart: unless-stopped
   marcacoes:
     build:
       context: .
       dockerfile: marcacoes/Dockerfile
     container_name: marcacoes-backend
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     depends_on:
       - postgres
       - minio
     env_file:
       - .env
     environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRATION=${JWT_EXPIRATION}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
@@ -23,6 +41,7 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET=${MINIO_BUCKET_MARCACOES}
+      - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
 
     restart: unless-stopped
 
@@ -38,16 +57,14 @@ services:
       context: .
       dockerfile: requisicoes/Dockerfile
     container_name: requisicoes-backend
-    ports:
-      - "8081:8080"
+    expose:
+      - "8080"
     depends_on:
       - postgres
       - minio
     env_file:
       - .env
     environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRATION=${JWT_EXPIRATION}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
@@ -71,6 +88,7 @@ services:
       dockerfile: Dockerfile
     container_name: florinhas_frontend
     depends_on:
+      - api-gateway
       - marcacoes
       - requisicoes
     ports:
@@ -96,6 +114,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
 
@@ -114,5 +134,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
+
+volumes:
+  postgres_data:
 
 

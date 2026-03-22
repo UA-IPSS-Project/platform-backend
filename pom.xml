@@ -22,13 +22,15 @@
     <!-- ===== Módulos ===== -->
     <modules>
         <module>marcacoes</module>
+        <module>requisicoes</module>
+        <module>api-gateway</module>
     </modules>
 
     <!-- ===== Versões centralizadas ===== -->
     <properties>
         <java.version>21</java.version>
         <!-- Spring Cloud -->
-        <spring-cloud.version>2024.0.1</spring-cloud.version>
+        <spring-cloud.version>2025.0.1</spring-cloud.version>
         <!-- Mapeamento -->
         <mapstruct.version>1.6.3</mapstruct.version>
         <!-- JWT -->
