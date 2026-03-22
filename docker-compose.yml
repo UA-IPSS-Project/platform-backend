@@ -13,10 +13,11 @@ services:
       - JWT_EXPIRATION=${JWT_EXPIRATION}
       - AUTH_MARCACOES_BASE_URL=http://marcacoes:8080
       - GATEWAY_MARCACOES_BASE_URL=http://marcacoes:8080
-      - GATEWAY_MARCACOES_WS_BASE_URL=wss://marcacoes:8080
+      - GATEWAY_MARCACOES_WS_BASE_URL=ws://marcacoes:8080
       - GATEWAY_REQUISICOES_BASE_URL=http://requisicoes:8080
-      - GATEWAY_REQUISICOES_WS_BASE_URL=wss://requisicoes:8080
+      - GATEWAY_REQUISICOES_WS_BASE_URL=ws://requisicoes:8080
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
     restart: unless-stopped
   marcacoes:
     build:
@@ -40,6 +41,7 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET=${MINIO_BUCKET_MARCACOES}
+      - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
 
     restart: unless-stopped
 

@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import io.jsonwebtoken.Claims;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpMethod;
@@ -19,9 +20,13 @@ import reactor.core.publisher.Mono;
 public class JwtAuthenticationFilter implements WebFilter {
 
     private final JwtService jwtService;
+    private final String gatewaySharedSecret;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(
+            JwtService jwtService,
+            @Value("${gateway.shared-secret:}") String gatewaySharedSecret) {
         this.jwtService = jwtService;
+        this.gatewaySharedSecret = gatewaySharedSecret;
     }
 
     @Override
@@ -52,6 +57,7 @@ public class JwtAuthenticationFilter implements WebFilter {
                         httpHeaders.remove("X-Authenticated-User");
                         httpHeaders.remove("X-Authenticated-User-Id");
                         httpHeaders.remove("X-Authenticated-Roles");
+                        httpHeaders.remove("X-Gateway-Secret");
 
                         // Set trusted headers based on validated JWT claims
                         httpHeaders.set("X-Authenticated-User", claims.getSubject());
@@ -65,6 +71,12 @@ public class JwtAuthenticationFilter implements WebFilter {
                         List<String> roles = claims.get("roles", List.class);
                         if (roles != null && !roles.isEmpty()) {
                             httpHeaders.set("X-Authenticated-Roles", String.join(",", roles));
+                        }
+
+                        // Forward the shared secret so downstream services can verify
+                        // that the request originated from the trusted gateway
+                        if (StringUtils.hasText(gatewaySharedSecret)) {
+                            httpHeaders.set("X-Gateway-Secret", gatewaySharedSecret);
                         }
                     });
                 })
