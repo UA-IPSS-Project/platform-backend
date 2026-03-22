@@ -51,7 +51,6 @@
 //         );
 
 //         authResponse = new AuthResponse(
-//                 "jwt-token",
 //                 1L,
 //                 "test@example.com",
 //                 "Test User",
@@ -69,7 +68,7 @@
 //                         .contentType(MediaType.APPLICATION_JSON)
 //                         .content(objectMapper.writeValueAsString(loginRequest)))
 //                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$.token").value("jwt-token"))
+//                 .andExpect(jsonPath("$.token").exists())
 //                 .andExpect(jsonPath("$.email").value("test@example.com"))
 //                 .andExpect(jsonPath("$.nome").value("Test User"))
 //                 .andExpect(jsonPath("$.role").value("UTENTE"));
@@ -121,7 +120,7 @@
 //                         .contentType(MediaType.APPLICATION_JSON)
 //                         .content(objectMapper.writeValueAsString(registerRequest)))
 //                 .andExpect(status().isOk())
-//                 .andExpect(jsonPath("$.token").value("jwt-token"))
+//                 .andExpect(jsonPath("$.token").exists())
 //                 .andExpect(jsonPath("$.email").value("test@example.com"))
 //                 .andExpect(jsonPath("$.nome").value("Test User"))
 //                 .andExpect(jsonPath("$.role").value("UTENTE"));
