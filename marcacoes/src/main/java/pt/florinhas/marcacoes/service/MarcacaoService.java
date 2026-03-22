@@ -470,10 +470,20 @@ public class MarcacaoService {
 
     @Transactional
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
-        Marcacao m = new Marcacao();
-        m.setData(request.getData());
-        m.setEstado(EventoEstado.EM_PREENCHIMENTO);
+        // 1. Verificar capacidade máxima antes de criar reserva
         String tipoAgenda = normalizarTipoAgenda(request.getTipoAgenda());
+        LocalDateTime data = request.getData();
+        int capacidade = calendarioService.getCapacidadePorSlot(tipoAgenda);
+        // Estados que contam para ocupação do slot
+        List<EventoEstado> estadosOcupados = List.of(EventoEstado.AGENDADO, EventoEstado.EM_PREENCHIMENTO);
+        long ocupadas = marcacaoRepository.countByDataAndEstadoInAndTipo(data, estadosOcupados, tipoAgenda);
+        if (ocupadas >= capacidade) {
+            throw new IllegalStateException("Capacidade máxima de vagas atingida para este horário.");
+        }
+
+        Marcacao m = new Marcacao();
+        m.setData(data);
+        m.setEstado(EventoEstado.EM_PREENCHIMENTO);
         m.setDuration("BALNEARIO".equals(tipoAgenda)
             ? BALNEARIO_DEFAULT_DURATION_MINUTES
             : SECRETARIA_DEFAULT_DURATION_MINUTES);
