@@ -41,6 +41,17 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Verify that the request comes from the trusted gateway by checking a shared secret header.
+        String gatewaySecret = request.getHeader("X-Gateway-Secret");
+        String expectedGatewaySecret = System.getenv("GATEWAY_SHARED_SECRET");
+        if (!StringUtils.hasText(gatewaySecret)
+                || !StringUtils.hasText(expectedGatewaySecret)
+                || !gatewaySecret.equals(expectedGatewaySecret)) {
+            // If the gateway secret is missing, not configured, or does not match,
+            // do not trust the X-Authenticated-* headers.
+            filterChain.doFilter(request, response);
+            return;
+        }
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
         Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
         if (authorities.isEmpty()) {
