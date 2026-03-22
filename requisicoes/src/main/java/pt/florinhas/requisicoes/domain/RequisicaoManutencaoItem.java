@@ -2,6 +2,7 @@ package pt.florinhas.requisicoes.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,21 +14,24 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "Requisicao_Transporte_Item")
+@Table(name = "Requisicao_Manutencao_Item")
 @Data
 @NoArgsConstructor
-public class RequisicaoTransporteItem {
+public class RequisicaoManutencaoItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "transporte_id", nullable = false)
-    private Transporte transporte;
+    @JoinColumn(name = "manutencao_item_id", nullable = false)
+    private ManutencaoItem manutencaoItem;
 
     @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "requisicao_id", nullable = false)
-    private RequisicaoTransporte requisicao;
+    private RequisicaoManutencao requisicao;
+
+    @Column(length = 255)
+    private String observacoes;
 }

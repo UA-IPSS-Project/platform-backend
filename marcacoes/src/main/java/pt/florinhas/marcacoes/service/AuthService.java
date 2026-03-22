@@ -1,7 +1,10 @@
 package pt.florinhas.marcacoes.service;
 
-import org.springframework.security.authentication.AuthenticationManager;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,9 +27,6 @@ import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.validation.NifValidator;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.
@@ -95,7 +95,10 @@ public class AuthService {
                         throw new BadRequestException("Credenciais inválidas");
                 }
 
-                if (!funcionario.isActivo()) {
+                // Funcionário inativo pode significar dois cenários distintos:
+                // 1) Criado pela secretaria (primeiro login com password temporária) -> permitir autenticar
+                // 2) Auto-registo pendente de aprovação (termos já aceites) -> bloquear login
+                if (!funcionario.isActivo() && funcionario.getTermsAcceptedAt() != null) {
                         throw new BadRequestException("Conta pendente de aprovação ou inativa. Contacte a secretaria.");
                 }
 
@@ -112,7 +115,7 @@ public class AuthService {
                 log.debug("Authentication successful");
 
                 String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
-                return generateAuthResponse(user, role, true);
+                return generateAuthResponse(user, role, funcionario.isActivo());
         }
 
         /**
@@ -246,27 +249,25 @@ public class AuthService {
                 var user = utilizadorRepository.findById(userId)
                                 .orElseThrow(() -> new BadRequestException("Utilizador não encontrado"));
 
+                boolean acceptedTermsNow = false;
+
                 // Verificar se precisa aceitar termos
                 if (user.getTermsAcceptedAt() == null) {
-                        // Conta criada pela secretaria ou sem termos aceites
                         if (termsAccepted == null || !termsAccepted) {
                                 throw new BadRequestException("Deve aceitar os termos de uso para ativar a conta");
                         }
-                        // Define timestamp de aceitação dos termos
                         user.setTermsAcceptedAt(LocalDateTime.now());
+                        acceptedTermsNow = true;
                 }
 
-                // Atualiza a password
                 user.setPassHash(passwordEncoder.encode(newPassword));
 
                 if (user instanceof Utente utente) {
-                        // Ativa a conta do utente (caso ainda não estivesse ativa)
                         utente.setActivo(true);
                         utenteRepository.save(utente);
                 } else if (user instanceof Funcionario funcionario) {
-                        // Para funcionários, define timestamp de termos se fornecido e ATIVA a conta
-                        if (termsAccepted != null && termsAccepted && funcionario.getTermsAcceptedAt() == null) {
-                                funcionario.setTermsAcceptedAt(LocalDateTime.now());
+                        // Ativa funcionário se aceitou termos agora OU já tinha termos aceites
+                        if (acceptedTermsNow || funcionario.getTermsAcceptedAt() != null) {
                                 funcionario.setActivo(true);
                         }
                         funcionarioRepository.save(funcionario);
@@ -294,6 +295,7 @@ public class AuthService {
 
         public AuthResult generateAuthResponse(Utilizador user, String role, boolean isActive) {
                 long expiresAt = System.currentTimeMillis() + jwtExpiration;
+                boolean requiresPasswordSetup = requiresPasswordSetup(user, isActive);
 
                 AuthResponse response = new AuthResponse(
                                 user.getId(),
@@ -303,9 +305,20 @@ public class AuthService {
                                 user.getNif(),
                                 user.getTelefone(),
                                 expiresAt,
-                                isActive);
+                                isActive,
+                                requiresPasswordSetup);
 
                 return new AuthResult(response);
+        }
+
+        /**
+         * Regra centralizada para saber se o utilizador precisa de definir password.
+         *
+         * Cenário esperado:
+         * - Conta inativa + sem termos aceites -> requer configuração de password.
+         */
+        public boolean requiresPasswordSetup(Utilizador user, boolean isActive) {
+                return !isActive && user.getTermsAcceptedAt() == null;
         }
 
         public record AuthResult(AuthResponse response) {

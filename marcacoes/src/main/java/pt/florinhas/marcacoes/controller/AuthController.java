@@ -1,15 +1,22 @@
 package pt.florinhas.marcacoes.controller;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import jakarta.validation.Valid;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
@@ -83,11 +90,13 @@ public class AuthController {
 
         var persistedUser = utilizadorService.obterUtilizadorPorId(utilizador.getId());
         boolean active = true;
+        boolean requiresPasswordSetup = false;
         if (persistedUser instanceof Utente u) {
             active = u.isActivo();
         } else if (persistedUser instanceof Funcionario f) {
             active = f.isActivo();
         }
+        requiresPasswordSetup = authService.requiresPasswordSetup(persistedUser, active);
 
         // Return user info WITHOUT regenerating JWT cookie (unless we wanted to refresh it too)
         AuthResponse response = new AuthResponse(
@@ -98,7 +107,8 @@ public class AuthController {
                 utilizador.getNif(),
                 utilizador.getTelefone(),
                 System.currentTimeMillis() + (24 * 60 * 60 * 1000), // 24h from now
-                active);
+                active,
+                requiresPasswordSetup);
 
         return ResponseEntity.ok(response);
     }

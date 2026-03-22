@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.DeleteMapping;
 
 import jakarta.validation.Valid;
 import pt.florinhas.requisicoes.domain.Material;
@@ -73,13 +73,13 @@ public class RequisicaoController {
     }
 
     @PostMapping("/materiais")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Material> criarMaterialCatalogo(@Valid @RequestBody CriarMaterialRequest request) {
         return ResponseEntity.ok(requisicaoService.criarMaterialCatalogo(request));
     }
 
     @PutMapping("/materiais/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Material> atualizarMaterialCatalogo(
             @PathVariable Long id,
             @Valid @RequestBody CriarMaterialRequest request) {
@@ -87,7 +87,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/materiais/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Void> apagarMaterialCatalogo(@PathVariable Long id) {
         requisicaoService.apagarMaterialCatalogo(id);
         return ResponseEntity.noContent().build();
@@ -99,13 +99,13 @@ public class RequisicaoController {
     }
 
     @PostMapping("/transportes")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Transporte> criarTransporteCatalogo(@Valid @RequestBody CriarTransporteRequest request) {
         return ResponseEntity.ok(requisicaoService.criarTransporteCatalogo(request));
     }
 
     @PutMapping("/transportes/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Transporte> atualizarTransporteCatalogo(
             @PathVariable Long id,
             @Valid @RequestBody CriarTransporteRequest request) {
@@ -113,7 +113,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/transportes/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
     public ResponseEntity<Void> apagarTransporteCatalogo(@PathVariable Long id) {
         requisicaoService.apagarTransporteCatalogo(id);
         return ResponseEntity.noContent().build();
@@ -158,6 +158,11 @@ public class RequisicaoController {
     @PostMapping("/manutencao")
     public ResponseEntity<Requisicao> criarManutencao(@Valid @RequestBody CriarRequisicaoManutencaoRequest request) {
         return ResponseEntity.ok(requisicaoService.criarManutencao(request));
+    }
+
+    @GetMapping("/manutencao-items")
+    public List<pt.florinhas.requisicoes.domain.ManutencaoItem> listarManutencaoItems() {
+        return requisicaoService.listarManutencaoItems();
     }
 
     @PatchMapping("/{id}/estado")
