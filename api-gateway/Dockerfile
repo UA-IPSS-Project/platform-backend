@@ -3,7 +3,7 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copy the entire backend source (parent and all modules)
-COPY .. /app
+COPY . /app
 
 # Build only the api-gateway module (and its dependencies)
 RUN mvn clean package -pl api-gateway -am -DskipTests
