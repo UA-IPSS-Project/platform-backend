@@ -10,12 +10,10 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
 
 import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
