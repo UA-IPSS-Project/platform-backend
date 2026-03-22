@@ -249,30 +249,25 @@ public class AuthService {
                 var user = utilizadorRepository.findById(userId)
                                 .orElseThrow(() -> new BadRequestException("Utilizador não encontrado"));
 
-                boolean termsAcceptedNow = false;
+                boolean acceptedTermsNow = false;
 
                 // Verificar se precisa aceitar termos
                 if (user.getTermsAcceptedAt() == null) {
-                        // Conta criada pela secretaria ou sem termos aceites
                         if (termsAccepted == null || !termsAccepted) {
                                 throw new BadRequestException("Deve aceitar os termos de uso para ativar a conta");
                         }
-                        // Define timestamp de aceitação dos termos
                         user.setTermsAcceptedAt(LocalDateTime.now());
-                        termsAcceptedNow = true;
+                        acceptedTermsNow = true;
                 }
 
-                // Atualiza a password
                 user.setPassHash(passwordEncoder.encode(newPassword));
 
                 if (user instanceof Utente utente) {
-                        // Ativa a conta do utente (caso ainda não estivesse ativa)
                         utente.setActivo(true);
                         utenteRepository.save(utente);
                 } else if (user instanceof Funcionario funcionario) {
-                        // Funcionário fica ativo após concluir setup de password e termos,
-                        // ou quando já tinha termos aceites (ex.: recuperação de conta).
-                        if (termsAcceptedNow || funcionario.getTermsAcceptedAt() != null) {
+                        // Ativa funcionário se aceitou termos agora OU já tinha termos aceites
+                        if (acceptedTermsNow || funcionario.getTermsAcceptedAt() != null) {
                                 funcionario.setActivo(true);
                         }
                         funcionarioRepository.save(funcionario);
