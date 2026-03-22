@@ -153,6 +153,21 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
         @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
         void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
 
+        @Modifying(clearAutomatically = true)
+        @Query("UPDATE Marcacao m SET m.estado = :novoEstado, m.version = m.version + 1 WHERE m.estado NOT IN :estadosExcluidos AND m.data < :limite")
+        int invalidarMarcacoesAntigas(
+                        @Param("novoEstado") EventoEstado novoEstado,
+                        @Param("estadosExcluidos") List<EventoEstado> estadosExcluidos,
+                        @Param("limite") LocalDateTime limite);
+
+        @Modifying(clearAutomatically = true)
+        @Query("UPDATE Marcacao m SET m.estado = :novoEstado, m.version = m.version + 1 WHERE m.estado = :estadoAtual AND m.data < :limite")
+        int atualizarMarcacoesPorEstadoAntigas(
+                        @Param("novoEstado") EventoEstado novoEstado,
+                        @Param("estadoAtual") EventoEstado estadoAtual,
+                        @Param("limite") LocalDateTime limite);
+
+
         // Consulta paginada com fetch para evitar N+1
         @Query(value = "SELECT DISTINCT m FROM Marcacao m " +
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
