@@ -1,11 +1,28 @@
 package pt.florinhas.marcacoes.service;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -14,6 +31,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Utente;
@@ -24,14 +42,6 @@ import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.security.JwtService;
 import pt.florinhas.marcacoes.validation.NifValidator;
-
-import java.time.LocalDate;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -222,5 +232,43 @@ class AuthServiceTest {
 
             assertFalse(isAdmin);
         }
+    }
+
+    @Test
+    void updatePassword_DeveAtivarFuncionarioCriadoPelaSecretaria() {
+        // Arrange
+        Funcionario funcionarioPendente = new Funcionario();
+        funcionarioPendente.setId(10L);
+        funcionarioPendente.setEmail("novo.funcionario@florinhasdovouga.pt");
+        funcionarioPendente.setTipo(FuncionarioTipo.ESCOLA);
+        funcionarioPendente.setActivo(false);
+        funcionarioPendente.setTermsAcceptedAt(null);
+
+        when(utilizadorRepository.findById(10L)).thenReturn(java.util.Optional.of(funcionarioPendente));
+        when(passwordEncoder.encode("NovaPassword123")).thenReturn("hashed-new-password");
+
+        // Act
+        authService.updatePassword(10L, "NovaPassword123", true);
+
+        // Assert
+        assertTrue(funcionarioPendente.isActivo());
+        assertNotNull(funcionarioPendente.getTermsAcceptedAt());
+        assertEquals("hashed-new-password", funcionarioPendente.getPassHash());
+        verify(funcionarioRepository).save(funcionarioPendente);
+    }
+
+    @Test
+    void updatePassword_DeveFalharSemAceitarTermosQuandoNecessario() {
+        // Arrange
+        Funcionario funcionarioPendente = new Funcionario();
+        funcionarioPendente.setId(11L);
+        funcionarioPendente.setActivo(false);
+        funcionarioPendente.setTermsAcceptedAt(null);
+
+        when(utilizadorRepository.findById(11L)).thenReturn(java.util.Optional.of(funcionarioPendente));
+
+        // Act + Assert
+        assertThrows(RuntimeException.class, () -> authService.updatePassword(11L, "NovaPassword123", false));
+        verify(funcionarioRepository, never()).save(any(Funcionario.class));
     }
 }
