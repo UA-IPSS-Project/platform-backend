@@ -74,6 +74,7 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET=${MINIO_BUCKET_REQUISICOES}
+      - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
     restart: unless-stopped
     develop:
       watch:
@@ -106,7 +107,7 @@ services:
           action: rebuild
 
   postgres:
-    image: postgres
+    image: postgres:16
     container_name: florinhas_db
     env_file:
       - .env

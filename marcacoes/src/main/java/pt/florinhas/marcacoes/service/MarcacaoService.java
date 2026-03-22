@@ -215,13 +215,31 @@ public class MarcacaoService {
     public Marcacao criarMarcacaoBalneario(CriarMarcacaoBalnearioRequest request) {
         marcacaoValidator.validarCriacaoBalneario(request);
 
-        Marcacao marcacao = new Marcacao();
-        marcacao.setData(request.getData());
-        marcacao.setEstado(EventoEstado.AGENDADO);
-        // Use constant for balneário duration
-        marcacao.setDuration(BALNEARIO_DEFAULT_DURATION_MINUTES);
+        Marcacao marcacao = null;
+        if (request.getReservaId() != null) {
+            marcacao = marcacaoRepository.findById(request.getReservaId()).orElse(null);
+        }
 
-        MarcacaoBalneario detalhes = new MarcacaoBalneario();
+        if (marcacao == null) {
+            marcacao = new Marcacao();
+            marcacao.setData(request.getData());
+            marcacao.setDuration(BALNEARIO_DEFAULT_DURATION_MINUTES);
+        } else {
+            if (marcacao.getEstado() != EventoEstado.EM_PREENCHIMENTO) {
+                throw new IllegalStateException("A reserva temporária não é válida ou já expirou.");
+            }
+            marcacao.setData(request.getData());
+        }
+
+        marcacao.setEstado(EventoEstado.AGENDADO);
+
+        MarcacaoBalneario detalhes = marcacao.getMarcacaoBalneario();
+        if (detalhes == null) {
+            detalhes = new MarcacaoBalneario();
+            detalhes.setMarcacao(marcacao);
+            marcacao.setMarcacaoBalneario(detalhes);
+        }
+
         detalhes.setNomeUtente(request.getNomeUtente());
         detalhes.setProdutosHigiene(request.getProdutosHigiene());
         detalhes.setLavagemRoupa(request.getLavagemRoupa());
@@ -234,6 +252,10 @@ public class MarcacaoService {
         }
 
         if (request.getRoupas() != null) {
+            if (detalhes.getRoupas() != null) {
+                // Clear existing just in case (e.g if it's reused from EM_PREENCHIMENTO with existing roupas)
+                detalhes.getRoupas().clear();
+            }
             for (RoupaDTO rDTO : request.getRoupas()) {
                 Roupa r = new Roupa();
                 r.setCategoria(rDTO.getCategoria());

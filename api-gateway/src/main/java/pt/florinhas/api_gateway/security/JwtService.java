@@ -28,16 +28,18 @@ public class JwtService {
     public String generateToken(AuthUserClaims user) {
         List<String> roles = user.roles().stream().map(GrantedAuthority::getAuthority).toList();
 
+        String subject = (user.email() != null && !user.email().trim().isEmpty()) ? user.email() : user.nif();
+
         return Jwts.builder()
                 .claims(Map.of(
                         "userId", user.userId(),
-                        "email", user.email(),
+                        "email", user.email() != null ? user.email() : "",
                         "nome", user.nome(),
                         "role", user.role(),
-                        "nif", user.nif(),
-                        "telefone", user.telefone(),
+                        "nif", user.nif() != null ? user.nif() : "",
+                        "telefone", user.telefone() != null ? user.telefone() : "",
                         "roles", roles))
-                .subject(user.email())
+                .subject(subject)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSignInKey())
