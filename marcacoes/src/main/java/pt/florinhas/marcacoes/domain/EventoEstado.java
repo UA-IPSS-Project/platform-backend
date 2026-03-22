@@ -16,5 +16,6 @@ public enum EventoEstado {
     CONCLUIDO,          // Atendimento finalizado
     CANCELADO,          // Marcação cancelada
     NAO_COMPARECIDO,    // Utente não compareceu
-    EM_PREENCHIMENTO    // Marcação em processo de criação (não finalizada)
+    EM_PREENCHIMENTO,   // Marcação em processo de criação (não finalizada)
+    INVALIDO            // Marcação expirou sem ser concluída/cancelada/falta
 }

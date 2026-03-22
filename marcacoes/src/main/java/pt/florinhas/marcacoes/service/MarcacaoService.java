@@ -624,6 +624,32 @@ public class MarcacaoService {
         marcacaoRepository.deleteExpiredOrorphan(EventoEstado.EM_PREENCHIMENTO, expirationTime);
     }
 
+    @Scheduled(cron = "0 59 23 * * *") // Run every day at 23:59
+    @Transactional
+    public void invalidarMarcacoesExpiradas() {
+        // Obter o início do dia atual (00:00:00). 
+        // Qualquer marcação com data anterior é do "dia anterior" ou mais antiga, logo, passaram-se pelo menos ~24 horas.
+        LocalDateTime inicioDoDiaAtual = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
+        
+        List<EventoEstado> estadosExcluidos = List.of(
+            EventoEstado.CONCLUIDO,
+            EventoEstado.CANCELADO,
+            EventoEstado.NAO_COMPARECIDO,
+            EventoEstado.EM_PREENCHIMENTO,
+            EventoEstado.INVALIDO
+        );
+        
+        int contagem = marcacaoRepository.invalidarMarcacoesAntigas(
+            EventoEstado.INVALIDO, 
+            estadosExcluidos, 
+            inicioDoDiaAtual
+        );
+        
+        if (contagem > 0) {
+            log.info("Marcadas {} marcações como INVALIDAS (data < {})", contagem, inicioDoDiaAtual);
+        }
+    }
+
     private String normalizarTipoAgenda(String tipoAgenda) {
         if (tipoAgenda == null || tipoAgenda.isBlank()) {
             return "SECRETARIA";
