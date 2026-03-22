@@ -631,6 +631,18 @@ public class MarcacaoService {
         // Qualquer marcação com data anterior é do "dia anterior" ou mais antiga, logo, passaram-se pelo menos ~24 horas.
         LocalDateTime inicioDoDiaAtual = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
         
+        // 1. Passar "EM_PROGRESSO" para "CONCLUIDO"
+        int concluidas = marcacaoRepository.atualizarMarcacoesPorEstadoAntigas(
+            EventoEstado.CONCLUIDO,
+            EventoEstado.EM_PROGRESSO,
+            inicioDoDiaAtual
+        );
+        
+        if (concluidas > 0) {
+            log.info("Marcadas {} marcações em progresso como CONCLUIDAS (data < {})", concluidas, inicioDoDiaAtual);
+        }
+
+        // 2. Passar o restante para "INVALIDO"
         List<EventoEstado> estadosExcluidos = List.of(
             EventoEstado.CONCLUIDO,
             EventoEstado.CANCELADO,
