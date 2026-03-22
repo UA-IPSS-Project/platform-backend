@@ -47,18 +47,26 @@ public class JwtAuthenticationFilter implements WebFilter {
 
         ServerWebExchange mutatedExchange = exchange.mutate()
                 .request(builder -> {
-                    builder.header("X-Authenticated-User", claims.getSubject());
+                    builder.headers(httpHeaders -> {
+                        // Remove any incoming spoofed auth headers
+                        httpHeaders.remove("X-Authenticated-User");
+                        httpHeaders.remove("X-Authenticated-User-Id");
+                        httpHeaders.remove("X-Authenticated-Roles");
 
-                    Number userId = claims.get("userId", Number.class);
-                    if (userId != null) {
-                        builder.header("X-Authenticated-User-Id", String.valueOf(userId.longValue()));
-                    }
+                        // Set trusted headers based on validated JWT claims
+                        httpHeaders.set("X-Authenticated-User", claims.getSubject());
 
-                    @SuppressWarnings("unchecked")
-                    List<String> roles = claims.get("roles", List.class);
-                    if (roles != null && !roles.isEmpty()) {
-                        builder.header("X-Authenticated-Roles", String.join(",", roles));
-                    }
+                        Number userId = claims.get("userId", Number.class);
+                        if (userId != null) {
+                            httpHeaders.set("X-Authenticated-User-Id", String.valueOf(userId.longValue()));
+                        }
+
+                        @SuppressWarnings("unchecked")
+                        List<String> roles = claims.get("roles", List.class);
+                        if (roles != null && !roles.isEmpty()) {
+                            httpHeaders.set("X-Authenticated-Roles", String.join(",", roles));
+                        }
+                    });
                 })
                 .build();
 
