@@ -60,7 +60,12 @@ public class ArmazemService {
         Map.entry("Toalha", "Toalhetes"),
         Map.entry("Sabonete/Creme", "Sabonete Líquido"),
         Map.entry("Lavar Roupa Seca", "Detergente Roupa"),
-        Map.entry("Lavar Roupa Molhada", "Detergente Roupa")
+        Map.entry("Lavar Roupa Molhada", "Detergente Roupa"),
+        Map.entry("T-shirt/Camisola", "T-shirt/Camisola"),
+        Map.entry("Calças", "Calças"),
+        Map.entry("Roupa Interior", "Roupa Interior"),
+        Map.entry("Meias", "Meias"),
+        Map.entry("Agasalho/Casaco", "Agasalho/Casaco")
     );
 
     /**
@@ -73,7 +78,12 @@ public class ArmazemService {
         Map.entry("Sabonete/Creme", "HIGIENE"),
         Map.entry("Lavar Roupa Seca", "DETERGENTES"),
         Map.entry("Lavar Roupa Molhada", "DETERGENTES"),
-        Map.entry("Sapatos/Sapatilhas", "CALCADO")
+        Map.entry("Sapatos/Sapatilhas", "CALCADO"),
+        Map.entry("T-shirt/Camisola", "VESTUARIO"),
+        Map.entry("Calças", "VESTUARIO"),
+        Map.entry("Roupa Interior", "VESTUARIO"),
+        Map.entry("Meias", "VESTUARIO"),
+        Map.entry("Agasalho/Casaco", "VESTUARIO")
     );
 
     // =====================================================================
@@ -389,6 +399,13 @@ public class ArmazemService {
         for (int tamanho = 35; tamanho <= 46; tamanho++) {
             criarItemSeNaoExiste("CALCADO", String.valueOf(tamanho), 0, 3, "pares");
         }
+        
+        // Vestuário
+        criarItemSeNaoExiste("VESTUARIO", "T-shirt/Camisola", 0, 5, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Calças", 0, 5, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Roupa Interior", 0, 10, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Meias", 0, 10, "pares");
+        criarItemSeNaoExiste("VESTUARIO", "Agasalho/Casaco", 0, 3, "un");
 
         log.info("Dados padrão do armazém inicializados com sucesso.");
     }
