@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pt.florinhas.requisicoes.domain.Funcionario;
-import pt.florinhas.requisicoes.domain.ManutencaoCategoria;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
@@ -31,6 +30,7 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
+import pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
 import pt.florinhas.requisicoes.exception.ResourceNotFoundException;
 import pt.florinhas.requisicoes.repository.FuncionarioRepository;
@@ -441,8 +441,40 @@ public class RequisicaoService {
         return manutencaoItemRepository.findAllByOrderByCategoriaAscEspacoAsc();
     }
 
-    public List<ManutencaoItem> listarManutencaoItemsPorCategoria(ManutencaoCategoria categoria) {
+    public List<ManutencaoItem> listarManutencaoItemsPorCategoria(String categoria) {
         return manutencaoItemRepository.findByCategoria(categoria);
+    }
+
+    @Transactional
+    public ManutencaoItem criarManutencaoItem(CriarManutencaoItemRequest request) {
+        ManutencaoItem item = new ManutencaoItem();
+        item.setCategoria(request.categoria().trim());
+        item.setEspaco(request.espaco().trim());
+        item.setItemVerificacao(request.itemVerificacao().trim());
+        return manutencaoItemRepository.save(item);
+    }
+
+    @Transactional
+    public ManutencaoItem atualizarManutencaoItem(Long id, CriarManutencaoItemRequest request) {
+        ManutencaoItem item = manutencaoItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
+
+        item.setCategoria(request.categoria().trim());
+        item.setEspaco(request.espaco().trim());
+        item.setItemVerificacao(request.itemVerificacao().trim());
+        return manutencaoItemRepository.save(item);
+    }
+
+    @Transactional
+    public void apagarManutencaoItem(Long id) {
+        ManutencaoItem item = manutencaoItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
+
+        if (requisicaoManutencaoItemRepository.existsByManutencaoItemId(id)) {
+            throw new IllegalArgumentException("Não é possível apagar: item de manutenção está associado a requisições.");
+        }
+
+        manutencaoItemRepository.delete(item);
     }
 
     private void validarTransicaoEstado(RequisicaoEstado estadoAtual, RequisicaoEstado novoEstado) {
