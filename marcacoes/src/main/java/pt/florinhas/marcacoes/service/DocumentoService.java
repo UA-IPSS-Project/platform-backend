@@ -241,16 +241,16 @@ public class DocumentoService {
         String tipo,
         String utenteNome,
         String utenteNif,
-        LocalDateTime uploadedDesde,
-        LocalDateTime uploadedAte
+        LocalDateTime marcacaoDesde,
+        LocalDateTime marcacaoAte
     ) {
-        if (uploadedDesde != null && uploadedAte != null && uploadedDesde.isAfter(uploadedAte)) {
-            throw new IllegalArgumentException("uploadedDesde não pode ser posterior a uploadedAte");
+        if (marcacaoDesde != null && marcacaoAte != null && marcacaoDesde.isAfter(marcacaoAte)) {
+            throw new IllegalArgumentException("marcacaoDesde não pode ser posterior a marcacaoAte");
         }
 
         log.info("Pesquisa de documentos por metadados (marcacaoId={}, tipo={})", marcacaoId, tipo);
 
-        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, uploadedDesde, uploadedAte);
+        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, marcacaoDesde, marcacaoAte);
 
         return documentosBase
             .stream()
@@ -295,30 +295,28 @@ public class DocumentoService {
 
     private List<Documento> obterDocumentosPorIntervalo(
         Long marcacaoId,
-        LocalDateTime uploadedDesde,
-        LocalDateTime uploadedAte
+        LocalDateTime marcacaoDesde,
+        LocalDateTime marcacaoAte
     ) {
+        // Com marcacaoId: filtrar dentro desse ID (queries existentes por uploadedEm quando sem datas,
+        // ou por data da marcação quando com datas)
         if (marcacaoId != null) {
-            if (uploadedDesde != null && uploadedAte != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmBetweenOrderByUploadedEmDesc(marcacaoId, uploadedDesde, uploadedAte);
+            if (marcacaoDesde != null && marcacaoAte != null) {
+                return documentoRepository.findByMarcacaoIdAndMarcacaoDataBetween(marcacaoId, marcacaoDesde, marcacaoAte);
             }
-            if (uploadedDesde != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmGreaterThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedDesde);
-            }
-            if (uploadedAte != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmLessThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedAte);
-            }
+            // sem intervalo de datas: devolver todos os documentos da marcação
             return documentoRepository.findByMarcacaoIdOrderByUploadedEmDesc(marcacaoId);
         }
 
-        if (uploadedDesde != null && uploadedAte != null) {
-            return documentoRepository.findByUploadedEmBetweenOrderByUploadedEmDesc(uploadedDesde, uploadedAte);
+        // Sem marcacaoId: filtrar globalmente pela data da marcação
+        if (marcacaoDesde != null && marcacaoAte != null) {
+            return documentoRepository.findByMarcacaoDataBetween(marcacaoDesde, marcacaoAte);
         }
-        if (uploadedDesde != null) {
-            return documentoRepository.findByUploadedEmGreaterThanEqualOrderByUploadedEmDesc(uploadedDesde);
+        if (marcacaoDesde != null) {
+            return documentoRepository.findByMarcacaoDataGreaterThanEqual(marcacaoDesde);
         }
-        if (uploadedAte != null) {
-            return documentoRepository.findByUploadedEmLessThanEqualOrderByUploadedEmDesc(uploadedAte);
+        if (marcacaoAte != null) {
+            return documentoRepository.findByMarcacaoDataLessThanEqual(marcacaoAte);
         }
         return documentoRepository.findAllByOrderByUploadedEmDesc();
     }
