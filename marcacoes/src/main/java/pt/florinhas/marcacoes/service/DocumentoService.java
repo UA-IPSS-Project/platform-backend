@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Locale;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
@@ -132,11 +133,25 @@ public class DocumentoService {
             tipoMarcacao = "SEM_TIPO";
         }
 
-        // Gerar nome original no padrão NIF_TipoDeMarcacao_UUID.extensão
+        // Gerar nome original no padrão NIF_ASSUNTO_DATA_UUID.extensão
         String extensao = obterExtensao(file.getOriginalFilename());
-        String nomeOriginal = String.format("%s_%s_%s%s",
+        String assunto = "SEM_ASSUNTO";
+        String dataMarcacao = "00000000";
+
+        if (marcacao.getData() != null) {
+            dataMarcacao = marcacao.getData().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        }
+
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getAssunto() != null) {
+            assunto = sanitizarNome(marcacao.getMarcacaoSecretaria().getAssunto());
+        } else if (marcacao.getMarcacaoBalneario() != null) {
+            assunto = "BALNEARIO";
+        }
+
+        String nomeOriginal = String.format("%s_%s_%s_%s%s",
             nif != null ? nif : "SEM_NIF",
-            tipoMarcacao != null ? tipoMarcacao : "SEM_TIPO",
+            assunto,
+            dataMarcacao,
             UUID.randomUUID(),
             extensao
         );
@@ -540,5 +555,13 @@ public class DocumentoService {
         }
 
         return null;
+    }
+
+    private String sanitizarNome(String nome) {
+        if (nome == null) return "SEM_ASSUNTO";
+        return nome.trim()
+            .replaceAll("[\\s/\\\\:*?\"<>|]", "_") // Substituir caracteres inválidos e espaços por underscore
+            .replaceAll("_+", "_") // Remover underscores duplicados
+            .toUpperCase();
     }
 }
