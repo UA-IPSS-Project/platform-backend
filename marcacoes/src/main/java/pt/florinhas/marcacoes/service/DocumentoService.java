@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Locale;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
@@ -132,11 +133,25 @@ public class DocumentoService {
             tipoMarcacao = "SEM_TIPO";
         }
 
-        // Gerar nome original no padrão NIF_TipoDeMarcacao_UUID.extensão
+        // Gerar nome original no padrão NIF_ASSUNTO_DATA_UUID.extensão
         String extensao = obterExtensao(file.getOriginalFilename());
-        String nomeOriginal = String.format("%s_%s_%s%s",
+        String assunto = "SEM_ASSUNTO";
+        String dataMarcacao = "00000000";
+
+        if (marcacao.getData() != null) {
+            dataMarcacao = marcacao.getData().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        }
+
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getAssunto() != null) {
+            assunto = sanitizarNome(marcacao.getMarcacaoSecretaria().getAssunto());
+        } else if (marcacao.getMarcacaoBalneario() != null) {
+            assunto = "BALNEARIO";
+        }
+
+        String nomeOriginal = String.format("%s_%s_%s_%s%s",
             nif != null ? nif : "SEM_NIF",
-            tipoMarcacao != null ? tipoMarcacao : "SEM_TIPO",
+            assunto,
+            dataMarcacao,
             UUID.randomUUID(),
             extensao
         );
@@ -241,16 +256,16 @@ public class DocumentoService {
         String tipo,
         String utenteNome,
         String utenteNif,
-        LocalDateTime uploadedDesde,
-        LocalDateTime uploadedAte
+        LocalDateTime marcacaoDesde,
+        LocalDateTime marcacaoAte
     ) {
-        if (uploadedDesde != null && uploadedAte != null && uploadedDesde.isAfter(uploadedAte)) {
-            throw new IllegalArgumentException("uploadedDesde não pode ser posterior a uploadedAte");
+        if (marcacaoDesde != null && marcacaoAte != null && marcacaoDesde.isAfter(marcacaoAte)) {
+            throw new IllegalArgumentException("marcacaoDesde não pode ser posterior a marcacaoAte");
         }
 
         log.info("Pesquisa de documentos por metadados (marcacaoId={}, tipo={})", marcacaoId, tipo);
 
-        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, uploadedDesde, uploadedAte);
+        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, marcacaoDesde, marcacaoAte);
 
         return documentosBase
             .stream()
@@ -295,30 +310,28 @@ public class DocumentoService {
 
     private List<Documento> obterDocumentosPorIntervalo(
         Long marcacaoId,
-        LocalDateTime uploadedDesde,
-        LocalDateTime uploadedAte
+        LocalDateTime marcacaoDesde,
+        LocalDateTime marcacaoAte
     ) {
+        // Com marcacaoId: filtrar dentro desse ID (queries existentes por uploadedEm quando sem datas,
+        // ou por data da marcação quando com datas)
         if (marcacaoId != null) {
-            if (uploadedDesde != null && uploadedAte != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmBetweenOrderByUploadedEmDesc(marcacaoId, uploadedDesde, uploadedAte);
+            if (marcacaoDesde != null && marcacaoAte != null) {
+                return documentoRepository.findByMarcacaoIdAndMarcacaoDataBetween(marcacaoId, marcacaoDesde, marcacaoAte);
             }
-            if (uploadedDesde != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmGreaterThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedDesde);
-            }
-            if (uploadedAte != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmLessThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedAte);
-            }
+            // sem intervalo de datas: devolver todos os documentos da marcação
             return documentoRepository.findByMarcacaoIdOrderByUploadedEmDesc(marcacaoId);
         }
 
-        if (uploadedDesde != null && uploadedAte != null) {
-            return documentoRepository.findByUploadedEmBetweenOrderByUploadedEmDesc(uploadedDesde, uploadedAte);
+        // Sem marcacaoId: filtrar globalmente pela data da marcação
+        if (marcacaoDesde != null && marcacaoAte != null) {
+            return documentoRepository.findByMarcacaoDataBetween(marcacaoDesde, marcacaoAte);
         }
-        if (uploadedDesde != null) {
-            return documentoRepository.findByUploadedEmGreaterThanEqualOrderByUploadedEmDesc(uploadedDesde);
+        if (marcacaoDesde != null) {
+            return documentoRepository.findByMarcacaoDataGreaterThanEqual(marcacaoDesde);
         }
-        if (uploadedAte != null) {
-            return documentoRepository.findByUploadedEmLessThanEqualOrderByUploadedEmDesc(uploadedAte);
+        if (marcacaoAte != null) {
+            return documentoRepository.findByMarcacaoDataLessThanEqual(marcacaoAte);
         }
         return documentoRepository.findAllByOrderByUploadedEmDesc();
     }
@@ -542,5 +555,13 @@ public class DocumentoService {
         }
 
         return null;
+    }
+
+    private String sanitizarNome(String nome) {
+        if (nome == null) return "SEM_ASSUNTO";
+        return nome.trim()
+            .replaceAll("[\\s/\\\\:*?\"<>|]", "_") // Substituir caracteres inválidos e espaços por underscore
+            .replaceAll("_+", "_") // Remover underscores duplicados
+            .toUpperCase();
     }
 }

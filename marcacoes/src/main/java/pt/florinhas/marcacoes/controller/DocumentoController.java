@@ -106,8 +106,8 @@ public class DocumentoController {
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String utenteNome,
             @RequestParam(required = false) String utenteNif,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedAte) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoAte) {
 
         if (marcacaoId != null) {
             verificarPermissaoMarcacao(marcacaoId);
@@ -122,8 +122,8 @@ public class DocumentoController {
             tipo,
             utenteNome,
             utenteNif,
-            uploadedDesde,
-            uploadedAte
+            marcacaoDesde,
+            marcacaoAte
         );
 
         return ResponseEntity.ok(resultados);
