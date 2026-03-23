@@ -1,5 +1,6 @@
 package pt.florinhas.marcacoes.repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -73,4 +74,16 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
     List<Documento> findByMarcacaoIdAndUploadedEmLessThanEqualOrderByUploadedEmDesc(Long marcacaoId, LocalDateTime uploadedAte);
 
     List<Documento> findByMarcacaoIdAndUploadedEmBetweenOrderByUploadedEmDesc(Long marcacaoId, LocalDateTime uploadedDesde, LocalDateTime uploadedAte);
+
+    @Query("SELECT d FROM Documento d WHERE d.marcacao.data >= :desde ORDER BY d.uploadedEm DESC")
+    List<Documento> findByMarcacaoDataGreaterThanEqual(@Param("desde") LocalDateTime desde);
+
+    @Query("SELECT d FROM Documento d WHERE d.marcacao.data <= :ate ORDER BY d.uploadedEm DESC")
+    List<Documento> findByMarcacaoDataLessThanEqual(@Param("ate") LocalDateTime ate);
+
+    @Query("SELECT d FROM Documento d WHERE d.marcacao.data >= :desde AND d.marcacao.data <= :ate ORDER BY d.uploadedEm DESC")
+    List<Documento> findByMarcacaoDataBetween(@Param("desde") LocalDateTime desde, @Param("ate") LocalDateTime ate);
+
+    @Query("SELECT d FROM Documento d WHERE d.marcacao.id = :marcacaoId AND d.marcacao.data >= :desde AND d.marcacao.data <= :ate ORDER BY d.uploadedEm DESC")
+    List<Documento> findByMarcacaoIdAndMarcacaoDataBetween(@Param("marcacaoId") Long marcacaoId, @Param("desde") LocalDateTime desde, @Param("ate") LocalDateTime ate);
 }
