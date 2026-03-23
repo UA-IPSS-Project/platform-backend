@@ -56,11 +56,17 @@ public class ArmazemService {
      */
     private static final Map<String, String> FORM_TO_ARMAZEM = Map.ofEntries(
         Map.entry("Shampoo", "Champô"),
-        Map.entry("Gel de Banho", "Sabonete Líquido"),
-        Map.entry("Toalha", "Toalhetes"),
-        Map.entry("Sabonete/Creme", "Sabonete Líquido"),
+        Map.entry("Champô", "Champô"),
+        Map.entry("Gel de Banho", "Gel de Banho"),
+        Map.entry("Toalha", "Toalha"),
+        Map.entry("Sabonete/Creme", "Sabonete/Creme"),
         Map.entry("Lavar Roupa Seca", "Detergente Roupa"),
-        Map.entry("Lavar Roupa Molhada", "Detergente Roupa")
+        Map.entry("Lavar Roupa Molhada", "Detergente Roupa"),
+        Map.entry("T-shirt/Camisola", "T-shirt/Camisola"),
+        Map.entry("Calças", "Calças"),
+        Map.entry("Roupa Interior", "Roupa Interior"),
+        Map.entry("Meias", "Meias"),
+        Map.entry("Agasalho/Casaco", "Agasalho/Casaco")
     );
 
     /**
@@ -68,12 +74,18 @@ public class ArmazemService {
      */
     private static final Map<String, String> FORM_TO_CATEGORIA = Map.ofEntries(
         Map.entry("Shampoo", "HIGIENE"),
+        Map.entry("Champô", "HIGIENE"),
         Map.entry("Gel de Banho", "HIGIENE"),
         Map.entry("Toalha", "HIGIENE"),
         Map.entry("Sabonete/Creme", "HIGIENE"),
         Map.entry("Lavar Roupa Seca", "DETERGENTES"),
         Map.entry("Lavar Roupa Molhada", "DETERGENTES"),
-        Map.entry("Sapatos/Sapatilhas", "CALCADO")
+        Map.entry("Sapatos/Sapatilhas", "CALCADO"),
+        Map.entry("T-shirt/Camisola", "VESTUARIO"),
+        Map.entry("Calças", "VESTUARIO"),
+        Map.entry("Roupa Interior", "VESTUARIO"),
+        Map.entry("Meias", "VESTUARIO"),
+        Map.entry("Agasalho/Casaco", "VESTUARIO")
     );
 
     // =====================================================================
@@ -298,18 +310,21 @@ public class ArmazemService {
     public ConsumoEstatisticaDTO obterEstatisticas(String periodo) {
         LocalDateTime agora = LocalDateTime.now();
         LocalDateTime inicio;
-        LocalDateTime fim = agora.toLocalDate().atTime(23, 59, 59);
+        LocalDateTime fim;
 
         switch (periodo.toUpperCase()) {
             case "DIA":
                 inicio = agora.truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().atTime(23, 59, 59);
                 break;
             case "SEMANA":
                 inicio = agora.minusWeeks(1).truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().plusDays(30).atTime(23, 59, 59);
                 break;
             case "MES":
             default:
                 inicio = agora.minusMonths(1).truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().plusDays(30).atTime(23, 59, 59);
                 break;
         }
 
@@ -330,12 +345,13 @@ public class ArmazemService {
 
             for (Roupa roupa : bal.getRoupas()) {
                 String armazemCategoria = FORM_TO_CATEGORIA.getOrDefault(roupa.getCategoria(), "OUTRO");
+                String armazemNome = FORM_TO_ARMAZEM.getOrDefault(roupa.getCategoria(), roupa.getCategoria());
 
                 ConsumoEstatisticaDTO.ConsumoItemDTO item = new ConsumoEstatisticaDTO.ConsumoItemDTO();
                 item.setCategoria(armazemCategoria);
                 item.setNome(roupa.getCategoria().equalsIgnoreCase("Sapatos/Sapatilhas") && roupa.getTamanho() != null
                         ? roupa.getTamanho()
-                        : roupa.getCategoria());
+                        : armazemNome);
                 item.setQuantidade(roupa.getQuantidade());
                 item.setData(dataStr);
                 itensConsumo.add(item);
@@ -381,6 +397,9 @@ public class ArmazemService {
         // Higiene
         criarItemSeNaoExiste("HIGIENE", "Sabonete Líquido", 0, 15, "un");
         criarItemSeNaoExiste("HIGIENE", "Champô", 0, 8, "un");
+        criarItemSeNaoExiste("HIGIENE", "Gel de Banho", 0, 8, "un");
+        criarItemSeNaoExiste("HIGIENE", "Toalha", 0, 10, "un");
+        criarItemSeNaoExiste("HIGIENE", "Sabonete/Creme", 0, 10, "un");
         criarItemSeNaoExiste("HIGIENE", "Toalhetes", 0, 30, "pk");
         criarItemSeNaoExiste("HIGIENE", "Fraldas Adulto", 0, 20, "pk");
         criarItemSeNaoExiste("HIGIENE", "Papel Higiénico", 0, 30, "rolos");
@@ -389,6 +408,13 @@ public class ArmazemService {
         for (int tamanho = 35; tamanho <= 46; tamanho++) {
             criarItemSeNaoExiste("CALCADO", String.valueOf(tamanho), 0, 3, "pares");
         }
+        
+        // Vestuário
+        criarItemSeNaoExiste("VESTUARIO", "T-shirt/Camisola", 0, 5, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Calças", 0, 5, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Roupa Interior", 0, 10, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Meias", 0, 10, "pares");
+        criarItemSeNaoExiste("VESTUARIO", "Agasalho/Casaco", 0, 3, "un");
 
         log.info("Dados padrão do armazém inicializados com sucesso.");
     }
