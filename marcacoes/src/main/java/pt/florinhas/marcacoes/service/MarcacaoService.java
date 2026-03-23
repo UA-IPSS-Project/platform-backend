@@ -255,7 +255,8 @@ public class MarcacaoService {
 
         if (request.getRoupas() != null) {
             if (detalhes.getRoupas() != null) {
-                // Clear existing just in case (e.g if it's reused from EM_PREENCHIMENTO with existing roupas)
+                // Clear existing just in case (e.g if it's reused from EM_PREENCHIMENTO with
+                // existing roupas)
                 detalhes.getRoupas().clear();
             }
             for (RoupaDTO rDTO : request.getRoupas()) {
@@ -355,13 +356,14 @@ public class MarcacaoService {
                 }
             }
 
-            // Restaurar stock se a marcação estava EM_PROGRESSO e agora é CANCELADA ou NAO_COMPARECIDO
+            // Restaurar stock se a marcação estava EM_PROGRESSO e agora é CANCELADA ou
+            // NAO_COMPARECIDO
             if (estadoAnterior == EventoEstado.EM_PROGRESSO
                     && (request.getNovoEstadoEnum() == EventoEstado.CANCELADO
-                        || request.getNovoEstadoEnum() == EventoEstado.NAO_COMPARECIDO)) {
+                            || request.getNovoEstadoEnum() == EventoEstado.NAO_COMPARECIDO)) {
                 armazemService.restaurarItens(marcacao);
                 log.info("Stock restaurado para marcação {} (transição {} -> {})",
-                    id, estadoAnterior, request.getNovoEstadoEnum());
+                        id, estadoAnterior, request.getNovoEstadoEnum());
             }
         }
 
@@ -513,7 +515,6 @@ public class MarcacaoService {
         return marcacaoRepository.findAllWithRelations(pageable).map(this::toDTO);
     }
 
-
     @Transactional
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
         // 1. Verificar capacidade máxima antes de criar reserva
@@ -531,8 +532,8 @@ public class MarcacaoService {
         m.setData(data);
         m.setEstado(EventoEstado.EM_PREENCHIMENTO);
         m.setDuration("BALNEARIO".equals(tipoAgenda)
-            ? BALNEARIO_DEFAULT_DURATION_MINUTES
-            : SECRETARIA_DEFAULT_DURATION_MINUTES);
+                ? BALNEARIO_DEFAULT_DURATION_MINUTES
+                : SECRETARIA_DEFAULT_DURATION_MINUTES);
 
         // Identificar quem está a reservar
         Long criadorId = request.getCriadoPorId();
@@ -586,9 +587,28 @@ public class MarcacaoService {
 
         String tipoAgenda = marcacao.getMarcacaoBalneario() != null ? "BALNEARIO" : "SECRETARIA";
 
-        // Validar reagendamento com as mesmas verificações que criação (data, hora,
-        // feriados, bloqueios, sobreposição)
+        // Validar data/hora, feriados, fim de semana e bloqueios
         marcacaoValidator.validarReagendamento(request, tipoAgenda);
+
+        // Verificar capacidade do slot de destino
+        // Exclui a própria marcação do count (ela ainda está no slot original ou no
+        // mesmo slot)
+        int capacidade = calendarioService.getCapacidadePorSlot(tipoAgenda);
+        List<EventoEstado> estadosOcupados = List.of(EventoEstado.AGENDADO, EventoEstado.EM_PREENCHIMENTO,
+                EventoEstado.AVISO, EventoEstado.EM_PROGRESSO, EventoEstado.CONCLUIDO, EventoEstado.NAO_COMPARECIDO,
+                EventoEstado.INVALIDO);
+        long ocupadas = marcacaoRepository.countByDataAndEstadoInAndTipo(
+                request.getNovaDataHora(), estadosOcupados, tipoAgenda);
+
+        // Se a marcação já está neste slot (mesma data/hora), não conta para a
+        // capacidade
+        boolean jaEstaNovaData = request.getNovaDataHora().equals(marcacao.getData());
+        long ocupadasEfetivas = jaEstaNovaData ? ocupadas - 1 : ocupadas;
+
+        if (ocupadasEfetivas >= capacidade) {
+            throw new IllegalStateException(
+                    "O horário escolhido está cheio. Por favor escolha outro horário.");
+        }
 
         // Atualizar data/hora
         marcacao.setData(request.getNovaDataHora());
@@ -674,36 +694,34 @@ public class MarcacaoService {
     @Scheduled(cron = "0 59 23 * * *") // Run every day at 23:59
     @Transactional
     public void invalidarMarcacoesExpiradas() {
-        // Obter o início do dia atual (00:00:00). 
-        // Qualquer marcação com data anterior é do "dia anterior" ou mais antiga, logo, passaram-se pelo menos ~24 horas.
+        // Obter o início do dia atual (00:00:00).
+        // Qualquer marcação com data anterior é do "dia anterior" ou mais antiga, logo,
+        // passaram-se pelo menos ~24 horas.
         LocalDateTime inicioDoDiaAtual = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
-        
+
         // 1. Passar "EM_PROGRESSO" para "CONCLUIDO"
         int concluidas = marcacaoRepository.atualizarMarcacoesPorEstadoAntigas(
-            EventoEstado.CONCLUIDO,
-            EventoEstado.EM_PROGRESSO,
-            inicioDoDiaAtual
-        );
-        
+                EventoEstado.CONCLUIDO,
+                EventoEstado.EM_PROGRESSO,
+                inicioDoDiaAtual);
+
         if (concluidas > 0) {
             log.info("Marcadas {} marcações em progresso como CONCLUIDAS (data < {})", concluidas, inicioDoDiaAtual);
         }
 
         // 2. Passar o restante para "INVALIDO"
         List<EventoEstado> estadosExcluidos = List.of(
-            EventoEstado.CONCLUIDO,
-            EventoEstado.CANCELADO,
-            EventoEstado.NAO_COMPARECIDO,
-            EventoEstado.EM_PREENCHIMENTO,
-            EventoEstado.INVALIDO
-        );
-        
+                EventoEstado.CONCLUIDO,
+                EventoEstado.CANCELADO,
+                EventoEstado.NAO_COMPARECIDO,
+                EventoEstado.EM_PREENCHIMENTO,
+                EventoEstado.INVALIDO);
+
         int contagem = marcacaoRepository.invalidarMarcacoesAntigas(
-            EventoEstado.INVALIDO, 
-            estadosExcluidos, 
-            inicioDoDiaAtual
-        );
-        
+                EventoEstado.INVALIDO,
+                estadosExcluidos,
+                inicioDoDiaAtual);
+
         if (contagem > 0) {
             log.info("Marcadas {} marcações como INVALIDAS (data < {})", contagem, inicioDoDiaAtual);
         }

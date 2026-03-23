@@ -101,6 +101,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Mapeia IllegalStateException para HTTP 409 (CONFLICT).
+     * Usado, por exemplo, quando um slot está cheio durante reagendamento.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalStateException(IllegalStateException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /**
      * Mapeia ResourceNotFoundException para HTTP 404 (NOT_FOUND).
      */
     @ExceptionHandler(ResourceNotFoundException.class)
