@@ -2,8 +2,6 @@ package pt.florinhas.requisicoes.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,9 +21,8 @@ public class ManutencaoItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)
-    private ManutencaoCategoria categoria;
+    private String categoria;
 
     @Column(nullable = false, length = 120)
     private String espaco;

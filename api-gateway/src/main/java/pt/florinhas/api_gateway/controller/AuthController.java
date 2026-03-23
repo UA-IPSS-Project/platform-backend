@@ -34,6 +34,9 @@ public class AuthController {
     @Value("${app.cookie-samesite:Lax}")
     private String cookieSameSite;
 
+    @Value("${gateway.shared-secret:}")
+    private String gatewaySharedSecret;
+
     public AuthController(WebClient webClient, JwtService jwtService) {
         this.webClient = webClient;
         this.jwtService = jwtService;
@@ -109,6 +112,7 @@ public class AuthController {
                 .header("X-Authenticated-User", user)
                 .header("X-Authenticated-Roles", roles == null ? "" : roles)
                 .header("X-Authenticated-User-Id", userId == null ? "" : userId)
+                .header("X-Gateway-Secret", gatewaySharedSecret)
                 .bodyValue(payload)
                 .retrieve()
                 .toBodilessEntity()
@@ -135,6 +139,7 @@ public class AuthController {
     private Mono<ResponseEntity<Object>> proxyLoginOrRegister(String path, Map<String, Object> payload) {
         return webClient.post()
             .uri(marcacoesBaseUrl + path)
+            .header("X-Gateway-Secret", gatewaySharedSecret)
             .bodyValue(payload)
             .retrieve()
             .bodyToMono(AuthResponse.class)

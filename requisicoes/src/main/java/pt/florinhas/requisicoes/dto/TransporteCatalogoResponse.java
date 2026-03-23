@@ -1,13 +1,12 @@
 package pt.florinhas.requisicoes.dto;
 
 import pt.florinhas.requisicoes.domain.Transporte;
-import pt.florinhas.requisicoes.domain.TransporteCategoria;
 
 public record TransporteCatalogoResponse(
         Long id,
         String codigo,
         String tipo,
-        TransporteCategoria categoria,
+        String categoria,
         String matricula,
         String marca,
         String modelo,

@@ -8,4 +8,5 @@ import pt.florinhas.requisicoes.domain.RequisicaoManutencaoItem;
 @Repository
 public interface RequisicaoManutencaoItemRepository extends JpaRepository<RequisicaoManutencaoItem, Long> {
 
+    boolean existsByManutencaoItemId(Long manutencaoItemId);
 }

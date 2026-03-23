@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Set;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
@@ -16,6 +14,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Entity
 @Table(name = "Funcionario")
@@ -34,13 +34,13 @@ public class Funcionario extends Utilizador {
     private boolean activo;
 
     @Override
-        public Collection<? extends GrantedAuthority> getAuthorities() {
+    public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.tipo == null) {
             return List.of(
-                new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+                    new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
         }
         return List.of(
-            new SimpleGrantedAuthority("ROLE_" + this.tipo.name()),
-            new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+                new SimpleGrantedAuthority("ROLE_" + this.tipo.name()),
+                new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
     }
 }

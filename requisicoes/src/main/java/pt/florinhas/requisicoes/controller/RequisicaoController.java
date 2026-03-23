@@ -165,6 +165,28 @@ public class RequisicaoController {
         return requisicaoService.listarManutencaoItems();
     }
 
+    @PostMapping("/manutencao-items")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    public ResponseEntity<pt.florinhas.requisicoes.domain.ManutencaoItem> criarManutencaoItem(
+            @Valid @RequestBody pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest request) {
+        return ResponseEntity.ok(requisicaoService.criarManutencaoItem(request));
+    }
+
+    @PutMapping("/manutencao-items/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    public ResponseEntity<pt.florinhas.requisicoes.domain.ManutencaoItem> atualizarManutencaoItem(
+            @PathVariable Long id,
+            @Valid @RequestBody pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest request) {
+        return ResponseEntity.ok(requisicaoService.atualizarManutencaoItem(id, request));
+    }
+
+    @DeleteMapping("/manutencao-items/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    public ResponseEntity<Void> apagarManutencaoItem(@PathVariable Long id) {
+        requisicaoService.apagarManutencaoItem(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/estado")
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Requisicao> atualizarEstado(
