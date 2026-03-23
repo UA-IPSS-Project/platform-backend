@@ -57,6 +57,12 @@ public class MarcacaoBalneario {
     private Funcionario responsavel;
 
     /**
+     * Observações adicionais sobre a marcação.
+     */
+    @Column(name = "observacoes", length = 500)
+    private String observacoes;
+
+    /**
      * Peças de roupa fornecidas no balneário.
      */
     @OneToMany(mappedBy = "marcacaoBalneario", cascade = CascadeType.ALL, orphanRemoval = true)
