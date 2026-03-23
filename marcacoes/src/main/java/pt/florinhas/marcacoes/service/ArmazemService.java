@@ -333,7 +333,9 @@ public class ArmazemService {
 
                 ConsumoEstatisticaDTO.ConsumoItemDTO item = new ConsumoEstatisticaDTO.ConsumoItemDTO();
                 item.setCategoria(armazemCategoria);
-                item.setNome(roupa.getCategoria());
+                item.setNome(roupa.getCategoria().equalsIgnoreCase("Sapatos/Sapatilhas") && roupa.getTamanho() != null
+                        ? roupa.getTamanho()
+                        : roupa.getCategoria());
                 item.setQuantidade(roupa.getQuantidade());
                 item.setData(dataStr);
                 itensConsumo.add(item);
