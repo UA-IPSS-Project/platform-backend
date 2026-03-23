@@ -298,6 +298,7 @@ public class ArmazemService {
     public ConsumoEstatisticaDTO obterEstatisticas(String periodo) {
         LocalDateTime agora = LocalDateTime.now();
         LocalDateTime inicio;
+        LocalDateTime fim = agora.toLocalDate().atTime(23, 59, 59);
 
         switch (periodo.toUpperCase()) {
             case "DIA":
@@ -314,7 +315,7 @@ public class ArmazemService {
 
         // Buscar marcações de balneário com estado EM_PROGRESSO ou CONCLUIDO no período
         List<EventoEstado> estadosConsumo = List.of(EventoEstado.EM_PROGRESSO, EventoEstado.CONCLUIDO);
-        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(inicio, agora, "BALNEARIO");
+        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(inicio, fim, "BALNEARIO");
 
         List<ConsumoEstatisticaDTO.ConsumoItemDTO> itensConsumo = new ArrayList<>();
         Map<String, Integer> totaisPorCategoria = new HashMap<>();
