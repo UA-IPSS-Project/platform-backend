@@ -51,6 +51,11 @@ public class NotificacaoService {
             Map<String, Object> metadata) {
         Utilizador user = utilizadorRepository.findById(utilizadorId)
                 .orElseThrow(() -> new NotFoundException("Utilizador não encontrado"));
+        return criarNotificacao(user, titulo, mensagem, tipo, metadata);
+    }
+
+    public Notificacao criarNotificacao(Utilizador user, String titulo, String mensagem, NotificacaoTipo tipo,
+            Map<String, Object> metadata) {
 
         Notificacao notificacao = new Notificacao();
         notificacao.setUtilizador(user);
@@ -67,7 +72,7 @@ public class NotificacaoService {
             NotificacaoResponseDTO dto = converterParaDTO(saved);
                 logger.info(
                     "Sending WebSocket notification to user: {} (email: {}), title: {}",
-                    utilizadorId, user.getEmail(), titulo);
+                    user.getId(), user.getEmail(), titulo);
             messagingTemplate.convertAndSendToUser(
                     user.getEmail(), // Assuming UserDetails username is email, we need to make sure this matches
                                      // what principal.getName() returns.
@@ -138,9 +143,8 @@ public class NotificacaoService {
         notificacaoRepository.deleteByUtilizadorId(utilizadorId);
     }
 
-    // --- Métodos de Negócio (Semantic Methods) ---
+    // --- Métodos de Negócio (Side-effects, não devem falhar a transação principal) ---
 
-    @Transactional
     public void notificarNovaMarcacao(Utilizador utilizador, Long marcacaoId, LocalDateTime data, boolean isRemote) {
         String dataFormatada = data.format(DISPLAY_DATE_FORMATTER);
         String mensagem = "Marcacao criada para " + dataFormatada + ".";
@@ -151,12 +155,11 @@ public class NotificacaoService {
             "createdDate", data.format(DATE_FORMATTER),
             "createdTime", data.format(TIME_FORMATTER),
             METADATA_SUBTYPE_KEY, "CREATED");
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
+        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
         sendEmailIfAvailable(utilizador.getEmail(), () -> emailService.sendAppointmentCreated(utilizador.getEmail(), data));
     }
 
-    @Transactional
-        public void notificarCancelamento(Utilizador utilizador, LocalDateTime data, String motivo) {
+    public void notificarCancelamento(Utilizador utilizador, LocalDateTime data, String motivo) {
         String assunto = "Marcacao Cancelada";
         String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;
         String mensagem = "Marcacao cancelada por " + motivoTexto + ".";
@@ -165,12 +168,11 @@ public class NotificacaoService {
                 "cancelledDate", data.format(DATE_FORMATTER),
             "cancelledTime", data.format(TIME_FORMATTER),
             METADATA_SUBTYPE_KEY, "CANCELLED");
-
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+        
+        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
         sendEmailIfAvailable(utilizador.getEmail(), () -> emailService.sendAppointmentCancelled(utilizador.getEmail(), motivoTexto));
     }
 
-    @Transactional
     public void notificarCancelamentoPeloUtente(Utilizador destinatario, String nomeUtente,
             LocalDateTime data) {
         DateTimeFormatter formatter = DateTimeFormatter
@@ -184,17 +186,16 @@ public class NotificacaoService {
         Map<String, Object> metadata = Map.of(
             "cancelledDate", data.format(DATE_FORMATTER),
             "cancelledTime", data.format(TIME_FORMATTER));
-
-        criarNotificacao(destinatario.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+        
+        criarNotificacao(destinatario, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
         // Admin notifications might not need email simulation, but keeping consistent
     }
 
-    @Transactional
     public void notificarDocumentosInvalidos(Utilizador utilizador, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
-
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE); // Using LEMBRETE as
+        
+        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.LEMBRETE, null); // Using LEMBRETE as
                                                                                            // warning/info
     }
 
@@ -226,7 +227,7 @@ public class NotificacaoService {
                     "appointmentId", String.valueOf(marcacao.getId()),
                     METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
 
-                criarNotificacao(utente.getId(), ONE_DAY_REMINDER_TITLE, mensagem, NotificacaoTipo.LEMBRETE,
+                criarNotificacao(utente, ONE_DAY_REMINDER_TITLE, mensagem, NotificacaoTipo.LEMBRETE,
                     metadata);
 
                 sendEmailIfAvailable(utente.getEmail(),
