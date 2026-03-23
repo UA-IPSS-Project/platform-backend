@@ -61,6 +61,7 @@ public class MarcacaoService {
     private final NifValidator nifValidator;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final ArmazemService armazemService;
 
     @Lazy
     private final CalendarioService calendarioService;
@@ -333,12 +334,34 @@ public class MarcacaoService {
         Marcacao marcacao = marcacaoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
 
+        EventoEstado estadoAnterior = marcacao.getEstado();
+
         // Validar transição de estado se necessário
         // Por agora permitimos atualizar direto
         marcacao.setEstado(request.getNovoEstadoEnum());
 
         if (request.getNovoEstadoEnum() == EventoEstado.CANCELADO && request.getMotivoCancelamento() != null) {
             marcacao.setMotivoCancelamento(request.getMotivoCancelamento());
+        }
+
+        // === GESTÃO DE STOCK DO ARMAZÉM (Balneário) ===
+        if (marcacao.getMarcacaoBalneario() != null) {
+            // Descontar stock ao marcar presença (transição para EM_PROGRESSO)
+            if (request.getNovoEstadoEnum() == EventoEstado.EM_PROGRESSO) {
+                List<String> avisos = armazemService.descontarItens(marcacao);
+                if (!avisos.isEmpty()) {
+                    log.warn("Avisos de stock ao marcar presença na marcação {}: {}", id, avisos);
+                }
+            }
+
+            // Restaurar stock se a marcação estava EM_PROGRESSO e agora é CANCELADA ou NAO_COMPARECIDO
+            if (estadoAnterior == EventoEstado.EM_PROGRESSO
+                    && (request.getNovoEstadoEnum() == EventoEstado.CANCELADO
+                        || request.getNovoEstadoEnum() == EventoEstado.NAO_COMPARECIDO)) {
+                armazemService.restaurarItens(marcacao);
+                log.info("Stock restaurado para marcação {} (transição {} -> {})",
+                    id, estadoAnterior, request.getNovoEstadoEnum());
+            }
         }
 
         // Se houver atendente a definir (funcionário que executa a alteração):
