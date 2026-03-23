@@ -310,18 +310,21 @@ public class ArmazemService {
     public ConsumoEstatisticaDTO obterEstatisticas(String periodo) {
         LocalDateTime agora = LocalDateTime.now();
         LocalDateTime inicio;
-        LocalDateTime fim = agora.toLocalDate().atTime(23, 59, 59);
+        LocalDateTime fim;
 
         switch (periodo.toUpperCase()) {
             case "DIA":
                 inicio = agora.truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().atTime(23, 59, 59);
                 break;
             case "SEMANA":
                 inicio = agora.minusWeeks(1).truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().plusDays(30).atTime(23, 59, 59);
                 break;
             case "MES":
             default:
                 inicio = agora.minusMonths(1).truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().plusDays(30).atTime(23, 59, 59);
                 break;
         }
 
@@ -342,12 +345,13 @@ public class ArmazemService {
 
             for (Roupa roupa : bal.getRoupas()) {
                 String armazemCategoria = FORM_TO_CATEGORIA.getOrDefault(roupa.getCategoria(), "OUTRO");
+                String armazemNome = FORM_TO_ARMAZEM.getOrDefault(roupa.getCategoria(), roupa.getCategoria());
 
                 ConsumoEstatisticaDTO.ConsumoItemDTO item = new ConsumoEstatisticaDTO.ConsumoItemDTO();
                 item.setCategoria(armazemCategoria);
                 item.setNome(roupa.getCategoria().equalsIgnoreCase("Sapatos/Sapatilhas") && roupa.getTamanho() != null
                         ? roupa.getTamanho()
-                        : roupa.getCategoria());
+                        : armazemNome);
                 item.setQuantidade(roupa.getQuantidade());
                 item.setData(dataStr);
                 itensConsumo.add(item);
