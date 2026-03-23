@@ -244,6 +244,7 @@ public class MarcacaoService {
         detalhes.setNomeUtente(request.getNomeUtente());
         detalhes.setProdutosHigiene(request.getProdutosHigiene());
         detalhes.setLavagemRoupa(request.getLavagemRoupa());
+        detalhes.setObservacoes(request.getObservacoes());
 
         if (request.getResponsavelId() != null) {
             Funcionario responsavel = funcionarioRepository.findById(request.getResponsavelId())
@@ -637,6 +638,7 @@ public class MarcacaoService {
             balnDTO.setNomeUtente(baln.getNomeUtente());
             balnDTO.setProdutosHigiene(baln.getProdutosHigiene());
             balnDTO.setLavagemRoupa(baln.getLavagemRoupa());
+            balnDTO.setObservacoes(baln.getObservacoes());
 
             if (baln.getResponsavel() != null) {
                 balnDTO.setResponsavelNome(baln.getResponsavel().getNome());

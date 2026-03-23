@@ -79,6 +79,7 @@ public class MarcacaoResponseDTO {
         private Boolean produtosHigiene;
         private Boolean lavagemRoupa;
         private String responsavelNome;
+        private String observacoes;
         private List<pt.florinhas.marcacoes.dto.RoupaDTO> roupas;
     }
 

@@ -26,5 +26,7 @@ public class CriarMarcacaoBalnearioRequest {
 
     private List<RoupaDTO> roupas = new ArrayList<>();
 
+    private String observacoes;
+
     private Long reservaId;
 }
