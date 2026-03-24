@@ -56,6 +56,7 @@ public class ArmazemService {
      */
     private static final Map<String, String> FORM_TO_ARMAZEM = Map.ofEntries(
         Map.entry("Shampoo", "Champô"),
+        Map.entry("Champô", "Champô"),
         Map.entry("Gel de Banho", "Gel de Banho"),
         Map.entry("Toalha", "Toalha"),
         Map.entry("Sabonete/Creme", "Sabonete/Creme"),
@@ -73,6 +74,7 @@ public class ArmazemService {
      */
     private static final Map<String, String> FORM_TO_CATEGORIA = Map.ofEntries(
         Map.entry("Shampoo", "HIGIENE"),
+        Map.entry("Champô", "HIGIENE"),
         Map.entry("Gel de Banho", "HIGIENE"),
         Map.entry("Toalha", "HIGIENE"),
         Map.entry("Sabonete/Creme", "HIGIENE"),
@@ -313,13 +315,16 @@ public class ArmazemService {
         switch (periodo.toUpperCase()) {
             case "DIA":
                 inicio = agora.truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().atTime(23, 59, 59);
                 break;
             case "SEMANA":
                 inicio = agora.minusWeeks(1).truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().plusDays(30).atTime(23, 59, 59);
                 break;
             case "MES":
             default:
                 inicio = agora.minusMonths(1).truncatedTo(ChronoUnit.DAYS);
+                fim = agora.toLocalDate().plusDays(30).atTime(23, 59, 59);
                 break;
         }
 
@@ -340,12 +345,13 @@ public class ArmazemService {
 
             for (Roupa roupa : bal.getRoupas()) {
                 String armazemCategoria = FORM_TO_CATEGORIA.getOrDefault(roupa.getCategoria(), "OUTRO");
+                String armazemNome = FORM_TO_ARMAZEM.getOrDefault(roupa.getCategoria(), roupa.getCategoria());
 
                 ConsumoEstatisticaDTO.ConsumoItemDTO item = new ConsumoEstatisticaDTO.ConsumoItemDTO();
                 item.setCategoria(armazemCategoria);
                 item.setNome(roupa.getCategoria().equalsIgnoreCase("Sapatos/Sapatilhas") && roupa.getTamanho() != null
                         ? roupa.getTamanho()
-                        : roupa.getCategoria());
+                        : armazemNome);
                 item.setQuantidade(roupa.getQuantidade());
                 item.setData(dataStr);
                 itensConsumo.add(item);
@@ -409,6 +415,13 @@ public class ArmazemService {
         for (int tamanho = 35; tamanho <= 46; tamanho++) {
             criarItemSeNaoExiste("CALCADO", String.valueOf(tamanho), 0, 3, "pares");
         }
+        
+        // Vestuário
+        criarItemSeNaoExiste("VESTUARIO", "T-shirt/Camisola", 0, 5, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Calças", 0, 5, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Roupa Interior", 0, 10, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Meias", 0, 10, "pares");
+        criarItemSeNaoExiste("VESTUARIO", "Agasalho/Casaco", 0, 3, "un");
 
         log.info("Dados padrão do armazém inicializados com sucesso.");
     }
