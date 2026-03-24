@@ -14,6 +14,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -135,12 +137,27 @@ public class MarcacaoService {
 
                 utente = utenteRepository.save(utente);
 
-                // Enviar email com a password
-                try {
-                    emailService.sendPassword(request.getUtenteEmail(), rawPassword);
-                } catch (Exception e) {
-                    log.error("Falha ao enviar email para: {}", request.getUtenteEmail(), e);
-                    // Não falhar a marcação se o email falhar, mas logar erro
+                // Enviar email com a password (Side-effect isolado para evitar rollback)
+                final String finalEmail = request.getUtenteEmail();
+                final String finalPassword = rawPassword;
+                
+                if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                emailService.sendPassword(finalEmail, finalPassword);
+                            } catch (Exception e) {
+                                log.error("Falha ao enviar email para: {}", finalEmail, e);
+                            }
+                        }
+                    });
+                } else {
+                    try {
+                        emailService.sendPassword(finalEmail, finalPassword);
+                    } catch (Exception e) {
+                        log.error("Falha ao enviar email para: {}", finalEmail, e);
+                    }
                 }
             }
         } else {
@@ -160,12 +177,29 @@ public class MarcacaoService {
 
         Marcacao saved = marcacaoRepository.save(marcacao);
 
-        // Notify utente about new appointment (when created by secretary)
+        // Notify utente about new appointment (Side-effect isolado para evitar rollback)
         if (utente != null && request.getCriadoPorId() != null) {
-            try {
-                notificacaoService.notificarNovaMarcacao(utente, saved.getId(), saved.getData(), false);
-            } catch (Exception e) {
-                log.error("Falha ao notificar utente sobre nova marcação", e);
+            final Utente finalUtente = utente;
+            final Long finalId = saved.getId();
+            final LocalDateTime finalData = saved.getData();
+
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
+                        } catch (Exception e) {
+                            log.error("Falha ao notificar utente sobre nova marcação", e);
+                        }
+                    }
+                });
+            } else {
+                try {
+                    notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
+                } catch (Exception e) {
+                    log.error("Falha ao notificar utente sobre nova marcação", e);
+                }
             }
         }
 

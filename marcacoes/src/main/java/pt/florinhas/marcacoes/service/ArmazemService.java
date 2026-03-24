@@ -310,7 +310,7 @@ public class ArmazemService {
     public ConsumoEstatisticaDTO obterEstatisticas(String periodo) {
         LocalDateTime agora = LocalDateTime.now();
         LocalDateTime inicio;
-        LocalDateTime fim;
+        LocalDateTime fim = agora.plusYears(10); // Incluir marcações futuras já concluídas
 
         switch (periodo.toUpperCase()) {
             case "DIA":
@@ -397,12 +397,19 @@ public class ArmazemService {
         // Higiene
         criarItemSeNaoExiste("HIGIENE", "Sabonete Líquido", 0, 15, "un");
         criarItemSeNaoExiste("HIGIENE", "Champô", 0, 8, "un");
-        criarItemSeNaoExiste("HIGIENE", "Gel de Banho", 0, 8, "un");
-        criarItemSeNaoExiste("HIGIENE", "Toalha", 0, 10, "un");
-        criarItemSeNaoExiste("HIGIENE", "Sabonete/Creme", 0, 10, "un");
+        criarItemSeNaoExiste("HIGIENE", "Gel de Banho", 0, 10, "un");
+        criarItemSeNaoExiste("HIGIENE", "Toalha", 0, 20, "un");
+        criarItemSeNaoExiste("HIGIENE", "Sabonete/Creme", 0, 15, "un");
         criarItemSeNaoExiste("HIGIENE", "Toalhetes", 0, 30, "pk");
         criarItemSeNaoExiste("HIGIENE", "Fraldas Adulto", 0, 20, "pk");
         criarItemSeNaoExiste("HIGIENE", "Papel Higiénico", 0, 30, "rolos");
+
+        // Vestuário
+        criarItemSeNaoExiste("VESTUARIO", "T-shirt/Camisola", 0, 10, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Calças", 0, 10, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Roupa Interior", 0, 20, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Meias", 0, 20, "un");
+        criarItemSeNaoExiste("VESTUARIO", "Agasalho/Casaco", 0, 5, "un");
 
         // Calçado (tamanhos 35 a 46)
         for (int tamanho = 35; tamanho <= 46; tamanho++) {

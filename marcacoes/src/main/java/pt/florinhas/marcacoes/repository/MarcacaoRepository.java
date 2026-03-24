@@ -48,10 +48,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
-                        "WHERE m.data BETWEEN :dataInicio AND :dataFim AND m.estado <> 'CANCELADO' " +
-                        "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL)) "
-                        +
-                        "ORDER BY m.data")
+                        "WHERE m.data >= :dataInicio AND m.data <= :dataFim " +
+                        "AND (:tipo IS NULL OR " +
+                        "    (:tipo = 'BALNEARIO' AND mb.id IS NOT NULL) OR " +
+                        "    (:tipo = 'SECRETARIA' AND ms.id IS NOT NULL)) " +
+                        "ORDER BY m.data ASC")
         List<Marcacao> findMarcacoesBetweenDates(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
