@@ -1,18 +1,25 @@
 package pt.florinhas.marcacoes.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
+import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
+import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 import jakarta.validation.Valid;
 
@@ -33,8 +40,6 @@ import jakarta.validation.Valid;
  * valida,
  * delega e adapta respostas HTTP/DTO.
  */
-import org.springframework.security.access.prepost.PreAuthorize;
-
 @RestController
 @RequestMapping("/api/utilizadores")
 public class UtilizadorController {
@@ -73,7 +78,7 @@ public class UtilizadorController {
     @GetMapping("/nif/{nif}")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
-                .orElseThrow(() -> new pt.florinhas.marcacoes.exception.NotFoundException(
+            .orElseThrow(() -> new NotFoundException(
                         "Utilizador não encontrado com NIF: " + nif));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
@@ -116,7 +121,7 @@ public class UtilizadorController {
      */
     @GetMapping("/funcionarios")
     @PreAuthorize("hasAnyRole('SECRETARIA', 'FUNCIONARIO')")
-    public ResponseEntity<java.util.List<UtilizadorResponseDTO>> listarTodosFuncionarios() {
+    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosFuncionarios() {
         return ResponseEntity.ok(utilizadorService.listarTodosFuncionarios());
     }
 
@@ -125,7 +130,7 @@ public class UtilizadorController {
      */
     @GetMapping("/funcionarios/pendentes")
     @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<java.util.List<UtilizadorResponseDTO>> listarFuncionariosPendentes() {
+    public ResponseEntity<List<UtilizadorResponseDTO>> listarFuncionariosPendentes() {
         return ResponseEntity.ok(utilizadorService.listarFuncionariosPendentes());
     }
 
@@ -156,17 +161,17 @@ public class UtilizadorController {
         // Se serviço lançar exceção, deve ser tratado globalmente ou aqui
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
                 .orElseThrow(
-                        () -> new pt.florinhas.marcacoes.exception.NotFoundException("Utilizador não encontrado"));
+                () -> new NotFoundException("Utilizador não encontrado"));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
 
     /**
      * Cria conta (Utente/Funcionario) pela Secretaria.
      */
-    @org.springframework.web.bind.annotation.PostMapping("/create-by-secretary")
+    @PostMapping("/create-by-secretary")
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<UtilizadorResponseDTO> criarPelaSecretaria(
-            @Valid @RequestBody pt.florinhas.marcacoes.dto.CreateUserRequestDTO request) {
+            @Valid @RequestBody CreateUserRequestDTO request) {
         Utilizador criado = utilizadorService.criarUtilizadorPelaSecretaria(request);
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(criado));
     }
@@ -174,10 +179,10 @@ public class UtilizadorController {
     /**
      * Recupera conta (Reset password + Atualização de dados) pela Secretaria.
      */
-    @org.springframework.web.bind.annotation.PostMapping("/recover")
+    @PostMapping("/recover")
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> recuperarConta(
-            @Valid @RequestBody pt.florinhas.marcacoes.dto.RecoverAccountDTO request) {
+            @Valid @RequestBody RecoverAccountDTO request) {
         utilizadorService.recuperarConta(request);
         return ResponseEntity.ok().build();
     }

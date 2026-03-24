@@ -17,12 +17,15 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
+import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
 import pt.florinhas.marcacoes.dto.FeriadoDTO;
 import pt.florinhas.marcacoes.exception.BadRequestException;
 import pt.florinhas.marcacoes.repository.BloqueioRepository;
+import pt.florinhas.marcacoes.repository.ConfiguracaoAgendaRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 
 /**
@@ -46,6 +49,7 @@ public class CalendarioService {
 
     private final BloqueioRepository bloqueioRepository;
     private final MarcacaoRepository marcacaoRepository;
+    private final ConfiguracaoAgendaRepository configuracaoAgendaRepository;
 
     /**
      * Limites de horário do sistema.
@@ -64,6 +68,14 @@ public class CalendarioService {
      * Endpoint público para feriados nacionais (Portugal).
      */
     private static final String API_PT_HOLIDAYS = "https://date.nager.at/api/v3/publicholidays/%d/PT";
+    private static final int CAPACIDADE_SLOT_DEFAULT_SECRETARIA = 1;
+    private static final int CAPACIDADE_SLOT_DEFAULT_BALNEARIO = 2;
+    private static final String TIPO_SECRETARIA = "SECRETARIA";
+    private static final String TIPO_BALNEARIO = "BALNEARIO";
+
+    private int capacidadeSlotDefault(String tipo) {
+        return TIPO_BALNEARIO.equals(tipo) ? CAPACIDADE_SLOT_DEFAULT_BALNEARIO : CAPACIDADE_SLOT_DEFAULT_SECRETARIA;
+    }
 
     /**
      * Carrega os feriados do ano corrente no arranque da aplicação.
@@ -112,14 +124,16 @@ public class CalendarioService {
      */
     public boolean isSlotBloqueado(LocalDate data, LocalTime hora, String tipo) {
 
+        String tipoNormalizado = normalizarTipo(tipo);
+
         // Se o dia for indisponível por completo (feriados e fins de semana)
         if (isDiaInteiroIndisponivel(data))
             return true;
 
         // Verificar bloqueios parciais do dia — filtrados por tipo
         List<BloqueioAgenda> bloqueiosDoDia;
-        if (tipo != null && !tipo.isEmpty()) {
-            bloqueiosDoDia = bloqueioRepository.findByDataAndTipo(data, tipo);
+        if (tipoNormalizado != null && !tipoNormalizado.isEmpty()) {
+            bloqueiosDoDia = bloqueioRepository.findByDataAndTipo(data, tipoNormalizado);
         } else {
             bloqueiosDoDia = bloqueioRepository.findByData(data);
         }
@@ -131,15 +145,49 @@ public class CalendarioService {
         if (bloqueadoPorAgenda)
             return true;
 
-        // Verificar se já existe uma marcação ativa neste slot
+        // Verificar capacidade dinâmica de marcações ativas neste slot
         LocalDateTime slotStart = LocalDateTime.of(data, hora);
-        LocalDateTime slotEnd = slotStart.plusMinutes(15);
+        int capacidade = getCapacidadePorSlot(tipoNormalizado);
+        long emUso = marcacaoRepository.countByDataAndTipo(slotStart, tipoNormalizado);
 
-        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(slotStart, slotEnd, tipo);
+        return emUso >= capacidade;
+    }
 
-        return marcacoes.stream()
-                .anyMatch(m -> m.getEstado() != EventoEstado.CANCELADO &&
-                        m.getData().isEqual(slotStart));
+    public int getCapacidadePorSlot(String tipo) {
+        String tipoNormalizado = normalizarTipo(tipo);
+        if (tipoNormalizado == null) {
+            return CAPACIDADE_SLOT_DEFAULT_SECRETARIA;
+        }
+
+        return configuracaoAgendaRepository.findByTipo(tipoNormalizado)
+                .map(ConfiguracaoAgenda::getCapacidadePorSlot)
+                .orElse(capacidadeSlotDefault(tipoNormalizado));
+    }
+
+    @Transactional
+    public ConfiguracaoSlotDTO atualizarCapacidadePorSlot(String tipo, Integer capacidadePorSlot) {
+        String tipoNormalizado = normalizarTipoObrigatorio(tipo);
+
+        if (capacidadePorSlot == null || capacidadePorSlot < 1) {
+            throw new BadRequestException("A capacidade por slot deve ser um número inteiro maior ou igual a 1.");
+        }
+
+        ConfiguracaoAgenda cfg = configuracaoAgendaRepository.findByTipo(tipoNormalizado)
+                .orElseGet(() -> {
+                    ConfiguracaoAgenda created = new ConfiguracaoAgenda();
+                    created.setTipo(tipoNormalizado);
+                    return created;
+                });
+
+        cfg.setCapacidadePorSlot(capacidadePorSlot);
+        ConfiguracaoAgenda saved = configuracaoAgendaRepository.save(cfg);
+        return new ConfiguracaoSlotDTO(saved.getTipo(), saved.getCapacidadePorSlot());
+    }
+
+    public List<ConfiguracaoSlotDTO> listarConfiguracoesSlot() {
+        return List.of(
+                new ConfiguracaoSlotDTO(TIPO_SECRETARIA, getCapacidadePorSlot(TIPO_SECRETARIA)),
+                new ConfiguracaoSlotDTO(TIPO_BALNEARIO, getCapacidadePorSlot(TIPO_BALNEARIO)));
     }
 
     /**
@@ -193,7 +241,7 @@ public class CalendarioService {
         LocalDateTime inicioBloqueio = LocalDateTime.of(data, inicio);
         LocalDateTime fimBloqueio = LocalDateTime.of(data, fim);
 
-        List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findByDataBetween(inicioBloqueio, fimBloqueio);
+        List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findMarcacoesBetweenDates(inicioBloqueio, fimBloqueio, tipo);
 
         boolean temMarcacaoAtiva = marcacoesNoPeriodo.stream()
                 .filter(m -> m.getEstado() != EventoEstado.CANCELADO)
@@ -251,5 +299,26 @@ public class CalendarioService {
     private boolean isFimDeSemana(LocalDate data) {
         DayOfWeek d = data.getDayOfWeek();
         return d == DayOfWeek.SATURDAY || d == DayOfWeek.SUNDAY;
+    }
+
+    private String normalizarTipo(String tipo) {
+        if (tipo == null || tipo.isBlank()) {
+            return TIPO_SECRETARIA;
+        }
+
+        String normalizado = tipo.trim().toUpperCase();
+        if (TIPO_SECRETARIA.equals(normalizado) || TIPO_BALNEARIO.equals(normalizado)) {
+            return normalizado;
+        }
+
+        return null;
+    }
+
+    private String normalizarTipoObrigatorio(String tipo) {
+        String normalizado = normalizarTipo(tipo);
+        if (normalizado == null) {
+            throw new BadRequestException("Tipo de agenda inválido. Use SECRETARIA ou BALNEARIO.");
+        }
+        return normalizado;
     }
 }

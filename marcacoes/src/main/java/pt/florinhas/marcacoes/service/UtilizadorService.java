@@ -1,26 +1,31 @@
 package pt.florinhas.marcacoes.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
-import java.security.SecureRandom;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
+import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
 import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 /**
  * Serviço responsável pela gestão de utilizadores e utentes.
@@ -34,7 +39,6 @@ import pt.florinhas.marcacoes.repository.UtilizadorRepository;
  * - Contagem de utentes ativos.
  */
 @Service
-@Transactional
 @Slf4j
 public class UtilizadorService {
 
@@ -48,12 +52,13 @@ public class UtilizadorService {
     private FuncionarioRepository funcionarioRepository;
 
     @Autowired
-    private pt.florinhas.marcacoes.service.email.EmailService emailService;
+    private EmailService emailService;
 
     @Autowired
-    private pt.florinhas.marcacoes.service.nif.NifValidationService nifValidationService;
+    private NifValidator nifValidator;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /*
      * =========================================================
@@ -109,12 +114,9 @@ public class UtilizadorService {
      * @param telefone telefone do utente
      * @return utente existente ou recém-criado
      */
+    @Transactional
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
-
-        // Validação de formato básico
-        if (nif == null || !nif.matches("\\d{9}")) {
-            throw new RuntimeException("NIF inválido (deve ter 9 dígitos numéricos).");
-        }
+        nifValidator.validateRequiredOrThrow(nif);
 
         // Verificar se já existe
         List<Utilizador> existingUsers = utilizadorRepository.findByNif(nif);
@@ -132,11 +134,6 @@ public class UtilizadorService {
         }
 
         // Se não existir, criar novo utente
-
-        // Validação NIF
-        if (!validarNIF(nif)) {
-            throw new RuntimeException("NIF inválido/inexistente. Verifique o número ou utilize um NIF válido.");
-        }
 
         log.info("Utente com NIF {} não encontrado. Criando novo utente...", nif);
 
@@ -159,7 +156,7 @@ public class UtilizadorService {
 
         String passwordInicial = gerarPasswordSegura();
         novoUtente.setPassHash(passwordEncoder.encode(passwordInicial));
-        novoUtente.setDataNasc(java.time.LocalDate.now());
+        novoUtente.setDataNasc(LocalDate.now());
 
         log.info("Novo utente criado. Enviando password para: {}", email);
 
@@ -189,6 +186,7 @@ public class UtilizadorService {
      * Atualiza dados pessoais e profissionais de um utilizador.
      * Apenas os campos fornecidos no DTO são alterados.
      */
+    @Transactional
     public Utilizador atualizarUtilizador(Long utilizadorId, UtilizadorInfoDTO request) {
 
         Utilizador utilizador = obterUtilizadorPorId(utilizadorId);
@@ -272,6 +270,7 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public void aprovarFuncionario(Long id) {
         Funcionario funcionario = funcionarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Funcionário não encontrado com ID: " + id));
@@ -289,10 +288,9 @@ public class UtilizadorService {
     /**
      * Cria um utilizador (Utente ou Funcionário) pela secretaria.
      */
-    public Utilizador criarUtilizadorPelaSecretaria(pt.florinhas.marcacoes.dto.CreateUserRequestDTO request) {
-        if (!validarNIF(request.getNif())) {
-            throw new RuntimeException("NIF inválido.");
-        }
+    @Transactional
+    public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
+        nifValidator.validateRequiredOrThrow(request.getNif());
         if (utilizadorRepository.existsByNif(request.getNif())) {
             throw new RuntimeException("Já existe um utilizador com este NIF.");
         }
@@ -302,24 +300,33 @@ public class UtilizadorService {
 
         Utilizador novoUtilizador;
 
-        if (request.isEmployee()) {
+        boolean employeeByRole = request.getRole() != null
+            && !request.getRole().trim().isEmpty()
+            && !"UTENTE".equalsIgnoreCase(request.getRole().trim());
+        boolean shouldCreateEmployee = request.isEmployee() || employeeByRole;
+
+        if (shouldCreateEmployee) {
             Funcionario f = new Funcionario();
             try {
                 String roleStr = request.getRole();
-                pt.florinhas.marcacoes.domain.FuncionarioTipo tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.OUTRO;
+                FuncionarioTipo tipo = FuncionarioTipo.OUTRO;
                 if (roleStr != null) {
-                    if (roleStr.equalsIgnoreCase("Secretaria"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.SECRETARIA;
-                    else if (roleStr.toUpperCase().contains("BALNE"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.BALNEARIO;
-                    else if (roleStr.equalsIgnoreCase("Escola"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.ESCOLA;
-                    else if (roleStr.toUpperCase().contains("INTERNO"))
-                        tipo = pt.florinhas.marcacoes.domain.FuncionarioTipo.INTERNO;
+                    String normalizedRole = roleStr.trim().toUpperCase();
+                    if (normalizedRole.equals("SECRETARIA") || normalizedRole.equals("SECRETARY")) {
+                        tipo = FuncionarioTipo.SECRETARIA;
+                    } else if (normalizedRole.equals("BALNEARIO") || normalizedRole.equals("BALNEÁRIO")
+                            || normalizedRole.contains("BALNE")) {
+                        tipo = FuncionarioTipo.BALNEARIO;
+                    } else if (normalizedRole.equals("ESCOLA") || normalizedRole.equals("SCHOOL")) {
+                        tipo = FuncionarioTipo.ESCOLA;
+                    } else if (normalizedRole.equals("INTERNO") || normalizedRole.equals("INTERNOS")
+                            || normalizedRole.contains("INTERNO")) {
+                        tipo = FuncionarioTipo.INTERNO;
+                    }
                 }
                 f.setTipo(tipo);
             } catch (Exception e) {
-                f.setTipo(pt.florinhas.marcacoes.domain.FuncionarioTipo.OUTRO);
+                f.setTipo(FuncionarioTipo.OUTRO);
             }
             f.setActivo(false);
             novoUtilizador = f;
@@ -359,7 +366,8 @@ public class UtilizadorService {
     /**
      * Inicia o processo de recuperação de conta pela secretaria.
      */
-    public void recuperarConta(pt.florinhas.marcacoes.dto.RecoverAccountDTO request) {
+    @Transactional
+    public void recuperarConta(RecoverAccountDTO request) {
         List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
         if (users.isEmpty()) {
             throw new RuntimeException("Utilizador não encontrado com NIF: " + request.getNif());
@@ -415,49 +423,25 @@ public class UtilizadorService {
      * =========================================================
      */
 
-    private boolean validarNIF(String nif) {
-        return nifValidationService.validate(nif);
-    }
-
-    // Character sets for password generation
-    private static final String UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final String LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
-    private static final String DIGITS = "0123456789";
-    private static final String SPECIAL = "!@#$%&*()-_=+";
+    // Character set aligned with the updated flow used in other account creation paths.
+    private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     /**
-     * Gera uma password temporária segura com:
-     * - 16 caracteres de comprimento
-     * - Pelo menos 1 maiúscula, 1 minúscula, 1 dígito, 1 caráter especial
-     * - Caracteres embaralhados para evitar padrões previsíveis
+     * Gera uma password temporária segura com ~130 bits de entropia.
+     * Usa apenas caracteres alfanuméricos para evitar ambiguidades na cópia do email
+     * no primeiro login.
      */
     private String gerarPasswordSegura() {
-        int length = 16;
-
-        // Garantir pelo menos um caráter de cada categoria
+        int length = 22;
         StringBuilder password = new StringBuilder(length);
-        password.append(UPPERCASE.charAt(SECURE_RANDOM.nextInt(UPPERCASE.length())));
-        password.append(LOWERCASE.charAt(SECURE_RANDOM.nextInt(LOWERCASE.length())));
-        password.append(DIGITS.charAt(SECURE_RANDOM.nextInt(DIGITS.length())));
-        password.append(SPECIAL.charAt(SECURE_RANDOM.nextInt(SPECIAL.length())));
 
-        // Preencher o resto com caracteres aleatórios de todas as categorias
-        String allChars = UPPERCASE + LOWERCASE + DIGITS + SPECIAL;
-        for (int i = 4; i < length; i++) {
-            password.append(allChars.charAt(SECURE_RANDOM.nextInt(allChars.length())));
+        for (int i = 0; i < length; i++) {
+            int index = SECURE_RANDOM.nextInt(ALPHANUMERIC.length());
+            password.append(ALPHANUMERIC.charAt(index));
         }
 
-        // Embaralhar para evitar padrão previsível (maiúscula sempre primeiro, etc)
-        char[] passwordArray = password.toString().toCharArray();
-        for (int i = passwordArray.length - 1; i > 0; i--) {
-            int j = SECURE_RANDOM.nextInt(i + 1);
-            char temp = passwordArray[i];
-            passwordArray[i] = passwordArray[j];
-            passwordArray[j] = temp;
-        }
-
-        return new String(passwordArray);
+        return password.toString();
     }
 
     private void validarCampoObrigatorio(String valor, String mensagemErro) {

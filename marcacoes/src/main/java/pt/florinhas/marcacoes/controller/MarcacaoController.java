@@ -27,6 +27,7 @@ import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
+import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.service.AuthService;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 import org.springframework.security.access.AccessDeniedException;
@@ -173,17 +174,22 @@ public class MarcacaoController {
      * return dados básicos da marcação criada
      */
     @PostMapping("/balneario")
-    public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
+        public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
             @Valid @RequestBody CriarMarcacaoBalnearioRequest request) {
 
         Marcacao marcacao = marcacaoService.criarMarcacaoBalneario(request);
 
+        String durationLabel = "Duração da marcação";
+        String durationBalneario = String.format("Duração padrão para balneário: %d minutos", marcacao.getDuration());
         return ResponseEntity.ok().body(Map.of(
-                "id", marcacao.getId().toString(),
-                "data", marcacao.getData().toString(),
-                "estado", marcacao.getEstado().toString(),
-                "message", "Marcação de balneário registada com sucesso"));
-    }
+            "id", marcacao.getId().toString(),
+            "data", marcacao.getData().toString(),
+            "estado", marcacao.getEstado().toString(),
+            "duration", String.valueOf(marcacao.getDuration()),
+            "durationLabel", durationLabel,
+            "durationBalneario", durationBalneario,
+            "message", "Marcação de balneário registada com sucesso"));
+        }
 
     /**
      * Atualiza os detalhes de serviços de uma marcação de balneário.
@@ -489,7 +495,7 @@ public class MarcacaoController {
     @PutMapping("/{id}/reagendar")
     public ResponseEntity<MarcacaoResponseDTO> reagendarMarcacao(
             @PathVariable Long id,
-            @RequestBody pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest request) {
+            @RequestBody ReagendarMarcacaoRequest request) {
 
         MarcacaoResponseDTO response = marcacaoService.reagendarMarcacao(id, request);
         return ResponseEntity.ok(response);

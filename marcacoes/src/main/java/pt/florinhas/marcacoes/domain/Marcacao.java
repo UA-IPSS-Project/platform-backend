@@ -17,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
@@ -57,6 +58,13 @@ public class Marcacao {
      */
     @Column(name = "data", nullable = false)
     private LocalDateTime data;
+
+    /**
+     * Duração da marcação em minutos.
+     * Modular para cada tipo.
+     */
+    @Column(name = "duration", nullable = false)
+    private Integer duration;
 
     /**
      * Estado do ciclo de vida da marcação (AGENDADO, EM_PROGRESSO, ...).
@@ -129,7 +137,7 @@ public class Marcacao {
     /**
      * Define a data de criação antes de persistir.
      */
-    @jakarta.persistence.PrePersist
+    @PrePersist
     protected void onCreate() {
         criadoEm = LocalDateTime.now();
     }

@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.dto;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -54,7 +55,7 @@ public class CriarMarcacaoRequest {
     // ===== Dados opcionais para criação “on-the-fly” de um novo utente =====
 
     // NIF do novo utente (se não existir ainda no sistema).
-    @Pattern(regexp = "^$|^[0-9]{9}$", message = "NIF deve conter 9 dígitos")
+    @Pattern(regexp = "^$|\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos")
     private String utenteNif;
 
     // Nome do novo utente.
@@ -68,4 +69,10 @@ public class CriarMarcacaoRequest {
     // Telefone do novo utente.
     @Pattern(regexp = "^$|^[0-9+\\s-]{9,20}$", message = "Telefone inválido")
     private String utenteTelefone;
+
+    // Data de nascimento do utente (formato ISO yyyy-MM-dd).
+    private LocalDate utenteDataNasc;
+
+    // Tipo de agenda para operações de reserva temporária (SECRETARIA | BALNEARIO).
+    private String tipoAgenda;
 }

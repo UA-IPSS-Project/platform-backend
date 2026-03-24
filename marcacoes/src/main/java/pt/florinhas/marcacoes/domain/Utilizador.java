@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -94,7 +95,7 @@ public class Utilizador implements UserDetails {
      * Hash da palavra-passe (ex.: BCrypt -> 60 chars).
      * Nunca armazenar passwords em claro.
      */
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     @Column(name = "passHash", length = 60)
     private String passHash;
 
@@ -141,7 +142,7 @@ public class Utilizador implements UserDetails {
     // Hash da palavra-passe usado pelo provider (ex.: DaoAuthenticationProvider +
     // BCrypt).
     @Override
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     public String getPassword() {
         return passHash;
     }

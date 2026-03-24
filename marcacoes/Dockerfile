@@ -7,11 +7,11 @@ COPY pom.xml .
 
 # Copy module POM and download dependencies
 COPY marcacoes/pom.xml marcacoes/
-RUN mvn dependency:go-offline -B -pl marcacoes -am
+RUN mvn dependency:go-offline -B -f marcacoes/pom.xml
 
 # Copy source code and build
 COPY marcacoes/src marcacoes/src
-RUN mvn clean package -DskipTests -pl marcacoes -am
+RUN mvn clean package -DskipTests -f marcacoes/pom.xml
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine

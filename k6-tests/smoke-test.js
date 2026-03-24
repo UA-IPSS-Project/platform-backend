@@ -1,115 +1,153 @@
-import http from 'k6/http';
 import { check, sleep } from 'k6';
-// Importações para relatórios
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.1/index.js";
+import {
+  USERS,
+  checkHealth,
+  seedUsers,
+  loginUtente,
+  listMarcacoesUtente,
+  getCurrentUser,
+  createMarcacaoRemota,
+} from './common.js';
+
+function metricCount(data, metricName) {
+  return data.metrics?.[metricName]?.values?.count ?? 0;
+}
+
+function metricRate(data, metricName) {
+  return data.metrics?.[metricName]?.values?.rate ?? 0;
+}
+
+function metricP95(data, metricName) {
+  return data.metrics?.[metricName]?.values?.['p(95)'] ?? 0;
+}
+
+function buildCompactSummary(data) {
+  const httpReqs = metricCount(data, 'http_reqs');
+  const iterations = metricCount(data, 'iterations');
+  const p95 = metricP95(data, 'http_req_duration');
+  const httpReqFailedRate = (metricRate(data, 'http_req_failed') * 100).toFixed(2);
+
+  return [
+    '=== Smoke Test (Resumo) ===',
+    `requests: ${httpReqs} | iterations: ${iterations}`,
+    `latencia p95: ${p95.toFixed(2)}ms | http_req_failed: ${httpReqFailedRate}%`,
+    'create marcacao: ver checks no relatorio (status 200 + id)',
+  ].join('\n');
+}
 
 export const options = {
   vus: 1,
-  duration: '30s',
+  iterations: 1,
   thresholds: {
-    http_req_duration: ['p(95)<10000'],
-    http_req_failed: ['rate<0.1'],
+    http_req_duration: ['p(95)<3000'],
+    http_req_failed: ['rate<0.05'],
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+export function setup() {
+  checkHealth();
+  seedUsers(USERS);
+  return { users: USERS };
+}
 
-export default function () {
-  // 1. Health Check
-  const healthRes = http.get(`${BASE_URL}/actuator/health`);
-  const healthOk = check(healthRes, {
-    'health check OK': (r) => r.status === 200,
-  });
+export default function smokeTest(data) {
+  const user = data.users[0];
+  const session = loginUtente(user);
 
-  if (!healthOk) {
-    console.error('Health check falhou - backend pode não estar rodando');
+  if (!session) {
+    console.error('Login falhou no smoke test');
     return;
   }
 
-  sleep(1);
-
-  // 2. Registar novo utilizador
-  const randomId = Date.now() + Math.floor(Math.random() * 1000);
-  const randomNum = Math.floor(Math.random() * 9000) + 1000;
-  const newUser = {
-    nome: `Teste K6 ${randomId}`,
-    email: `k6test${randomId}@gmail.com`,
-    nif: String(randomId).slice(-9).padStart(9, '1'),
-    telefone: String(randomId).slice(-9).padStart(9, '9'),
-    password: `Test${randomNum}`,
-    dataNasc: '1990-01-01',
-  };
-
-  const registerRes = http.post(
-    `${BASE_URL}/api/auth/register/utente`,
-    JSON.stringify(newUser),
-    { 
-      headers: { 'Content-Type': 'application/json' },
-      tags: { name: 'Register' },
-    }
-  );
-
-  check(registerRes, {
-    'registro aceito ou usuário já existe': (r) => r.status === 200 || r.status === 201 || r.status === 409,
-  });
-
-  sleep(0.5);
-
-  // 3. Login
-  const loginRes = http.post(
-    `${BASE_URL}/api/auth/login/utente`,
-    JSON.stringify({
-      nif: newUser.nif,
-      password: newUser.password,
-    }),
-    { 
-      headers: { 'Content-Type': 'application/json' },
-      tags: { name: 'Login' },
-    }
-  );
-
-  const loginOk = check(loginRes, {
-    'login OK': (r) => r.status === 200,
-    'token presente': (r) => {
+  const meRes = getCurrentUser(session);
+  check(meRes, {
+    'auth me status 200': (r) => r.status === 200,
+    'auth me id matches': (r) => {
       try {
-        return r.json('token') !== undefined;
+        return r.json('id') === session.userId;
       } catch {
         return false;
       }
     },
   });
 
-  if (loginOk) {
-    const token = loginRes.json('token');
-    sleep(0.5);
+  const beforeListRes = listMarcacoesUtente(session);
+  check(beforeListRes, {
+    'list before status 200': (r) => r.status === 200,
+    'list before is array': (r) => {
+      try {
+        return Array.isArray(r.json());
+      } catch {
+        return false;
+      }
+    },
+  });
 
-    // 4. Listar marcações
-    const listRes = http.get(`${BASE_URL}/api/marcacoes`, {
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      tags: { name: 'List Appointments' },
-    });
+  const maxCreateAttempts = 64;
+  let createRes = null;
+  let createSucceeded = false;
+  const seedBase = Date.now() % 11456;
 
-    check(listRes, {
-      'listagem OK': (r) => r.status === 200,
-      'retorna array': (r) => Array.isArray(r.json()),
-    });
-  } else {
-    console.error(`Login falhou: ${loginRes.status} - ${loginRes.body}`);
+  for (let attempt = 0; attempt < maxCreateAttempts; attempt += 1) {
+    const seed = seedBase + (attempt * 97);
+    createRes = createMarcacaoRemota(session, seed);
+
+    if (createRes.status === 200) {
+      createSucceeded = true;
+      break;
+    }
   }
+
+  check(createRes || { status: 0 }, {
+    'create marcacao status 200': () => createSucceeded,
+    'create marcacao has id': (r) => {
+      if (!createSucceeded) {
+        return false;
+      }
+      try {
+        return !!r.json('id');
+      } catch {
+        return false;
+      }
+    },
+  });
+
+  const afterListRes = listMarcacoesUtente(session);
+  check(afterListRes, {
+    'list after status 200': (r) => r.status === 200,
+    'list after is array': (r) => {
+      try {
+        return Array.isArray(r.json());
+      } catch {
+        return false;
+      }
+    },
+  });
 
   sleep(1);
 }
 
-// --- FUNÇÃO DE RELATÓRIO ---
 export function handleSummary(data) {
-  const reportName = __ENV.REPORT_NAME || "smoke-test";
-  return {
-    'stdout': textSummary(data, { indent: ' ', enableColors: true }),
-    [`./results/${reportName}.html`]: htmlReport(data, { title: `${reportName} Results` }),
-    [`./results/${reportName}.json`]: JSON.stringify(data),
+  const testName = 'smoke_test';
+  const reportName = __ENV.REPORT_NAME || testName;
+  const reportDir = (__ENV.REPORT_DIR || `./results/${testName}`).replace(/\/$/, '');
+  const fullSummary = String(__ENV.FULL_SUMMARY || 'false').toLowerCase() === 'true';
+  const saveSummaryFile = String(__ENV.SAVE_SUMMARY_FILE || 'false').toLowerCase() === 'true';
+  const compactSummary = buildCompactSummary(data);
+
+  const summary = {
+    'stdout': fullSummary
+      ? `${compactSummary}\n\n${textSummary(data, { indent: ' ', enableColors: true })}`
+      : `${compactSummary}\n`,
+    [`${reportDir}/${reportName}.html`]: htmlReport(data, { title: `${reportName} Results` }),
+    [`${reportDir}/${reportName}.json`]: JSON.stringify(data),
   };
+
+  if (saveSummaryFile) {
+    summary[`${reportDir}/${reportName}_resumo.txt`] = `${compactSummary}\n`;
+  }
+
+  return summary;
 }

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Locale;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
@@ -36,6 +37,10 @@ import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.repository.FuncionarioRepository;
+import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
+import pt.florinhas.marcacoes.domain.NotificacaoTipo;
 
 /**
  * Serviço responsável pela gestão de documentos anexados a marcações.
@@ -49,11 +54,14 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+
 public class DocumentoService {
 
     private final DocumentoRepository documentoRepository;
     private final MarcacaoRepository marcacaoRepository;
     private final MinioClient minioClient;
+    private final FuncionarioRepository funcionarioRepository;
+    private final NotificacaoService notificacaoService;
 
     /**
      * Bucket MinIO onde os documentos são armazenados.
@@ -91,19 +99,63 @@ public class DocumentoService {
      * @throws IOException se houver erro ao guardar o ficheiro
      */
     @Transactional
+
     public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file) throws IOException {
+
         log.info("Iniciando upload de documento para marcação {}", marcacaoId);
 
         // Validar marcação
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
             .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
 
+        // Limite de 10 ficheiros por marcação
+        Long ficheirosExistentes = documentoRepository.countByMarcacaoId(marcacaoId);
+        if (ficheirosExistentes != null && ficheirosExistentes >= 10) {
+            throw new IllegalArgumentException("Limite máximo de 10 ficheiros por marcação atingido.");
+        }
+
         // Validações do ficheiro
         validarFicheiro(file);
 
-        // Gerar nome único para o ficheiro
-        String nomeOriginal = file.getOriginalFilename();
-        String extensao = obterExtensao(nomeOriginal);
+
+        // Obter NIF do utente associado à marcação (via MarcacaoSecretaria)
+        String nif = null;
+        String tipoMarcacao = null;
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            nif = marcacao.getMarcacaoSecretaria().getUtente().getNif();
+            // Tipo de marcação: usar tipoAtendimento (PRESENCIAL, REMOTO)
+            tipoMarcacao = marcacao.getMarcacaoSecretaria().getTipoAtendimento() != null
+                ? marcacao.getMarcacaoSecretaria().getTipoAtendimento().name()
+                : "SEM_TIPO";
+        } else {
+            // fallback: usar criador da marcação
+            nif = marcacao.getCriadoPor() != null ? marcacao.getCriadoPor().getNif() : "SEM_NIF";
+            tipoMarcacao = "SEM_TIPO";
+        }
+
+        // Gerar nome original no padrão NIF_ASSUNTO_DATA_UUID.extensão
+        String extensao = obterExtensao(file.getOriginalFilename());
+        String assunto = "SEM_ASSUNTO";
+        String dataMarcacao = "00000000";
+
+        if (marcacao.getData() != null) {
+            dataMarcacao = marcacao.getData().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        }
+
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getAssunto() != null) {
+            assunto = sanitizarNome(marcacao.getMarcacaoSecretaria().getAssunto());
+        } else if (marcacao.getMarcacaoBalneario() != null) {
+            assunto = "BALNEARIO";
+        }
+
+        String nomeOriginal = String.format("%s_%s_%s_%s%s",
+            nif != null ? nif : "SEM_NIF",
+            assunto,
+            dataMarcacao,
+            UUID.randomUUID(),
+            extensao
+        );
+        // Nome armazenado continua sendo UUID.extensão para garantir unicidade
         String nomeArmazenado = UUID.randomUUID().toString() + extensao;
 
         // Criar diretório organizado por ano/mês
@@ -141,7 +193,28 @@ public class DocumentoService {
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);
 
+
         log.info("Documento {} salvo com sucesso para marcação {}", documentoSalvo.getId(), marcacaoId);
+
+        // Notificar secretarias apenas se o criador da marcação for utente (não funcionário/secretaria)
+        Utilizador criador = marcacao.getCriadoPor();
+        if (criador != null && criador.getClass().getSimpleName().equals("Utente")) {
+            try {
+                List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+                String titulo = "Novo documento enviado";
+                String mensagem = String.format("Um novo documento foi enviado para a marcação #%d.", marcacaoId);
+                for (Funcionario secretaria : secretarias) {
+                    notificacaoService.criarNotificacao(
+                        secretaria.getId(),
+                        titulo,
+                        mensagem,
+                        NotificacaoTipo.FICHEIRO
+                    );
+                }
+            } catch (Exception e) {
+                log.error("Erro ao notificar secretarias sobre upload de documento", e);
+            }
+        }
 
         return DocumentoDTO.fromDocumento(documentoSalvo);
     }
@@ -183,16 +256,16 @@ public class DocumentoService {
         String tipo,
         String utenteNome,
         String utenteNif,
-        LocalDateTime uploadedDesde,
-        LocalDateTime uploadedAte
+        LocalDateTime marcacaoDesde,
+        LocalDateTime marcacaoAte
     ) {
-        if (uploadedDesde != null && uploadedAte != null && uploadedDesde.isAfter(uploadedAte)) {
-            throw new IllegalArgumentException("uploadedDesde não pode ser posterior a uploadedAte");
+        if (marcacaoDesde != null && marcacaoAte != null && marcacaoDesde.isAfter(marcacaoAte)) {
+            throw new IllegalArgumentException("marcacaoDesde não pode ser posterior a marcacaoAte");
         }
 
         log.info("Pesquisa de documentos por metadados (marcacaoId={}, tipo={})", marcacaoId, tipo);
 
-        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, uploadedDesde, uploadedAte);
+        List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, marcacaoDesde, marcacaoAte);
 
         return documentosBase
             .stream()
@@ -237,30 +310,28 @@ public class DocumentoService {
 
     private List<Documento> obterDocumentosPorIntervalo(
         Long marcacaoId,
-        LocalDateTime uploadedDesde,
-        LocalDateTime uploadedAte
+        LocalDateTime marcacaoDesde,
+        LocalDateTime marcacaoAte
     ) {
+        // Com marcacaoId: filtrar dentro desse ID (queries existentes por uploadedEm quando sem datas,
+        // ou por data da marcação quando com datas)
         if (marcacaoId != null) {
-            if (uploadedDesde != null && uploadedAte != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmBetweenOrderByUploadedEmDesc(marcacaoId, uploadedDesde, uploadedAte);
+            if (marcacaoDesde != null && marcacaoAte != null) {
+                return documentoRepository.findByMarcacaoIdAndMarcacaoDataBetween(marcacaoId, marcacaoDesde, marcacaoAte);
             }
-            if (uploadedDesde != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmGreaterThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedDesde);
-            }
-            if (uploadedAte != null) {
-                return documentoRepository.findByMarcacaoIdAndUploadedEmLessThanEqualOrderByUploadedEmDesc(marcacaoId, uploadedAte);
-            }
+            // sem intervalo de datas: devolver todos os documentos da marcação
             return documentoRepository.findByMarcacaoIdOrderByUploadedEmDesc(marcacaoId);
         }
 
-        if (uploadedDesde != null && uploadedAte != null) {
-            return documentoRepository.findByUploadedEmBetweenOrderByUploadedEmDesc(uploadedDesde, uploadedAte);
+        // Sem marcacaoId: filtrar globalmente pela data da marcação
+        if (marcacaoDesde != null && marcacaoAte != null) {
+            return documentoRepository.findByMarcacaoDataBetween(marcacaoDesde, marcacaoAte);
         }
-        if (uploadedDesde != null) {
-            return documentoRepository.findByUploadedEmGreaterThanEqualOrderByUploadedEmDesc(uploadedDesde);
+        if (marcacaoDesde != null) {
+            return documentoRepository.findByMarcacaoDataGreaterThanEqual(marcacaoDesde);
         }
-        if (uploadedAte != null) {
-            return documentoRepository.findByUploadedEmLessThanEqualOrderByUploadedEmDesc(uploadedAte);
+        if (marcacaoAte != null) {
+            return documentoRepository.findByMarcacaoDataLessThanEqual(marcacaoAte);
         }
         return documentoRepository.findAllByOrderByUploadedEmDesc();
     }
@@ -368,6 +439,34 @@ public class DocumentoService {
         log.info("Documento {} removido com sucesso", documentoId);
     }
 
+        /**
+         * Notifica o utente de que um documento enviado é inválido.
+         * @param marcacaoId ID da marcação
+         * @param documentoId ID do documento inválido
+         * @param motivo Observações/motivo da invalidação
+         */
+        @Transactional
+        public void notificarDocumentoInvalido(Long marcacaoId, Long documentoId, String motivo) {
+            Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
+            Documento documento = documentoRepository.findById(documentoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+            Utilizador utente = null;
+            if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+                utente = marcacao.getMarcacaoSecretaria().getUtente();
+            } else if (marcacao.getCriadoPor() != null) {
+                utente = marcacao.getCriadoPor();
+            }
+            if (utente == null) {
+                throw new IllegalArgumentException("Não foi possível identificar o utente para notificação.");
+            }
+            String titulo = "Documento inválido";
+            String dataMarcacao = marcacao.getData() != null ? marcacao.getData().toLocalDate().toString() : "(data desconhecida)";
+            String nomeDoc = documento.getNomeOriginal();
+            String mensagem = String.format("Na marcação do dia %s, o documento '%s' é inválido.%s", dataMarcacao, nomeDoc, (motivo != null && !motivo.isBlank() ? " Motivo: " + motivo : ""));
+            notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.DOCUMENTO_INVALIDO);
+        }
+
     /**
      * Valida se o ficheiro atende aos critérios de upload.
      * 
@@ -456,5 +555,13 @@ public class DocumentoService {
         }
 
         return null;
+    }
+
+    private String sanitizarNome(String nome) {
+        if (nome == null) return "SEM_ASSUNTO";
+        return nome.trim()
+            .replaceAll("[\\s/\\\\:*?\"<>|]", "_") // Substituir caracteres inválidos e espaços por underscore
+            .replaceAll("_+", "_") // Remover underscores duplicados
+            .toUpperCase();
     }
 }

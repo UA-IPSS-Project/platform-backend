@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -47,10 +48,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
-                        "WHERE m.data BETWEEN :dataInicio AND :dataFim AND m.estado <> 'CANCELADO' " +
-                        "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL)) "
-                        +
-                        "ORDER BY m.data")
+                        "WHERE m.data >= :dataInicio AND m.data <= :dataFim " +
+                        "AND (:tipo IS NULL OR " +
+                        "    (:tipo = 'BALNEARIO' AND mb.id IS NOT NULL) OR " +
+                        "    (:tipo = 'SECRETARIA' AND ms.id IS NOT NULL)) " +
+                        "ORDER BY m.data ASC")
         List<Marcacao> findMarcacoesBetweenDates(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
@@ -61,6 +63,25 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
         boolean existsByDataAndEstadoNot(
                         @Param("data") LocalDateTime data,
                         @Param("estado") EventoEstado estado);
+
+        @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data = :data " +
+                        "AND m.estado <> 'CANCELADO' " +
+                        "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL))")
+        long countByDataAndTipo(@Param("data") LocalDateTime data, @Param("tipo") String tipo);
+
+        /**
+         * Conta o número de marcações para uma determinada data/hora e lista de estados.
+         * Útil para verificar vagas disponíveis num horário com capacidade > 1.
+         */
+        long countByDataAndEstadoIn(LocalDateTime data, List<EventoEstado> estados);
+
+        /**
+         * Conta o número de marcações para uma determinada data/hora, lista de estados e tipo (SECRETARIA/BALNEARIO).
+         * Permite distinguir entre marcações da secretaria e do balneário, ou ambos (tipo = null).
+         */
+        @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data = :data AND m.estado IN :estados " +
+                "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL))")
+        long countByDataAndEstadoInAndTipo(@Param("data") LocalDateTime data, @Param("estados") List<EventoEstado> estados, @Param("tipo") String tipo);
 
         // Consulta com Lock Pessimista para evitar Race Conditions
         @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -129,9 +150,24 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
          * nulo
          * (para corrigir bugs antigos onde o timestamp não era gravado).
          */
-        @org.springframework.data.jpa.repository.Modifying
+        @Modifying
         @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
         void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
+
+        @Modifying(clearAutomatically = true)
+        @Query("UPDATE Marcacao m SET m.estado = :novoEstado, m.version = m.version + 1 WHERE m.estado NOT IN :estadosExcluidos AND m.data < :limite")
+        int invalidarMarcacoesAntigas(
+                        @Param("novoEstado") EventoEstado novoEstado,
+                        @Param("estadosExcluidos") List<EventoEstado> estadosExcluidos,
+                        @Param("limite") LocalDateTime limite);
+
+        @Modifying(clearAutomatically = true)
+        @Query("UPDATE Marcacao m SET m.estado = :novoEstado, m.version = m.version + 1 WHERE m.estado = :estadoAtual AND m.data < :limite")
+        int atualizarMarcacoesPorEstadoAntigas(
+                        @Param("novoEstado") EventoEstado novoEstado,
+                        @Param("estadoAtual") EventoEstado estadoAtual,
+                        @Param("limite") LocalDateTime limite);
+
 
         // Consulta paginada com fetch para evitar N+1
         @Query(value = "SELECT DISTINCT m FROM Marcacao m " +

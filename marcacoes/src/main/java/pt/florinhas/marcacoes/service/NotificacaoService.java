@@ -7,34 +7,55 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import lombok.RequiredArgsConstructor;
 import pt.florinhas.marcacoes.domain.Notificacao;
 import pt.florinhas.marcacoes.domain.NotificacaoTipo;
+import pt.florinhas.marcacoes.domain.EventoEstado;
+import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.NotificacaoResponseDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
+import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.NotificacaoRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.marcacoes.service.email.EmailService;
 
 @Service
 @RequiredArgsConstructor
 public class NotificacaoService {
 
+    private static final Logger logger = LoggerFactory.getLogger(NotificacaoService.class);
+    private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'as' HH:mm");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final String ONE_DAY_REMINDER_TITLE = "Lembrete de Marcacao";
+    private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
+
     private final NotificacaoRepository notificacaoRepository;
     private final UtilizadorRepository utilizadorRepository;
-    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate; // Inject Template
+    private final MarcacaoRepository marcacaoRepository;
+    private final EmailService emailService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    @Transactional
     public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo) {
         return criarNotificacao(utilizadorId, titulo, mensagem, tipo, null);
     }
 
-    @Transactional
     public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo,
             Map<String, Object> metadata) {
         Utilizador user = utilizadorRepository.findById(utilizadorId)
                 .orElseThrow(() -> new NotFoundException("Utilizador não encontrado"));
+        return criarNotificacao(user, titulo, mensagem, tipo, metadata);
+    }
+
+    public Notificacao criarNotificacao(Utilizador user, String titulo, String mensagem, NotificacaoTipo tipo,
+            Map<String, Object> metadata) {
 
         Notificacao notificacao = new Notificacao();
         notificacao.setUtilizador(user);
@@ -49,9 +70,9 @@ public class NotificacaoService {
         // Send real-time notification
         try {
             NotificacaoResponseDTO dto = converterParaDTO(saved);
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).info(
+                logger.info(
                     "Sending WebSocket notification to user: {} (email: {}), title: {}",
-                    utilizadorId, user.getEmail(), titulo);
+                    user.getId(), user.getEmail(), titulo);
             messagingTemplate.convertAndSendToUser(
                     user.getEmail(), // Assuming UserDetails username is email, we need to make sure this matches
                                      // what principal.getName() returns.
@@ -61,12 +82,11 @@ public class NotificacaoService {
                     // If UserDetails.getUsername() returns email, then this is correct.
                     "/queue/notifications",
                     dto);
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).info(
+                logger.info(
                     "WebSocket notification sent successfully to: {}", user.getEmail());
         } catch (Exception e) {
             // Log but don't fail transaction
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class).error("Failed to send websocket notification",
-                    e);
+                logger.error("Failed to send websocket notification", e);
         }
 
         return saved;
@@ -123,44 +143,36 @@ public class NotificacaoService {
         notificacaoRepository.deleteByUtilizadorId(utilizadorId);
     }
 
-    // --- Métodos de Negócio (Semantic Methods) ---
+    // --- Métodos de Negócio (Side-effects, não devem falhar a transação principal) ---
 
-    @Transactional
     public void notificarNovaMarcacao(Utilizador utilizador, Long marcacaoId, LocalDateTime data, boolean isRemote) {
-        DateTimeFormatter formatter = DateTimeFormatter
-                .ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String dataFormatada = data.format(formatter);
+        String dataFormatada = data.format(DISPLAY_DATE_FORMATTER);
+        String mensagem = "Marcacao criada para " + dataFormatada + ".";
+        String assunto = "Marcacao Criada";
 
-        String tipoTexto = isRemote ? "remota " : "";
-        String mensagem = "A sua marcação " + tipoTexto + "para " + dataFormatada + " foi agendada com sucesso.";
-        String assunto = "Nova Marcação Agendada";
-
-        Map<String, Object> metadata = Map.of("appointmentId", marcacaoId.toString());
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
-        logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
-    }
-
-    @Transactional
-    public void notificarCancelamento(Utilizador utilizador, LocalDateTime data) {
-        DateTimeFormatter formatter = DateTimeFormatter
-                .ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String dataFormatada = data.format(formatter);
-
-        String mensagem = "A sua marcação de " + dataFormatada + " foi cancelada pelos serviços administrativos.";
-        String assunto = "Marcação Cancelada";
-
-        // Adicionar metadata com data e hora do slot cancelado
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         Map<String, Object> metadata = Map.of(
-                "cancelledDate", data.format(dateFormatter),
-                "cancelledTime", data.format(timeFormatter));
-
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
-        logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
+            "appointmentId", marcacaoId.toString(),
+            "createdDate", data.format(DATE_FORMATTER),
+            "createdTime", data.format(TIME_FORMATTER),
+            METADATA_SUBTYPE_KEY, "CREATED");
+        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
+        sendEmailIfAvailable(utilizador.getEmail(), () -> emailService.sendAppointmentCreated(utilizador.getEmail(), data));
     }
 
-    @Transactional
+    public void notificarCancelamento(Utilizador utilizador, LocalDateTime data, String motivo) {
+        String assunto = "Marcacao Cancelada";
+        String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;
+        String mensagem = "Marcacao cancelada por " + motivoTexto + ".";
+
+        Map<String, Object> metadata = Map.of(
+                "cancelledDate", data.format(DATE_FORMATTER),
+            "cancelledTime", data.format(TIME_FORMATTER),
+            METADATA_SUBTYPE_KEY, "CANCELLED");
+        
+        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+        sendEmailIfAvailable(utilizador.getEmail(), () -> emailService.sendAppointmentCancelled(utilizador.getEmail(), motivoTexto));
+    }
+
     public void notificarCancelamentoPeloUtente(Utilizador destinatario, String nomeUtente,
             LocalDateTime data) {
         DateTimeFormatter formatter = DateTimeFormatter
@@ -171,30 +183,68 @@ public class NotificacaoService {
         String assunto = "Marcação Cancelada pelo Utente";
 
         // Adicionar metadata com data e hora do slot cancelado
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         Map<String, Object> metadata = Map.of(
-                "cancelledDate", data.format(dateFormatter),
-                "cancelledTime", data.format(timeFormatter));
-
-        criarNotificacao(destinatario.getId(), assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+            "cancelledDate", data.format(DATE_FORMATTER),
+            "cancelledTime", data.format(TIME_FORMATTER));
+        
+        criarNotificacao(destinatario, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
         // Admin notifications might not need email simulation, but keeping consistent
     }
 
-    @Transactional
     public void notificarDocumentosInvalidos(Utilizador utilizador, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
-
-        criarNotificacao(utilizador.getId(), assunto, mensagem, NotificacaoTipo.LEMBRETE); // Using LEMBRETE as
+        
+        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.LEMBRETE, null); // Using LEMBRETE as
                                                                                            // warning/info
-        logSimulatedEmail(utilizador.getEmail(), assunto, mensagem);
     }
 
-    private void logSimulatedEmail(String email, String assunto, String mensagem) {
-        if (email != null) {
-            org.slf4j.LoggerFactory.getLogger(NotificacaoService.class)
-                    .info("Email simulado para {} com assunto: '{}' e mensagem: '{}'", email, assunto, mensagem);
+    @Scheduled(cron = "0 0 8 * * *") // Every day at 08:00
+    @Transactional
+    public void notificarMarcacoesEmUmDia() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime start = now.toLocalDate().plusDays(1).atStartOfDay();
+        LocalDateTime end = start.plusDays(1).minusNanos(1);
+
+        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(start, end, "SECRETARIA");
+
+        for (Marcacao marcacao : marcacoes) {
+            if (marcacao.getEstado() == EventoEstado.AGENDADO
+                && marcacao.getMarcacaoSecretaria() != null
+                && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            Utilizador utente = marcacao.getMarcacaoSecretaria().getUtente();
+            String dataFormatada = marcacao.getData().format(DISPLAY_DATE_FORMATTER);
+            String mensagem = "Marcacao em 1 dia (" + dataFormatada + ").";
+
+            boolean jaNotificado = notificacaoRepository.existsByUtilizadorIdAndTituloAndMensagemAndTipo(
+                utente.getId(),
+                ONE_DAY_REMINDER_TITLE,
+                mensagem,
+                NotificacaoTipo.LEMBRETE);
+
+            if (!jaNotificado) {
+                Map<String, Object> metadata = Map.of(
+                    "appointmentId", String.valueOf(marcacao.getId()),
+                    METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
+
+                criarNotificacao(utente, ONE_DAY_REMINDER_TITLE, mensagem, NotificacaoTipo.LEMBRETE,
+                    metadata);
+
+                sendEmailIfAvailable(utente.getEmail(),
+                    () -> emailService.sendAppointmentReminderOneDay(utente.getEmail(), marcacao.getData()));
+            }
+            }
+        }
+    }
+
+    private void sendEmailIfAvailable(String email, Runnable sender) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        try {
+            sender.run();
+        } catch (Exception e) {
+            logger.error("Falha ao enviar email para {}", email, e);
         }
     }
 }

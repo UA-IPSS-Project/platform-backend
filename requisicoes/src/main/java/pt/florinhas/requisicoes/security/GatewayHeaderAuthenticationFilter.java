@@ -1,0 +1,70 @@
+package pt.florinhas.requisicoes.security;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+@Component
+public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
+
+    private final CustomUserDetailsService userDetailsService;
+
+    public GatewayHeaderAuthenticationFilter(CustomUserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String username = request.getHeader("X-Authenticated-User");
+        if (!StringUtils.hasText(username)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
+        if (authorities.isEmpty()) {
+            authorities = userDetails.getAuthorities();
+        }
+
+        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                authorities);
+
+        SecurityContextHolder.getContext().setAuthentication(authToken);
+        filterChain.doFilter(request, response);
+    }
+
+    private Collection<? extends GrantedAuthority> parseAuthorities(String rolesHeader) {
+        if (!StringUtils.hasText(rolesHeader)) {
+            return java.util.List.of();
+        }
+
+        return Arrays.stream(rolesHeader.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .map(SimpleGrantedAuthority::new)
+                .toList();
+    }
+}

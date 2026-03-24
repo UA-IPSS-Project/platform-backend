@@ -9,10 +9,9 @@ import java.time.temporal.ChronoUnit;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
-import pt.florinhas.marcacoes.domain.EventoEstado;
+import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
-import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.CalendarioService;
 
 /**
@@ -29,7 +28,6 @@ import pt.florinhas.marcacoes.service.CalendarioService;
 @RequiredArgsConstructor
 public class MarcacaoValidator {
 
-    private final MarcacaoRepository marcacaoRepository;
     private final CalendarioService calendarioService;
 
     // Constantes de validação
@@ -47,10 +45,18 @@ public class MarcacaoValidator {
         }
 
         // Validar data, hora e sobreposição
-        validarDataHora(request.getData(), request);
+        validarDataHora(request.getData(), "SECRETARIA");
 
         // Validar campos de texto
         validarAssunto(request.getAssunto());
+    }
+
+    public void validarCriacaoBalneario(CriarMarcacaoBalnearioRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Requisição de criação de marcação de balneário não pode ser nula.");
+        }
+
+        validarDataHora(request.getData(), "BALNEARIO");
     }
 
     /**
@@ -65,7 +71,7 @@ public class MarcacaoValidator {
      *                      sobreposição)
      * @throws IllegalArgumentException se a validação falhar
      */
-    public void validarReagendamento(ReagendarMarcacaoRequest request) {
+    public void validarReagendamento(ReagendarMarcacaoRequest request, String tipoAgenda) {
         if (request == null) {
             throw new IllegalArgumentException("Requisição de reagendamento não pode ser nula.");
         }
@@ -76,7 +82,7 @@ public class MarcacaoValidator {
 
         // Validar nova data/hora com mesmas regras de criação (incluindo sobreposição
         // com mesmo funcionário)
-        validarDataHora(request.getNovaDataHora(), request);
+        validarDataHora(request.getNovaDataHora(), tipoAgenda);
     }
 
     /**
@@ -94,7 +100,7 @@ public class MarcacaoValidator {
      * @param request  The request context
      * @throws IllegalArgumentException se a validação falhar
      */
-    private void validarDataHora(LocalDateTime dataHora, Object request) {
+    private void validarDataHora(LocalDateTime dataHora, String tipoAgenda) {
         if (dataHora == null) {
             throw new IllegalArgumentException("A data e hora da marcação são obrigatórias.");
         }
@@ -131,17 +137,9 @@ public class MarcacaoValidator {
         }
 
         // Verificar bloqueios manuais e dinâmicos (agenda cheia)
-        if (existeBloqueio(data, hora, request)) {
+        if (existeBloqueio(data, hora, tipoAgenda)) {
             throw new IllegalArgumentException(
                     "O horário escolhido está bloqueado ou preenchido. Por favor, escolha outro horário.");
-        }
-
-        // Verificar sobreposição com outras marcações (excluindo canceladas)
-        boolean conflito = marcacaoRepository.existsByDataAndEstadoNot(dataHora, EventoEstado.CANCELADO);
-        if (conflito) {
-            throw new IllegalArgumentException(
-                    "Já existe uma marcação agendada para o horário " + dataHora
-                            + ". Por favor, escolha outro horário.");
         }
     }
 
@@ -186,18 +184,8 @@ public class MarcacaoValidator {
      * @param record O request que contém os dados da marcação para identificar tipo
      * @return true se existir bloqueio
      */
-    private boolean existeBloqueio(LocalDate data, LocalTime hora, Object request) {
-        // Buscar bloqueios no calendário (que agora incorpora manual e dinâmico base)
-        String tipo = "SECRETARIA"; // Default for CriarMarcacaoRequest context
-        if (request instanceof pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest) {
-            tipo = "BALNEARIO";
-        } else if (request instanceof pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest) {
-            // Might need logic to determine original type, but we can assume null or
-            // generic check
-            tipo = null; // Checks all blocks for rescheduling conflict
-        }
-
-        return calendarioService.isSlotBloqueado(data, hora, tipo);
+    private boolean existeBloqueio(LocalDate data, LocalTime hora, String tipoAgenda) {
+        return calendarioService.isSlotBloqueado(data, hora, tipoAgenda);
     }
 
 }

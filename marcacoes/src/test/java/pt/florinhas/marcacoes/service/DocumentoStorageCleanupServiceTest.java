@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -44,6 +45,6 @@ class DocumentoStorageCleanupServiceTest {
     void removerDoArmazenamento_NaoDeveRemover_QuandoCaminhoVazio() throws Exception {
         DocumentoStorageCleanupService.removerDoArmazenamento("   ", 8L);
 
-        verify(minioClient, never()).removeObject(org.mockito.ArgumentMatchers.any(RemoveObjectArgs.class));
+        verify(minioClient, never()).removeObject(any(RemoveObjectArgs.class));
     }
 }

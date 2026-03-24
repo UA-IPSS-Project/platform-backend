@@ -1,9 +1,16 @@
 package pt.florinhas.marcacoes.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.marcacoes.domain.Funcionario;
@@ -19,10 +26,7 @@ import pt.florinhas.marcacoes.exception.BadRequestException;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.security.JwtService;
-
-import java.time.LocalDateTime;
-import java.util.List;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.
@@ -45,22 +49,25 @@ public class AuthService {
         private final FuncionarioRepository funcionarioRepository;
         private final UtenteRepository utenteRepository;
         private final PasswordEncoder passwordEncoder;
-        private final JwtService jwtService;
         private final AuthenticationManager authenticationManager;
+        private final NifValidator nifValidator;
+
+        @Value("${jwt.expiration:86400000}")
+        private long jwtExpiration;
 
         public AuthService(
                         UtilizadorRepository utilizadorRepository,
                         FuncionarioRepository funcionarioRepository,
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
-                        JwtService jwtService,
-                        AuthenticationManager authenticationManager) {
+                        AuthenticationManager authenticationManager,
+                        NifValidator nifValidator) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
-                this.jwtService = jwtService;
                 this.authenticationManager = authenticationManager;
+                this.nifValidator = nifValidator;
         }
 
         /**
@@ -88,7 +95,10 @@ public class AuthService {
                         throw new BadRequestException("Credenciais inválidas");
                 }
 
-                if (!funcionario.isActivo()) {
+                // Funcionário inativo pode significar dois cenários distintos:
+                // 1) Criado pela secretaria (primeiro login com password temporária) -> permitir autenticar
+                // 2) Auto-registo pendente de aprovação (termos já aceites) -> bloquear login
+                if (!funcionario.isActivo() && funcionario.getTermsAcceptedAt() != null) {
                         throw new BadRequestException("Conta pendente de aprovação ou inativa. Contacte a secretaria.");
                 }
 
@@ -105,7 +115,7 @@ public class AuthService {
                 log.debug("Authentication successful");
 
                 String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
-                return generateAuthResponse(user, role, true);
+                return generateAuthResponse(user, role, funcionario.isActivo());
         }
 
         /**
@@ -161,6 +171,8 @@ public class AuthService {
          * - JWT é gerado automaticamente.
          */
         public AuthResult registerUtente(UtenteRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
+
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -194,6 +206,8 @@ public class AuthService {
          * - JWT é devolvido após criação.
          */
         public AuthResult registerFuncionario(FuncionarioRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
+
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -235,27 +249,25 @@ public class AuthService {
                 var user = utilizadorRepository.findById(userId)
                                 .orElseThrow(() -> new BadRequestException("Utilizador não encontrado"));
 
+                boolean acceptedTermsNow = false;
+
                 // Verificar se precisa aceitar termos
                 if (user.getTermsAcceptedAt() == null) {
-                        // Conta criada pela secretaria ou sem termos aceites
                         if (termsAccepted == null || !termsAccepted) {
                                 throw new BadRequestException("Deve aceitar os termos de uso para ativar a conta");
                         }
-                        // Define timestamp de aceitação dos termos
                         user.setTermsAcceptedAt(LocalDateTime.now());
+                        acceptedTermsNow = true;
                 }
 
-                // Atualiza a password
                 user.setPassHash(passwordEncoder.encode(newPassword));
 
                 if (user instanceof Utente utente) {
-                        // Ativa a conta do utente (caso ainda não estivesse ativa)
                         utente.setActivo(true);
                         utenteRepository.save(utente);
                 } else if (user instanceof Funcionario funcionario) {
-                        // Para funcionários, define timestamp de termos se fornecido e ATIVA a conta
-                        if (termsAccepted != null && termsAccepted && funcionario.getTermsAcceptedAt() == null) {
-                                funcionario.setTermsAcceptedAt(LocalDateTime.now());
+                        // Ativa funcionário se aceitou termos agora OU já tinha termos aceites
+                        if (acceptedTermsNow || funcionario.getTermsAcceptedAt() != null) {
                                 funcionario.setActivo(true);
                         }
                         funcionarioRepository.save(funcionario);
@@ -282,8 +294,8 @@ public class AuthService {
         }
 
         public AuthResult generateAuthResponse(Utilizador user, String role, boolean isActive) {
-                var jwtToken = jwtService.generateToken(user);
-                long expiresAt = System.currentTimeMillis() + jwtService.getJwtExpiration();
+                long expiresAt = System.currentTimeMillis() + jwtExpiration;
+                boolean requiresPasswordSetup = requiresPasswordSetup(user, isActive);
 
                 AuthResponse response = new AuthResponse(
                                 user.getId(),
@@ -293,12 +305,23 @@ public class AuthService {
                                 user.getNif(),
                                 user.getTelefone(),
                                 expiresAt,
-                                isActive);
+                                isActive,
+                                requiresPasswordSetup);
 
-                return new AuthResult(jwtToken, response);
+                return new AuthResult(response);
         }
 
-        public record AuthResult(String token, AuthResponse response) {
+        /**
+         * Regra centralizada para saber se o utilizador precisa de definir password.
+         *
+         * Cenário esperado:
+         * - Conta inativa + sem termos aceites -> requer configuração de password.
+         */
+        public boolean requiresPasswordSetup(Utilizador user, boolean isActive) {
+                return !isActive && user.getTermsAcceptedAt() == null;
+        }
+
+        public record AuthResult(AuthResponse response) {
         }
 
         private FuncionarioTipo mapFuncaoToTipo(String funcao) {
@@ -317,10 +340,10 @@ public class AuthService {
          * Obtém o ID do utilizador autenticado a partir do SecurityContext.
          */
         public Long getCurrentUserId() {
-                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                var authentication = SecurityContextHolder.getContext()
                                 .getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()
-                                || authentication instanceof org.springframework.security.authentication.AnonymousAuthenticationToken) {
+                                || authentication instanceof AnonymousAuthenticationToken) {
                         return null;
                 }
 
@@ -328,7 +351,7 @@ public class AuthService {
 
                 if (principal instanceof Utilizador utilizador) {
                         return utilizador.getId();
-                } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
+                } else if (principal instanceof UserDetails userDetails) {
                         // Em alguns casos pode ser apenas UserDetails, tentamos buscar pelo email
                         var users = utilizadorRepository.findByEmail(userDetails.getUsername());
                         if (!users.isEmpty()) {
@@ -344,7 +367,7 @@ public class AuthService {
          * (apenas SECRETARIA).
          */
         public boolean isAdmin() {
-                var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                var authentication = SecurityContextHolder.getContext()
                                 .getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()) {
                         return false;

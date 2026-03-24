@@ -106,8 +106,8 @@ public class DocumentoController {
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String utenteNome,
             @RequestParam(required = false) String utenteNif,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime uploadedAte) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoAte) {
 
         if (marcacaoId != null) {
             verificarPermissaoMarcacao(marcacaoId);
@@ -122,11 +122,25 @@ public class DocumentoController {
             tipo,
             utenteNome,
             utenteNif,
-            uploadedDesde,
-            uploadedAte
+            marcacaoDesde,
+            marcacaoAte
         );
 
         return ResponseEntity.ok(resultados);
+    }
+
+    /**
+     * Notifica o utente de que os documentos enviados são inválidos.
+     * @param marcacaoId ID da marcação
+     * @param observacoes Observações/motivo da invalidação
+     */
+    @PostMapping("/marcacao/{marcacaoId}/notificar-invalidos")
+    public ResponseEntity<Void> notificarDocumentoInvalido(
+            @PathVariable Long marcacaoId,
+            @RequestParam("documentoId") Long documentoId,
+            @RequestParam("observacoes") String observacoes) {
+        documentoService.notificarDocumentoInvalido(marcacaoId, documentoId, observacoes);
+        return ResponseEntity.ok().build();
     }
 
     private boolean isSecretariaOuStaff() {
@@ -148,12 +162,12 @@ public class DocumentoController {
      * @param id ID do documento
      * @return ficheiro para download
      */
+
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> downloadDocumento(@PathVariable Long id) {
         log.info("Download de documento {}", id);
 
         DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
-        
         // Verificar permissões para a marcação associada
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
 
@@ -163,6 +177,27 @@ public class DocumentoController {
             .contentType(MediaType.parseMediaType(documentoDTO.tipo()))
             .header(HttpHeaders.CONTENT_DISPOSITION, 
                 "attachment; filename=\"" + documentoDTO.nomeOriginal() + "\"")
+            .body(resource);
+    }
+
+    /**
+     * Preview inline de um documento (para visualização direta no navegador).
+     * @param id ID do documento
+     * @return ficheiro para visualização inline
+     */
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<Resource> previewDocumento(@PathVariable Long id) {
+        log.info("Preview inline de documento {}", id);
+
+        DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
+        verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        Resource resource = documentoService.carregarFicheiro(id);
+
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(documentoDTO.tipo()))
+            .header(HttpHeaders.CONTENT_DISPOSITION, 
+                "inline; filename=\"" + documentoDTO.nomeOriginal() + "\"")
             .body(resource);
     }
 

@@ -26,6 +26,7 @@ import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 @ExtendWith(MockitoExtension.class)
 class MarcacaoServiceTest {
@@ -46,6 +47,8 @@ class MarcacaoServiceTest {
     private EmailService emailService;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private NifValidator nifValidator;
 
     @InjectMocks
     private MarcacaoService marcacaoService;

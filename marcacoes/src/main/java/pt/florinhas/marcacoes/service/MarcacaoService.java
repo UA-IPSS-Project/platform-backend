@@ -1,5 +1,6 @@
 package pt.florinhas.marcacoes.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -7,49 +8,49 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
+import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.FuncionarioTipo;
 import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
+import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
+import pt.florinhas.marcacoes.domain.Roupa;
+import pt.florinhas.marcacoes.domain.Utente;
+import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
-import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
+import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.RoupaDTO;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.repository.UtenteRepository;
+import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
-
-import org.springframework.security.crypto.password.PasswordEncoder;
-import java.security.SecureRandom;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.Utilizador;
-import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
-import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
-import pt.florinhas.marcacoes.domain.Roupa;
-import pt.florinhas.marcacoes.domain.AtendimentoTipo;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.context.event.EventListener;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
+import pt.florinhas.marcacoes.validation.NifValidator;
 
 @Slf4j
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class MarcacaoService {
 
@@ -59,8 +60,10 @@ public class MarcacaoService {
     private final UtilizadorRepository utilizadorRepository;
     private final NotificacaoService notificacaoService;
     private final MarcacaoValidator marcacaoValidator;
+    private final NifValidator nifValidator;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final ArmazemService armazemService;
 
     @Lazy
     private final CalendarioService calendarioService;
@@ -71,6 +74,8 @@ public class MarcacaoService {
      * 62 caracteres possíveis × 22 posições = ~130 bits de entropia.
      */
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final Integer BALNEARIO_DEFAULT_DURATION_MINUTES = 30;
+    private static final Integer SECRETARIA_DEFAULT_DURATION_MINUTES = 15;
 
     private String generateRandomPassword() {
         SecureRandom random = new SecureRandom();
@@ -107,7 +112,9 @@ public class MarcacaoService {
             utente = utenteRepository.findById(request.getUtenteId())
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Utente não encontrado com ID: " + request.getUtenteId()));
-        } else if (request.getUtenteNif() != null) {
+        } else if (hasText(request.getUtenteNif())) {
+            nifValidator.validateRequiredOrThrow(request.getUtenteNif());
+
             // Verificar se já existe por NIF
             List<Utente> users = utenteRepository.findByNif(request.getUtenteNif());
             if (!users.isEmpty()) {
@@ -121,6 +128,7 @@ public class MarcacaoService {
                 utente.setNif(request.getUtenteNif());
                 utente.setEmail(request.getUtenteEmail());
                 utente.setTelefone(request.getUtenteTelefone());
+                utente.setDataNasc(request.getUtenteDataNasc());
                 utente.setActivo(false);
 
                 // Gerar password segura
@@ -129,12 +137,27 @@ public class MarcacaoService {
 
                 utente = utenteRepository.save(utente);
 
-                // Enviar email com a password
-                try {
-                    emailService.sendPassword(request.getUtenteEmail(), rawPassword);
-                } catch (Exception e) {
-                    log.error("Falha ao enviar email para: {}", request.getUtenteEmail(), e);
-                    // Não falhar a marcação se o email falhar, mas logar erro
+                // Enviar email com a password (Side-effect isolado para evitar rollback)
+                final String finalEmail = request.getUtenteEmail();
+                final String finalPassword = rawPassword;
+                
+                if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                emailService.sendPassword(finalEmail, finalPassword);
+                            } catch (Exception e) {
+                                log.error("Falha ao enviar email para: {}", finalEmail, e);
+                            }
+                        }
+                    });
+                } else {
+                    try {
+                        emailService.sendPassword(finalEmail, finalPassword);
+                    } catch (Exception e) {
+                        log.error("Falha ao enviar email para: {}", finalEmail, e);
+                    }
                 }
             }
         } else {
@@ -154,16 +177,37 @@ public class MarcacaoService {
 
         Marcacao saved = marcacaoRepository.save(marcacao);
 
-        // Notify utente about new appointment (when created by secretary)
+        // Notify utente about new appointment (Side-effect isolado para evitar rollback)
         if (utente != null && request.getCriadoPorId() != null) {
-            try {
-                notificacaoService.notificarNovaMarcacao(utente, saved.getId(), saved.getData(), false);
-            } catch (Exception e) {
-                log.error("Falha ao notificar utente sobre nova marcação", e);
+            final Utente finalUtente = utente;
+            final Long finalId = saved.getId();
+            final LocalDateTime finalData = saved.getData();
+
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
+                        } catch (Exception e) {
+                            log.error("Falha ao notificar utente sobre nova marcação", e);
+                        }
+                    }
+                });
+            } else {
+                try {
+                    notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
+                } catch (Exception e) {
+                    log.error("Falha ao notificar utente sobre nova marcação", e);
+                }
             }
         }
 
         return saved;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
@@ -176,10 +220,10 @@ public class MarcacaoService {
                         () -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
 
         Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
-
+        // Centralized duration logic: remota = 15min
+        marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
         // Na remota, criadoPor pode ser null ou não especificado se feito pelo utente.
         // Se houver necessidade de setar, seria aqui.
-
         return marcacaoRepository.save(marcacao);
     }
 
@@ -187,6 +231,8 @@ public class MarcacaoService {
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
+        // Centralized duration logic: secretaria = 15min
+        marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
 
         MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
         detalhes.setAssunto(request.getAssunto());
@@ -202,14 +248,37 @@ public class MarcacaoService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Marcacao criarMarcacaoBalneario(CriarMarcacaoBalnearioRequest request) {
-        Marcacao marcacao = new Marcacao();
-        marcacao.setData(request.getData());
+        marcacaoValidator.validarCriacaoBalneario(request);
+
+        Marcacao marcacao = null;
+        if (request.getReservaId() != null) {
+            marcacao = marcacaoRepository.findById(request.getReservaId()).orElse(null);
+        }
+
+        if (marcacao == null) {
+            marcacao = new Marcacao();
+            marcacao.setData(request.getData());
+            marcacao.setDuration(BALNEARIO_DEFAULT_DURATION_MINUTES);
+        } else {
+            if (marcacao.getEstado() != EventoEstado.EM_PREENCHIMENTO) {
+                throw new IllegalStateException("A reserva temporária não é válida ou já expirou.");
+            }
+            marcacao.setData(request.getData());
+        }
+
         marcacao.setEstado(EventoEstado.AGENDADO);
 
-        MarcacaoBalneario detalhes = new MarcacaoBalneario();
+        MarcacaoBalneario detalhes = marcacao.getMarcacaoBalneario();
+        if (detalhes == null) {
+            detalhes = new MarcacaoBalneario();
+            detalhes.setMarcacao(marcacao);
+            marcacao.setMarcacaoBalneario(detalhes);
+        }
+
         detalhes.setNomeUtente(request.getNomeUtente());
         detalhes.setProdutosHigiene(request.getProdutosHigiene());
         detalhes.setLavagemRoupa(request.getLavagemRoupa());
+        detalhes.setObservacoes(request.getObservacoes());
 
         if (request.getResponsavelId() != null) {
             Funcionario responsavel = funcionarioRepository.findById(request.getResponsavelId())
@@ -219,6 +288,11 @@ public class MarcacaoService {
         }
 
         if (request.getRoupas() != null) {
+            if (detalhes.getRoupas() != null) {
+                // Clear existing just in case (e.g if it's reused from EM_PREENCHIMENTO with
+                // existing roupas)
+                detalhes.getRoupas().clear();
+            }
             for (RoupaDTO rDTO : request.getRoupas()) {
                 Roupa r = new Roupa();
                 r.setCategoria(rDTO.getCategoria());
@@ -229,16 +303,6 @@ public class MarcacaoService {
         }
 
         detalhes.setMarcacao(marcacao);
-
-        // This setter doesn't exist yet on Marcacao, so we'll need to make sure to add
-        // it
-        // Since we didn't update Marcacao yet, let's just save MarcacaoBalneario via
-        // repository
-        // wait, MarcacaoBalneario is mapped via cascade on Marcacao?
-        // the prompt instructions say: "MarcacaoBalneario mappedBy=... on Marcacao".
-        // Let's rely on Marcacao save if we added the field, but we didn't add it yet
-        // Let's add it via a separate multireplace! For now, assuming the field
-        // `marcacao.setMarcacaoBalneario()` exists.
         marcacao.setMarcacaoBalneario(detalhes);
 
         return marcacaoRepository.save(marcacao);
@@ -301,9 +365,12 @@ public class MarcacaoService {
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional
     public MarcacaoResponseDTO atualizarEstadoMarcacao(Long id, AtualizarEstadoRequest request) {
         Marcacao marcacao = marcacaoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
+
+        EventoEstado estadoAnterior = marcacao.getEstado();
 
         // Validar transição de estado se necessário
         // Por agora permitimos atualizar direto
@@ -311,6 +378,27 @@ public class MarcacaoService {
 
         if (request.getNovoEstadoEnum() == EventoEstado.CANCELADO && request.getMotivoCancelamento() != null) {
             marcacao.setMotivoCancelamento(request.getMotivoCancelamento());
+        }
+
+        // === GESTÃO DE STOCK DO ARMAZÉM (Balneário) ===
+        if (marcacao.getMarcacaoBalneario() != null) {
+            // Descontar stock ao marcar presença (transição para EM_PROGRESSO)
+            if (request.getNovoEstadoEnum() == EventoEstado.EM_PROGRESSO) {
+                List<String> avisos = armazemService.descontarItens(marcacao);
+                if (!avisos.isEmpty()) {
+                    log.warn("Avisos de stock ao marcar presença na marcação {}: {}", id, avisos);
+                }
+            }
+
+            // Restaurar stock se a marcação estava EM_PROGRESSO e agora é CANCELADA ou
+            // NAO_COMPARECIDO
+            if (estadoAnterior == EventoEstado.EM_PROGRESSO
+                    && (request.getNovoEstadoEnum() == EventoEstado.CANCELADO
+                            || request.getNovoEstadoEnum() == EventoEstado.NAO_COMPARECIDO)) {
+                armazemService.restaurarItens(marcacao);
+                log.info("Stock restaurado para marcação {} (transição {} -> {})",
+                        id, estadoAnterior, request.getNovoEstadoEnum());
+            }
         }
 
         // Se houver atendente a definir (funcionário que executa a alteração):
@@ -368,7 +456,10 @@ public class MarcacaoService {
                 } else {
                     // Cancelado pela Secretaria -> Notificar Utente
                     try {
-                        notificacaoService.notificarCancelamento(utenteAlvo, marcacao.getData());
+                        notificacaoService.notificarCancelamento(
+                                utenteAlvo,
+                                marcacao.getData(),
+                                request.getMotivoCancelamento());
                     } catch (Exception e) {
                         log.error("Erro ao notificar utente {}", utenteAlvo.getId(), e);
                     }
@@ -458,10 +549,25 @@ public class MarcacaoService {
         return marcacaoRepository.findAllWithRelations(pageable).map(this::toDTO);
     }
 
+    @Transactional
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
+        // 1. Verificar capacidade máxima antes de criar reserva
+        String tipoAgenda = normalizarTipoAgenda(request.getTipoAgenda());
+        LocalDateTime data = request.getData();
+        int capacidade = calendarioService.getCapacidadePorSlot(tipoAgenda);
+        // Estados que contam para ocupação do slot
+        List<EventoEstado> estadosOcupados = List.of(EventoEstado.AGENDADO, EventoEstado.EM_PREENCHIMENTO);
+        long ocupadas = marcacaoRepository.countByDataAndEstadoInAndTipo(data, estadosOcupados, tipoAgenda);
+        if (ocupadas >= capacidade) {
+            throw new IllegalStateException("Capacidade máxima de vagas atingida para este horário.");
+        }
+
         Marcacao m = new Marcacao();
-        m.setData(request.getData());
+        m.setData(data);
         m.setEstado(EventoEstado.EM_PREENCHIMENTO);
+        m.setDuration("BALNEARIO".equals(tipoAgenda)
+                ? BALNEARIO_DEFAULT_DURATION_MINUTES
+                : SECRETARIA_DEFAULT_DURATION_MINUTES);
 
         // Identificar quem está a reservar
         Long criadorId = request.getCriadoPorId();
@@ -476,30 +582,67 @@ public class MarcacaoService {
             m.setCriadoPor(criador);
         }
 
-        // Criar estrutura mínima de secretaria se necessário para identificar utente na
-        // consulta de bloqueios
-        // A consulta usa `m.getMarcacaoSecretaria().getUtente()` ou `m.getCriadoPor()`.
-        // Se definimos `setCriadoPor`, a consulta de bloqueios já funciona (vimos na
-        // implementação que verifica ambos).
+        if ("BALNEARIO".equals(tipoAgenda)) {
+            MarcacaoBalneario detalhes = new MarcacaoBalneario();
+            detalhes.setNomeUtente("Reserva temporária");
+            detalhes.setProdutosHigiene(false);
+            detalhes.setLavagemRoupa(false);
+            detalhes.setMarcacao(m);
+            m.setMarcacaoBalneario(detalhes);
+        } else {
+            MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
+            detalhes.setAssunto("Reserva temporária");
+            detalhes.setDescricao("Reserva temporária de slot");
+            detalhes.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
+            if (request.getUtenteId() != null) {
+                Utente utente = utenteRepository.findById(request.getUtenteId()).orElse(null);
+                detalhes.setUtente(utente);
+            }
+            detalhes.setMarcacao(m);
+            m.setMarcacaoSecretaria(detalhes);
+        }
 
         m = marcacaoRepository.save(m);
         return m.getId();
     }
 
+    @Transactional
     public void apagarReservaTemporaria(Long id) {
         if (marcacaoRepository.existsById(id)) {
             marcacaoRepository.deleteById(id);
         }
     }
 
+    @Transactional
     public MarcacaoResponseDTO reagendarMarcacao(Long id, ReagendarMarcacaoRequest request) {
         // Buscar marcação existente
         Marcacao marcacao = marcacaoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
 
-        // Validar reagendamento com as mesmas verificações que criação (data, hora,
-        // feriados, bloqueios, sobreposição)
-        marcacaoValidator.validarReagendamento(request);
+        String tipoAgenda = marcacao.getMarcacaoBalneario() != null ? "BALNEARIO" : "SECRETARIA";
+
+        // Validar data/hora, feriados, fim de semana e bloqueios
+        marcacaoValidator.validarReagendamento(request, tipoAgenda);
+
+        // Verificar capacidade do slot de destino
+        // Exclui a própria marcação do count (ela ainda está no slot original ou no
+        // mesmo slot)
+        int capacidade = calendarioService.getCapacidadePorSlot(tipoAgenda);
+        List<EventoEstado> estadosOcupados = List.of(EventoEstado.AGENDADO, EventoEstado.EM_PREENCHIMENTO,
+                EventoEstado.AVISO, EventoEstado.EM_PROGRESSO, EventoEstado.CONCLUIDO, EventoEstado.NAO_COMPARECIDO,
+                EventoEstado.INVALIDO);
+        long ocupadas = marcacaoRepository.countByDataAndEstadoInAndTipo(
+                request.getNovaDataHora(), estadosOcupados, tipoAgenda);
+
+        // Se a marcação já está neste slot (mesma data/hora), não conta para a
+        // capacidade
+        boolean jaEstaNovaData = request.getNovaDataHora().equals(marcacao.getData());
+        long ocupadasEfetivas = jaEstaNovaData ? ocupadas - 1 : ocupadas;
+
+        if (ocupadasEfetivas >= capacidade) {
+            throw new IllegalStateException(
+                    "O horário escolhido está cheio. Por favor escolha outro horário.");
+        }
 
         // Atualizar data/hora
         marcacao.setData(request.getNovaDataHora());
@@ -549,6 +692,7 @@ public class MarcacaoService {
             balnDTO.setNomeUtente(baln.getNomeUtente());
             balnDTO.setProdutosHigiene(baln.getProdutosHigiene());
             balnDTO.setLavagemRoupa(baln.getLavagemRoupa());
+            balnDTO.setObservacoes(baln.getObservacoes());
 
             if (baln.getResponsavel() != null) {
                 balnDTO.setResponsavelNome(baln.getResponsavel().getNome());
@@ -574,9 +718,54 @@ public class MarcacaoService {
 
     @EventListener(ApplicationReadyEvent.class) // Run on startup
     @Scheduled(fixedRate = 60000) // Run every minute
+    @Transactional
     public void limparReservasExpiradas() {
         LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
         // Usa o método customizado que também limpa registos com criadoEm NULL
         marcacaoRepository.deleteExpiredOrorphan(EventoEstado.EM_PREENCHIMENTO, expirationTime);
+    }
+
+    @Scheduled(cron = "0 59 23 * * *") // Run every day at 23:59
+    @Transactional
+    public void invalidarMarcacoesExpiradas() {
+        // Obter o início do dia atual (00:00:00).
+        // Qualquer marcação com data anterior é do "dia anterior" ou mais antiga, logo,
+        // passaram-se pelo menos ~24 horas.
+        LocalDateTime inicioDoDiaAtual = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
+
+        // 1. Passar "EM_PROGRESSO" para "CONCLUIDO"
+        int concluidas = marcacaoRepository.atualizarMarcacoesPorEstadoAntigas(
+                EventoEstado.CONCLUIDO,
+                EventoEstado.EM_PROGRESSO,
+                inicioDoDiaAtual);
+
+        if (concluidas > 0) {
+            log.info("Marcadas {} marcações em progresso como CONCLUIDAS (data < {})", concluidas, inicioDoDiaAtual);
+        }
+
+        // 2. Passar o restante para "INVALIDO"
+        List<EventoEstado> estadosExcluidos = List.of(
+                EventoEstado.CONCLUIDO,
+                EventoEstado.CANCELADO,
+                EventoEstado.NAO_COMPARECIDO,
+                EventoEstado.EM_PREENCHIMENTO,
+                EventoEstado.INVALIDO);
+
+        int contagem = marcacaoRepository.invalidarMarcacoesAntigas(
+                EventoEstado.INVALIDO,
+                estadosExcluidos,
+                inicioDoDiaAtual);
+
+        if (contagem > 0) {
+            log.info("Marcadas {} marcações como INVALIDAS (data < {})", contagem, inicioDoDiaAtual);
+        }
+    }
+
+    private String normalizarTipoAgenda(String tipoAgenda) {
+        if (tipoAgenda == null || tipoAgenda.isBlank()) {
+            return "SECRETARIA";
+        }
+        String tipo = tipoAgenda.trim().toUpperCase();
+        return "BALNEARIO".equals(tipo) ? "BALNEARIO" : "SECRETARIA";
     }
 }

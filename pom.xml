@@ -15,26 +15,28 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.5.12</version>
         <relativePath/>
     </parent>
 
     <!-- ===== Módulos ===== -->
     <modules>
         <module>marcacoes</module>
+        <module>requisicoes</module>
+        <module>api-gateway</module>
     </modules>
 
     <!-- ===== Versões centralizadas ===== -->
     <properties>
         <java.version>21</java.version>
         <!-- Spring Cloud -->
-        <spring-cloud.version>2024.0.1</spring-cloud.version>
+        <spring-cloud.version>2025.0.1</spring-cloud.version>
         <!-- Mapeamento -->
         <mapstruct.version>1.6.3</mapstruct.version>
         <!-- JWT -->
         <jjwt.version>0.12.5</jjwt.version>
         <!-- MinIO -->
-        <minio.version>8.5.17</minio.version>
+        <minio.version>8.6.0</minio.version>
     </properties>
 
     <!-- ===== BOM e versões geridas centralmente ===== -->

@@ -28,6 +28,7 @@ target/
 **/target/
 *.iml
 /.mvn/wrapper/maven-wrapper.jar
+.mvn
 
 # IntelliJ
 .idea/
@@ -67,6 +68,7 @@ build/
 # Environment
 .env
 .env.*
+!.env.example
 
 # MinIO
 data/
@@ -105,6 +107,12 @@ Desktop.ini
 # Local Notes
 NOTAS.md
 
+# K6 test results
+k6-tests/results/
+
 # MinIO local data
 data/*
 !data/.gitkeep
+
+
+extra
