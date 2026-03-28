@@ -74,8 +74,12 @@ public class NotificacaoService {
                 logger.info(
                     "Sending WebSocket notification to user: {} (email: {}), title: {}",
                     user.getId(), user.getEmail(), titulo);
+            String destination = (user.getEmail() != null && !user.getEmail().trim().isEmpty()) 
+                    ? user.getEmail() 
+                    : user.getNif();
+            
             messagingTemplate.convertAndSendToUser(
-                    user.getId().toString(),
+                    destination,
                     "/queue/notifications",
                     dto);
                 logger.info(
