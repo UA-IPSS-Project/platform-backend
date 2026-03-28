@@ -2,9 +2,6 @@ package pt.florinhas.marcacoes.service.email;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
-import java.util.Base64;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.SimpleMailMessage;
