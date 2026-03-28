@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 
@@ -74,12 +75,7 @@ public class NotificacaoService {
                     "Sending WebSocket notification to user: {} (email: {}), title: {}",
                     user.getId(), user.getEmail(), titulo);
             messagingTemplate.convertAndSendToUser(
-                    user.getEmail(), // Assuming UserDetails username is email, we need to make sure this matches
-                                     // what principal.getName() returns.
-                    // Actually, in SecurityConfig/JwtAuthenticationFilter, the principal is
-                    // UserDetails.
-                    // The "user" in convertAndSendToUser is matched against Principal.getName().
-                    // If UserDetails.getUsername() returns email, then this is correct.
+                    user.getId().toString(),
                     "/queue/notifications",
                     dto);
                 logger.info(
@@ -145,7 +141,8 @@ public class NotificacaoService {
 
     // --- Métodos de Negócio (Side-effects, não devem falhar a transação principal) ---
 
-    public void notificarNovaMarcacao(Utilizador utilizador, Long marcacaoId, LocalDateTime data, boolean isRemote) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, boolean isRemote) {
         String dataFormatada = data.format(DISPLAY_DATE_FORMATTER);
         String mensagem = "Marcacao criada para " + dataFormatada + ".";
         String assunto = "Marcacao Criada";
@@ -155,11 +152,16 @@ public class NotificacaoService {
             "createdDate", data.format(DATE_FORMATTER),
             "createdTime", data.format(TIME_FORMATTER),
             METADATA_SUBTYPE_KEY, "CREATED");
-        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
-        sendEmailIfAvailable(utilizador.getEmail(), () -> emailService.sendAppointmentCreated(utilizador.getEmail(), data));
+        
+        criarNotificacao(utilizadorId, assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
+        
+        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
+            sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCreated(user.getEmail(), data));
+        });
     }
 
-    public void notificarCancelamento(Utilizador utilizador, LocalDateTime data, String motivo) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
         String assunto = "Marcacao Cancelada";
         String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;
         String mensagem = "Marcacao cancelada por " + motivoTexto + ".";
@@ -169,11 +171,15 @@ public class NotificacaoService {
             "cancelledTime", data.format(TIME_FORMATTER),
             METADATA_SUBTYPE_KEY, "CANCELLED");
         
-        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
-        sendEmailIfAvailable(utilizador.getEmail(), () -> emailService.sendAppointmentCancelled(utilizador.getEmail(), motivoTexto));
+        criarNotificacao(utilizadorId, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+        
+        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
+            sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCancelled(user.getEmail(), motivoTexto));
+        });
     }
 
-    public void notificarCancelamentoPeloUtente(Utilizador destinatario, String nomeUtente,
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notificarCancelamentoPeloUtente(Long destinatarioId, String nomeUtente,
             LocalDateTime data) {
         DateTimeFormatter formatter = DateTimeFormatter
                 .ofPattern("dd/MM/yyyy 'às' HH:mm");
@@ -187,16 +193,15 @@ public class NotificacaoService {
             "cancelledDate", data.format(DATE_FORMATTER),
             "cancelledTime", data.format(TIME_FORMATTER));
         
-        criarNotificacao(destinatario, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
-        // Admin notifications might not need email simulation, but keeping consistent
+        criarNotificacao(destinatarioId, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
     }
 
-    public void notificarDocumentosInvalidos(Utilizador utilizador, String observacoes) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notificarDocumentosInvalidos(Long utilizadorId, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
         
-        criarNotificacao(utilizador, assunto, mensagem, NotificacaoTipo.LEMBRETE, null); // Using LEMBRETE as
-                                                                                           // warning/info
+        criarNotificacao(utilizadorId, assunto, mensagem, NotificacaoTipo.LEMBRETE, null);
     }
 
     @Scheduled(cron = "0 0 8 * * *") // Every day at 08:00

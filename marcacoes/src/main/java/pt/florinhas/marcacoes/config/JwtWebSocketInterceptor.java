@@ -24,6 +24,12 @@ public class JwtWebSocketInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
+        
+        // If user is already set (e.g. from handshake authentication), do nothing
+        if (accessor.getUser() != null) {
+            return message;
+        }
+
         List<String> authHeaders = accessor.getNativeHeader("Authorization");
         if (authHeaders != null && !authHeaders.isEmpty()) {
             String token = authHeaders.get(0);

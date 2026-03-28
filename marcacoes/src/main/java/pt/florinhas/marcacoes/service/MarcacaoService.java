@@ -188,7 +188,7 @@ public class MarcacaoService {
                     @Override
                     public void afterCommit() {
                         try {
-                            notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
+                            notificacaoService.notificarNovaMarcacao(finalUtente.getId(), finalId, finalData, false);
                         } catch (Exception e) {
                             log.error("Falha ao notificar utente sobre nova marcação", e);
                         }
@@ -196,7 +196,7 @@ public class MarcacaoService {
                 });
             } else {
                 try {
-                    notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
+                    notificacaoService.notificarNovaMarcacao(finalUtente.getId(), finalId, finalData, false);
                 } catch (Exception e) {
                     log.error("Falha ao notificar utente sobre nova marcação", e);
                 }
@@ -447,7 +447,7 @@ public class MarcacaoService {
                     List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
                     for (Funcionario sec : secretarias) {
                         try {
-                            notificacaoService.notificarCancelamentoPeloUtente(sec, utenteAlvo.getNome(),
+                            notificacaoService.notificarCancelamentoPeloUtente(sec.getId(), utenteAlvo.getNome(),
                                     marcacao.getData());
                         } catch (Exception e) {
                             log.error("Erro ao notificar secretaria {}", sec.getId(), e);
@@ -457,7 +457,7 @@ public class MarcacaoService {
                     // Cancelado pela Secretaria -> Notificar Utente
                     try {
                         notificacaoService.notificarCancelamento(
-                                utenteAlvo,
+                                utenteAlvo.getId(),
                                 marcacao.getData(),
                                 request.getMotivoCancelamento());
                     } catch (Exception e) {
@@ -495,7 +495,7 @@ public class MarcacaoService {
         Utente utente = secretariaDetails.getUtente();
 
         try {
-            notificacaoService.notificarDocumentosInvalidos(utente, request.getObservacoes());
+            notificacaoService.notificarDocumentosInvalidos(utente.getId(), request.getObservacoes());
         } catch (Exception e) {
             log.error("Erro ao notificar utente {} sobre documentos inválidos", utente.getId(), e);
         }
