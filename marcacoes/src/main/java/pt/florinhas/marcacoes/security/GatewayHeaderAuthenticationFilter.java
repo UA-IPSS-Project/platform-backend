@@ -52,18 +52,23 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
-        if (authorities.isEmpty()) {
-            authorities = userDetails.getAuthorities();
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
+            if (authorities.isEmpty()) {
+                authorities = userDetails.getAuthorities();
+            }
+
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    authorities);
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+        } catch (Exception e) {
+            // Log but allow filter chain to proceed for permitAll() paths
         }
-
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                authorities);
-
-        SecurityContextHolder.getContext().setAuthentication(authToken);
+        
         filterChain.doFilter(request, response);
     }
 
