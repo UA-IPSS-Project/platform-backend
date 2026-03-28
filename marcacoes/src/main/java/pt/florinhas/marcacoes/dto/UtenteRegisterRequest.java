@@ -36,8 +36,8 @@ public record UtenteRegisterRequest(
         // NIF com exatamente 9 dígitos (obrigatório).
         @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos") String nif,
 
-        // Telefone de contacto do utente (obrigatório).
-        @NotBlank(message = "Telefone é obrigatório") @Pattern(regexp = "\\d{9}", message = "Telefone deve ter 9 dígitos") String telefone,
+        // Telefone de contacto do utente (opcional; se preenchido, deve ter 9 dígitos).
+        @Pattern(regexp = "\\d{9}", message = "Telefone deve ter 9 dígitos") String telefone,
 
         // Data de nascimento (obrigatória).
         @NotNull(message = "Data de nascimento é obrigatória") LocalDate dataNasc,

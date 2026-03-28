@@ -37,9 +37,8 @@ public record FuncionarioRegisterRequest(
         // NIF com exatamente 9 dígitos (obrigatório).
         @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos") String nif,
 
-        // Contacto telefónico (obrigatório). Formato livre; validar formato se
-        // necessário.
-        @NotBlank(message = "Contacto é obrigatório") @Pattern(regexp = "\\d{9}", message = "Contacto deve ter 9 dígitos") String contacto,
+        // Contacto telefónico (opcional; se preenchido, deve ter 9 dígitos).
+        @Pattern(regexp = "\\d{9}", message = "Contacto deve ter 9 dígitos") String contacto,
 
         // Função/cargo do funcionário (obrigatório). Ex.: "SECRETARIA", "BALNEARIO".
         @NotBlank(message = "Função é obrigatória") String funcao,
