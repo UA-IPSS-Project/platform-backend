@@ -46,8 +46,13 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        if (email == null) {
+            throw new UsernameNotFoundException("Email is null");
+        }
+        String trimmedEmail = email.trim();
+        
         // Tenta por email primeiro (funcionários)
-        var usersByEmail = utilizadorRepository.findByEmail(email);
+        var usersByEmail = utilizadorRepository.findByEmail(trimmedEmail);
         if (!usersByEmail.isEmpty()) {
             return usersByEmail.get(0);
         }
