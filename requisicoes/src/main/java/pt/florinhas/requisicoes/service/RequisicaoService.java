@@ -142,6 +142,7 @@ public class RequisicaoService {
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MATERIAL);
         requisicao.setCriadoPor(criadoPor);
+        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setGeridoPor(null);
 
         for (Map.Entry<Long, Integer> item : itensNormalizados.entrySet()) {
@@ -175,6 +176,7 @@ public class RequisicaoService {
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
+        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setGeridoPor(null);
         requisicao.setDestino(request.destino());
         requisicao.setDataHoraSaida(request.dataHoraSaida());
@@ -234,6 +236,7 @@ public class RequisicaoService {
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MANUTENCAO);
         requisicao.setCriadoPor(criadoPor);
+        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setGeridoPor(null);
         requisicao.setAssunto(request.assunto());
 
@@ -482,17 +485,16 @@ public class RequisicaoService {
             throw new IllegalArgumentException("O estado novo tem de ser diferente do estado atual.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ENVIADA && novoEstado == RequisicaoEstado.EM_ANALISE) {
+        if (estadoAtual == RequisicaoEstado.ABERTO && (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO)) {
             return;
         }
 
-        if (estadoAtual == RequisicaoEstado.EM_ANALISE
-                && (novoEstado == RequisicaoEstado.ACEITE || novoEstado == RequisicaoEstado.RECUSADA)) {
+        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO && novoEstado == RequisicaoEstado.FECHADO) {
             return;
         }
 
         throw new IllegalArgumentException(
-                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> ACEITE ou ENVIADA -> EM_ANALISE -> RECUSADA.");
+                "Transição de estado inválida. Fluxos permitidos: ABERTO -> EM_PROGRESSO -> FECHADO ou ABERTO -> FECHADO.");
     }
 
     private Funcionario obterFuncionario(Long id) {

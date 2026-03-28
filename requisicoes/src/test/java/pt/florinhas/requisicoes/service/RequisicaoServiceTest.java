@@ -97,17 +97,17 @@ class RequisicaoServiceTest {
 
     @Test
     void listarPorEstado_deveDelegarNoRepositorio() {
-        when(requisicaoRepository.findByEstado(RequisicaoEstado.EM_ANALISE)).thenReturn(List.of());
+        when(requisicaoRepository.findByEstado(RequisicaoEstado.EM_PROGRESSO)).thenReturn(List.of());
 
-        requisicaoService.listarPorEstado(RequisicaoEstado.EM_ANALISE);
+        requisicaoService.listarPorEstado(RequisicaoEstado.EM_PROGRESSO);
 
-        verify(requisicaoRepository).findByEstado(RequisicaoEstado.EM_ANALISE);
+        verify(requisicaoRepository).findByEstado(RequisicaoEstado.EM_PROGRESSO);
     }
 
     @Test
     void procurar_deveDelegarFindWithFilters() {
         Requisicao requisicao = new RequisicaoManutencao();
-        requisicao.setEstado(RequisicaoEstado.ENVIADA);
+        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setTipo(RequisicaoTipo.MATERIAL);
         requisicao.setPrioridade(RequisicaoPrioridade.ALTA);
         Funcionario criadoPor = new Funcionario();
@@ -121,7 +121,7 @@ class RequisicaoServiceTest {
                 .thenReturn(List.of(requisicao));
 
         List<Requisicao> resultado = requisicaoService.procurar(
-                RequisicaoEstado.ENVIADA,
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MATERIAL,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
