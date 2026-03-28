@@ -2,16 +2,20 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy parent POM first (needed to resolve the central POM)
+# Copiamos os pom.xml para satisfazer os módulos do projeto pai
 COPY pom.xml .
-
-# Copy module POM and download dependencies
+COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
-RUN mvn dependency:go-offline -B -f marcacoes/pom.xml
+COPY requisicoes/pom.xml requisicoes/
+
+# Download dependencies
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn dependency:go-offline -B -f marcacoes/pom.xml
 
 # Copy source code and build
 COPY marcacoes/src marcacoes/src
-RUN mvn clean package -DskipTests -f marcacoes/pom.xml
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -DskipTests -f marcacoes/pom.xml
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine

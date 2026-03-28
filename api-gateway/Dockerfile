@@ -2,12 +2,22 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copiamos o código
-COPY . /app
+# Copiamos os pom.xml para satisfazer os módulos do projeto pai
+COPY pom.xml .
+COPY api-gateway/pom.xml api-gateway/
+COPY marcacoes/pom.xml marcacoes/
+COPY requisicoes/pom.xml requisicoes/
 
-# mount for caching maven dependicies
+# Baixar dependências (layer caching)
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn package -pl api-gateway -am -DskipTests
+    mvn dependency:go-offline -pl api-gateway -am -B
+
+# Agora o código fonte
+COPY api-gateway/src api-gateway/src
+
+# Build
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -pl api-gateway -am -DskipTests
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
