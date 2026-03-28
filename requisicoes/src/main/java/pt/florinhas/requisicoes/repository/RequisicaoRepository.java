@@ -22,12 +22,14 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
         List<Requisicao> findByCriadoPorNomeContainingIgnoreCase(String nome);
 
     @Query("SELECT r FROM Requisicao r " +
+            "LEFT JOIN r.criadoPor c " +
+            "LEFT JOIN r.geridoPor g " +
             "WHERE " +
             "(:estado IS NULL OR r.estado = :estado) AND " +
             "(:tipo IS NULL OR r.tipo = :tipo) AND " +
             "(:prioridade IS NULL OR r.prioridade = :prioridade) AND " +
-            "(:criadoPorNome IS NULL OR LOWER(r.criadoPor.nome) LIKE :criadoPorNome) AND " +
-            "(:geridoPorNome IS NULL OR (r.geridoPor IS NOT NULL AND LOWER(r.geridoPor.nome) LIKE :geridoPorNome)) " +
+            "(:criadoPorNome IS NULL OR LOWER(c.nome) LIKE :criadoPorNome) AND " +
+            "(:geridoPorNome IS NULL OR (g IS NOT NULL AND LOWER(g.nome) LIKE :geridoPorNome)) " +
             "ORDER BY r.criadoEm DESC")
     List<Requisicao> findWithFilters(
             @Param("estado") RequisicaoEstado estado,

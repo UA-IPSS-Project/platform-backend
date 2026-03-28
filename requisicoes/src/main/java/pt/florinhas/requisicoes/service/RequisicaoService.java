@@ -100,24 +100,24 @@ public class RequisicaoService {
             RequisicaoPrioridade prioridade,
             String criadoPorNome,
             String geridoPorNome) {
-        String criadoPorNomeNormalizado = normalizarFiltroTexto(criadoPorNome);
-        String geridoPorNomeNormalizado = normalizarFiltroTexto(geridoPorNome);
+        String criadoPorPattern = prepararPadraoLike(criadoPorNome);
+        String geridoPorPattern = prepararPadraoLike(geridoPorNome);
 
-        return requisicaoRepository.findAll(Sort.by(Sort.Direction.DESC, "criadoEm")).stream()
-            .filter(requisicao -> estado == null || requisicao.getEstado() == estado)
-            .filter(requisicao -> tipo == null || requisicao.getTipo() == tipo)
-            .filter(requisicao -> prioridade == null || requisicao.getPrioridade() == prioridade)
-            .filter(requisicao -> criadoPorNomeNormalizado == null
-                || (requisicao.getCriadoPor() != null
-                    && requisicao.getCriadoPor().getNome() != null
-                    && requisicao.getCriadoPor().getNome().toLowerCase(Locale.ROOT)
-                        .contains(criadoPorNomeNormalizado)))
-            .filter(requisicao -> geridoPorNomeNormalizado == null
-                || (requisicao.getGeridoPor() != null
-                    && requisicao.getGeridoPor().getNome() != null
-                    && requisicao.getGeridoPor().getNome().toLowerCase(Locale.ROOT)
-                        .contains(geridoPorNomeNormalizado)))
-            .toList();
+        return requisicaoRepository.findWithFilters(
+            estado,
+            tipo,
+            prioridade,
+            criadoPorPattern,
+            geridoPorPattern
+        );
+    }
+
+    private String prepararPadraoLike(String filtro) {
+        String normalizado = normalizarFiltroTexto(filtro);
+        if (normalizado == null) {
+            return null;
+        }
+        return "%" + normalizado + "%";
     }
 
     private String normalizarFiltroTexto(String filtro) {
