@@ -481,20 +481,25 @@ public class RequisicaoService {
     }
 
     private void validarTransicaoEstado(RequisicaoEstado estadoAtual, RequisicaoEstado novoEstado) {
-        if (estadoAtual == novoEstado) {
-            throw new IllegalArgumentException("O estado novo tem de ser diferente do estado atual.");
+        if (estadoAtual == novoEstado) return;
+
+        if (estadoAtual == RequisicaoEstado.FECHADO || estadoAtual == RequisicaoEstado.RECUSADO) {
+            throw new IllegalArgumentException("Não é possível alterar o estado de uma requisição finalizada.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ABERTO && (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO)) {
-            return;
+        if (estadoAtual == RequisicaoEstado.ABERTO) {
+            if (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
+                return;
+            }
         }
 
-        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO && novoEstado == RequisicaoEstado.FECHADO) {
-            return;
+        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO) {
+            if (novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
+                return;
+            }
         }
 
-        throw new IllegalArgumentException(
-                "Transição de estado inválida. Fluxos permitidos: ABERTO -> EM_PROGRESSO -> FECHADO ou ABERTO -> FECHADO.");
+        throw new IllegalArgumentException("Transição de estado inválida do estado " + estadoAtual + " para " + novoEstado);
     }
 
     private Funcionario obterFuncionario(Long id) {
