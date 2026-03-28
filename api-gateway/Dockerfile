@@ -7,7 +7,7 @@ COPY . /app
 
 # mount for caching maven dependicies
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn package -pl api-gateway -am -DskipTests
+    mvn clean package -pl api-gateway -am -DskipTests
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
