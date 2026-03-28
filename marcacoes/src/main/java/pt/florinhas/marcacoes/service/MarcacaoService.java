@@ -177,30 +177,9 @@ public class MarcacaoService {
 
         Marcacao saved = marcacaoRepository.save(marcacao);
 
-        // Notify utente about new appointment (Side-effect isolado para evitar rollback)
-        if (utente != null && request.getCriadoPorId() != null) {
-            final Utente finalUtente = utente;
-            final Long finalId = saved.getId();
-            final LocalDateTime finalData = saved.getData();
-
-            if (TransactionSynchronizationManager.isActualTransactionActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
-                        } catch (Exception e) {
-                            log.error("Falha ao notificar utente sobre nova marcação", e);
-                        }
-                    }
-                });
-            } else {
-                try {
-                    notificacaoService.notificarNovaMarcacao(finalUtente, finalId, finalData, false);
-                } catch (Exception e) {
-                    log.error("Falha ao notificar utente sobre nova marcação", e);
-                }
-            }
+        // Notify utente about new appointment
+        if (utente != null) {
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData());
         }
 
         return saved;
@@ -220,11 +199,14 @@ public class MarcacaoService {
                         () -> new EntityNotFoundException("Utente não encontrado com ID: " + request.getUtenteId()));
 
         Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
-        // Centralized duration logic: remota = 15min
         marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
-        // Na remota, criadoPor pode ser null ou não especificado se feito pelo utente.
-        // Se houver necessidade de setar, seria aqui.
-        return marcacaoRepository.save(marcacao);
+        
+        Marcacao saved = marcacaoRepository.save(marcacao);
+
+        // Notify utente about new remote appointment (async)
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData());
+
+        return saved;
     }
 
     private Marcacao criarMarcacaoBase(CriarMarcacaoRequest request, AtendimentoTipo tipo, Utente utente) {
@@ -305,7 +287,11 @@ public class MarcacaoService {
         detalhes.setMarcacao(marcacao);
         marcacao.setMarcacaoBalneario(detalhes);
 
-        return marcacaoRepository.save(marcacao);
+        Marcacao saved = marcacaoRepository.save(marcacao);
+        
+        // No specific utente notification here for now, but we could add if needed
+        
+        return saved;
     }
 
     /**
@@ -447,7 +433,7 @@ public class MarcacaoService {
                     List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
                     for (Funcionario sec : secretarias) {
                         try {
-                            notificacaoService.notificarCancelamentoPeloUtente(sec, utenteAlvo.getNome(),
+                            notificacaoService.notificarCancelamentoPeloUtente(sec.getId(), utenteAlvo.getNome(),
                                     marcacao.getData());
                         } catch (Exception e) {
                             log.error("Erro ao notificar secretaria {}", sec.getId(), e);
@@ -457,7 +443,7 @@ public class MarcacaoService {
                     // Cancelado pela Secretaria -> Notificar Utente
                     try {
                         notificacaoService.notificarCancelamento(
-                                utenteAlvo,
+                                utenteAlvo.getId(),
                                 marcacao.getData(),
                                 request.getMotivoCancelamento());
                     } catch (Exception e) {
@@ -495,7 +481,7 @@ public class MarcacaoService {
         Utente utente = secretariaDetails.getUtente();
 
         try {
-            notificacaoService.notificarDocumentosInvalidos(utente, request.getObservacoes());
+            notificacaoService.notificarDocumentosInvalidos(utente.getId(), request.getObservacoes());
         } catch (Exception e) {
             log.error("Erro ao notificar utente {} sobre documentos inválidos", utente.getId(), e);
         }
@@ -758,6 +744,27 @@ public class MarcacaoService {
 
         if (contagem > 0) {
             log.info("Marcadas {} marcações como INVALIDAS (data < {})", contagem, inicioDoDiaAtual);
+        }
+    }
+
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, false);
+                    } catch (Exception e) {
+                        log.error("Falha ao notificar utente sobre marcação", e);
+                    }
+                }
+            });
+        } else {
+            try {
+                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, false);
+            } catch (Exception e) {
+                log.error("Falha ao notificar utente sobre marcação", e);
+            }
         }
     }
 
