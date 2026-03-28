@@ -62,6 +62,11 @@ public class SmtpEmailService implements EmailService {
                 "Lembrete: tem uma marcacao em 1 dia, no dia " + dateText + ".");
     }
 
+    @Override
+    public void sendGenericEmail(String to, String subject, String body) {
+        sendEmail(to, subject, body);
+    }
+
     private void sendEmail(String to, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
