@@ -241,7 +241,8 @@ public class CalendarioService {
         LocalDateTime inicioBloqueio = LocalDateTime.of(data, inicio);
         LocalDateTime fimBloqueio = LocalDateTime.of(data, fim);
 
-        List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findMarcacoesBetweenDates(inicioBloqueio, fimBloqueio, tipo);
+        List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findMarcacoesBetweenDates(inicioBloqueio, fimBloqueio,
+                tipo);
 
         boolean temMarcacaoAtiva = marcacoesNoPeriodo.stream()
                 .filter(m -> m.getEstado() != EventoEstado.CANCELADO)

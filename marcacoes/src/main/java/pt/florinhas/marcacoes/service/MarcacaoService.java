@@ -140,7 +140,7 @@ public class MarcacaoService {
                 // Enviar email com a password (Side-effect isolado para evitar rollback)
                 final String finalEmail = request.getUtenteEmail();
                 final String finalPassword = rawPassword;
-                
+
                 if (TransactionSynchronizationManager.isActualTransactionActive()) {
                     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                         @Override
@@ -177,7 +177,8 @@ public class MarcacaoService {
 
         Marcacao saved = marcacaoRepository.save(marcacao);
 
-        // Notify utente about new appointment (Side-effect isolado para evitar rollback)
+        // Notify utente about new appointment (Side-effect isolado para evitar
+        // rollback)
         if (utente != null && request.getCriadoPorId() != null) {
             final Utente finalUtente = utente;
             final Long finalId = saved.getId();

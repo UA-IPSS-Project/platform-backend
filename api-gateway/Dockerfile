@@ -2,11 +2,12 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy the entire backend source (parent and all modules)
+# Copiamos o código
 COPY . /app
 
-# Build only the api-gateway module (and its dependencies)
-RUN mvn clean package -pl api-gateway -am -DskipTests
+# mount for caching maven dependicies
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package -pl api-gateway -am -DskipTests
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
