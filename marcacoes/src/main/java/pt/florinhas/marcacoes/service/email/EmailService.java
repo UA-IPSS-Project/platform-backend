@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public interface EmailService {
     void sendPassword(String to, String password);
 
-    void sendAppointmentCreated(String to, LocalDateTime appointmentDateTime);
+    void sendAppointmentCreated(String to, LocalDateTime appointmentDateTime, Long appointmentId, String summary, int durationMinutes);
 
     void sendAppointmentCancelled(String to, String motivo);
 

@@ -146,7 +146,7 @@ public class NotificacaoService {
     // --- Métodos de Negócio (Side-effects, não devem falhar a transação principal) ---
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, boolean isRemote) {
+    public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, int durationMinutes, String summary) {
         String dataFormatada = data.format(DISPLAY_DATE_FORMATTER);
         String mensagem = "Marcacao criada para " + dataFormatada + ".";
         String assunto = "Marcacao Criada";
@@ -160,7 +160,7 @@ public class NotificacaoService {
         criarNotificacao(utilizadorId, assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
         
         utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
-            sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCreated(user.getEmail(), data));
+            sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCreated(user.getEmail(), data, marcacaoId, summary, durationMinutes));
         });
     }
 

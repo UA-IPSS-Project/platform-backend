@@ -179,7 +179,7 @@ public class MarcacaoService {
 
         // Notify utente about new appointment
         if (utente != null) {
-            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData());
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), request.getAssunto());
         }
 
         return saved;
@@ -204,7 +204,7 @@ public class MarcacaoService {
         Marcacao saved = marcacaoRepository.save(marcacao);
 
         // Notify utente about new remote appointment (async)
-        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData());
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), request.getAssunto());
 
         return saved;
     }
@@ -747,13 +747,13 @@ public class MarcacaoService {
         }
     }
 
-    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data) {
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, Integer duration, String summary) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, false);
+                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration != null ? duration : 15, summary);
                     } catch (Exception e) {
                         log.error("Falha ao notificar utente sobre marcação", e);
                     }
@@ -761,7 +761,7 @@ public class MarcacaoService {
             });
         } else {
             try {
-                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, false);
+                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration != null ? duration : 15, summary);
             } catch (Exception e) {
                 log.error("Falha ao notificar utente sobre marcação", e);
             }
