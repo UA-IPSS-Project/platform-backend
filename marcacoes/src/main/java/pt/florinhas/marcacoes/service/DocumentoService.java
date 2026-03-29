@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 
@@ -120,17 +119,11 @@ public class DocumentoService {
 
         // Obter NIF do utente associado à marcação (via MarcacaoSecretaria)
         String nif = null;
-        String tipoMarcacao = null;
         if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
             nif = marcacao.getMarcacaoSecretaria().getUtente().getNif();
-            // Tipo de marcação: usar tipoAtendimento (PRESENCIAL, REMOTO)
-            tipoMarcacao = marcacao.getMarcacaoSecretaria().getTipoAtendimento() != null
-                ? marcacao.getMarcacaoSecretaria().getTipoAtendimento().name()
-                : "SEM_TIPO";
         } else {
             // fallback: usar criador da marcação
             nif = marcacao.getCriadoPor() != null ? marcacao.getCriadoPor().getNif() : "SEM_NIF";
-            tipoMarcacao = "SEM_TIPO";
         }
 
         // Gerar nome original no padrão NIF_ASSUNTO_DATA_UUID.extensão
@@ -148,15 +141,19 @@ public class DocumentoService {
             assunto = "BALNEARIO";
         }
 
-        String nomeOriginal = String.format("%s_%s_%s_%s%s",
+        // Obter a próxima sequência para esta marcação
+        Integer proximaSequencia = documentoRepository.findMaxSequenciaByMarcacaoId(marcacaoId).orElse(0) + 1;
+
+        String nomeOriginal = String.format("%s_%s_%s_DOC%d%s",
             nif != null ? nif : "SEM_NIF",
             assunto,
             dataMarcacao,
-            UUID.randomUUID(),
+            proximaSequencia,
             extensao
         );
-        // Nome armazenado continua sendo UUID.extensão para garantir unicidade
-        String nomeArmazenado = UUID.randomUUID().toString() + extensao;
+
+        // Nome armazenado passa a ser determinístico por marcação: M{ID}_D{SEQ}.extensao
+        String nomeArmazenado = String.format("M%d_D%d%s", marcacaoId, proximaSequencia, extensao);
 
         // Criar diretório organizado por ano/mês
         LocalDate hoje = LocalDate.now();
@@ -189,6 +186,7 @@ public class DocumentoService {
         documento.setTipo(tipo);
         documento.setTamanho(file.getSize());
         documento.setMarcacao(marcacao);
+        documento.setSequencia(proximaSequencia);
 
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);
@@ -389,7 +387,8 @@ public class DocumentoService {
                 documento.getMarcacao().getId(),
                 statObject.etag(),
                 minioLastModified,
-                minioUserMetadata
+                minioUserMetadata,
+                documento.getSequencia()
             );
         } catch (Exception e) {
             throw new ResourceNotFoundException("Erro ao obter metadados do documento: " + e.getMessage());

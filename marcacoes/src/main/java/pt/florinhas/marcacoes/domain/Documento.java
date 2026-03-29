@@ -40,6 +40,13 @@ public class Documento {
     private Long id;
 
     /**
+     * Número sequencial do documento dentro da marcação.
+     * Substitui o UUID para identificação amigável.
+     */
+    @Column(name = "sequencia")
+    private Integer sequencia;
+
+    /**
      * Nome original do ficheiro quando foi enviado.
      */
     @Column(name = "nome_original", nullable = false, length = 255)
