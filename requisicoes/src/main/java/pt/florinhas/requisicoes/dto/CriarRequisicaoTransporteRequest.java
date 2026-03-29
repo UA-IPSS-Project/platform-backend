@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 
 public record CriarRequisicaoTransporteRequest(
@@ -15,7 +15,7 @@ public record CriarRequisicaoTransporteRequest(
         String destino,
         @NotNull LocalDateTime dataHoraSaida,
         @NotNull LocalDateTime dataHoraRegresso,
-        @NotNull @Positive Integer numeroPassageiros,
+        @NotNull @PositiveOrZero Integer numeroPassageiros,
         String condutor,
         List<Long> transporteIds,
         @Deprecated
