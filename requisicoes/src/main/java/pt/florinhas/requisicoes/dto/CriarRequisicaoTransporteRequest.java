@@ -3,6 +3,8 @@ package pt.florinhas.requisicoes.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
@@ -16,8 +18,8 @@ public record CriarRequisicaoTransporteRequest(
         @NotNull LocalDateTime dataHoraSaida,
         @NotNull LocalDateTime dataHoraRegresso,
         @NotNull @PositiveOrZero Integer numeroPassageiros,
-        String condutor,
-        List<Long> transporteIds,
+        @NotBlank String condutor,
+        @NotEmpty List<Long> transporteIds,
         @Deprecated
         Long transporteId) {
 }

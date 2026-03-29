@@ -268,7 +268,7 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 12, 9, 0),
                 LocalDateTime.of(2026, 4, 12, 11, 0),
                 3,
-                null,
+                "Condutor Teste",
                 List.of(90L),
                 null);
 
@@ -298,7 +298,7 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 2,
-                null,
+                "Condutor Teste",
                 null,
                 30L);
 
@@ -319,7 +319,7 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 31L);
 
@@ -341,7 +341,7 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 2,
-                null,
+                "Condutor Teste",
                 null,
                 null);
 
@@ -362,7 +362,7 @@ class RequisicaoServiceTest {
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -385,7 +385,7 @@ class RequisicaoServiceTest {
                 dataHora,
                 dataHora,
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -408,7 +408,7 @@ class RequisicaoServiceTest {
                 agora.minusDays(1),
                 agora.plusDays(1),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -431,7 +431,7 @@ class RequisicaoServiceTest {
                 agora.plusDays(1),
                 agora.minusDays(1),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -454,7 +454,7 @@ class RequisicaoServiceTest {
                 100L,
                 200L,
                 "Janela partida na sala 2",
-                null);
+                List.of());
 
         RequisicaoManutencao resultado = requisicaoService.criarManutencao(request);
 
@@ -475,7 +475,7 @@ class RequisicaoServiceTest {
                 404L,
                 null,
                 "Assunto",
-                null);
+                List.of());
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarManutencao(request));
