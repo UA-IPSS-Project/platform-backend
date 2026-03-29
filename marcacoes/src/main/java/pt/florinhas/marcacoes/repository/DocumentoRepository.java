@@ -1,6 +1,5 @@
 package pt.florinhas.marcacoes.repository;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +48,15 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
      * @return Optional contendo o documento se encontrado
      */
     Optional<Documento> findByNomeArmazenado(String nomeArmazenado);
+
+    /**
+     * Obtém o maior valor de sequência entre os documentos de uma marcação.
+     * 
+     * @param marcacaoId ID da marcação
+     * @return maior sequência encontrada ou Optional vazio
+     */
+    @Query("SELECT MAX(d.sequencia) FROM Documento d WHERE d.marcacao.id = :marcacaoId")
+    Optional<Integer> findMaxSequenciaByMarcacaoId(@Param("marcacaoId") Long marcacaoId);
 
     /**
      * Conta quantos documentos uma marcação possui.

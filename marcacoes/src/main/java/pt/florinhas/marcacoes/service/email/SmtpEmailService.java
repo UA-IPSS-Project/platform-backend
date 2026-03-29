@@ -2,9 +2,6 @@ package pt.florinhas.marcacoes.service.email;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
-import java.util.Base64;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.SimpleMailMessage;
@@ -41,12 +38,46 @@ public class SmtpEmailService implements EmailService {
     }
 
     @Override
-    public void sendAppointmentCreated(String to, LocalDateTime appointmentDateTime) {
+    public void sendAppointmentCreated(String to, LocalDateTime appointmentDateTime, Long appointmentId, String summary, int durationMinutes) {
         String dateText = appointmentDateTime.format(DATE_TIME_FORMATTER);
-        sendEmail(
-                to,
-                "Marcacao Criada",
-                "A sua marcacao foi criada para " + dateText + ".");
+        String subject = "Marcação Criada";
+        String body = "A sua marcação foi criada para " + dateText + ".";
+        
+        // Dynamic filename: marcacao-assunto.ics (lowercase, spaces replaced by hyphens)
+        String safeSummary = summary != null ? summary.toLowerCase().trim().replaceAll("\\s+", "-") : "geral";
+        String fileName = "marcacao-" + safeSummary + ".ics";
+        
+        try {
+            byte[] icsBytes = generateIcs(appointmentId, appointmentDateTime, summary, durationMinutes);
+            sendEmailWithAttachment(to, subject, body, icsBytes, fileName);
+        } catch (Exception e) {
+            log.error("Erro ao gerar ou enviar convite ICS para {}", to, e);
+            // Fallback para email simples se falhar o anexo
+            sendEmail(to, subject, body);
+        }
+    }
+
+    private byte[] generateIcs(Long id, LocalDateTime start, String summary, int duration) {
+        LocalDateTime end = start.plusMinutes(duration);
+        DateTimeFormatter icsFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+        
+        StringBuilder b = new StringBuilder();
+        b.append("BEGIN:VCALENDAR\r\n");
+        b.append("VERSION:2.0\r\n");
+        b.append("PRODID:-//Florinhas do Vouga//NONSGML v1.0//EN\r\n");
+        b.append("METHOD:REQUEST\r\n");
+        b.append("CALSCALE:GREGORIAN\r\n");
+        b.append("BEGIN:VEVENT\r\n");
+        b.append("UID:").append(id).append("@florinhas.pt\r\n");
+        b.append("DTSTAMP:").append(LocalDateTime.now().format(icsFormatter)).append("\r\n");
+        b.append("DTSTART:").append(start.format(icsFormatter)).append("\r\n");
+        b.append("DTEND:").append(end.format(icsFormatter)).append("\r\n");
+        b.append("SUMMARY:").append(summary != null ? summary : "Marcação - Florinhas do Vouga").append("\r\n");
+        b.append("DESCRIPTION:Sua marcação na Florinhas do Vouga está agendada para ").append(start.format(DATE_TIME_FORMATTER)).append(".\r\n");
+        b.append("END:VEVENT\r\n");
+        b.append("END:VCALENDAR\r\n");
+        
+        return b.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     @Override
@@ -84,8 +115,8 @@ public class SmtpEmailService implements EmailService {
             helper.setSubject(subject);
             helper.setText(body);
 
-            // Add the attachment
-            helper.addAttachment(fileName, new ByteArrayResource(attachment));
+            // Add the attachment with explicit MIME type
+            helper.addAttachment(fileName, new ByteArrayResource(attachment), "text/calendar; method=REQUEST; charset=UTF-8");
 
             mailSender.send(message);
             log.info("Email com anexo '{}' enviado para {}", fileName, to);
