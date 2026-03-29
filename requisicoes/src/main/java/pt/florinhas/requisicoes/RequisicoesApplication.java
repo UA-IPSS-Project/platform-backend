@@ -614,6 +614,7 @@ public class RequisicoesApplication {
 				req.setPrioridade(RequisicaoPrioridade.URGENTE);
 				req.setTipo(RequisicaoTipo.MATERIAL);
 				req.setCriadoEm(LocalDateTime.now().minusDays(31));
+				req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
 				req.setTempoLimite(LocalDateTime.now().plusDays(30));
 				req.setCriadoPor(creator);
 
@@ -633,6 +634,7 @@ public class RequisicoesApplication {
 				req.setPrioridade(RequisicaoPrioridade.ALTA);
 				req.setTipo(RequisicaoTipo.TRANSPORTE);
 				req.setCriadoEm(LocalDateTime.now().minusDays(91));
+				req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
 				req.setTempoLimite(LocalDateTime.now().plusDays(30));
 				req.setCriadoPor(creator);
 				req.setDestino("Aveiro, UA");
@@ -657,6 +659,7 @@ public class RequisicoesApplication {
 				req.setPrioridade(RequisicaoPrioridade.MEDIA);
 				req.setTipo(RequisicaoTipo.MANUTENCAO);
 				req.setCriadoEm(LocalDateTime.now().minusDays(181));
+				req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
 				req.setTempoLimite(LocalDateTime.now().plusDays(30));
 				req.setCriadoPor(creator);
 				req.setAssunto("Reparação urgente");
