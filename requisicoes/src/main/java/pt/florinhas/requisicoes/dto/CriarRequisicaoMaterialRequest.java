@@ -1,6 +1,5 @@
 package pt.florinhas.requisicoes.dto;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.validation.Valid;
@@ -12,7 +11,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 public record CriarRequisicaoMaterialRequest(
         String descricao,
         @NotNull RequisicaoPrioridade prioridade,
-        LocalDateTime tempoLimite,
         @NotNull Long criadoPorId,
         Long geridoPorId,
         @NotEmpty List<@Valid ItemMaterialRequest> itens) {

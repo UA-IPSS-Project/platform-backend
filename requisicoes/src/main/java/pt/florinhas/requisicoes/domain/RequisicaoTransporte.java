@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 public class RequisicaoTransporte extends Requisicao {
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = true, length = 255)
     private String destino;
 
     @Column(name = "data_hora_saida", nullable = false)

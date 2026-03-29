@@ -152,7 +152,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido de material",
                 RequisicaoPrioridade.MEDIA,
-                LocalDateTime.of(2026, 3, 1, 10, 0),
                 1L,
                 2L,
                 List.of(
@@ -187,7 +186,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido de material",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 1L,
                 null,
                 List.of(
@@ -209,7 +207,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
-                null,
                 1L,
                 null,
                 List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(30L, 1)));
@@ -234,7 +231,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido de carrinha",
                 RequisicaoPrioridade.ALTA,
-                LocalDateTime.of(2026, 4, 10, 8, 30),
                 10L,
                 20L,
                 "Centro de Dia",
@@ -266,14 +262,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
-                null,
                 10L,
                 null,
                 "Hospital",
                 LocalDateTime.of(2026, 4, 12, 9, 0),
                 LocalDateTime.of(2026, 4, 12, 11, 0),
                 3,
-                null,
+                "Condutor Teste",
                 List.of(90L),
                 null);
 
@@ -297,14 +292,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido compatível",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 2,
-                null,
+                "Condutor Teste",
                 null,
                 30L);
 
@@ -319,14 +313,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 31L);
 
@@ -342,14 +335,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 2,
-                null,
+                "Condutor Teste",
                 null,
                 null);
 
@@ -364,14 +356,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 10, 0),
                 LocalDateTime.of(2026, 4, 13, 9, 0),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -388,14 +379,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
                 dataHora,
                 dataHora,
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -412,14 +402,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
                 agora.minusDays(1),
                 agora.plusDays(1),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -436,14 +425,13 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
                 agora.plusDays(1),
                 agora.minusDays(1),
                 2,
-                null,
+                "Condutor Teste",
                 List.of(30L),
                 null);
 
@@ -463,11 +451,10 @@ class RequisicaoServiceTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "Reparar janela",
                 RequisicaoPrioridade.URGENTE,
-                LocalDateTime.of(2026, 5, 5, 9, 0),
                 100L,
                 200L,
                 "Janela partida na sala 2",
-                null);
+                List.of());
 
         RequisicaoManutencao resultado = requisicaoService.criarManutencao(request);
 
@@ -485,11 +472,10 @@ class RequisicaoServiceTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "Teste",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 404L,
                 null,
                 "Assunto",
-                null);
+                List.of());
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarManutencao(request));
