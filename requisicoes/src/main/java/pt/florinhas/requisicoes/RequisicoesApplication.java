@@ -31,6 +31,12 @@ import pt.florinhas.requisicoes.domain.FuncionarioTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
+import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
+import pt.florinhas.requisicoes.domain.RequisicaoManutencaoItem;
+import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoManutencaoRepository;
 import java.time.LocalDateTime;
 
 @SpringBootApplication
@@ -571,11 +577,14 @@ public class RequisicoesApplication {
 	@Order(4)
 	CommandLineRunner initTestRequisicoes(
 			RequisicaoMaterialRepository requisicaoMaterialRepository,
+			RequisicaoTransporteRepository requisicaoTransporteRepository,
+			RequisicaoManutencaoRepository requisicaoManutencaoRepository,
 			MaterialRepository materialRepository,
+			TransporteRepository transporteRepository,
+			ManutencaoItemRepository manutencaoItemRepository,
 			FuncionarioRepository funcionarioRepository) {
 		return args -> {
 			System.out.println("--- SEEDING TEST REQUISITIONS ---");
-			// Localize or create the specific "Secretaria" user for testing
 			Funcionario creator = funcionarioRepository.findByNif("999999998").orElseGet(() -> {
 				Funcionario f = new Funcionario();
 				f.setNif("999999998");
@@ -587,45 +596,79 @@ public class RequisicoesApplication {
 				return funcionarioRepository.save(f);
 			});
 
-			// Find any material - essential to have Catalog data first
 			Material material = materialRepository.findAll().stream().findFirst().orElse(null);
-			if (material == null) {
-				System.out.println("--- NO MATERIALS FOUND. SEEDING CANCELLED. ---");
+			Transporte transporte = transporteRepository.findAll().stream().findFirst().orElse(null);
+			ManutencaoItem manutencaoItem = manutencaoItemRepository.findAll().stream().findFirst().orElse(null);
+
+			if (material == null || transporte == null || manutencaoItem == null) {
+				System.out.println("--- MISSING BASE DATA (Material/Transporte/ManutencaoItem). SEEDING CANCELLED. ---");
 				return;
 			}
 
-			int[] prazosDiasPassados = { 30, 90, 180 };
-			RequisicaoPrioridade[] prioridades = { RequisicaoPrioridade.URGENTE, RequisicaoPrioridade.ALTA, RequisicaoPrioridade.MEDIA };
-			
-			for (int i = 0; i < prazosDiasPassados.length; i++) {
-				int diasAgo = prazosDiasPassados[i];
-				RequisicaoPrioridade prioridade = prioridades[i];
-				String desc = "Teste de cor relatório - " + diasAgo + " dias";
-				
-				// Check if already exists by description
-				boolean exists = requisicaoMaterialRepository.findAll().stream()
-						.anyMatch(r -> desc.equals(r.getDescricao()));
-				
-				if (!exists) {
-					RequisicaoMaterial req = new RequisicaoMaterial();
-					req.setDescricao(desc);
-					req.setEstado(RequisicaoEstado.ABERTO);
-					req.setPrioridade(prioridade);
-					req.setTipo(RequisicaoTipo.MATERIAL);
-					// Set creation to the past to test report color-coding
-					req.setCriadoEm(LocalDateTime.now().minusDays(diasAgo));
-					req.setTempoLimite(LocalDateTime.now().plusDays(30)); // Deadline in future
-					req.setCriadoPor(creator);
+			// 1. Requisicao Material - 31 dias
+			String descMat = "Teste Relatório Material - 31 dias";
+			if (requisicaoMaterialRepository.findAll().stream().noneMatch(r -> descMat.equals(r.getDescricao()))) {
+				RequisicaoMaterial req = new RequisicaoMaterial();
+				req.setDescricao(descMat);
+				req.setEstado(RequisicaoEstado.ABERTO);
+				req.setPrioridade(RequisicaoPrioridade.URGENTE);
+				req.setTipo(RequisicaoTipo.MATERIAL);
+				req.setCriadoEm(LocalDateTime.now().minusDays(31));
+				req.setTempoLimite(LocalDateTime.now().plusDays(30));
+				req.setCriadoPor(creator);
 
-					// Add 1st item
-					RequisicaoMaterialItem item1 = new RequisicaoMaterialItem();
-					item1.setMaterial(material);
-					item1.setQuantidade(5);
-					req.getItens().add(item1);
-
-					requisicaoMaterialRepository.save(req);
-				}
+				RequisicaoMaterialItem item = new RequisicaoMaterialItem();
+				item.setMaterial(material);
+				item.setQuantidade(10);
+				req.getItens().add(item);
+				requisicaoMaterialRepository.save(req);
 			}
+
+			// 2. Requisicao Transporte - 91 dias
+			String descTransp = "Teste Relatório Transporte - 91 dias";
+			if (requisicaoTransporteRepository.findAll().stream().noneMatch(r -> descTransp.equals(r.getDescricao()))) {
+				RequisicaoTransporte req = new RequisicaoTransporte();
+				req.setDescricao(descTransp);
+				req.setEstado(RequisicaoEstado.ABERTO);
+				req.setPrioridade(RequisicaoPrioridade.ALTA);
+				req.setTipo(RequisicaoTipo.TRANSPORTE);
+				req.setCriadoEm(LocalDateTime.now().minusDays(91));
+				req.setTempoLimite(LocalDateTime.now().plusDays(30));
+				req.setCriadoPor(creator);
+				req.setDestino("Aveiro, UA");
+				req.setDataHoraSaida(LocalDateTime.now().plusDays(1));
+				req.setDataHoraRegresso(LocalDateTime.now().plusDays(1).plusHours(2));
+				req.setNumeroPassageiros(5);
+				req.setTransporte(transporte);
+
+				RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+				item.setTransporte(transporte);
+				item.setRequisicao(req);
+				req.getTransportes().add(item);
+				requisicaoTransporteRepository.save(req);
+			}
+
+			// 3. Requisicao Manutencao - 181 dias
+			String descManut = "Teste Relatório Manutenção - 181 dias";
+			if (requisicaoManutencaoRepository.findAll().stream().noneMatch(r -> descManut.equals(r.getDescricao()))) {
+				RequisicaoManutencao req = new RequisicaoManutencao();
+				req.setDescricao(descManut);
+				req.setEstado(RequisicaoEstado.ABERTO);
+				req.setPrioridade(RequisicaoPrioridade.MEDIA);
+				req.setTipo(RequisicaoTipo.MANUTENCAO);
+				req.setCriadoEm(LocalDateTime.now().minusDays(181));
+				req.setTempoLimite(LocalDateTime.now().plusDays(30));
+				req.setCriadoPor(creator);
+				req.setAssunto("Reparação urgente");
+
+				RequisicaoManutencaoItem item = new RequisicaoManutencaoItem();
+				item.setManutencaoItem(manutencaoItem);
+				item.setRequisicao(req);
+				item.setObservacoes("Verificar infiltração");
+				req.getItens().add(item);
+				requisicaoManutencaoRepository.save(req);
+			}
+
 			System.out.println("--- TEST REQUISITIONS SEEDED SUCCESSFULLY ---");
 		};
 	}
