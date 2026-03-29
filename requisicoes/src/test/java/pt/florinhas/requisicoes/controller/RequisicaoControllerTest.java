@@ -76,14 +76,16 @@ class RequisicaoControllerTest {
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João")).thenReturn(esperado);
+                null,
+                null)).thenReturn(esperado);
 
         List<Requisicao> resultado = requisicaoController.procurar(
                 RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null);
 
         assertSame(esperado, resultado);
         verify(requisicaoService).procurar(
@@ -91,7 +93,8 @@ class RequisicaoControllerTest {
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null);
     }
 
     @Test

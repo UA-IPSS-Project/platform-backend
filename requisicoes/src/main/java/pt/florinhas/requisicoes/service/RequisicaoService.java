@@ -1,6 +1,8 @@
 package pt.florinhas.requisicoes.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -99,16 +101,27 @@ public class RequisicaoService {
             RequisicaoTipo tipo,
             RequisicaoPrioridade prioridade,
             String criadoPorNome,
-            String geridoPorNome) {
+            String dataInicioStr,
+            String dataFimStr) {
         String criadoPorPattern = prepararPadraoLike(criadoPorNome);
-        String geridoPorPattern = prepararPadraoLike(geridoPorNome);
+
+        LocalDateTime dataInicio = null;
+        if (dataInicioStr != null && !dataInicioStr.isBlank()) {
+            dataInicio = LocalDate.parse(dataInicioStr).atStartOfDay();
+        }
+
+        LocalDateTime dataFim = null;
+        if (dataFimStr != null && !dataFimStr.isBlank()) {
+            dataFim = LocalDate.parse(dataFimStr).atTime(LocalTime.MAX);
+        }
 
         return requisicaoRepository.findWithFilters(
             estado,
             tipo,
             prioridade,
             criadoPorPattern,
-            geridoPorPattern
+            dataInicio,
+            dataFim
         );
     }
 

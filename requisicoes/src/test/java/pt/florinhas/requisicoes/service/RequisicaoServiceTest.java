@@ -17,7 +17,6 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
 
 import pt.florinhas.requisicoes.domain.Funcionario;
 import pt.florinhas.requisicoes.domain.Material;
@@ -117,7 +116,8 @@ class RequisicaoServiceTest {
         geridoPor.setNome("João Costa");
         requisicao.setGeridoPor(geridoPor);
 
-        when(requisicaoRepository.findAll(Sort.by(Sort.Direction.DESC, "criadoEm")))
+        when(requisicaoRepository.findWithFilters(
+                any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(requisicao));
 
         List<Requisicao> resultado = requisicaoService.procurar(
@@ -125,12 +125,14 @@ class RequisicaoServiceTest {
                 RequisicaoTipo.MATERIAL,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null);
 
         assertEquals(1, resultado.size());
         assertSame(requisicao, resultado.getFirst());
 
-        verify(requisicaoRepository).findAll(Sort.by(Sort.Direction.DESC, "criadoEm"));
+        verify(requisicaoRepository).findWithFilters(
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test

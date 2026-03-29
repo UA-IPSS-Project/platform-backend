@@ -25,16 +25,18 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             "LEFT JOIN r.criadoPor c " +
             "LEFT JOIN r.geridoPor g " +
             "WHERE " +
-            "(:estado IS NULL OR r.estado = :estado) AND " +
-            "(:tipo IS NULL OR r.tipo = :tipo) AND " +
-            "(:prioridade IS NULL OR r.prioridade = :prioridade) AND " +
+            "(CAST(:estado AS string) IS NULL OR r.estado = :estado) AND " +
+            "(CAST(:tipo AS string) IS NULL OR r.tipo = :tipo) AND " +
+            "(CAST(:prioridade AS string) IS NULL OR r.prioridade = :prioridade) AND " +
             "(:criadoPorNome IS NULL OR LOWER(c.nome) LIKE :criadoPorNome) AND " +
-            "(:geridoPorNome IS NULL OR (g IS NOT NULL AND LOWER(g.nome) LIKE :geridoPorNome)) " +
+            "(CAST(:dataInicio AS timestamp) IS NULL OR r.criadoEm >= :dataInicio) AND " +
+            "(CAST(:dataFim AS timestamp) IS NULL OR r.criadoEm <= :dataFim) " +
             "ORDER BY r.criadoEm DESC")
     List<Requisicao> findWithFilters(
             @Param("estado") RequisicaoEstado estado,
             @Param("tipo") RequisicaoTipo tipo,
             @Param("prioridade") RequisicaoPrioridade prioridade,
             @Param("criadoPorNome") String criadoPorNome,
-            @Param("geridoPorNome") String geridoPorNome);
+            @Param("dataInicio") java.time.LocalDateTime dataInicio,
+            @Param("dataFim") java.time.LocalDateTime dataFim);
 }
