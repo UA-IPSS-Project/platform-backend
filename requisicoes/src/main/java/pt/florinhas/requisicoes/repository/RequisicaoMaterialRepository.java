@@ -9,4 +9,5 @@ import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 public interface RequisicaoMaterialRepository extends JpaRepository<RequisicaoMaterial, Long> {
 
 	boolean existsByItensMaterialId(Long materialId);
+	boolean existsByDescricao(String descricao);
 }
