@@ -16,18 +16,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
-import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
-import pt.florinhas.requisicoes.repository.TipoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
 import pt.florinhas.requisicoes.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoMaterialItem;
 import pt.florinhas.requisicoes.domain.Funcionario;
-import pt.florinhas.requisicoes.domain.FuncionarioTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
@@ -39,6 +36,7 @@ import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoManutencaoRepository;
 import java.time.LocalDateTime;
 
+@lombok.extern.slf4j.Slf4j
 @SpringBootApplication
 public class RequisicoesApplication {
 
@@ -104,14 +102,17 @@ public class RequisicoesApplication {
 
 			Map<String, Material> materiaisExistentes = materialRepository.findAll().stream()
 					.collect(Collectors.toMap(
-							material -> (material.getNome() + "|" + (material.getValorAtributo() != null ? material.getValorAtributo() : "")).toLowerCase(Locale.ROOT),
+							material -> (material.getNome() + "|"
+									+ (material.getValorAtributo() != null ? material.getValorAtributo() : ""))
+									.toLowerCase(Locale.ROOT),
 							Function.identity(),
 							(existing, ignored) -> existing));
 
 			for (MaterialSeed seed : materiaisBase) {
-				String key = (seed.nome() + "|" + (seed.valorAtributo() != null ? seed.valorAtributo() : "")).toLowerCase(Locale.ROOT);
+				String key = (seed.nome() + "|" + (seed.valorAtributo() != null ? seed.valorAtributo() : ""))
+						.toLowerCase(Locale.ROOT);
 				Material existente = materiaisExistentes.get(key);
-				
+
 				if (existente == null) {
 					Material material = new Material();
 					material.setNome(seed.nome());
@@ -127,7 +128,8 @@ public class RequisicoesApplication {
 					existente.setCategoria(seed.categoria());
 					updated = true;
 				}
-				if (seed.atributo() != null && (existente.getAtributo() == null || !existente.getAtributo().equals(seed.atributo()))) {
+				if (seed.atributo() != null
+						&& (existente.getAtributo() == null || !existente.getAtributo().equals(seed.atributo()))) {
 					existente.setAtributo(seed.atributo());
 					updated = true;
 				}
@@ -149,7 +151,6 @@ public class RequisicoesApplication {
 		};
 	}
 
-
 	@Bean
 	@Order(1)
 	CommandLineRunner initTransportes(TransporteRepository transporteRepository) {
@@ -166,15 +167,24 @@ public class RequisicoesApplication {
 			}
 
 			List<TransporteSeed> transportesBase = List.of(
-					new TransporteSeed("V01", "Mini Autocarro", "PESADO_DE_PASSAGEIROS", "Iveco", "70c18", "32-TS-44", LocalDate.of(2017, 10, 26), 31),
-					new TransporteSeed("V02", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Renault", "Master", "61-PX-87", LocalDate.of(2015, 5, 26), 9),
-					new TransporteSeed("V03", "Carrinha", "LIGEIRO_DE_MERCADORIAS", "Renault", "Kangoo", "36-OU-67", LocalDate.of(2014, 6, 25), 3),
-					new TransporteSeed("V04", "Carrinha", "LIGEIRO_DE_MERCADORIAS", "Renault", "Trafic", "79-NV-51", LocalDate.of(2013, 7, 19), 2),
-					new TransporteSeed("V05", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Ford", "Transit", "75-HJ-95", LocalDate.of(2009, 3, 18), 9),
-					new TransporteSeed("V06", "Carrinha", "LIGEIRO_ESPECIAL", "Mercedes", "215 CDI", "43-HD-54", LocalDate.of(2009, 1, 13), 6),
-					new TransporteSeed("V07", "Carro", "LIGEIRO_DE_PASSAGEIROS", "Skoda", "Fabia", "68-ED-26", LocalDate.of(2007, 7, 31), 5),
-					new TransporteSeed("V08", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Renault", "Kangoo-Al", "90-43-LJ", LocalDate.of(1998, 7, 1), 6),
-					new TransporteSeed("V09", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Mercedes", "208 D/30", "54-95-GE", LocalDate.of(1996, 1, 19), 9));
+					new TransporteSeed("V01", "Mini Autocarro", "PESADO_DE_PASSAGEIROS", "Iveco", "70c18", "32-TS-44",
+							LocalDate.of(2017, 10, 26), 31),
+					new TransporteSeed("V02", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Renault", "Master", "61-PX-87",
+							LocalDate.of(2015, 5, 26), 9),
+					new TransporteSeed("V03", "Carrinha", "LIGEIRO_DE_MERCADORIAS", "Renault", "Kangoo", "36-OU-67",
+							LocalDate.of(2014, 6, 25), 3),
+					new TransporteSeed("V04", "Carrinha", "LIGEIRO_DE_MERCADORIAS", "Renault", "Trafic", "79-NV-51",
+							LocalDate.of(2013, 7, 19), 2),
+					new TransporteSeed("V05", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Ford", "Transit", "75-HJ-95",
+							LocalDate.of(2009, 3, 18), 9),
+					new TransporteSeed("V06", "Carrinha", "LIGEIRO_ESPECIAL", "Mercedes", "215 CDI", "43-HD-54",
+							LocalDate.of(2009, 1, 13), 6),
+					new TransporteSeed("V07", "Carro", "LIGEIRO_DE_PASSAGEIROS", "Skoda", "Fabia", "68-ED-26",
+							LocalDate.of(2007, 7, 31), 5),
+					new TransporteSeed("V08", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Renault", "Kangoo-Al", "90-43-LJ",
+							LocalDate.of(1998, 7, 1), 6),
+					new TransporteSeed("V09", "Carrinha", "LIGEIRO_DE_PASSAGEIROS", "Mercedes", "208 D/30", "54-95-GE",
+							LocalDate.of(1996, 1, 19), 9));
 
 			Map<String, Transporte> transportesPorCodigo = transporteRepository.findAll().stream()
 					.filter(transporte -> transporte.getCodigo() != null && !transporte.getCodigo().isBlank())
@@ -582,7 +592,7 @@ public class RequisicoesApplication {
 			ManutencaoItemRepository manutencaoItemRepository,
 			FuncionarioRepository funcionarioRepository) {
 		return args -> {
-			System.out.println("--- SEEDING TEST REQUISITIONS ---");
+			log.info("--- SEEDING TEST REQUISITIONS ---");
 			Funcionario creator = funcionarioRepository.findByNif("999999998").orElseGet(() -> {
 				Funcionario f = new Funcionario();
 				f.setNif("999999998");
@@ -599,13 +609,13 @@ public class RequisicoesApplication {
 			ManutencaoItem manutencaoItem = manutencaoItemRepository.findAll().stream().findFirst().orElse(null);
 
 			if (material == null || transporte == null || manutencaoItem == null) {
-				System.out.println("--- MISSING BASE DATA (Material/Transporte/ManutencaoItem). SEEDING CANCELLED. ---");
+				log.error("--- MISSING BASE DATA (Material/Transporte/ManutencaoItem). SEEDING CANCELLED. ---");
 				return;
 			}
 
 			// 1. Requisicao Material - 31 dias
 			String descMat = "Teste Relatório Material - 31 dias";
-			if (requisicaoMaterialRepository.findAll().stream().noneMatch(r -> descMat.equals(r.getDescricao()))) {
+			if (!requisicaoMaterialRepository.existsByDescricao(descMat)) {
 				RequisicaoMaterial req = new RequisicaoMaterial();
 				req.setDescricao(descMat);
 				req.setEstado(RequisicaoEstado.ABERTO);
@@ -613,7 +623,6 @@ public class RequisicoesApplication {
 				req.setTipo(RequisicaoTipo.MATERIAL);
 				req.setCriadoEm(LocalDateTime.now().minusDays(31));
 				req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
-				req.setTempoLimite(LocalDateTime.now().plusDays(30));
 				req.setCriadoPor(creator);
 
 				RequisicaoMaterialItem item = new RequisicaoMaterialItem();
@@ -625,7 +634,7 @@ public class RequisicoesApplication {
 
 			// 2. Requisicao Transporte - 91 dias
 			String descTransp = "Teste Relatório Transporte - 91 dias";
-			if (requisicaoTransporteRepository.findAll().stream().noneMatch(r -> descTransp.equals(r.getDescricao()))) {
+			if (!requisicaoTransporteRepository.existsByDescricao(descTransp)) {
 				RequisicaoTransporte req = new RequisicaoTransporte();
 				req.setDescricao(descTransp);
 				req.setEstado(RequisicaoEstado.ABERTO);
@@ -633,7 +642,6 @@ public class RequisicoesApplication {
 				req.setTipo(RequisicaoTipo.TRANSPORTE);
 				req.setCriadoEm(LocalDateTime.now().minusDays(91));
 				req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
-				req.setTempoLimite(LocalDateTime.now().plusDays(30));
 				req.setCriadoPor(creator);
 				req.setDestino("Aveiro, UA");
 				req.setDataHoraSaida(LocalDateTime.now().plusDays(1));
@@ -650,7 +658,7 @@ public class RequisicoesApplication {
 
 			// 3. Requisicao Manutencao - 181 dias
 			String descManut = "Teste Relatório Manutenção - 181 dias";
-			if (requisicaoManutencaoRepository.findAll().stream().noneMatch(r -> descManut.equals(r.getDescricao()))) {
+			if (!requisicaoManutencaoRepository.existsByDescricao(descManut)) {
 				RequisicaoManutencao req = new RequisicaoManutencao();
 				req.setDescricao(descManut);
 				req.setEstado(RequisicaoEstado.ABERTO);
@@ -658,7 +666,6 @@ public class RequisicoesApplication {
 				req.setTipo(RequisicaoTipo.MANUTENCAO);
 				req.setCriadoEm(LocalDateTime.now().minusDays(181));
 				req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
-				req.setTempoLimite(LocalDateTime.now().plusDays(30));
 				req.setCriadoPor(creator);
 				req.setAssunto("Reparação urgente");
 
@@ -670,7 +677,7 @@ public class RequisicoesApplication {
 				requisicaoManutencaoRepository.save(req);
 			}
 
-			System.out.println("--- TEST REQUISITIONS SEEDED SUCCESSFULLY ---");
+			log.info("--- TEST REQUISITIONS SEEDED SUCCESSFULLY ---");
 		};
 	}
 

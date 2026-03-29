@@ -163,6 +163,7 @@ public class RequisicaoService {
             RequisicaoMaterialItem requisicaoMaterialItem = new RequisicaoMaterialItem();
             requisicaoMaterialItem.setMaterial(material);
             requisicaoMaterialItem.setQuantidade(item.getValue());
+            requisicaoMaterialItem.setRequisicao(requisicao);
             requisicao.getItens().add(requisicaoMaterialItem);
         }
 
