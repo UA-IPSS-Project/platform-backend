@@ -144,11 +144,11 @@ public class DocumentoService {
         // Obter a próxima sequência para esta marcação
         Integer proximaSequencia = documentoRepository.findMaxSequenciaByMarcacaoId(marcacaoId).orElse(0) + 1;
 
-        String nomeOriginal = String.format("%s_%s_%s_%d%s",
+        String nomeOriginal = String.format("%s_%s_%d_%s%s",
             nif != null ? nif : "SEM_NIF",
             assunto,
-            dataMarcacao,
             proximaSequencia,
+            dataMarcacao,
             extensao
         );
 
