@@ -68,7 +68,11 @@ public abstract class Requisicao {
         if (estado == null) {
             estado = RequisicaoEstado.ABERTO;
         }
-        criadoEm = LocalDateTime.now();
-        ultimaAlteracaoEstadoEm = criadoEm;
+        if (criadoEm == null) {
+            criadoEm = LocalDateTime.now();
+        }
+        if (ultimaAlteracaoEstadoEm == null) {
+            ultimaAlteracaoEstadoEm = criadoEm;
+        }
     }
 }
