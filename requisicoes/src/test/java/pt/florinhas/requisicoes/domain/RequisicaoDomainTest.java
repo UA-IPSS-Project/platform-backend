@@ -8,12 +8,12 @@ import org.junit.jupiter.api.Test;
 class RequisicaoDomainTest {
 
     @Test
-    void onCreate_quandoEstadoNulo_deveDefinirEnviadaEDatas() {
+    void onCreate_quandoEstadoNulo_deveDefinirAbertoEDatas() {
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
 
         requisicao.onCreate();
 
-        assertEquals(RequisicaoEstado.ENVIADA, requisicao.getEstado());
+        assertEquals(RequisicaoEstado.ABERTO, requisicao.getEstado());
         assertNotNull(requisicao.getCriadoEm());
         assertNotNull(requisicao.getUltimaAlteracaoEstadoEm());
     }
@@ -21,11 +21,11 @@ class RequisicaoDomainTest {
     @Test
     void onCreate_quandoEstadoJaDefinido_devePreservarEstado() {
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
-        requisicao.setEstado(RequisicaoEstado.EM_ANALISE);
+        requisicao.setEstado(RequisicaoEstado.EM_PROGRESSO);
 
         requisicao.onCreate();
 
-        assertEquals(RequisicaoEstado.EM_ANALISE, requisicao.getEstado());
+        assertEquals(RequisicaoEstado.EM_PROGRESSO, requisicao.getEstado());
         assertNotNull(requisicao.getCriadoEm());
         assertNotNull(requisicao.getUltimaAlteracaoEstadoEm());
     }

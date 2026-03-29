@@ -17,7 +17,6 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
 
 import pt.florinhas.requisicoes.domain.Funcionario;
 import pt.florinhas.requisicoes.domain.Material;
@@ -97,17 +96,17 @@ class RequisicaoServiceTest {
 
     @Test
     void listarPorEstado_deveDelegarNoRepositorio() {
-        when(requisicaoRepository.findByEstado(RequisicaoEstado.EM_ANALISE)).thenReturn(List.of());
+        when(requisicaoRepository.findByEstado(RequisicaoEstado.EM_PROGRESSO)).thenReturn(List.of());
 
-        requisicaoService.listarPorEstado(RequisicaoEstado.EM_ANALISE);
+        requisicaoService.listarPorEstado(RequisicaoEstado.EM_PROGRESSO);
 
-        verify(requisicaoRepository).findByEstado(RequisicaoEstado.EM_ANALISE);
+        verify(requisicaoRepository).findByEstado(RequisicaoEstado.EM_PROGRESSO);
     }
 
     @Test
     void procurar_deveDelegarFindWithFilters() {
         Requisicao requisicao = new RequisicaoManutencao();
-        requisicao.setEstado(RequisicaoEstado.ENVIADA);
+        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setTipo(RequisicaoTipo.MATERIAL);
         requisicao.setPrioridade(RequisicaoPrioridade.ALTA);
         Funcionario criadoPor = new Funcionario();
@@ -117,20 +116,23 @@ class RequisicaoServiceTest {
         geridoPor.setNome("João Costa");
         requisicao.setGeridoPor(geridoPor);
 
-        when(requisicaoRepository.findAll(Sort.by(Sort.Direction.DESC, "criadoEm")))
+        when(requisicaoRepository.findWithFilters(
+                any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(requisicao));
 
         List<Requisicao> resultado = requisicaoService.procurar(
-                RequisicaoEstado.ENVIADA,
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MATERIAL,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null);
 
         assertEquals(1, resultado.size());
         assertSame(requisicao, resultado.getFirst());
 
-        verify(requisicaoRepository).findAll(Sort.by(Sort.Direction.DESC, "criadoEm"));
+        verify(requisicaoRepository).findWithFilters(
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test
