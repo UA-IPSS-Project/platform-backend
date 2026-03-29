@@ -45,7 +45,6 @@ public class RequisicoesApplication {
 	}
 
 	@Bean
-	@Order(1)
 	CommandLineRunner initMateriais(MaterialRepository materialRepository) {
 		return args -> {
 			record MaterialSeed(String nome, String categoria, String atributo, String valorAtributo) {
