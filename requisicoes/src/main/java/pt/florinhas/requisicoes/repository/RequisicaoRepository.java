@@ -23,7 +23,6 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
 
     @Query("SELECT r FROM Requisicao r " +
             "LEFT JOIN r.criadoPor c " +
-            "LEFT JOIN r.geridoPor g " +
             "WHERE " +
             "(CAST(:estado AS string) IS NULL OR r.estado = :estado) AND " +
             "(CAST(:tipo AS string) IS NULL OR r.tipo = :tipo) AND " +

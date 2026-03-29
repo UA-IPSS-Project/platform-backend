@@ -155,7 +155,6 @@ public class RequisicaoService {
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MATERIAL);
         requisicao.setCriadoPor(criadoPor);
-        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setGeridoPor(null);
 
         for (Map.Entry<Long, Integer> item : itensNormalizados.entrySet()) {
@@ -189,7 +188,6 @@ public class RequisicaoService {
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
-        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setGeridoPor(null);
         requisicao.setDestino(request.destino());
         requisicao.setDataHoraSaida(request.dataHoraSaida());
@@ -249,7 +247,6 @@ public class RequisicaoService {
         requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MANUTENCAO);
         requisicao.setCriadoPor(criadoPor);
-        requisicao.setEstado(RequisicaoEstado.ABERTO);
         requisicao.setGeridoPor(null);
         requisicao.setAssunto(request.assunto());
 
