@@ -43,9 +43,13 @@ public class SmtpEmailService implements EmailService {
         String subject = "Marcação Criada";
         String body = "A sua marcação foi criada para " + dateText + ".";
         
+        // Dynamic filename: marcacao-assunto.ics (lowercase, spaces replaced by hyphens)
+        String safeSummary = summary != null ? summary.toLowerCase().trim().replaceAll("\\s+", "-") : "geral";
+        String fileName = "marcacao-" + safeSummary + ".ics";
+        
         try {
             byte[] icsBytes = generateIcs(appointmentId, appointmentDateTime, summary, durationMinutes);
-            sendEmailWithAttachment(to, subject, body, icsBytes, "convite-marcacao.ics");
+            sendEmailWithAttachment(to, subject, body, icsBytes, fileName);
         } catch (Exception e) {
             log.error("Erro ao gerar ou enviar convite ICS para {}", to, e);
             // Fallback para email simples se falhar o anexo
