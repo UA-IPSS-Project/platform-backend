@@ -152,7 +152,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido de material",
                 RequisicaoPrioridade.MEDIA,
-                LocalDateTime.of(2026, 3, 1, 10, 0),
                 1L,
                 2L,
                 List.of(
@@ -187,7 +186,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido de material",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 1L,
                 null,
                 List.of(
@@ -209,7 +207,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
-                null,
                 1L,
                 null,
                 List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(30L, 1)));
@@ -234,7 +231,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido de carrinha",
                 RequisicaoPrioridade.ALTA,
-                LocalDateTime.of(2026, 4, 10, 8, 30),
                 10L,
                 20L,
                 "Centro de Dia",
@@ -266,7 +262,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
-                null,
                 10L,
                 null,
                 "Hospital",
@@ -297,7 +292,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido compatível",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
@@ -319,7 +313,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
@@ -342,7 +335,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
@@ -364,7 +356,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
@@ -388,7 +379,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
@@ -412,7 +402,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
@@ -436,7 +425,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 10L,
                 null,
                 "Centro",
@@ -463,7 +451,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "Reparar janela",
                 RequisicaoPrioridade.URGENTE,
-                LocalDateTime.of(2026, 5, 5, 9, 0),
                 100L,
                 200L,
                 "Janela partida na sala 2",
@@ -485,7 +472,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "Teste",
                 RequisicaoPrioridade.MEDIA,
-                null,
                 404L,
                 null,
                 "Assunto",

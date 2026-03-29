@@ -102,7 +102,6 @@ class RequisicaoControllerTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "material",
                 RequisicaoPrioridade.MEDIA,
-                LocalDateTime.of(2026, 2, 28, 10, 0),
                 1L,
                 null,
             List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)));
@@ -120,7 +119,6 @@ class RequisicaoControllerTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "transporte",
                 RequisicaoPrioridade.BAIXA,
-                null,
                 1L,
                 null,
             "Porto",
@@ -144,7 +142,6 @@ class RequisicaoControllerTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "manutencao",
                 RequisicaoPrioridade.URGENTE,
-                null,
                 1L,
                 2L,
             "porta",

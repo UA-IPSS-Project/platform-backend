@@ -152,7 +152,6 @@ public class RequisicaoService {
         RequisicaoMaterial requisicao = new RequisicaoMaterial();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
-        requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MATERIAL);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
@@ -185,7 +184,6 @@ public class RequisicaoService {
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
-        requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.TRANSPORTE);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
@@ -244,7 +242,6 @@ public class RequisicaoService {
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
-        requisicao.setTempoLimite(request.tempoLimite());
         requisicao.setTipo(RequisicaoTipo.MANUTENCAO);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
