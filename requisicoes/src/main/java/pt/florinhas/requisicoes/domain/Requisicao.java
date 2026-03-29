@@ -48,8 +48,6 @@ public abstract class Requisicao {
     @Column(nullable = false, length = 40)
     private RequisicaoTipo tipo;
 
-    @Column(name = "tempo_limite")
-    private LocalDateTime tempoLimite;
 
     @ManyToOne
     @JoinColumn(name = "criado_por_id", nullable = false)

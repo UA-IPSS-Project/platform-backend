@@ -102,14 +102,16 @@ public class RequisicoesApplication {
 					new MaterialSeed("Tinteiros", "TECNOLOGIA", "Cor", "Preto"),
 					new MaterialSeed("PenDrive", "TECNOLOGIA", "Capacidade", "32GB"));
 
-			Map<String, Material> materiaisExistentesPorNome = materialRepository.findAll().stream()
+			Map<String, Material> materiaisExistentes = materialRepository.findAll().stream()
 					.collect(Collectors.toMap(
-							material -> material.getNome().toLowerCase(Locale.ROOT),
+							material -> (material.getNome() + "|" + (material.getValorAtributo() != null ? material.getValorAtributo() : "")).toLowerCase(Locale.ROOT),
 							Function.identity(),
 							(existing, ignored) -> existing));
 
 			for (MaterialSeed seed : materiaisBase) {
-				Material existente = materiaisExistentesPorNome.get(seed.nome().toLowerCase(Locale.ROOT));
+				String key = (seed.nome() + "|" + (seed.valorAtributo() != null ? seed.valorAtributo() : "")).toLowerCase(Locale.ROOT);
+				Material existente = materiaisExistentes.get(key);
+				
 				if (existente == null) {
 					Material material = new Material();
 					material.setNome(seed.nome());
@@ -121,16 +123,12 @@ public class RequisicoesApplication {
 				}
 
 				boolean updated = false;
-				if (existente.getCategoria() == null) {
+				if (existente.getCategoria() == null || !existente.getCategoria().equals(seed.categoria())) {
 					existente.setCategoria(seed.categoria());
 					updated = true;
 				}
-				if (existente.getAtributo() == null || existente.getAtributo().isBlank()) {
+				if (seed.atributo() != null && (existente.getAtributo() == null || !existente.getAtributo().equals(seed.atributo()))) {
 					existente.setAtributo(seed.atributo());
-					updated = true;
-				}
-				if (existente.getValorAtributo() == null || existente.getValorAtributo().isBlank()) {
-					existente.setValorAtributo(seed.valorAtributo());
 					updated = true;
 				}
 
