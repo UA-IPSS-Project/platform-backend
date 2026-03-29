@@ -68,7 +68,7 @@ public abstract class Requisicao {
     @PrePersist
     protected void onCreate() {
         if (estado == null) {
-            estado = RequisicaoEstado.ENVIADA;
+            estado = RequisicaoEstado.ABERTO;
         }
         criadoEm = LocalDateTime.now();
         ultimaAlteracaoEstadoEm = criadoEm;

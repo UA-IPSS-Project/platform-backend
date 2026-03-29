@@ -49,12 +49,12 @@ class RequisicaoControllerTest {
     @Test
     void listar_comEstado_deveUsarListarPorEstado() {
         List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.listarPorEstado(RequisicaoEstado.EM_ANALISE)).thenReturn(esperado);
+        when(requisicaoService.listarPorEstado(RequisicaoEstado.EM_PROGRESSO)).thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_ANALISE);
+        List<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).listarPorEstado(RequisicaoEstado.EM_ANALISE);
+        verify(requisicaoService).listarPorEstado(RequisicaoEstado.EM_PROGRESSO);
     }
 
     @Test
@@ -72,26 +72,29 @@ class RequisicaoControllerTest {
     void procurar_deveDelegarNoServiceComTodosOsParametros() {
         List<Requisicao> esperado = List.of(new RequisicaoManutencao());
         when(requisicaoService.procurar(
-                RequisicaoEstado.ENVIADA,
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João")).thenReturn(esperado);
+                null,
+                null)).thenReturn(esperado);
 
         List<Requisicao> resultado = requisicaoController.procurar(
-                RequisicaoEstado.ENVIADA,
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null);
 
         assertSame(esperado, resultado);
         verify(requisicaoService).procurar(
-                RequisicaoEstado.ENVIADA,
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null);
     }
 
     @Test

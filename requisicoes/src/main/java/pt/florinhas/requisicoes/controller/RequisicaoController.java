@@ -58,8 +58,9 @@ public class RequisicaoController {
             @RequestParam(required = false) RequisicaoTipo tipo,
             @RequestParam(required = false) RequisicaoPrioridade prioridade,
             @RequestParam(required = false) String criadoPorNome,
-            @RequestParam(required = false) String geridoPorNome) {
-        return requisicaoService.procurar(estado, tipo, prioridade, criadoPorNome, geridoPorNome);
+            @RequestParam(required = false) String dataInicio,
+            @RequestParam(required = false) String dataFim) {
+        return requisicaoService.procurar(estado, tipo, prioridade, criadoPorNome, dataInicio, dataFim);
     }
 
     @GetMapping("/{id}")

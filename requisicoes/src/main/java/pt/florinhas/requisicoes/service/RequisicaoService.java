@@ -1,6 +1,8 @@
 package pt.florinhas.requisicoes.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -99,25 +101,36 @@ public class RequisicaoService {
             RequisicaoTipo tipo,
             RequisicaoPrioridade prioridade,
             String criadoPorNome,
-            String geridoPorNome) {
-        String criadoPorNomeNormalizado = normalizarFiltroTexto(criadoPorNome);
-        String geridoPorNomeNormalizado = normalizarFiltroTexto(geridoPorNome);
+            String dataInicioStr,
+            String dataFimStr) {
+        String criadoPorPattern = prepararPadraoLike(criadoPorNome);
 
-        return requisicaoRepository.findAll(Sort.by(Sort.Direction.DESC, "criadoEm")).stream()
-            .filter(requisicao -> estado == null || requisicao.getEstado() == estado)
-            .filter(requisicao -> tipo == null || requisicao.getTipo() == tipo)
-            .filter(requisicao -> prioridade == null || requisicao.getPrioridade() == prioridade)
-            .filter(requisicao -> criadoPorNomeNormalizado == null
-                || (requisicao.getCriadoPor() != null
-                    && requisicao.getCriadoPor().getNome() != null
-                    && requisicao.getCriadoPor().getNome().toLowerCase(Locale.ROOT)
-                        .contains(criadoPorNomeNormalizado)))
-            .filter(requisicao -> geridoPorNomeNormalizado == null
-                || (requisicao.getGeridoPor() != null
-                    && requisicao.getGeridoPor().getNome() != null
-                    && requisicao.getGeridoPor().getNome().toLowerCase(Locale.ROOT)
-                        .contains(geridoPorNomeNormalizado)))
-            .toList();
+        LocalDateTime dataInicio = null;
+        if (dataInicioStr != null && !dataInicioStr.isBlank()) {
+            dataInicio = LocalDate.parse(dataInicioStr).atStartOfDay();
+        }
+
+        LocalDateTime dataFim = null;
+        if (dataFimStr != null && !dataFimStr.isBlank()) {
+            dataFim = LocalDate.parse(dataFimStr).atTime(LocalTime.MAX);
+        }
+
+        return requisicaoRepository.findWithFilters(
+            estado,
+            tipo,
+            prioridade,
+            criadoPorPattern,
+            dataInicio,
+            dataFim
+        );
+    }
+
+    private String prepararPadraoLike(String filtro) {
+        String normalizado = normalizarFiltroTexto(filtro);
+        if (normalizado == null) {
+            return null;
+        }
+        return "%" + normalizado + "%";
     }
 
     private String normalizarFiltroTexto(String filtro) {
@@ -478,21 +491,25 @@ public class RequisicaoService {
     }
 
     private void validarTransicaoEstado(RequisicaoEstado estadoAtual, RequisicaoEstado novoEstado) {
-        if (estadoAtual == novoEstado) {
-            throw new IllegalArgumentException("O estado novo tem de ser diferente do estado atual.");
+        if (estadoAtual == novoEstado) return;
+
+        if (estadoAtual == RequisicaoEstado.FECHADO || estadoAtual == RequisicaoEstado.RECUSADO) {
+            throw new IllegalArgumentException("Não é possível alterar o estado de uma requisição finalizada.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ENVIADA && novoEstado == RequisicaoEstado.EM_ANALISE) {
-            return;
+        if (estadoAtual == RequisicaoEstado.ABERTO) {
+            if (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
+                return;
+            }
         }
 
-        if (estadoAtual == RequisicaoEstado.EM_ANALISE
-                && (novoEstado == RequisicaoEstado.ACEITE || novoEstado == RequisicaoEstado.RECUSADA)) {
-            return;
+        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO) {
+            if (novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
+                return;
+            }
         }
 
-        throw new IllegalArgumentException(
-                "Transição de estado inválida. Fluxos permitidos: ENVIADA -> EM_ANALISE -> ACEITE ou ENVIADA -> EM_ANALISE -> RECUSADA.");
+        throw new IllegalArgumentException("Transição de estado inválida do estado " + estadoAtual + " para " + novoEstado);
     }
 
     private Funcionario obterFuncionario(Long id) {
