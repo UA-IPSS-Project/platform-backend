@@ -22,6 +22,16 @@ import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
 import pt.florinhas.requisicoes.repository.TipoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
+import pt.florinhas.requisicoes.repository.FuncionarioRepository;
+import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
+import pt.florinhas.requisicoes.domain.RequisicaoMaterialItem;
+import pt.florinhas.requisicoes.domain.Funcionario;
+import pt.florinhas.requisicoes.domain.FuncionarioTipo;
+import pt.florinhas.requisicoes.domain.RequisicaoEstado;
+import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
+import pt.florinhas.requisicoes.domain.RequisicaoTipo;
+import java.time.LocalDateTime;
 
 @SpringBootApplication
 public class RequisicoesApplication {
@@ -31,6 +41,7 @@ public class RequisicoesApplication {
 	}
 
 	@Bean
+	@Order(1)
 	CommandLineRunner initMateriais(MaterialRepository materialRepository) {
 		return args -> {
 			record MaterialSeed(String nome, String categoria, String atributo, String valorAtributo) {
@@ -553,6 +564,69 @@ public class RequisicoesApplication {
 					}
 				}
 			});
+		};
+	}
+
+	@Bean
+	@Order(4)
+	CommandLineRunner initTestRequisicoes(
+			RequisicaoMaterialRepository requisicaoMaterialRepository,
+			MaterialRepository materialRepository,
+			FuncionarioRepository funcionarioRepository) {
+		return args -> {
+			System.out.println("--- SEEDING TEST REQUISITIONS ---");
+			// Localize or create the specific "Secretaria" user for testing
+			Funcionario creator = funcionarioRepository.findByNif("999999998").orElseGet(() -> {
+				Funcionario f = new Funcionario();
+				f.setNif("999999998");
+				f.setNome("Funcionário Secretaria");
+				f.setEmail("secretaria@florinhasdovouga.pt");
+				f.setTelefone("999999998");
+				f.setTipo(pt.florinhas.requisicoes.domain.FuncionarioTipo.SECRETARIA);
+				f.setActivo(true);
+				return funcionarioRepository.save(f);
+			});
+
+			// Find any material - essential to have Catalog data first
+			Material material = materialRepository.findAll().stream().findFirst().orElse(null);
+			if (material == null) {
+				System.out.println("--- NO MATERIALS FOUND. SEEDING CANCELLED. ---");
+				return;
+			}
+
+			int[] prazosDiasPassados = { 30, 90, 180 };
+			RequisicaoPrioridade[] prioridades = { RequisicaoPrioridade.URGENTE, RequisicaoPrioridade.ALTA, RequisicaoPrioridade.MEDIA };
+			
+			for (int i = 0; i < prazosDiasPassados.length; i++) {
+				int diasAgo = prazosDiasPassados[i];
+				RequisicaoPrioridade prioridade = prioridades[i];
+				String desc = "Teste de cor relatório - " + diasAgo + " dias";
+				
+				// Check if already exists by description
+				boolean exists = requisicaoMaterialRepository.findAll().stream()
+						.anyMatch(r -> desc.equals(r.getDescricao()));
+				
+				if (!exists) {
+					RequisicaoMaterial req = new RequisicaoMaterial();
+					req.setDescricao(desc);
+					req.setEstado(RequisicaoEstado.ABERTO);
+					req.setPrioridade(prioridade);
+					req.setTipo(RequisicaoTipo.MATERIAL);
+					// Set creation to the past to test report color-coding
+					req.setCriadoEm(LocalDateTime.now().minusDays(diasAgo));
+					req.setTempoLimite(LocalDateTime.now().plusDays(30)); // Deadline in future
+					req.setCriadoPor(creator);
+
+					// Add 1st item
+					RequisicaoMaterialItem item1 = new RequisicaoMaterialItem();
+					item1.setMaterial(material);
+					item1.setQuantidade(5);
+					req.getItens().add(item1);
+
+					requisicaoMaterialRepository.save(req);
+				}
+			}
+			System.out.println("--- TEST REQUISITIONS SEEDED SUCCESSFULLY ---");
 		};
 	}
 
