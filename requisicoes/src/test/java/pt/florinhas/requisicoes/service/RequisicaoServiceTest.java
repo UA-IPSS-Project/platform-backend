@@ -453,7 +453,6 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.URGENTE,
                 100L,
                 200L,
-                "Janela partida na sala 2",
                 List.of());
 
         RequisicaoManutencao resultado = requisicaoService.criarManutencao(request);
@@ -461,8 +460,7 @@ class RequisicaoServiceTest {
         assertNotNull(resultado);
         assertEquals(RequisicaoTipo.MANUTENCAO, resultado.getTipo());
         assertSame(criadoPor, resultado.getCriadoPor());
-                assertNull(resultado.getGeridoPor());
-        assertEquals("Janela partida na sala 2", resultado.getAssunto());
+        assertNull(resultado.getGeridoPor());
     }
 
     @Test
@@ -474,7 +472,6 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.MEDIA,
                 404L,
                 null,
-                "Assunto",
                 List.of());
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,

@@ -246,8 +246,6 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.MANUTENCAO);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        requisicao.setAssunto(request.assunto());
-
         RequisicaoManutencao savedRequisicao = requisicaoManutencaoRepository.save(requisicao);
 
         // Process maintenance items if provided
@@ -441,9 +439,6 @@ public class RequisicaoService {
         TipoManutencao tipo = tipoManutencaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de manutenção não encontrado: " + id));
 
-        if (requisicaoManutencaoRepository.existsByAssuntoIgnoreCase(tipo.getNome())) {
-            throw new IllegalArgumentException("Não é possível apagar: tipo está associado a requisições de manutenção.");
-        }
 
         tipoManutencaoRepository.delete(tipo);
     }

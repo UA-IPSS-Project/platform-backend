@@ -666,7 +666,6 @@ public class RequisicoesApplication {
 				req.setCriadoEm(LocalDateTime.now().minusDays(181));
 				req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
 				req.setCriadoPor(creator);
-				req.setAssunto("Reparação urgente");
 
 				RequisicaoManutencaoItem item = new RequisicaoManutencaoItem();
 				item.setManutencaoItem(manutencaoItem);

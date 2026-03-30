@@ -144,8 +144,7 @@ class RequisicaoControllerTest {
                 RequisicaoPrioridade.URGENTE,
                 1L,
                 2L,
-            "porta",
-            List.of());
+                List.of());
         Requisicao resposta = new RequisicaoManutencao();
         when(requisicaoService.criarManutencao(request)).thenReturn((RequisicaoManutencao) resposta);
 
