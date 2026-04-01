@@ -8,7 +8,7 @@
 		<version>3.5.13</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>florinhas.pt</groupId>
+	<groupId>pt.florinhas</groupId>
 	<artifactId>candidaturas</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>

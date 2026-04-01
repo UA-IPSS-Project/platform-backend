@@ -1,4 +1,4 @@
-package florinhas.pt.candidaturas;
+package pt.florinhas.candidaturas;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
