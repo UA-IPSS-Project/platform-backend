@@ -67,7 +67,16 @@ public class FormService {
         return formRepository.findAll();
     }
 
+    
     private boolean isFormValid(Form form) {
-        return form.getName() != null && !form.getName().isEmpty() && form.getSchema() != null && !form.getSchema().isEmpty();
+        if (form.getName() == null || form.getName().isEmpty()) {
+            return false;
+        }
+
+        if (form.getSchema() == null || form.getSchema().isEmpty()) {
+            return false;
+        }
+
+        return true;
     }
 }

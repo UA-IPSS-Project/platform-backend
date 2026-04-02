@@ -1,5 +1,7 @@
 package pt.florinhas.candidaturas.service;
 
+import java.util.List;
+
 // Spring
 import org.springframework.stereotype.Service;
 
@@ -22,6 +24,8 @@ public class CandidaturaService {
             throw new IllegalArgumentException("Candidatura is not valid. FormId and respostas are required.");
         }
 
+        // Necessário validar os campos da candidatur com base no schema do form
+
         return candidaturaRepository.save(candidatura);
     }
 
@@ -38,6 +42,38 @@ public class CandidaturaService {
         return candidaturaRepository.save(candidatura);
     }
 
+    public List<Candidatura> getCandidaturas() {
+        return candidaturaRepository.findAll();
+    }
+
+    public List<Candidatura> getCandidaturasByFormId(String formID) {
+        return candidaturaRepository.findByFormId(formID);
+    }
+
+    public List<Candidatura> getCandidaturasByUserId(Long userID) {
+        return candidaturaRepository.findByCriadoPor(userID);
+    }
+
+    public Candidatura getCandidaturaById(String id) {
+        return candidaturaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Candidatura with id " + id + " does not exist."));    
+    }
+
+    public boolean anexarFicheiros() {
+        // TODO
+        return false;
+    }
+
+    public boolean deleteCandidatura(String id) {
+        if (!candidaturaRepository.existsById(id)) {
+            throw new IllegalArgumentException("Candidatura with id " + id + " does not exist.");
+        }
+
+        candidaturaRepository.deleteById(id);
+        return true;
+    }
+
+    // Verificar se é tem FormId válido e as respostas não estão vazias
     private boolean isCandidaturaValid(Candidatura candidatura) {
         if (candidatura.getFormId() == null || candidatura.getFormId().isEmpty()) {
             return false;

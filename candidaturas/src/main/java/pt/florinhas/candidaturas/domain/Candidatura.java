@@ -30,6 +30,7 @@ public class Candidatura {
 
     private Long criadoPor;
     private Instant criadoEm;
+    
     // Resubmissões
     private Long atualizadoPor;
     private Instant atualizadoEm;
