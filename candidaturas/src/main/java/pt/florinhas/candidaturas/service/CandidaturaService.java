@@ -21,7 +21,8 @@ public class CandidaturaService {
     public Candidatura createCandidatura(Candidatura candidatura) {
 
         if (!isCandidaturaValid(candidatura)) {
-            throw new IllegalArgumentException("Candidatura is not valid. FormId and respostas are required.");
+            System.out.println("Candidatura is not valid. FormId and respostas are required.");
+            return null;
         }
 
         // Necessário validar os campos da candidatur com base no schema do form
@@ -32,11 +33,13 @@ public class CandidaturaService {
     public Candidatura updateCandidatura(String id, Candidatura candidatura) {
 
         if (!isCandidaturaValid(candidatura)) {
-            throw new IllegalArgumentException("Candidatura is not valid. FormId and respostas are required.");
+            System.out.println("Candidatura is not valid. FormId and respostas are required.");
+            return null;
         }
 
         if (!candidaturaRepository.existsById(id)) {
-            throw new IllegalArgumentException("Candidatura with id " + id + " does not exist.");
+            System.out.println("Candidatura with id " + id + " does not exist.");
+            return null;
         }
 
         return candidaturaRepository.save(candidatura);
@@ -55,8 +58,13 @@ public class CandidaturaService {
     }
 
     public Candidatura getCandidaturaById(String id) {
-        return candidaturaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Candidatura with id " + id + " does not exist."));    
+        Candidatura candidatura = candidaturaRepository.findById(id).orElse(null);
+        if (candidatura == null) {
+            System.out.println("Candidatura with id " + id + " does not exist.");
+            return null;
+        }
+        
+        return candidatura;
     }
 
     public boolean anexarFicheiros() {
@@ -66,7 +74,8 @@ public class CandidaturaService {
 
     public boolean deleteCandidatura(String id) {
         if (!candidaturaRepository.existsById(id)) {
-            throw new IllegalArgumentException("Candidatura with id " + id + " does not exist.");
+            System.out.println("Candidatura with id " + id + " does not exist.");
+            return false;
         }
 
         candidaturaRepository.deleteById(id);

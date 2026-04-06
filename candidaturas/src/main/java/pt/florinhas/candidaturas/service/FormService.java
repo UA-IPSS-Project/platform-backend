@@ -22,11 +22,13 @@ public class FormService {
         String formName = form.getName();
 
         if (!isFormValid(form)) {
-            throw new IllegalArgumentException("Form is not valid. Name and schema are required.");
+            System.out.println("Form is not valid. Name and schema are required.");
+            return null;
         }
 
         if (formRepository.existsByName(formName)) {
-            throw new IllegalArgumentException("Form with name " + formName + " already exists.");
+            System.out.println("Form with name " + formName + " already exists.");
+            return null;
         }
 
         return formRepository.save(form);
@@ -36,31 +38,45 @@ public class FormService {
         String formName = form.getName();
 
         if (!formRepository.existsById(id)) {
-            throw new IllegalArgumentException("Form with id " + id + " does not exist.");
+            System.out.println("Form with id " + id + " does not exist.");
+            return null;
         }
 
         if (!isFormValid(form)) {
-            throw new IllegalArgumentException("Form is not valid. Name and schema are required.");
+            System.out.println("Form is not valid. Name and schema are required.");
+            return null;
         }
 
         // Verifico o caso de dar update ao nome do form para um nome que já existe mas com id diferente (outro form)
         if (!formRepository.findByName(formName).getId().equals(id)) {
-            throw new IllegalArgumentException("Form with name " + formName + " already exists.");
+            System.out.println("Form with name " + formName + " already exists.");
+            return null;
         }
 
         return formRepository.save(form);
     }
 
-    public void deleteForm(String id) {
-        if (!formRepository.existsById(id)) {
-            throw new IllegalArgumentException("Form with id " + id + " does not exist.");
+    public boolean deleteForm(String id) {
+        Form form = formRepository.findById(id).orElse(null);
+
+        if (form == null) {
+            System.out.println("Form with id " + id + " does not exist.");
+            return false;
         }
 
         formRepository.deleteById(id);
+        
+        return true;
     }
 
     public Form getFormById(String id) {
-        return formRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Form with id " + id + " does not exist."));
+        Form form = formRepository.findById(id).orElse(null);
+        
+        if (form == null) {
+            System.out.println("Form with id " + id + " does not exist.");
+        }
+        
+        return form;
     }
 
     public List<Form> getForms() {

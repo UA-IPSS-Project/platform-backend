@@ -15,54 +15,114 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/candidaturas")
+@RequestMapping("/api")
 @AllArgsConstructor
 public class CandidaturaController {
     private final CandidaturaService candidaturaService;
     private final FormService formService;
 
     // Forms
-    @GetMapping("")
+    @GetMapping("/forms")
     public ResponseEntity<List<Form>> GetForms() {
-        // TODO
-        return null;
+        List<Form> forms = formService.getForms();
+        return ResponseEntity.ok(forms);
     }
 
-    @PostMapping("")
+    @PostMapping("/forms")
     public ResponseEntity<Form> createForm(@RequestBody Form form) {
-        // TODO
-        return null;
+        Form createdForm = formService.createForm(form);
+        if (createdForm != null) {
+            return ResponseEntity.ok(createdForm);
+        }
+        return ResponseEntity.badRequest().build();
     }
 
-    @PutMapping("path/{id}")
-    public ResponseEntity<Form> putMethodName(@PathVariable String id, @RequestBody Form entity) {
-        // TODO
-        return null;
+    @PutMapping("/forms/{id}")
+    public ResponseEntity<Form> updateForm(@PathVariable String id, @RequestBody Form form) {
+        Form updatedForm = formService.updateForm(id, form);
+        if (updatedForm != null) {
+            return ResponseEntity.ok(updatedForm);
+        }
+        return ResponseEntity.notFound().build();
     }
 
-    @DeleteMapping("path/{id}")
-    public ResponseEntity<String> deleteMethodName(@PathVariable String id) {
-        // TODO
-        return null;
+    @DeleteMapping("/forms/{id}")
+    public ResponseEntity<Void> deleteForm(@PathVariable String id) {
+        if (!formService.deleteForm(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/forms/{id}")
+    public ResponseEntity<Form> getFormByID(@PathVariable String id) {
+        Form form = formService.getFormById(id);
+        if (form != null) {
+            return ResponseEntity.ok(form);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     // Candidaturas
     @GetMapping("/candidaturas")
     public ResponseEntity<List<Candidatura>> getCandidaturas() {
-        // TODO
-        return null;
+        List<Candidatura> candidaturas = candidaturaService.getCandidaturas();
+        return ResponseEntity.ok(candidaturas);
     }
 
     @PostMapping("/candidaturas")
     public ResponseEntity<Candidatura> createCandidatura(@RequestBody Candidatura candidatura
     ) {
-        // TODO
-        return null;
+        Candidatura createdCandidatura = candidaturaService.createCandidatura(candidatura);
+        if (createdCandidatura != null) {
+            return ResponseEntity.ok(createdCandidatura);
+        }
+        return ResponseEntity.badRequest().build();
     }
 
     @PutMapping("/candidaturas/{id}")
     public ResponseEntity<Candidatura> putCandidatura(@PathVariable String id, @RequestBody Candidatura candidatura) {
-        // TODO
-        return null;
+        Candidatura updatedCandidatura = candidaturaService.updateCandidatura(id, candidatura);
+        if (updatedCandidatura != null) {
+            return ResponseEntity.ok(updatedCandidatura);
+        }
+        return ResponseEntity.badRequest().build();
     }
+
+    @DeleteMapping("/candidaturas/{id}")
+    public ResponseEntity<Void> deleteCandidatura(@PathVariable String id) {
+        if (candidaturaService.deleteCandidatura(id)) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/candidaturas/{id}")
+    public ResponseEntity<Candidatura> getCandidaturaByID(@PathVariable String id) {
+        Candidatura candidatura = candidaturaService.getCandidaturaById(id);
+        if (candidatura != null) {
+            return ResponseEntity.ok(candidatura);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/candidaturas/form/{formId}")
+    public ResponseEntity<List<Candidatura>> getCandidaturasByFormID(@PathVariable String formId) {
+        List<Candidatura> candidaturas = candidaturaService.getCandidaturasByFormId(formId);
+        if (candidaturas != null && !candidaturas.isEmpty()) {
+            return ResponseEntity.ok(candidaturas);
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/candidaturas/user/{userId}")
+    public ResponseEntity<List<Candidatura>> getCandidaturasByUserID(@PathVariable Long userId) {
+        List<Candidatura> candidaturas = candidaturaService.getCandidaturasByUserId(userId);
+        if (candidaturas != null && !candidaturas.isEmpty()) {
+            return ResponseEntity.ok(candidaturas);
+        }
+        return ResponseEntity.notFound().build();
+
+    }
+
 }
