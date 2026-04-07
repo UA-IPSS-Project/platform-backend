@@ -24,6 +24,16 @@ public class BalnearioAttendanceStatsDTO {
     private long totalPresencas;
     
     /**
+     * Total number of appointments (all states except maybe cancelled if the logic excludes it).
+     */
+    private long totalMarcacoes;
+
+    /**
+     * Attendances with status FALTOU.
+     */
+    private long totalFaltou;
+
+    /**
      * Attendances grouped by date (for time series charts).
      */
     private List<AttendanceData> presencasPorDia;
