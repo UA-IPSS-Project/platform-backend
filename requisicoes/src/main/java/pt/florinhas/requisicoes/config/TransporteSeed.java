@@ -12,9 +12,11 @@ import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
 
+@Slf4j
 @Component
 @Order(2)
 public class TransporteSeed implements CommandLineRunner {
@@ -29,10 +31,17 @@ public class TransporteSeed implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // 1. Align database constraints
-        jdbcTemplate.execute("ALTER TABLE transporte DROP CONSTRAINT IF EXISTS transporte_categoria_check");
-        jdbcTemplate.execute(
-                "ALTER TABLE transporte ADD CONSTRAINT transporte_categoria_check CHECK (categoria IN ('PESADO_DE_PASSAGEIROS', 'LIGEIRO_DE_PASSAGEIROS', 'LIGEIRO_DE_MERCADORIAS', 'LIGEIRO_ESPECIAL', 'LIGEIRO', 'PESADO', 'PASSAGEIROS', 'ADAPTADO'))");
+        log.info("--- STARTING TRANSPORTE SEED ---");
+
+        // 1. Align database constraints (safely)
+        try {
+            jdbcTemplate.execute("ALTER TABLE transporte DROP CONSTRAINT IF EXISTS transporte_categoria_check");
+            jdbcTemplate.execute(
+                    "ALTER TABLE transporte ADD CONSTRAINT transporte_categoria_check CHECK (categoria IN ('PESADO_DE_PASSAGEIROS', 'LIGEIRO_DE_PASSAGEIROS', 'LIGEIRO_DE_MERCADORIAS', 'LIGEIRO_ESPECIAL', 'LIGEIRO', 'PESADO', 'PASSAGEIROS', 'ADAPTADO'))");
+            log.info("--- Database constraint 'transporte_categoria_check' updated successfully ---");
+        } catch (Exception e) {
+            log.warn("--- Could not update database constraint 'transporte_categoria_check'. This is expected if there is incompatible legacy data: {} ---", e.getMessage());
+        }
 
         // 2. Seed transport catalog
         record TransporteSeedItem(
@@ -71,15 +80,16 @@ public class TransporteSeed implements CommandLineRunner {
                 .collect(Collectors.toMap(
                         transporte -> transporte.getCodigo().toUpperCase(Locale.ROOT),
                         Function.identity(),
-                        (existing, ignored) -> existing));
+                        (existing, replacement) -> existing));
 
         Map<String, Transporte> transportesPorMatricula = transporteRepository.findAll().stream()
                 .filter(transporte -> transporte.getMatricula() != null && !transporte.getMatricula().isBlank())
                 .collect(Collectors.toMap(
                         transporte -> transporte.getMatricula().toUpperCase(Locale.ROOT),
                         Function.identity(),
-                        (existing, ignored) -> existing));
+                        (existing, replacement) -> existing));
 
+        int count = 0;
         for (TransporteSeedItem seed : transportesBase) {
             Transporte transporte = transportesPorCodigo.get(seed.codigo().toUpperCase(Locale.ROOT));
             if (transporte == null) {
@@ -98,9 +108,15 @@ public class TransporteSeed implements CommandLineRunner {
             transporte.setDataMatricula(seed.dataMatricula());
             transporte.setLotacao(seed.lotacao());
 
-            Transporte persisted = transporteRepository.save(transporte);
-            transportesPorCodigo.put(seed.codigo().toUpperCase(Locale.ROOT), persisted);
-            transportesPorMatricula.put(seed.matricula().toUpperCase(Locale.ROOT), persisted);
+            try {
+                Transporte persisted = transporteRepository.save(transporte);
+                transportesPorCodigo.put(seed.codigo().toUpperCase(Locale.ROOT), persisted);
+                transportesPorMatricula.put(seed.matricula().toUpperCase(Locale.ROOT), persisted);
+                count++;
+            } catch (Exception e) {
+                log.error("--- Error saving vehicle {}: {} ---", seed.matricula(), e.getMessage());
+            }
         }
+        log.info("--- TRANSPORTE SEED COMPLETED: {} vehicles processed ---", count);
     }
 }

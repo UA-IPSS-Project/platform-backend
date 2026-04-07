@@ -10,9 +10,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
 
+@Slf4j
 @Component
 @Order(1)
 public class MaterialSeed implements CommandLineRunner {
@@ -25,6 +27,7 @@ public class MaterialSeed implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        log.info("--- STARTING MATERIAL SEED ---");
         record MaterialSeedItem(String nome, String categoria, String atributo, String valorAtributo) {
         }
 
@@ -83,8 +86,9 @@ public class MaterialSeed implements CommandLineRunner {
                                 + (material.getValorAtributo() != null ? material.getValorAtributo() : ""))
                                 .toLowerCase(Locale.ROOT),
                         Function.identity(),
-                        (existing, ignored) -> existing));
+                        (existing, replacement) -> existing)); // Robust merge function
 
+        int count = 0;
         for (MaterialSeedItem seed : materiaisBase) {
             String key = (seed.nome() + "|" + (seed.valorAtributo() != null ? seed.valorAtributo() : ""))
                     .toLowerCase(Locale.ROOT);
@@ -97,6 +101,7 @@ public class MaterialSeed implements CommandLineRunner {
                 material.setAtributo(seed.atributo());
                 material.setValorAtributo(seed.valorAtributo());
                 materialRepository.save(material);
+                count++;
                 continue;
             }
 
@@ -113,7 +118,9 @@ public class MaterialSeed implements CommandLineRunner {
 
             if (updated) {
                 materialRepository.save(existente);
+                count++;
             }
         }
+        log.info("--- MATERIAL SEED COMPLETED: {} materials processed ---", count);
     }
 }

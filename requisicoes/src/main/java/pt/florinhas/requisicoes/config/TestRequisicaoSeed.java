@@ -1,10 +1,14 @@
 package pt.florinhas.requisicoes.config;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.requisicoes.domain.Funcionario;
@@ -23,8 +27,10 @@ import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
 
@@ -33,118 +39,136 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 @Order(4)
 public class TestRequisicaoSeed implements CommandLineRunner {
 
+    private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
     private final RequisicaoTransporteRepository requisicaoTransporteRepository;
     private final RequisicaoManutencaoRepository requisicaoManutencaoRepository;
+    private final FuncionarioRepository funcionarioRepository;
     private final MaterialRepository materialRepository;
     private final TransporteRepository transporteRepository;
     private final ManutencaoItemRepository manutencaoItemRepository;
-    private final FuncionarioRepository funcionarioRepository;
+    private final RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository;
 
     public TestRequisicaoSeed(
+            RequisicaoRepository requisicaoRepository,
             RequisicaoMaterialRepository requisicaoMaterialRepository,
             RequisicaoTransporteRepository requisicaoTransporteRepository,
             RequisicaoManutencaoRepository requisicaoManutencaoRepository,
+            FuncionarioRepository funcionarioRepository,
             MaterialRepository materialRepository,
             TransporteRepository transporteRepository,
             ManutencaoItemRepository manutencaoItemRepository,
-            FuncionarioRepository funcionarioRepository) {
+            RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository) {
+        this.requisicaoRepository = requisicaoRepository;
         this.requisicaoMaterialRepository = requisicaoMaterialRepository;
         this.requisicaoTransporteRepository = requisicaoTransporteRepository;
         this.requisicaoManutencaoRepository = requisicaoManutencaoRepository;
+        this.funcionarioRepository = funcionarioRepository;
         this.materialRepository = materialRepository;
         this.transporteRepository = transporteRepository;
         this.manutencaoItemRepository = manutencaoItemRepository;
-        this.funcionarioRepository = funcionarioRepository;
+        this.requisicaoManutencaoItemRepository = requisicaoManutencaoItemRepository;
     }
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
-        log.info("--- SEEDING TEST REQUISITIONS ---");
-        
-        Funcionario creator = funcionarioRepository.findByNif("999999998").orElseGet(() -> {
-            Funcionario f = new Funcionario();
-            f.setNif("999999998");
-            f.setNome("Funcionário Secretaria");
-            f.setEmail("secretaria@florinhasdovouga.pt");
-            f.setTelefone("999999998");
-            f.setTipo(pt.florinhas.requisicoes.domain.FuncionarioTipo.SECRETARIA);
-            f.setActivo(true);
-            return funcionarioRepository.save(f);
-        });
+        log.info("--- STARTING TEST REQUISICAO SEED ---");
 
-        Material material = materialRepository.findAll().stream().findFirst().orElse(null);
-        Transporte transporte = transporteRepository.findAll().stream().findFirst().orElse(null);
-        ManutencaoItem manutencaoItem = manutencaoItemRepository.findAll().stream().findFirst().orElse(null);
-
-        if (material == null || transporte == null || manutencaoItem == null) {
-            log.error("--- MISSING BASE DATA (Material/Transporte/ManutencaoItem). SEEDING CANCELLED. ---");
+        if (requisicaoRepository.count() > 0) {
+            log.info("--- Test requisitions already exist, skipping ---");
             return;
         }
 
-        // 1. Requisicao Material - 31 dias
-        String descMat = "Teste Relatório Material - 31 dias";
-        if (!requisicaoMaterialRepository.existsByDescricao(descMat)) {
-            RequisicaoMaterial req = new RequisicaoMaterial();
-            req.setDescricao(descMat);
-            req.setEstado(RequisicaoEstado.ABERTO);
-            req.setPrioridade(RequisicaoPrioridade.URGENTE);
-            req.setTipo(RequisicaoTipo.MATERIAL);
-            req.setCriadoEm(LocalDateTime.now().minusDays(31));
-            req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
-            req.setCriadoPor(creator);
+        // 1. Ensure employee for seeding exists
+        Funcionario ana = funcionarioRepository.findByNif("123456789")
+                .orElseGet(() -> {
+                    Funcionario f = new Funcionario();
+                    f.setNome("Ana Silva");
+                    f.setNif("123456789");
+                    f.setEmail("ana.silva@florinhas.pt");
+                    f.setActivo(true);
+                    return funcionarioRepository.save(f);
+                });
 
-            RequisicaoMaterialItem item = new RequisicaoMaterialItem();
-            item.setMaterial(material);
-            item.setQuantidade(10);
-            req.getItens().add(item);
+        List<Material> materiais = materialRepository.findAll();
+        List<Transporte> transportes = transporteRepository.findAll();
+        List<ManutencaoItem> items = manutencaoItemRepository.findAll();
+
+        if (materiais.isEmpty() || transportes.isEmpty() || items.isEmpty()) {
+            log.warn("--- Basic catalogs are not seeded yet. Skipping test requisitions. ---");
+            return;
+        }
+
+        Random random = new Random();
+
+        // 2. Create Material Requisitions
+        for (int i = 1; i <= 5; i++) {
+            RequisicaoMaterial req = new RequisicaoMaterial();
+            req.setTipo(RequisicaoTipo.MATERIAL);
+            req.setDescricao("Requisição de material de teste " + i);
+            req.setPrioridade(RequisicaoPrioridade.MEDIA);
+            req.setEstado(RequisicaoEstado.values()[random.nextInt(RequisicaoEstado.values().length)]);
+            req.setCriadoPor(ana);
+            req.setCriadoEm(LocalDateTime.now().minusDays(random.nextInt(30)));
+            req.setItens(new ArrayList<>());
+
+            for (int j = 0; j < 2; j++) {
+                RequisicaoMaterialItem item = new RequisicaoMaterialItem();
+                item.setMaterial(materiais.get(random.nextInt(materiais.size())));
+                item.setQuantidade(random.nextInt(10) + 1);
+                item.setRequisicao(req);
+                req.getItens().add(item);
+            }
             requisicaoMaterialRepository.save(req);
         }
 
-        // 2. Requisicao Transporte - 91 dias
-        String descTransp = "Teste Relatório Transporte - 91 dias";
-        if (!requisicaoTransporteRepository.existsByDescricao(descTransp)) {
+        // 3. Create Transport Requisitions
+        for (int i = 1; i <= 5; i++) {
             RequisicaoTransporte req = new RequisicaoTransporte();
-            req.setDescricao(descTransp);
-            req.setEstado(RequisicaoEstado.ABERTO);
-            req.setPrioridade(RequisicaoPrioridade.ALTA);
             req.setTipo(RequisicaoTipo.TRANSPORTE);
-            req.setCriadoEm(LocalDateTime.now().minusDays(91));
-            req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
-            req.setCriadoPor(creator);
-            req.setDestino("Aveiro, UA");
-            req.setDataHoraSaida(LocalDateTime.now().plusDays(1));
-            req.setDataHoraRegresso(LocalDateTime.now().plusDays(1).plusHours(2));
-            req.setNumeroPassageiros(5);
-            req.setTransporte(transporte);
+            req.setDescricao("Requisição de transporte de teste " + i);
+            req.setPrioridade(RequisicaoPrioridade.MEDIA);
+            req.setEstado(RequisicaoEstado.values()[random.nextInt(RequisicaoEstado.values().length)]);
+            req.setCriadoPor(ana);
+            req.setCriadoEm(LocalDateTime.now().minusDays(random.nextInt(30)));
+            req.setDestino("Destino de teste " + i);
+            req.setDataHoraSaida(req.getCriadoEm().plusDays(1));
+            req.setDataHoraRegresso(req.getDataHoraSaida().plusHours(2));
+            req.setNumeroPassageiros(random.nextInt(20) + 1);
+            req.setTransporte(transportes.get(random.nextInt(transportes.size())));
+            req.setTransportes(new ArrayList<>());
 
-            RequisicaoTransporteItem item = new RequisicaoTransporteItem();
-            item.setTransporte(transporte);
-            item.setRequisicao(req);
-            req.getTransportes().add(item);
+            for (int j = 0; j < 1; j++) {
+                RequisicaoTransporteItem item = new RequisicaoTransporteItem();
+                item.setTransporte(transportes.get(random.nextInt(transportes.size())));
+                item.setRequisicao(req);
+                req.getTransportes().add(item);
+            }
             requisicaoTransporteRepository.save(req);
         }
 
-        // 3. Requisicao Manutencao - 181 dias
-        String descManut = "Teste Relatório Manutenção - 181 dias";
-        if (!requisicaoManutencaoRepository.existsByDescricao(descManut)) {
+        // 4. Create Maintenance Requisitions
+        for (int i = 1; i <= 5; i++) {
             RequisicaoManutencao req = new RequisicaoManutencao();
-            req.setDescricao(descManut);
-            req.setEstado(RequisicaoEstado.ABERTO);
-            req.setPrioridade(RequisicaoPrioridade.MEDIA);
             req.setTipo(RequisicaoTipo.MANUTENCAO);
-            req.setCriadoEm(LocalDateTime.now().minusDays(181));
-            req.setUltimaAlteracaoEstadoEm(req.getCriadoEm());
-            req.setCriadoPor(creator);
+            req.setDescricao("Requisição de manutenção de teste " + i);
+            req.setPrioridade(RequisicaoPrioridade.ALTA);
+            req.setEstado(RequisicaoEstado.values()[random.nextInt(RequisicaoEstado.values().length)]);
+            req.setCriadoPor(ana);
+            req.setCriadoEm(LocalDateTime.now().minusDays(random.nextInt(30)));
 
-            RequisicaoManutencaoItem item = new RequisicaoManutencaoItem();
-            item.setManutencaoItem(manutencaoItem);
-            item.setRequisicao(req);
-            item.setObservacoes("Verificar infiltração");
-            req.getItens().add(item);
-            requisicaoManutencaoRepository.save(req);
+            RequisicaoManutencao saved = requisicaoManutencaoRepository.save(req);
+
+            for (int j = 0; j < 3; j++) {
+                RequisicaoManutencaoItem item = new RequisicaoManutencaoItem();
+                item.setRequisicao(saved);
+                item.setManutencaoItem(items.get(random.nextInt(items.size())));
+                item.setObservacoes("Observação de teste " + j);
+                requisicaoManutencaoItemRepository.save(item);
+            }
         }
-
-        log.info("--- TEST REQUISITIONS SEEDED SUCCESSFULLY ---");
+        
+        log.info("--- TEST REQUISICAO SEED COMPLETED ---");
     }
 }
