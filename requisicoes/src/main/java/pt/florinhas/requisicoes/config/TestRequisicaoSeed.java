@@ -33,9 +33,11 @@ import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
+import org.springframework.context.annotation.Profile;
 
 @Slf4j
 @Component
+@Profile({"dev", "test"})
 @Order(4)
 public class TestRequisicaoSeed implements CommandLineRunner {
 
