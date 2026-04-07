@@ -4,5 +4,6 @@ public enum ManutencaoCategoria {
     CATL,
     RC,
     PRE_ESCOLAR,
-    CRECHE
+    CRECHE,
+    VEICULOS
 }

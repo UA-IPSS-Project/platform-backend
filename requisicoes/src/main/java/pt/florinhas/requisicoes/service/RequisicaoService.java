@@ -141,8 +141,8 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoMaterial criarMaterial(CriarRequisicaoMaterialRequest request) {
-        Funcionario criadoPor = obterFuncionario(request.criadoPorId());
+    public RequisicaoMaterial criarMaterial(CriarRequisicaoMaterialRequest request, Long authenticatedUtilizadorId) {
+        Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         Map<Long, Integer> itensNormalizados = new LinkedHashMap<>();
         for (CriarRequisicaoMaterialRequest.ItemMaterialRequest item : request.itens()) {
@@ -171,10 +171,10 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
+    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request, Long authenticatedUtilizadorId) {
         List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
         validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
-        Funcionario criadoPor = obterFuncionario(request.criadoPorId());
+        Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         List<Transporte> transportesSelecionados = transporteIds.stream()
                 .distinct()
@@ -237,8 +237,8 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request) {
-        Funcionario criadoPor = obterFuncionario(request.criadoPorId());
+    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request, Long authenticatedUtilizadorId) {
+        Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
@@ -246,26 +246,30 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.MANUTENCAO);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        requisicao.setAssunto(request.assunto());
 
-        RequisicaoManutencao savedRequisicao = requisicaoManutencaoRepository.save(requisicao);
-
-        // Process maintenance items if provided
+        // Build items list before saving to benefit from CascadeType.ALL
         if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
             for (var itemRequest : request.manutencaoItens()) {
                 ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
-                        .orElseThrow(() -> new IllegalArgumentException("ManutencaoItem not found: " + itemRequest.itemId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + itemRequest.itemId()));
                 
                 RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
-                requisicaoItem.setRequisicao(savedRequisicao);
+                requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
                 requisicaoItem.setManutencaoItem(item);
                 requisicaoItem.setObservacoes(itemRequest.observacoes());
-                
-                requisicaoManutencaoItemRepository.save(requisicaoItem);
+
+                if (itemRequest.transporteId() != null) {
+                    Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + itemRequest.transporteId()));
+                    requisicaoItem.setTransporte(transporte);
+                }
+
+                requisicao.getItens().add(requisicaoItem);
             }
         }
 
-        return savedRequisicao;
+        // Single save operation handles all items via CascadeType.ALL
+        return requisicaoManutencaoRepository.save(requisicao);
     }
 
     @Transactional
@@ -441,9 +445,6 @@ public class RequisicaoService {
         TipoManutencao tipo = tipoManutencaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de manutenção não encontrado: " + id));
 
-        if (requisicaoManutencaoRepository.existsByAssuntoIgnoreCase(tipo.getNome())) {
-            throw new IllegalArgumentException("Não é possível apagar: tipo está associado a requisições de manutenção.");
-        }
 
         tipoManutencaoRepository.delete(tipo);
     }

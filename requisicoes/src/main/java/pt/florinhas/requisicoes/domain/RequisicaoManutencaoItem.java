@@ -32,6 +32,10 @@ public class RequisicaoManutencaoItem {
     @JoinColumn(name = "requisicao_id", nullable = false)
     private RequisicaoManutencao requisicao;
 
+    @ManyToOne
+    @JoinColumn(name = "transporte_id")
+    private Transporte transporte;
+
     @Column(length = 255)
     private String observacoes;
 }
