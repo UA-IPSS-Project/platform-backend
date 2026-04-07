@@ -63,14 +63,16 @@ public class TransporteSeed implements CommandLineRunner {
                 new TransporteSeedItem("V09", "Carrinha", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Mercedes", "208 D/30", "54-95-GE",
                         LocalDate.of(1996, 1, 19), 9));
 
-        Map<String, Transporte> transportesPorCodigo = transporteRepository.findAll().stream()
+        List<Transporte> allTransportes = transporteRepository.findAll();
+
+        Map<String, Transporte> transportesPorCodigo = allTransportes.stream()
                 .filter(transporte -> transporte.getCodigo() != null && !transporte.getCodigo().isBlank())
                 .collect(Collectors.toMap(
                         transporte -> transporte.getCodigo().toUpperCase(Locale.ROOT),
                         Function.identity(),
                         (existing, replacement) -> existing));
 
-        Map<String, Transporte> transportesPorMatricula = transporteRepository.findAll().stream()
+        Map<String, Transporte> transportesPorMatricula = allTransportes.stream()
                 .filter(transporte -> transporte.getMatricula() != null && !transporte.getMatricula().isBlank())
                 .collect(Collectors.toMap(
                         transporte -> transporte.getMatricula().toUpperCase(Locale.ROOT),
