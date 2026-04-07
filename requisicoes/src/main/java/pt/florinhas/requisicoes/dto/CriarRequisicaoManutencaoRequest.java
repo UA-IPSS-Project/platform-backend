@@ -10,7 +10,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 public record CriarRequisicaoManutencaoRequest(
         String descricao,
         @NotNull RequisicaoPrioridade prioridade,
-        @NotNull Long criadoPorId,
         Long geridoPorId,
         @NotNull @NotEmpty List<@Valid ManutencaoItemRequest> manutencaoItens) {
 }

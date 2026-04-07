@@ -12,7 +12,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 public record CriarRequisicaoTransporteRequest(
         String descricao,
         @NotNull RequisicaoPrioridade prioridade,
-        @NotNull Long criadoPorId,
         Long geridoPorId,
         String destino,
         @NotNull LocalDateTime dataHoraSaida,

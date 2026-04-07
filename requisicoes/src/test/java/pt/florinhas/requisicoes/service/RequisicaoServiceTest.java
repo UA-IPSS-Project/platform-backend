@@ -152,13 +152,12 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido de material",
                 RequisicaoPrioridade.MEDIA,
-                1L,
                 2L,
                 List.of(
                         new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
                         new CriarRequisicaoMaterialRequest.ItemMaterialRequest(4L, 2)));
 
-        RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, request.criadoPorId());
+        RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, 1L);
 
         assertEquals("Pedido de material", resultado.getDescricao());
         assertEquals(RequisicaoPrioridade.MEDIA, resultado.getPrioridade());
@@ -186,13 +185,12 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido de material",
                 RequisicaoPrioridade.MEDIA,
-                1L,
                 null,
                 List.of(
                         new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
                         new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 8)));
 
-        RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, request.criadoPorId());
+        RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, 1L);
 
         assertEquals(1, resultado.getItens().size());
         assertEquals(8, resultado.getItens().getFirst().getQuantidade());
@@ -207,12 +205,11 @@ class RequisicaoServiceTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
-                1L,
                 null,
                 List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(30L, 1)));
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> requisicaoService.criarMaterial(request, request.criadoPorId()));
+                () -> requisicaoService.criarMaterial(request, 1L));
 
         assertEquals("Material não encontrado: 30", exception.getMessage());
     }
@@ -231,7 +228,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido de carrinha",
                 RequisicaoPrioridade.ALTA,
-                10L,
                 20L,
                 "Centro de Dia",
                 LocalDateTime.of(2026, 4, 11, 9, 0),
@@ -241,7 +237,7 @@ class RequisicaoServiceTest {
                 List.of(30L),
                 null);
 
-        RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, request.criadoPorId());
+        RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
 
         assertEquals(RequisicaoTipo.TRANSPORTE, resultado.getTipo());
         assertSame(criadoPor, resultado.getCriadoPor());
@@ -262,7 +258,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
-                10L,
                 null,
                 "Hospital",
                 LocalDateTime.of(2026, 4, 12, 9, 0),
@@ -273,7 +268,7 @@ class RequisicaoServiceTest {
                 null);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> requisicaoService.criarTransporte(request, request.criadoPorId()));
+                () -> requisicaoService.criarTransporte(request, 10L));
 
         assertEquals("Transporte não encontrado: 90", exception.getMessage());
     }
@@ -292,7 +287,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido compatível",
                 RequisicaoPrioridade.MEDIA,
-                10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 9, 0),
@@ -302,7 +296,7 @@ class RequisicaoServiceTest {
                 null,
                 30L);
 
-        RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, request.criadoPorId());
+        RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
 
         assertSame(transporte, resultado.getTransporte());
         assertEquals(1, resultado.getTransportes().size());
@@ -313,7 +307,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 9, 0),
@@ -324,7 +317,7 @@ class RequisicaoServiceTest {
                 31L);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request, request.criadoPorId()));
+                () -> requisicaoService.criarTransporte(request, 10L));
 
         assertEquals("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.",
                 exception.getMessage());
@@ -335,7 +328,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 9, 0),
@@ -346,7 +338,7 @@ class RequisicaoServiceTest {
                 null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request, request.criadoPorId()));
+                () -> requisicaoService.criarTransporte(request, 10L));
 
         assertEquals("É obrigatório indicar pelo menos um transporte.", exception.getMessage());
     }
@@ -356,7 +348,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                10L,
                 null,
                 "Centro",
                 LocalDateTime.of(2026, 4, 13, 10, 0),
@@ -367,7 +358,7 @@ class RequisicaoServiceTest {
                 null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request, request.criadoPorId()));
+                () -> requisicaoService.criarTransporte(request, 10L));
 
         assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
     }
@@ -379,7 +370,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                10L,
                 null,
                 "Centro",
                 dataHora,
@@ -390,7 +380,7 @@ class RequisicaoServiceTest {
                 null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request, request.criadoPorId()));
+                () -> requisicaoService.criarTransporte(request, 10L));
 
         assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.", exception.getMessage());
     }
@@ -402,7 +392,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                10L,
                 null,
                 "Centro",
                 agora.minusDays(1),
@@ -413,7 +402,7 @@ class RequisicaoServiceTest {
                 null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request, request.criadoPorId()));
+                () -> requisicaoService.criarTransporte(request, 10L));
 
         assertEquals("A data/hora de saída não pode estar no passado.", exception.getMessage());
     }
@@ -425,7 +414,6 @@ class RequisicaoServiceTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
-                10L,
                 null,
                 "Centro",
                 agora.plusDays(1),
@@ -436,7 +424,7 @@ class RequisicaoServiceTest {
                 null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> requisicaoService.criarTransporte(request, request.criadoPorId()));
+                () -> requisicaoService.criarTransporte(request, 10L));
 
         assertEquals("A data/hora de regresso não pode estar no passado.", exception.getMessage());
     }
@@ -451,11 +439,10 @@ class RequisicaoServiceTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "Reparar janela",
                 RequisicaoPrioridade.URGENTE,
-                100L,
                 200L,
                 List.of());
 
-        RequisicaoManutencao resultado = requisicaoService.criarManutencao(request, request.criadoPorId());
+        RequisicaoManutencao resultado = requisicaoService.criarManutencao(request, 100L);
 
         assertNotNull(resultado);
         assertEquals(RequisicaoTipo.MANUTENCAO, resultado.getTipo());
@@ -470,12 +457,11 @@ class RequisicaoServiceTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "Teste",
                 RequisicaoPrioridade.MEDIA,
-                404L,
                 null,
                 List.of());
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> requisicaoService.criarManutencao(request, request.criadoPorId()));
+                () -> requisicaoService.criarManutencao(request, 404L));
 
         assertEquals("Funcionário não encontrado: 404", exception.getMessage());
     }
