@@ -30,6 +30,6 @@ public class WebSocketUserPrincipal implements Principal {
                 .map(String.class::cast)
                 .toList();
         }
-        return null;
+        return List.of();
     }
 }
