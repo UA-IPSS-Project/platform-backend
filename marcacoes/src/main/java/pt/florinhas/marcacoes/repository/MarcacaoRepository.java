@@ -178,4 +178,23 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp", countQuery = "SELECT COUNT(m) FROM Marcacao m")
         Page<Marcacao> findAllWithRelations(Pageable pageable);
+    // Attendance statistics for Balneário
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT CAST(m.data AS LocalDate), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY CAST(m.data AS LocalDate) " +
+            "ORDER BY CAST(m.data AS LocalDate)")
+    List<Object[]> findAttendanceByDay(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT HOUR(m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY HOUR(m.data) " +
+            "ORDER BY HOUR(m.data)")
+    List<Object[]> findAttendanceByHour(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 }

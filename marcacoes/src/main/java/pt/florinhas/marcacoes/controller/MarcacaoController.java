@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
+import pt.florinhas.marcacoes.dto.BalnearioAttendanceStatsDTO;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
@@ -174,7 +175,7 @@ public class MarcacaoController {
      * return dados básicos da marcação criada
      */
     @PostMapping("/balneario")
-    public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
+        public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
             @Valid @RequestBody CriarMarcacaoBalnearioRequest request) {
 
         Marcacao marcacao = marcacaoService.criarMarcacaoBalneario(request);
@@ -182,30 +183,14 @@ public class MarcacaoController {
         String durationLabel = "Duração da marcação";
         String durationBalneario = String.format("Duração padrão para balneário: %d minutos", marcacao.getDuration());
         return ResponseEntity.ok().body(Map.of(
-                "id", marcacao.getId().toString(),
-                "data", marcacao.getData().toString(),
-                "estado", marcacao.getEstado().toString(),
-                "duration", String.valueOf(marcacao.getDuration()),
-                "durationLabel", durationLabel,
-                "durationBalneario", durationBalneario,
-                "message", "Marcação de balneário registada com sucesso"));
-    }
-
-    /**
-     * Registo direto de presença no Balneário (Walk-in).
-     */
-    @PostMapping("/balneario/presenca-rapida")
-    public ResponseEntity<Map<String, String>> criarPresencaRapidaBalneario(
-            @Valid @RequestBody CriarMarcacaoBalnearioRequest request) {
-
-        Marcacao marcacao = marcacaoService.registrarPresencaRapida(request);
-
-        return ResponseEntity.ok().body(Map.of(
-                "id", marcacao.getId().toString(),
-                "data", marcacao.getData().toString(),
-                "estado", marcacao.getEstado().toString(),
-                "message", "Presença de balneário registada com sucesso"));
-    }
+            "id", marcacao.getId().toString(),
+            "data", marcacao.getData().toString(),
+            "estado", marcacao.getEstado().toString(),
+            "duration", String.valueOf(marcacao.getDuration()),
+            "durationLabel", durationLabel,
+            "durationBalneario", durationBalneario,
+            "message", "Marcação de balneário registada com sucesso"));
+        }
 
     /**
      * Atualiza os detalhes de serviços de uma marcação de balneário.
@@ -515,5 +500,23 @@ public class MarcacaoController {
 
         MarcacaoResponseDTO response = marcacaoService.reagendarMarcacao(id, request);
         return ResponseEntity.ok(response);
+    }
+    /**
+     * Endpoint para obter estatísticas de frequência do Balneário.
+     *
+     * @param periodo "DIA", "SEMANA", "MES"
+     * @return DTO com contagens e dados para gráficos
+     */
+    @GetMapping("/balneario/estatisticas")
+    public ResponseEntity<BalnearioAttendanceStatsDTO> getBalnearioFrequenciaEstatisticas(
+            @RequestParam(defaultValue = "MES") String periodo) {
+
+        // Apenas funcionários/admin (que têm ROLE_SECRETARIA ou ROLE_BALNEARIO) podem ver estatísticas
+        if (!authService.isAdmin()) {
+            throw new AccessDeniedException("Não tem permissão para consultar estatísticas de frequência.");
+        }
+
+        BalnearioAttendanceStatsDTO stats = marcacaoService.obterEstatisticasFrequenciaBalneario(periodo);
+        return ResponseEntity.ok(stats);
     }
 }
