@@ -6,7 +6,8 @@ WORKDIR /app
 COPY pom.xml .
 COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
-COPY requisicoes/pom.xml requisicoes/
+COPY requisicoes/pom.xml requisicoes/   
+COPY candidaturas/pom.xml candidaturas/
 
 # Baixar dependências (layer caching)
 RUN --mount=type=cache,target=/root/.m2 \
