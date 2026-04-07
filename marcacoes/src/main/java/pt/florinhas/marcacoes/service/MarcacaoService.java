@@ -801,6 +801,7 @@ public class MarcacaoService {
         long totalPresencas = marcacaoRepository.countBalnearioAttendance(inicio, fim);
         long totalMarcacoes = marcacaoRepository.countTotalBalnearioAttendance(inicio, fim);
         long totalFaltas = marcacaoRepository.countBalnearioFaltas(inicio, fim);
+        long totalAgendadas = marcacaoRepository.countBalnearioAgendadas(inicio, fim);
 
         List<Object[]> queryPresencasPorDia = marcacaoRepository.findAttendanceByDay(inicio, fim);
         List<BalnearioAttendanceStatsDTO.AttendanceData> presencasPorDia = queryPresencasPorDia.stream()
@@ -811,6 +812,6 @@ public class MarcacaoService {
         Map<Integer, Long> presencasPorHora = queryPresencasPorHora.stream()
                 .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
 
-        return new BalnearioAttendanceStatsDTO(periodo, totalPresencas, totalMarcacoes, totalFaltas, presencasPorDia, presencasPorHora);
+        return new BalnearioAttendanceStatsDTO(periodo, totalPresencas, totalMarcacoes, totalFaltas, totalAgendadas, presencasPorDia, presencasPorHora);
     }
 }

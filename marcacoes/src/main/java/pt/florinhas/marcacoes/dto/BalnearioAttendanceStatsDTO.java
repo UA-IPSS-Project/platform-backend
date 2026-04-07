@@ -34,6 +34,11 @@ public class BalnearioAttendanceStatsDTO {
     private long totalFaltou;
 
     /**
+     * Appointments scheduled or in warning state.
+     */
+    private long totalAgendadas;
+
+    /**
      * Attendances grouped by date (for time series charts).
      */
     private List<AttendanceData> presencasPorDia;

@@ -184,14 +184,19 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
     long countBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
     @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
-            "AND m.estado != 'CANCELADA' " +
+            "AND m.estado != 'CANCELADO' " +
             "AND m.data BETWEEN :inicio AND :fim")
     long countTotalBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
     @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
-            "AND m.estado = 'FALTOU' " +
+            "AND m.estado = 'NAO_COMPARECIDO' " +
             "AND m.data BETWEEN :inicio AND :fim")
     long countBalnearioFaltas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('AGENDADO', 'AVISO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAgendadas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
     @Query("SELECT CAST(m.data AS LocalDate), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
             "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
