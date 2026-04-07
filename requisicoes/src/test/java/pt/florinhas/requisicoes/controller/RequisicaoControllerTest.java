@@ -21,6 +21,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.Utilizador;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
@@ -102,13 +103,14 @@ class RequisicaoControllerTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "material",
                 RequisicaoPrioridade.MEDIA,
-                1L,
                 null,
             List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)));
         Requisicao resposta = new RequisicaoMaterial();
-        when(requisicaoService.criarMaterial(request)).thenReturn((RequisicaoMaterial) resposta);
+        Utilizador utilizador = new Utilizador();
+        utilizador.setId(1L);
+        when(requisicaoService.criarMaterial(request, 1L)).thenReturn((RequisicaoMaterial) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarMaterial(request);
+        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarMaterial(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());
@@ -119,7 +121,6 @@ class RequisicaoControllerTest {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "transporte",
                 RequisicaoPrioridade.BAIXA,
-                1L,
                 null,
             "Porto",
             LocalDateTime.of(2026, 3, 21, 9, 0),
@@ -129,9 +130,11 @@ class RequisicaoControllerTest {
             List.of(2L),
             null);
         Requisicao resposta = new RequisicaoTransporte();
-        when(requisicaoService.criarTransporte(request)).thenReturn((RequisicaoTransporte) resposta);
+        Utilizador utilizador = new Utilizador();
+        utilizador.setId(1L);
+        when(requisicaoService.criarTransporte(request, 1L)).thenReturn((RequisicaoTransporte) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarTransporte(request);
+        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarTransporte(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());
@@ -142,14 +145,14 @@ class RequisicaoControllerTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "manutencao",
                 RequisicaoPrioridade.URGENTE,
-                1L,
                 2L,
-            "porta",
-            List.of());
+                List.of());
         Requisicao resposta = new RequisicaoManutencao();
-        when(requisicaoService.criarManutencao(request)).thenReturn((RequisicaoManutencao) resposta);
+        Utilizador utilizador = new Utilizador();
+        utilizador.setId(1L);
+        when(requisicaoService.criarManutencao(request, 1L)).thenReturn((RequisicaoManutencao) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarManutencao(request);
+        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarManutencao(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());

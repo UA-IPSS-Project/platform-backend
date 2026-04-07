@@ -4,6 +4,8 @@ import java.time.LocalDate;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -27,8 +29,9 @@ public class Transporte {
     @Column(length = 80)
     private String tipo;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 40)
-    private String categoria;
+    private TransporteCategoria categoria;
 
     @Column(length = 20, unique = true)
     private String matricula;

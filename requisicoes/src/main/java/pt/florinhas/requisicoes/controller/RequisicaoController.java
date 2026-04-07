@@ -147,18 +147,24 @@ public class RequisicaoController {
     }
 
     @PostMapping("/material")
-    public ResponseEntity<Requisicao> criarMaterial(@Valid @RequestBody CriarRequisicaoMaterialRequest request) {
-        return ResponseEntity.ok(requisicaoService.criarMaterial(request));
+    public ResponseEntity<Requisicao> criarMaterial(
+            @Valid @RequestBody CriarRequisicaoMaterialRequest request,
+            @AuthenticationPrincipal Utilizador utilizador) {
+        return ResponseEntity.ok(requisicaoService.criarMaterial(request, utilizador.getId()));
     }
 
     @PostMapping("/transporte")
-    public ResponseEntity<Requisicao> criarTransporte(@Valid @RequestBody CriarRequisicaoTransporteRequest request) {
-        return ResponseEntity.ok(requisicaoService.criarTransporte(request));
+    public ResponseEntity<Requisicao> criarTransporte(
+            @Valid @RequestBody CriarRequisicaoTransporteRequest request,
+            @AuthenticationPrincipal Utilizador utilizador) {
+        return ResponseEntity.ok(requisicaoService.criarTransporte(request, utilizador.getId()));
     }
 
     @PostMapping("/manutencao")
-    public ResponseEntity<Requisicao> criarManutencao(@Valid @RequestBody CriarRequisicaoManutencaoRequest request) {
-        return ResponseEntity.ok(requisicaoService.criarManutencao(request));
+    public ResponseEntity<Requisicao> criarManutencao(
+            @Valid @RequestBody CriarRequisicaoManutencaoRequest request,
+            @AuthenticationPrincipal Utilizador utilizador) {
+        return ResponseEntity.ok(requisicaoService.criarManutencao(request, utilizador.getId()));
     }
 
     @GetMapping("/manutencao-items")
