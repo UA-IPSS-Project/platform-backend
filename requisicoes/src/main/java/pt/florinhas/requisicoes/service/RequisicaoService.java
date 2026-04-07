@@ -246,16 +246,15 @@ public class RequisicaoService {
         requisicao.setTipo(RequisicaoTipo.MANUTENCAO);
         requisicao.setCriadoPor(criadoPor);
         requisicao.setGeridoPor(null);
-        RequisicaoManutencao savedRequisicao = requisicaoManutencaoRepository.save(requisicao);
 
-        // Process maintenance items if provided
+        // Build items list before saving to benefit from CascadeType.ALL
         if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
             for (var itemRequest : request.manutencaoItens()) {
                 ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
-                        .orElseThrow(() -> new IllegalArgumentException("ManutencaoItem not found: " + itemRequest.itemId()));
+                        .orElseThrow(() -> new IllegalArgumentException("Item de manutenção não encontrado: " + itemRequest.itemId()));
                 
                 RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
-                requisicaoItem.setRequisicao(savedRequisicao);
+                requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
                 requisicaoItem.setManutencaoItem(item);
                 requisicaoItem.setObservacoes(itemRequest.observacoes());
 
@@ -265,11 +264,12 @@ public class RequisicaoService {
                     requisicaoItem.setTransporte(transporte);
                 }
 
-                requisicaoManutencaoItemRepository.save(requisicaoItem);
+                requisicao.getItens().add(requisicaoItem);
             }
         }
 
-        return savedRequisicao;
+        // Single save operation handles all items via CascadeType.ALL
+        return requisicaoManutencaoRepository.save(requisicao);
     }
 
     @Transactional
