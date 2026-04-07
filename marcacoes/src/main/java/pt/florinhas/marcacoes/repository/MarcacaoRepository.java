@@ -198,11 +198,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
             "AND m.data BETWEEN :inicio AND :fim")
     long countBalnearioAgendadas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
-    @Query("SELECT CAST(m.data AS LocalDate), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+    @Query("SELECT FUNCTION('date', m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
             "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
             "AND m.data BETWEEN :inicio AND :fim " +
-            "GROUP BY CAST(m.data AS LocalDate) " +
-            "ORDER BY CAST(m.data AS LocalDate)")
+            "GROUP BY FUNCTION('date', m.data) " +
+            "ORDER BY FUNCTION('date', m.data)")
     List<Object[]> findAttendanceByDay(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
     @Query("SELECT HOUR(m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
