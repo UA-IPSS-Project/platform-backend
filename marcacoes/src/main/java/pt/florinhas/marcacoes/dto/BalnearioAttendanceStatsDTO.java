@@ -29,9 +29,9 @@ public class BalnearioAttendanceStatsDTO {
     private long totalMarcacoes;
 
     /**
-     * Attendances with status FALTOU.
+     * Total attendances with status FALTOU.
      */
-    private long totalFaltou;
+    private long totalFaltas;
 
     /**
      * Appointments scheduled or in warning state.
