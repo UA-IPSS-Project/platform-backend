@@ -141,8 +141,8 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoMaterial criarMaterial(CriarRequisicaoMaterialRequest request) {
-        Funcionario criadoPor = obterFuncionario(request.criadoPorId());
+    public RequisicaoMaterial criarMaterial(CriarRequisicaoMaterialRequest request, Long authenticatedUtilizadorId) {
+        Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         Map<Long, Integer> itensNormalizados = new LinkedHashMap<>();
         for (CriarRequisicaoMaterialRequest.ItemMaterialRequest item : request.itens()) {
@@ -171,10 +171,10 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request) {
+    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request, Long authenticatedUtilizadorId) {
         List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
         validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
-        Funcionario criadoPor = obterFuncionario(request.criadoPorId());
+        Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         List<Transporte> transportesSelecionados = transporteIds.stream()
                 .distinct()
@@ -237,8 +237,8 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request) {
-        Funcionario criadoPor = obterFuncionario(request.criadoPorId());
+    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request, Long authenticatedUtilizadorId) {
+        Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
