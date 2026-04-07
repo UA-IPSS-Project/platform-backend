@@ -251,7 +251,7 @@ public class RequisicaoService {
         if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
             for (var itemRequest : request.manutencaoItens()) {
                 ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
-                        .orElseThrow(() -> new IllegalArgumentException("Item de manutenção não encontrado: " + itemRequest.itemId()));
+                        .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + itemRequest.itemId()));
                 
                 RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
                 requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
