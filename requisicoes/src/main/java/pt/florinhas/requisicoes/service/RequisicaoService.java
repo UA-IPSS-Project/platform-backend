@@ -258,7 +258,13 @@ public class RequisicaoService {
                 requisicaoItem.setRequisicao(savedRequisicao);
                 requisicaoItem.setManutencaoItem(item);
                 requisicaoItem.setObservacoes(itemRequest.observacoes());
-                
+
+                if (itemRequest.transporteId() != null) {
+                    Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + itemRequest.transporteId()));
+                    requisicaoItem.setTransporte(transporte);
+                }
+
                 requisicaoManutencaoItemRepository.save(requisicaoItem);
             }
         }
