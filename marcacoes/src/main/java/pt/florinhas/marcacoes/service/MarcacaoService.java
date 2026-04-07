@@ -35,6 +35,7 @@ import pt.florinhas.marcacoes.domain.Roupa;
 import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
+import pt.florinhas.marcacoes.dto.BalnearioAttendanceStatsDTO;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
@@ -140,7 +141,7 @@ public class MarcacaoService {
                 // Enviar email com a password (Side-effect isolado para evitar rollback)
                 final String finalEmail = request.getUtenteEmail();
                 final String finalPassword = rawPassword;
-
+                
                 if (TransactionSynchronizationManager.isActualTransactionActive()) {
                     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                         @Override
@@ -179,7 +180,7 @@ public class MarcacaoService {
 
         // Notify utente about new appointment
         if (utente != null) {
-            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), request.getAssunto());
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
         }
 
         return saved;
@@ -200,11 +201,11 @@ public class MarcacaoService {
 
         Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
         marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
-
+        
         Marcacao saved = marcacaoRepository.save(marcacao);
 
         // Notify utente about new remote appointment (async)
-        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), request.getAssunto());
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
 
         return saved;
     }
@@ -288,9 +289,9 @@ public class MarcacaoService {
         marcacao.setMarcacaoBalneario(detalhes);
 
         Marcacao saved = marcacaoRepository.save(marcacao);
-
+        
         // No specific utente notification here for now, but we could add if needed
-
+        
         return saved;
     }
 
@@ -747,13 +748,13 @@ public class MarcacaoService {
         }
     }
 
-    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, Integer duration, String summary) {
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration != null ? duration : 15, summary);
+                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
                     } catch (Exception e) {
                         log.error("Falha ao notificar utente sobre marcação", e);
                     }
@@ -761,7 +762,7 @@ public class MarcacaoService {
             });
         } else {
             try {
-                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration != null ? duration : 15, summary);
+                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
             } catch (Exception e) {
                 log.error("Falha ao notificar utente sobre marcação", e);
             }
@@ -774,5 +775,43 @@ public class MarcacaoService {
         }
         String tipo = tipoAgenda.trim().toUpperCase();
         return "BALNEARIO".equals(tipo) ? "BALNEARIO" : "SECRETARIA";
+    }
+    /**
+     * Obtém estatísticas de frequência do balneário (presenças confirmadas).
+     */
+    public BalnearioAttendanceStatsDTO obterEstatisticasFrequenciaBalneario(String periodo) {
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime inicio;
+        LocalDateTime fim = agora.plusYears(1);
+
+        switch (periodo.toUpperCase()) {
+            case "DIA":
+                inicio = agora.truncatedTo(ChronoUnit.DAYS);
+                fim = inicio.plusDays(1).minusNanos(1);
+                break;
+            case "SEMANA":
+                inicio = agora.minusWeeks(1).truncatedTo(ChronoUnit.DAYS);
+                break;
+            case "MES":
+            default:
+                inicio = agora.minusMonths(1).truncatedTo(ChronoUnit.DAYS);
+                break;
+        }
+
+        long totalPresencas = marcacaoRepository.countBalnearioAttendance(inicio, fim);
+        long totalMarcacoes = marcacaoRepository.countTotalBalnearioAttendance(inicio, fim);
+        long totalFaltas = marcacaoRepository.countBalnearioFaltas(inicio, fim);
+        long totalAgendadas = marcacaoRepository.countBalnearioAgendadas(inicio, fim);
+
+        List<Object[]> queryPresencasPorDia = marcacaoRepository.findAttendanceByDay(inicio, fim);
+        List<BalnearioAttendanceStatsDTO.AttendanceData> presencasPorDia = queryPresencasPorDia.stream()
+                .map(obj -> new BalnearioAttendanceStatsDTO.AttendanceData(obj[0].toString(), (Long) obj[1]))
+                .collect(Collectors.toList());
+
+        List<Object[]> queryPresencasPorHora = marcacaoRepository.findAttendanceByHour(inicio, fim);
+        Map<Integer, Long> presencasPorHora = queryPresencasPorHora.stream()
+                .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
+
+        return new BalnearioAttendanceStatsDTO(periodo, totalPresencas, totalMarcacoes, totalFaltas, totalAgendadas, presencasPorDia, presencasPorHora);
     }
 }

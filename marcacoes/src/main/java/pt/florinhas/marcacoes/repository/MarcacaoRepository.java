@@ -178,4 +178,37 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp", countQuery = "SELECT COUNT(m) FROM Marcacao m")
         Page<Marcacao> findAllWithRelations(Pageable pageable);
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado != 'CANCELADO' " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countTotalBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado = 'NAO_COMPARECIDO' " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioFaltas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('AGENDADO', 'AVISO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAgendadas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT FUNCTION('date', m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY FUNCTION('date', m.data) " +
+            "ORDER BY FUNCTION('date', m.data)")
+    List<Object[]> findAttendanceByDay(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT HOUR(m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY HOUR(m.data) " +
+            "ORDER BY HOUR(m.data)")
+    List<Object[]> findAttendanceByHour(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 }
