@@ -46,9 +46,9 @@ public class ManutencaoItemSeed implements CommandLineRunner {
                         "WC cor de rosa", "Hall", "Escadas acesso 2º", "Corredor", "Sala Amarela",
                         "Sala Azul", "Sala Verde", "Sala Arco-Íris", "WC", "Parque exterior"),
                 "CRECHE", List.of(
-                        "Parque ext. 3º andar", "S. Acolhimento grande", "S. Acollhimento peq.",
+                        "Parque ext. 3º andar", "S. Acolhimento grande", "S. Acolhimento peq.",
                         "WC", "WC azul", "Corredor e hall", "Escadas acesso sotão",
-                        "Sala Amarela limão", "Sala Verde Alface", "Sala Vermelha", "WC",
+                        "Sala Amarela limão", "Sala Verde Alface", "Sala Vermelha",
                         "Refeitório", "Copa", "Fraldário", "Sala azul turquesa", "Berçário"));
 
         // Standard verification items from historic code
