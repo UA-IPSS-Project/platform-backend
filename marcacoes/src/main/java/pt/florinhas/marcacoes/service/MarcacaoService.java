@@ -294,6 +294,23 @@ public class MarcacaoService {
         return saved;
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public Marcacao registrarPresencaRapida(CriarMarcacaoBalnearioRequest request) {
+        // 1. Criar a marcação base de balneário (inicialmente AGENDADO)
+        Marcacao marcacao = criarMarcacaoBalneario(request);
+
+        // 2. Transitar para EM_PROGRESSO (Presença registada)
+        marcacao.setEstado(EventoEstado.EM_PROGRESSO);
+
+        // 3. Gerir stock (descontar itens associados)
+        List<String> avisos = armazemService.descontarItens(marcacao);
+        if (!avisos.isEmpty()) {
+            log.warn("Avisos de stock ao registar presença rápida: {}", avisos);
+        }
+
+        return marcacaoRepository.save(marcacao);
+    }
+
     /**
      * Atualiza os detalhes de uma marcação de balneário (serviços, roupa, etc.).
      */
