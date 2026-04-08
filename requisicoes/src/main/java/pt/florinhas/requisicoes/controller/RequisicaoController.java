@@ -74,13 +74,13 @@ public class RequisicaoController {
     }
 
     @PostMapping("/materiais")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Material> criarMaterialCatalogo(@Valid @RequestBody CriarMaterialRequest request) {
         return ResponseEntity.ok(requisicaoService.criarMaterialCatalogo(request));
     }
 
     @PutMapping("/materiais/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Material> atualizarMaterialCatalogo(
             @PathVariable Long id,
             @Valid @RequestBody CriarMaterialRequest request) {
@@ -88,7 +88,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/materiais/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> apagarMaterialCatalogo(@PathVariable Long id) {
         requisicaoService.apagarMaterialCatalogo(id);
         return ResponseEntity.noContent().build();
@@ -100,13 +100,13 @@ public class RequisicaoController {
     }
 
     @PostMapping("/transportes")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Transporte> criarTransporteCatalogo(@Valid @RequestBody CriarTransporteRequest request) {
         return ResponseEntity.ok(requisicaoService.criarTransporteCatalogo(request));
     }
 
     @PutMapping("/transportes/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Transporte> atualizarTransporteCatalogo(
             @PathVariable Long id,
             @Valid @RequestBody CriarTransporteRequest request) {
@@ -114,7 +114,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/transportes/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> apagarTransporteCatalogo(@PathVariable Long id) {
         requisicaoService.apagarTransporteCatalogo(id);
         return ResponseEntity.noContent().build();
@@ -126,13 +126,13 @@ public class RequisicaoController {
     }
 
     @PostMapping("/tipos-manutencao")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<TipoManutencao> criarTipoManutencao(@Valid @RequestBody CriarTipoManutencaoRequest request) {
         return ResponseEntity.ok(requisicaoService.criarTipoManutencao(request));
     }
 
     @PutMapping("/tipos-manutencao/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<TipoManutencao> atualizarTipoManutencao(
             @PathVariable Long id,
             @Valid @RequestBody CriarTipoManutencaoRequest request) {
@@ -140,7 +140,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/tipos-manutencao/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> apagarTipoManutencao(@PathVariable Long id) {
         requisicaoService.apagarTipoManutencao(id);
         return ResponseEntity.noContent().build();
@@ -173,14 +173,14 @@ public class RequisicaoController {
     }
 
     @PostMapping("/manutencao-items")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<pt.florinhas.requisicoes.domain.ManutencaoItem> criarManutencaoItem(
             @Valid @RequestBody pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest request) {
         return ResponseEntity.ok(requisicaoService.criarManutencaoItem(request));
     }
 
     @PutMapping("/manutencao-items/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<pt.florinhas.requisicoes.domain.ManutencaoItem> atualizarManutencaoItem(
             @PathVariable Long id,
             @Valid @RequestBody pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest request) {
@@ -188,7 +188,7 @@ public class RequisicaoController {
     }
 
     @DeleteMapping("/manutencao-items/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARIA')")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> apagarManutencaoItem(@PathVariable Long id) {
         requisicaoService.apagarManutencaoItem(id);
         return ResponseEntity.noContent().build();

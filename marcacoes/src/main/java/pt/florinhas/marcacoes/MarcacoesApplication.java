@@ -40,14 +40,6 @@ public class MarcacoesApplication {
 		return args -> {
 
 			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
-					"999999999",
-					"Admin Plataforma",
-					"admin@florinhasdovouga.pt",
-					"999999999",
-					"admin123",
-					FuncionarioTipo.ADMIN));
-
-			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
 				    "999999998",
 				    "Funcionário Secretaria",
 				    "secretaria@florinhasdovouga.pt",

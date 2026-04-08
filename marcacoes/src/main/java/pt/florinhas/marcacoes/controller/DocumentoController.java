@@ -151,7 +151,6 @@ public class DocumentoController {
 
         return authentication.getAuthorities().stream().anyMatch(a ->
             "ROLE_SECRETARIA".equals(a.getAuthority())
-                || "ROLE_ADMIN".equals(a.getAuthority())
                 || "ROLE_FUNCIONARIO".equals(a.getAuthority())
         );
     }

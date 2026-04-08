@@ -331,7 +331,6 @@ public class AuthService {
                                 FuncionarioTipo.BALNEARIO;
                         case "ESCOLA" -> FuncionarioTipo.ESCOLA;
                         case "INTERNOS", "INTERNO", "SERVIÇOS INTERNOS", "SERVICOS INTERNOS" -> FuncionarioTipo.INTERNO;
-                        case "ADMIN", "ADMINISTRADOR" -> FuncionarioTipo.ADMIN;
                         default -> FuncionarioTipo.SECRETARIA;
                 };
         }
