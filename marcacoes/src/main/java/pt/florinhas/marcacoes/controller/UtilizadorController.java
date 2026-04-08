@@ -126,6 +126,15 @@ public class UtilizadorController {
     }
 
     /**
+     * Lista todos os utentes (ativos e inativos).
+     */
+    @GetMapping("/utentes")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosUtentes() {
+        return ResponseEntity.ok(utilizadorService.listarTodosUtentes());
+    }
+
+    /**
      * Lista os funcionários pendentes de aprovação.
      */
     @GetMapping("/funcionarios/pendentes")

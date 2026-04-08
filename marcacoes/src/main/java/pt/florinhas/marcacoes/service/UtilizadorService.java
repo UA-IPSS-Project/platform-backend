@@ -270,6 +270,15 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Lista todos os utentes (ativos e inativos).
+     */
+    public List<UtilizadorResponseDTO> listarTodosUtentes() {
+        return utenteRepository.findAll().stream()
+                .map(UtilizadorResponseDTO::fromUtilizador)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void aprovarFuncionario(Long id) {
         Funcionario funcionario = funcionarioRepository.findById(id)
