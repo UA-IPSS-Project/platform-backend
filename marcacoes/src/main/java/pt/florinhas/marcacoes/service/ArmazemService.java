@@ -26,6 +26,7 @@ import pt.florinhas.marcacoes.dto.ConsumoEstatisticaDTO;
 import pt.florinhas.marcacoes.dto.ItemArmazemDTO;
 import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.repository.RoupaRepository;
 
 /**
  * Serviço de gestão do armazém do Balneário.
@@ -45,6 +46,7 @@ public class ArmazemService {
 
     private final ItemArmazemRepository itemArmazemRepository;
     private final MarcacaoRepository marcacaoRepository;
+    private final RoupaRepository roupaRepository;
 
     // =====================================================================
     // MAPEAMENTO: Opções do formulário → Itens do armazém
@@ -117,6 +119,13 @@ public class ArmazemService {
      */
     @Transactional
     public ItemArmazemDTO criarItem(ItemArmazemDTO dto) {
+        if (dto.getCategoria() == null || dto.getCategoria().trim().isBlank()) {
+            throw new IllegalArgumentException("A categoria é obrigatória.");
+        }
+        if (dto.getNome() == null || dto.getNome().trim().isBlank()) {
+            throw new IllegalArgumentException("O nome do item é obrigatório.");
+        }
+
         String categoriaNorm = dto.getCategoria().trim().toUpperCase();
         String nomeNorm = dto.getNome().trim();
 
@@ -149,10 +158,17 @@ public class ArmazemService {
             .orElseThrow(() -> new IllegalArgumentException("Item do armazém não encontrado com ID: " + id));
 
         if (dto.getCategoria() != null) {
+            if (dto.getCategoria().trim().isBlank()) {
+                throw new IllegalArgumentException("A categoria não pode ser vazia.");
+            }
             item.setCategoria(dto.getCategoria().trim().toUpperCase());
         }
         if (dto.getNome() != null) {
-            item.setNome(dto.getNome().trim());
+            String nomeTrim = dto.getNome().trim();
+            if (nomeTrim.isBlank()) {
+                throw new IllegalArgumentException("O nome do item não pode ser vazio.");
+            }
+            item.setNome(nomeTrim);
         }
         if (dto.getQuantidade() != null) {
             item.setQuantidade(Math.max(0, dto.getQuantidade()));
@@ -188,6 +204,12 @@ public class ArmazemService {
         if (!itemArmazemRepository.existsById(id)) {
             throw new IllegalArgumentException("Item do armazém não encontrado com ID: " + id);
         }
+        
+        // Verificar se existem referências em marcações (Roupa)
+        if (roupaRepository.existsByItemId(id)) {
+            throw new IllegalStateException("Não é possível eliminar o item porque ele já foi utilizado em marcações. Considere alterar apenas os níveis de stock.");
+        }
+        
         itemArmazemRepository.deleteById(id);
     }
 
@@ -221,6 +243,10 @@ public class ArmazemService {
             // Fallback para nome/categoria se o ID não estiver presente
             if (itemOpt.isEmpty()) {
                 String formCategoria = roupa.getCategoria();
+                if (formCategoria == null || formCategoria.trim().isBlank()) {
+                    log.warn("Item da marcação ignorado no desconto: Categoria/Nome nulo.");
+                    continue;
+                }
                 String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
                 String armazemNome;
 
@@ -282,6 +308,10 @@ public class ArmazemService {
 
             if (itemOpt.isEmpty()) {
                 String formCategoria = roupa.getCategoria();
+                if (formCategoria == null || formCategoria.trim().isBlank()) {
+                    log.warn("Item da marcação ignorado no restauro: Categoria/Nome nulo.");
+                    continue;
+                }
                 String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
                 String armazemNome;
 
