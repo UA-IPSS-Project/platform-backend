@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -61,6 +62,7 @@ public class ArmazemController {
      * Cria um novo item no armazém.
      */
     @PostMapping
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<ItemArmazemDTO> criarItem(@RequestBody ItemArmazemDTO dto) {
         ItemArmazemDTO created = armazemService.criarItem(dto);
         return ResponseEntity.ok(created);
@@ -70,6 +72,7 @@ public class ArmazemController {
      * Atualiza um item (quantidade, nome, categoria, etc).
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<ItemArmazemDTO> atualizarItem(
             @PathVariable Long id,
             @RequestBody ItemArmazemDTO dto) {
@@ -82,6 +85,7 @@ public class ArmazemController {
      * Elimina um item do armazém.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<Void> eliminarItem(@PathVariable Long id) {
         armazemService.eliminarItem(id);
         return ResponseEntity.noContent().build();
@@ -116,6 +120,7 @@ public class ArmazemController {
      * @param periodo DIA, SEMANA ou MES
      */
     @GetMapping("/estatisticas")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<ConsumoEstatisticaDTO> obterEstatisticas(
             @RequestParam(defaultValue = "MES") String periodo) {
 

@@ -32,11 +32,11 @@ public class MarcacoesApplication {
 	}
 
 	/**
-	 * CommandLineRunner que garante a existência de contas base para administração
-	 * e secretaria ao iniciar a aplicação.
+	 * CommandLineRunner que garante a existência de contas base funcionais
+	 * (Secretaria, Balneário, Escola) ao iniciar a aplicação.
 	 */
 	@Bean
-	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
+	CommandLineRunner initDefaultFuncionarios(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
 		return args -> {
 
 			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
