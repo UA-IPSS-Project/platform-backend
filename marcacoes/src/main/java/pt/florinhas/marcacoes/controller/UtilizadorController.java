@@ -78,7 +78,7 @@ public class UtilizadorController {
     @GetMapping("/nif/{nif}")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
-            .orElseThrow(() -> new NotFoundException(
+                .orElseThrow(() -> new NotFoundException(
                         "Utilizador não encontrado com NIF: " + nif));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
@@ -170,7 +170,7 @@ public class UtilizadorController {
         // Se serviço lançar exceção, deve ser tratado globalmente ou aqui
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
                 .orElseThrow(
-                () -> new NotFoundException("Utilizador não encontrado"));
+                        () -> new NotFoundException("Utilizador não encontrado"));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
 
