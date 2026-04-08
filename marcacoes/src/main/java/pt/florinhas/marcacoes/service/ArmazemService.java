@@ -81,8 +81,8 @@ public class ArmazemService {
         Map.entry("Lixívia", "DETERGENTES"),
         Map.entry("Amaciador", "DETERGENTES"),
         Map.entry("Detergente Chão", "DETERGENTES"),
-        Map.entry("Lavar Roupa Seca", "LAVANDARIA"),
-        Map.entry("Lavar Roupa Molhada", "LAVANDARIA"),
+        Map.entry("Lavar Roupa Seca", "DETERGENTES"),
+        Map.entry("Lavar Roupa Molhada", "DETERGENTES"),
         Map.entry("Roupa Interior", "VESTUARIO"),
         Map.entry("Meias", "VESTUARIO"),
         Map.entry("Agasalho/Casaco", "VESTUARIO")
@@ -233,7 +233,7 @@ public class ArmazemService {
                 if (armazemCategoria != null) {
                     itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
                 } else {
-                    List<String> managedCats = List.of("HIGIENE", "LAVANDARIA", "DETERGENTES", "VESTUARIO", "CALCADO");
+                    List<String> managedCats = List.of("HIGIENE", "DETERGENTES", "VESTUARIO", "CALCADO");
                     for (String cat : managedCats) {
                         itemOpt = itemArmazemRepository.findByCategoriaAndNome(cat, armazemNome);
                         if (itemOpt.isPresent()) break;
@@ -294,7 +294,7 @@ public class ArmazemService {
                 if (armazemCategoria != null) {
                     itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
                 } else {
-                    List<String> managedCats = List.of("HIGIENE", "LAVANDARIA", "DETERGENTES", "VESTUARIO", "CALCADO");
+                    List<String> managedCats = List.of("HIGIENE", "DETERGENTES", "VESTUARIO", "CALCADO");
                     for (String cat : managedCats) {
                         itemOpt = itemArmazemRepository.findByCategoriaAndNome(cat, armazemNome);
                         if (itemOpt.isPresent()) break;
@@ -476,10 +476,7 @@ public class ArmazemService {
         criarItemSeNaoExiste("DETERGENTES", "Amaciador", 20, 5, "L", "Florinhas", null, 5.0, "Amaciador de roupa");
         criarItemSeNaoExiste("DETERGENTES", "Lixívia", 10, 5, "L", "Domestos", null, 2.0, "Lixívia desinfetante");
         criarItemSeNaoExiste("DETERGENTES", "Detergente Chão", 15, 8, "L", "Ajax", null, 5.0, "Detergente para o chão");
-
-        // Lavandaria
-        criarItemSeNaoExiste("LAVANDARIA", "Lavar Roupa Seca", 50, 10, "L", "Florinhas", null, 10.0, "Detergente para lavandaria");
-        criarItemSeNaoExiste("LAVANDARIA", "Lavar Roupa Molhada", 50, 10, "L", "Florinhas", null, 10.0, "Detergente para roupa molhada");
+        criarItemSeNaoExiste("DETERGENTES", "Detergente Roupa", 50, 10, "L", "Florinhas", null, 10.0, "Detergente para a roupa");
 
         // Higiene
         criarItemSeNaoExiste("HIGIENE", "Sabonete Líquido", 100, 15, "un", "Nivea", null, 0.5, "Sabonete para mãos");
