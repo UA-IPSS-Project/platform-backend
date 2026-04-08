@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,12 +23,14 @@ import pt.florinhas.marcacoes.service.ArmazemService;
  * Controller REST para gestão do armazém do Balneário.
  *
  * Endpoints:
- * - GET  /api/armazem             — listar todo o inventário
- * - GET  /api/armazem/categoria   — listar por categoria
- * - PUT  /api/armazem/{id}        — atualizar quantidade/minimo
- * - POST /api/armazem/stock-check — verificar stock para itens do formulário
- * - POST /api/armazem/stock-check/calcado — verificar stock de calçado por tamanho
- * - GET  /api/armazem/estatisticas — dados de consumo agregados
+ * - GET     /api/armazem             — listar todo o inventário
+ * - POST    /api/armazem             — criar novo item
+ * - GET     /api/armazem/categoria   — listar por categoria
+ * - PUT     /api/armazem/{id}        — atualizar item (quantidade, nome, etc)
+ * - DELETE  /api/armazem/{id}        — eliminar item
+ * - POST    /api/armazem/stock-check — verificar stock para itens do formulário
+ * - POST    /api/armazem/stock-check/calcado — verificar stock de calçado por tamanho
+ * - GET     /api/armazem/estatisticas — dados de consumo agregados
  */
 @RestController
 @RequestMapping("/api/armazem")
@@ -55,18 +58,33 @@ public class ArmazemController {
     }
 
     /**
-     * Atualiza a quantidade e/ou quantidade mínima de um item.
+     * Cria um novo item no armazém.
+     */
+    @PostMapping
+    public ResponseEntity<ItemArmazemDTO> criarItem(@RequestBody ItemArmazemDTO dto) {
+        ItemArmazemDTO created = armazemService.criarItem(dto);
+        return ResponseEntity.ok(created);
+    }
+
+    /**
+     * Atualiza um item (quantidade, nome, categoria, etc).
      */
     @PutMapping("/{id}")
     public ResponseEntity<ItemArmazemDTO> atualizarItem(
             @PathVariable Long id,
-            @RequestBody Map<String, Integer> body) {
+            @RequestBody ItemArmazemDTO dto) {
 
-        Integer quantidade = body.get("quantidade");
-        Integer quantidadeMinima = body.get("quantidadeMinima");
-
-        ItemArmazemDTO updated = armazemService.atualizarItem(id, quantidade, quantidadeMinima);
+        ItemArmazemDTO updated = armazemService.atualizarItem(id, dto);
         return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Elimina um item do armazém.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarItem(@PathVariable Long id) {
+        armazemService.eliminarItem(id);
+        return ResponseEntity.noContent().build();
     }
 
     /**

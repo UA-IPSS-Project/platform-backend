@@ -17,6 +17,8 @@ public class RoupaDTO {
     @NotBlank(message = "A categoria da roupa é obrigatória")
     private String categoria;
 
+    private Long itemId;
+
     private String tamanho;
 
     @NotNull(message = "A quantidade é obrigatória")

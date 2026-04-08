@@ -78,11 +78,11 @@ public class ArmazemService {
         Map.entry("Gel de Banho", "HIGIENE"),
         Map.entry("Toalha", "HIGIENE"),
         Map.entry("Sabonete/Creme", "HIGIENE"),
-        Map.entry("Lavar Roupa Seca", "DETERGENTES"),
-        Map.entry("Lavar Roupa Molhada", "DETERGENTES"),
-        Map.entry("Sapatos/Sapatilhas", "CALCADO"),
-        Map.entry("T-shirt/Camisola", "VESTUARIO"),
-        Map.entry("Calças", "VESTUARIO"),
+        Map.entry("Lixívia", "DETERGENTES"),
+        Map.entry("Amaciador", "DETERGENTES"),
+        Map.entry("Detergente Chão", "DETERGENTES"),
+        Map.entry("Lavar Roupa Seca", "LAVANDARIA"),
+        Map.entry("Lavar Roupa Molhada", "LAVANDARIA"),
         Map.entry("Roupa Interior", "VESTUARIO"),
         Map.entry("Meias", "VESTUARIO"),
         Map.entry("Agasalho/Casaco", "VESTUARIO")
@@ -113,22 +113,79 @@ public class ArmazemService {
     }
 
     /**
-     * Atualiza a quantidade e/ou quantidade mínima de um item.
+     * Cria um novo item no armazém.
      */
     @Transactional
-    public ItemArmazemDTO atualizarItem(Long id, Integer quantidade, Integer quantidadeMinima) {
+    public ItemArmazemDTO criarItem(ItemArmazemDTO dto) {
+        if (itemArmazemRepository.findByCategoriaAndNome(dto.getCategoria(), dto.getNome()).isPresent()) {
+            throw new IllegalArgumentException("Já existe um item com esta categoria e nome.");
+        }
+
+        ItemArmazem item = new ItemArmazem();
+        item.setCategoria(dto.getCategoria().toUpperCase());
+        item.setNome(dto.getNome());
+        item.setQuantidade(dto.getQuantidade() != null ? Math.max(0, dto.getQuantidade()) : 0);
+        item.setQuantidadeMinima(dto.getQuantidadeMinima() != null ? Math.max(0, dto.getQuantidadeMinima()) : 0);
+        item.setUnidade(dto.getUnidade() != null ? dto.getUnidade() : "un");
+        item.setMarca(dto.getMarca());
+        item.setTamanho(dto.getTamanho());
+        item.setVolume(dto.getVolume());
+        item.setDescricao(dto.getDescricao());
+
+        item = itemArmazemRepository.save(item);
+        return toDTO(item);
+    }
+
+    /**
+     * Atualiza um item do armazém.
+     * Pode atualizar quantidade, mínimos, categoria, nome e unidade.
+     */
+    @Transactional
+    public ItemArmazemDTO atualizarItem(Long id, ItemArmazemDTO dto) {
         ItemArmazem item = itemArmazemRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Item do armazém não encontrado com ID: " + id));
 
-        if (quantidade != null) {
-            item.setQuantidade(Math.max(0, quantidade));
+        if (dto.getCategoria() != null) {
+            item.setCategoria(dto.getCategoria().toUpperCase());
         }
-        if (quantidadeMinima != null) {
-            item.setQuantidadeMinima(Math.max(0, quantidadeMinima));
+        if (dto.getNome() != null) {
+            item.setNome(dto.getNome());
+        }
+        if (dto.getQuantidade() != null) {
+            item.setQuantidade(Math.max(0, dto.getQuantidade()));
+        }
+        if (dto.getQuantidadeMinima() != null) {
+            item.setQuantidadeMinima(Math.max(0, dto.getQuantidadeMinima()));
+        }
+        if (dto.getUnidade() != null) {
+            item.setUnidade(dto.getUnidade());
+        }
+        if (dto.getMarca() != null) {
+            item.setMarca(dto.getMarca());
+        }
+        if (dto.getTamanho() != null) {
+            item.setTamanho(dto.getTamanho());
+        }
+        if (dto.getVolume() != null) {
+            item.setVolume(dto.getVolume());
+        }
+        if (dto.getDescricao() != null) {
+            item.setDescricao(dto.getDescricao());
         }
 
         item = itemArmazemRepository.save(item);
         return toDTO(item);
+    }
+
+    /**
+     * Elimina um item do armazém.
+     */
+    @Transactional
+    public void eliminarItem(Long id) {
+        if (!itemArmazemRepository.existsById(id)) {
+            throw new IllegalArgumentException("Item do armazém não encontrado com ID: " + id);
+        }
+        itemArmazemRepository.deleteById(id);
     }
 
     // =====================================================================
@@ -152,25 +209,38 @@ public class ArmazemService {
         List<String> avisos = new ArrayList<>();
 
         for (Roupa roupa : detalhes.getRoupas()) {
-            String formCategoria = roupa.getCategoria();
-            String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
-            String armazemNome;
-
-            if ("Sapatos/Sapatilhas".equals(formCategoria)) {
-                // Para calçado, o nome no armazém é o tamanho
-                armazemNome = roupa.getTamanho();
-                armazemCategoria = "CALCADO";
-            } else {
-                armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
+            // Tentar pelo ID primeiro (Novo modo Objeto)
+            Optional<ItemArmazem> itemOpt = Optional.empty();
+            if (roupa.getItem() != null) {
+                itemOpt = itemArmazemRepository.findById(roupa.getItem().getId());
             }
 
-            if (armazemNome == null || armazemCategoria == null) {
-                // Item do formulário sem mapeamento no armazém (ex: vestuário)
-                log.debug("Item '{}' sem mapeamento no armazém, ignorado.", formCategoria);
-                continue;
+            // Fallback para nome/categoria se o ID não estiver presente
+            if (itemOpt.isEmpty()) {
+                String formCategoria = roupa.getCategoria();
+                String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
+                String armazemNome;
+
+                if ("Sapatos/Sapatilhas".equals(formCategoria)) {
+                    armazemNome = roupa.getTamanho();
+                    armazemCategoria = "CALCADO";
+                } else {
+                    armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
+                }
+
+                if (armazemNome == null) armazemNome = formCategoria;
+
+                if (armazemCategoria != null) {
+                    itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
+                } else {
+                    List<String> managedCats = List.of("HIGIENE", "LAVANDARIA", "DETERGENTES", "VESTUARIO", "CALCADO");
+                    for (String cat : managedCats) {
+                        itemOpt = itemArmazemRepository.findByCategoriaAndNome(cat, armazemNome);
+                        if (itemOpt.isPresent()) break;
+                    }
+                }
             }
 
-            Optional<ItemArmazem> itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
                 int novaQuantidade = item.getQuantidade() - roupa.getQuantidade();
@@ -183,7 +253,7 @@ public class ArmazemService {
                 }
                 itemArmazemRepository.save(item);
             } else {
-                log.warn("Item do armazém não encontrado: categoria={}, nome={}", armazemCategoria, armazemNome);
+                log.warn("Item do armazém não encontrado para desconto: {}", roupa.getCategoria());
             }
         }
 
@@ -202,22 +272,36 @@ public class ArmazemService {
         }
 
         for (Roupa roupa : detalhes.getRoupas()) {
-            String formCategoria = roupa.getCategoria();
-            String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
-            String armazemNome;
-
-            if ("Sapatos/Sapatilhas".equals(formCategoria)) {
-                armazemNome = roupa.getTamanho();
-                armazemCategoria = "CALCADO";
-            } else {
-                armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
+            Optional<ItemArmazem> itemOpt = Optional.empty();
+            if (roupa.getItem() != null) {
+                itemOpt = itemArmazemRepository.findById(roupa.getItem().getId());
             }
 
-            if (armazemNome == null || armazemCategoria == null) {
-                continue;
+            if (itemOpt.isEmpty()) {
+                String formCategoria = roupa.getCategoria();
+                String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
+                String armazemNome;
+
+                if ("Sapatos/Sapatilhas".equals(formCategoria)) {
+                    armazemNome = roupa.getTamanho();
+                    armazemCategoria = "CALCADO";
+                } else {
+                    armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
+                }
+
+                if (armazemNome == null) armazemNome = formCategoria;
+
+                if (armazemCategoria != null) {
+                    itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
+                } else {
+                    List<String> managedCats = List.of("HIGIENE", "LAVANDARIA", "DETERGENTES", "VESTUARIO", "CALCADO");
+                    for (String cat : managedCats) {
+                        itemOpt = itemArmazemRepository.findByCategoriaAndNome(cat, armazemNome);
+                        if (itemOpt.isPresent()) break;
+                    }
+                }
             }
 
-            Optional<ItemArmazem> itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
                 item.setQuantidade(item.getQuantidade() + roupa.getQuantidade());
@@ -389,44 +473,38 @@ public class ArmazemService {
         log.info("A inicializar dados padrão do armazém...");
 
         // Detergentes
-        criarItemSeNaoExiste("DETERGENTES", "Detergente Roupa", 0, 10, "L");
-        criarItemSeNaoExiste("DETERGENTES", "Amaciador", 0, 5, "L");
-        criarItemSeNaoExiste("DETERGENTES", "Lixívia", 0, 5, "L");
-        criarItemSeNaoExiste("DETERGENTES", "Detergente Chão", 0, 8, "L");
+        criarItemSeNaoExiste("DETERGENTES", "Amaciador", 20, 5, "L", "Florinhas", null, 5.0, "Amaciador de roupa");
+        criarItemSeNaoExiste("DETERGENTES", "Lixívia", 10, 5, "L", "Domestos", null, 2.0, "Lixívia desinfetante");
+        criarItemSeNaoExiste("DETERGENTES", "Detergente Chão", 15, 8, "L", "Ajax", null, 5.0, "Detergente para o chão");
+
+        // Lavandaria
+        criarItemSeNaoExiste("LAVANDARIA", "Lavar Roupa Seca", 50, 10, "L", "Florinhas", null, 10.0, "Detergente para lavandaria");
+        criarItemSeNaoExiste("LAVANDARIA", "Lavar Roupa Molhada", 50, 10, "L", "Florinhas", null, 10.0, "Detergente para roupa molhada");
 
         // Higiene
-        criarItemSeNaoExiste("HIGIENE", "Sabonete Líquido", 0, 15, "un");
-        criarItemSeNaoExiste("HIGIENE", "Champô", 0, 8, "un");
-        criarItemSeNaoExiste("HIGIENE", "Gel de Banho", 0, 10, "un");
-        criarItemSeNaoExiste("HIGIENE", "Toalha", 0, 20, "un");
-        criarItemSeNaoExiste("HIGIENE", "Sabonete/Creme", 0, 15, "un");
-        criarItemSeNaoExiste("HIGIENE", "Toalhetes", 0, 30, "pk");
-        criarItemSeNaoExiste("HIGIENE", "Fraldas Adulto", 0, 20, "pk");
-        criarItemSeNaoExiste("HIGIENE", "Papel Higiénico", 0, 30, "rolos");
+        criarItemSeNaoExiste("HIGIENE", "Sabonete Líquido", 100, 15, "un", "Nivea", null, 0.5, "Sabonete para mãos");
+        criarItemSeNaoExiste("HIGIENE", "Champô", 40, 8, "un", "Garnier", null, 0.4, "Champô para cabelo");
+        criarItemSeNaoExiste("HIGIENE", "Gel de Banho", 40, 10, "un", "Dove", null, 0.5, "Gel de banho hidratante");
+        criarItemSeNaoExiste("HIGIENE", "Toalha", 100, 20, "un", "Standard", null, null, "Toalha de banho branca");
+        criarItemSeNaoExiste("HIGIENE", "Sabonete/Creme", 50, 15, "un", "Dove", null, null, "Sabonete em barra ou creme");
+        criarItemSeNaoExiste("HIGIENE", "Toalhetes", 60, 30, "pk", "Dodot", null, null, "Toalhetes de limpeza");
 
         // Vestuário
-        criarItemSeNaoExiste("VESTUARIO", "T-shirt/Camisola", 0, 10, "un");
-        criarItemSeNaoExiste("VESTUARIO", "Calças", 0, 10, "un");
-        criarItemSeNaoExiste("VESTUARIO", "Roupa Interior", 0, 20, "un");
-        criarItemSeNaoExiste("VESTUARIO", "Meias", 0, 20, "un");
-        criarItemSeNaoExiste("VESTUARIO", "Agasalho/Casaco", 0, 5, "un");
+        criarItemSeNaoExiste("VESTUARIO", "T-shirt/Camisola", 20, 10, "un", "Generative", "M", null, "T-shirt básica");
+        criarItemSeNaoExiste("VESTUARIO", "Calças", 15, 10, "un", "Generative", "L", null, "Calças confortáveis");
+        criarItemSeNaoExiste("VESTUARIO", "Roupa Interior", 40, 20, "un", "Generative", "M", null, "Boxers/Cuecas");
+        criarItemSeNaoExiste("VESTUARIO", "Meias", 50, 20, "pares", "Generative", "39-42", null, "Meias de algodão");
+        criarItemSeNaoExiste("VESTUARIO", "Agasalho/Casaco", 10, 5, "un", "Generative", "XL", null, "Casaco de inverno");
 
         // Calçado (tamanhos 35 a 46)
         for (int tamanho = 35; tamanho <= 46; tamanho++) {
-            criarItemSeNaoExiste("CALCADO", String.valueOf(tamanho), 0, 3, "pares");
+            criarItemSeNaoExiste("CALCADO", String.valueOf(tamanho), 10, 3, "pares", "Standard", String.valueOf(tamanho), null, "Sapatos tamanho " + tamanho);
         }
-        
-        // Vestuário
-        criarItemSeNaoExiste("VESTUARIO", "T-shirt/Camisola", 0, 5, "un");
-        criarItemSeNaoExiste("VESTUARIO", "Calças", 0, 5, "un");
-        criarItemSeNaoExiste("VESTUARIO", "Roupa Interior", 0, 10, "un");
-        criarItemSeNaoExiste("VESTUARIO", "Meias", 0, 10, "pares");
-        criarItemSeNaoExiste("VESTUARIO", "Agasalho/Casaco", 0, 3, "un");
 
         log.info("Dados padrão do armazém inicializados com sucesso.");
     }
 
-    private void criarItemSeNaoExiste(String categoria, String nome, int quantidade, int minimo, String unidade) {
+    private void criarItemSeNaoExiste(String categoria, String nome, int quantidade, int minimo, String unidade, String marca, String tamanho, Double volume, String descricao) {
         if (itemArmazemRepository.findByCategoriaAndNome(categoria, nome).isEmpty()) {
             ItemArmazem item = new ItemArmazem();
             item.setCategoria(categoria);
@@ -434,6 +512,10 @@ public class ArmazemService {
             item.setQuantidade(quantidade);
             item.setQuantidadeMinima(minimo);
             item.setUnidade(unidade);
+            item.setMarca(marca);
+            item.setTamanho(tamanho);
+            item.setVolume(volume);
+            item.setDescricao(descricao);
             itemArmazemRepository.save(item);
         }
     }
@@ -450,6 +532,10 @@ public class ArmazemService {
         dto.setQuantidade(item.getQuantidade());
         dto.setQuantidadeMinima(item.getQuantidadeMinima());
         dto.setUnidade(item.getUnidade());
+        dto.setMarca(item.getMarca());
+        dto.setTamanho(item.getTamanho());
+        dto.setVolume(item.getVolume());
+        dto.setDescricao(item.getDescricao());
         dto.setEstado(item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : "BAIXO");
         return dto;
     }
