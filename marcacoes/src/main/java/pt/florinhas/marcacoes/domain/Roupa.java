@@ -28,7 +28,14 @@ public class Roupa {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "categoria", length = 50, nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "item_armazem_id")
+    private ItemArmazem item;
+
+    /**
+     * Categoria/Nome manual (fallback para quando não há ligação ao armazém).
+     */
+    @Column(name = "categoria", length = 50)
     private String categoria;
 
     @Column(name = "tamanho", length = 20)

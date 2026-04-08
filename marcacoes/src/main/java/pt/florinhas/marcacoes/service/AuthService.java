@@ -325,14 +325,20 @@ public class AuthService {
         }
 
         private FuncionarioTipo mapFuncaoToTipo(String funcao) {
+                if (funcao == null) {
+                        throw new BadRequestException("A função do funcionário é obrigatória");
+                }
+                
                 return switch (funcao.toUpperCase()) {
                         case "SECRETARIA", "SECRETÁRIA" -> FuncionarioTipo.SECRETARIA;
                         case "BALNEARIO", "BALNEÁRIO", "BALNEARIO SOCIAL", "BALNEÁRIO SOCIAL" ->
                                 FuncionarioTipo.BALNEARIO;
                         case "ESCOLA" -> FuncionarioTipo.ESCOLA;
                         case "INTERNOS", "INTERNO", "SERVIÇOS INTERNOS", "SERVICOS INTERNOS" -> FuncionarioTipo.INTERNO;
-                        case "ADMIN", "ADMINISTRADOR" -> FuncionarioTipo.ADMIN;
-                        default -> FuncionarioTipo.SECRETARIA;
+                        default -> {
+                                log.warn("Tentativa de registo com função desconhecida: {}", funcao);
+                                throw new BadRequestException("Função desconhecida: " + funcao);
+                        }
                 };
         }
 
