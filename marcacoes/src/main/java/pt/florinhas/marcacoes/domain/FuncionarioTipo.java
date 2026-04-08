@@ -9,5 +9,5 @@ package pt.florinhas.marcacoes.domain;
  * - validar regras específicas por tipo (ex.: acesso a certas valências).
  */
 public enum FuncionarioTipo {
-    SECRETARIA, BALNEARIO, OUTRO, ESCOLA, INTERNO, ADMIN
+    SECRETARIA, BALNEARIO, OUTRO, ESCOLA, INTERNO
 }

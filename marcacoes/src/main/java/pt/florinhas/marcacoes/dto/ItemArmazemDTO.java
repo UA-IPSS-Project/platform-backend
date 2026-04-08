@@ -18,6 +18,10 @@ public class ItemArmazemDTO {
     private Integer quantidade;
     private Integer quantidadeMinima;
     private String unidade;
+    private String marca;
+    private String tamanho;
+    private Double volume;
+    private String descricao;
 
     /**
      * Estado calculado: "OK" se quantidade >= quantidadeMinima, "BAIXO" caso contrário.

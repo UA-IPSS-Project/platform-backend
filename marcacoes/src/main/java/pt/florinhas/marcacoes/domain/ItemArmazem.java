@@ -60,4 +60,28 @@ public class ItemArmazem {
      */
     @Column(name = "unidade", length = 20, nullable = false)
     private String unidade = "un";
+
+    /**
+     * Marca ou fabricante do produto.
+     */
+    @Column(name = "marca", length = 100)
+    private String marca;
+
+    /**
+     * Tamanho específico (ex: "L", "XL", "M") para vestuário.
+     */
+    @Column(name = "tamanho", length = 20)
+    private String tamanho;
+
+    /**
+     * Volume ou peso (ex: 1.5, 500.0) para detergentes ou higiene.
+     */
+    @Column(name = "volume")
+    private Double volume;
+
+    /**
+     * Descrição adicional do item.
+     */
+    @Column(name = "descricao", length = 255)
+    private String descricao;
 }

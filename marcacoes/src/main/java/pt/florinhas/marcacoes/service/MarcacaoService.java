@@ -28,6 +28,7 @@ import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
+import pt.florinhas.marcacoes.domain.ItemArmazem;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
@@ -44,6 +45,7 @@ import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.RoupaDTO;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
@@ -59,6 +61,7 @@ public class MarcacaoService {
     private final UtenteRepository utenteRepository;
     private final FuncionarioRepository funcionarioRepository;
     private final UtilizadorRepository utilizadorRepository;
+    private final ItemArmazemRepository itemArmazemRepository;
     private final NotificacaoService notificacaoService;
     private final MarcacaoValidator marcacaoValidator;
     private final NifValidator nifValidator;
@@ -281,6 +284,13 @@ public class MarcacaoService {
                 r.setCategoria(rDTO.getCategoria());
                 r.setTamanho(rDTO.getTamanho());
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
+                
+                if (rDTO.getItemId() != null) {
+                    ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
+                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                    r.setItem(item);
+                }
+                
                 detalhes.addRoupa(r);
             }
         }
@@ -302,6 +312,8 @@ public class MarcacaoService {
     public MarcacaoResponseDTO atualizarDetalhesBalneario(Long marcacaoId,
             Boolean produtosHigiene, Boolean lavagemRoupa, List<RoupaDTO> roupas) {
 
+        marcacaoValidator.validarRoupas(roupas);
+
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
                 .orElseThrow(() -> new IllegalArgumentException("Marcação não encontrada"));
 
@@ -321,6 +333,13 @@ public class MarcacaoService {
                 r.setCategoria(rDTO.getCategoria());
                 r.setTamanho(rDTO.getTamanho());
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
+                
+                if (rDTO.getItemId() != null) {
+                    ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
+                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                    r.setItem(item);
+                }
+                
                 detalhes.addRoupa(r);
             }
         }
@@ -692,6 +711,11 @@ public class MarcacaoService {
                     rDTO.setCategoria(r.getCategoria());
                     rDTO.setTamanho(r.getTamanho());
                     rDTO.setQuantidade(r.getQuantidade());
+                    if (r.getItem() != null) {
+                        rDTO.setItemId(r.getItem().getId());
+                        // Ensure categoria matches item name if available
+                        rDTO.setCategoria(r.getItem().getNome());
+                    }
                     return rDTO;
                 }).collect(Collectors.toList());
                 balnDTO.setRoupas(roupasDTO);
