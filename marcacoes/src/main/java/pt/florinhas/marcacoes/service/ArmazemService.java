@@ -117,13 +117,16 @@ public class ArmazemService {
      */
     @Transactional
     public ItemArmazemDTO criarItem(ItemArmazemDTO dto) {
-        if (itemArmazemRepository.findByCategoriaAndNome(dto.getCategoria(), dto.getNome()).isPresent()) {
+        String categoriaNorm = dto.getCategoria().trim().toUpperCase();
+        String nomeNorm = dto.getNome().trim();
+
+        if (itemArmazemRepository.findByCategoriaAndNome(categoriaNorm, nomeNorm).isPresent()) {
             throw new IllegalArgumentException("Já existe um item com esta categoria e nome.");
         }
 
         ItemArmazem item = new ItemArmazem();
-        item.setCategoria(dto.getCategoria().toUpperCase());
-        item.setNome(dto.getNome());
+        item.setCategoria(categoriaNorm);
+        item.setNome(nomeNorm);
         item.setQuantidade(dto.getQuantidade() != null ? Math.max(0, dto.getQuantidade()) : 0);
         item.setQuantidadeMinima(dto.getQuantidadeMinima() != null ? Math.max(0, dto.getQuantidadeMinima()) : 0);
         item.setUnidade(dto.getUnidade() != null ? dto.getUnidade() : "un");
@@ -146,10 +149,10 @@ public class ArmazemService {
             .orElseThrow(() -> new IllegalArgumentException("Item do armazém não encontrado com ID: " + id));
 
         if (dto.getCategoria() != null) {
-            item.setCategoria(dto.getCategoria().toUpperCase());
+            item.setCategoria(dto.getCategoria().trim().toUpperCase());
         }
         if (dto.getNome() != null) {
-            item.setNome(dto.getNome());
+            item.setNome(dto.getNome().trim());
         }
         if (dto.getQuantidade() != null) {
             item.setQuantidade(Math.max(0, dto.getQuantidade()));
@@ -502,10 +505,13 @@ public class ArmazemService {
     }
 
     private void criarItemSeNaoExiste(String categoria, String nome, int quantidade, int minimo, String unidade, String marca, String tamanho, Double volume, String descricao) {
-        if (itemArmazemRepository.findByCategoriaAndNome(categoria, nome).isEmpty()) {
+        String catNorm = categoria.trim().toUpperCase();
+        String nomeNorm = nome.trim();
+        
+        if (itemArmazemRepository.findByCategoriaAndNome(catNorm, nomeNorm).isEmpty()) {
             ItemArmazem item = new ItemArmazem();
-            item.setCategoria(categoria);
-            item.setNome(nome);
+            item.setCategoria(catNorm);
+            item.setNome(nomeNorm);
             item.setQuantidade(quantidade);
             item.setQuantidadeMinima(minimo);
             item.setUnidade(unidade);
