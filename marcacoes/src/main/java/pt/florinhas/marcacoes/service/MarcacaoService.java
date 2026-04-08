@@ -312,6 +312,8 @@ public class MarcacaoService {
     public MarcacaoResponseDTO atualizarDetalhesBalneario(Long marcacaoId,
             Boolean produtosHigiene, Boolean lavagemRoupa, List<RoupaDTO> roupas) {
 
+        marcacaoValidator.validarRoupas(roupas);
+
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
                 .orElseThrow(() -> new IllegalArgumentException("Marcação não encontrada"));
 
