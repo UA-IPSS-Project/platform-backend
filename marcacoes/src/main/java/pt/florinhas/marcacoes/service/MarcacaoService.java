@@ -28,6 +28,7 @@ import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.FuncionarioTipo;
+import pt.florinhas.marcacoes.domain.ItemArmazem;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
@@ -285,7 +286,9 @@ public class MarcacaoService {
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
                 
                 if (rDTO.getItemId() != null) {
-                    itemArmazemRepository.findById(rDTO.getItemId()).ifPresent(r::setItem);
+                    ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
+                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                    r.setItem(item);
                 }
                 
                 detalhes.addRoupa(r);
@@ -330,7 +333,9 @@ public class MarcacaoService {
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
                 
                 if (rDTO.getItemId() != null) {
-                    itemArmazemRepository.findById(rDTO.getItemId()).ifPresent(r::setItem);
+                    ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
+                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                    r.setItem(item);
                 }
                 
                 detalhes.addRoupa(r);
