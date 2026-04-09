@@ -7,5 +7,5 @@ import jakarta.validation.constraints.NotNull;
  */
 public record AtualizarEstadoAssuntoRequest(
     @NotNull(message = "O campo ativo é obrigatório")
-    boolean ativo
+    Boolean ativo
 ) {}

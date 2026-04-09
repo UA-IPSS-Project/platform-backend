@@ -1,5 +1,6 @@
 package pt.florinhas.marcacoes.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -52,7 +53,7 @@ public class AssuntoController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Assunto> atualizarEstado(
             @PathVariable Long id, 
-            @RequestBody AtualizarEstadoAssuntoRequest request) {
+            @Valid @RequestBody AtualizarEstadoAssuntoRequest request) {
         return ResponseEntity.ok(assuntoService.setAtivo(id, request.ativo()));
     }
 }
