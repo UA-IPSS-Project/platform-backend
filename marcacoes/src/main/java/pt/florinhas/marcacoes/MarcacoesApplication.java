@@ -4,16 +4,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
+import pt.florinhas.common_data.domain.*;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
 
 @SpringBootApplication
+@EntityScan(basePackages = {
+		"pt.florinhas.marcacoes.domain",
+		"pt.florinhas.common_data.domain"
+})
+@EnableJpaRepositories(basePackages = {
+		"pt.florinhas.marcacoes.repository",
+		"pt.florinhas.common_data.repository"
+})
 @EnableScheduling
 public class MarcacoesApplication {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MarcacoesApplication.class);

@@ -1,9 +1,10 @@
-package pt.florinhas.marcacoes.domain;
+package pt.florinhas.common_data.domain;
 
 public enum NotificacaoTipo {
     LEMBRETE,
     CANCELAMENTO,
     FICHEIRO,
     DOCUMENTO_INVALIDO,
-    SISTEMA
+    SISTEMA,
+    REQUISICAO,
 }

@@ -1,10 +1,10 @@
-package pt.florinhas.marcacoes.dto;
+package pt.florinhas.common_data.dto;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 
 import lombok.Data;
-import pt.florinhas.marcacoes.domain.NotificacaoTipo;
+import pt.florinhas.common_data.domain.NotificacaoTipo;
 
 @Data
 public class NotificacaoResponseDTO {

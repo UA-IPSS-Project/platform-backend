@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.domain;
+package pt.florinhas.common_data.domain;
 
 import java.time.LocalDateTime;
 import java.util.Map;

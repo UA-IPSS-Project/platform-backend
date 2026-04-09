@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.domain;
+package pt.florinhas.common_data.domain;
 
 /**
  * Enumeração com a tipologia de Funcionários do sistema.

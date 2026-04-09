@@ -1,5 +1,7 @@
 package pt.florinhas.marcacoes.domain;
 
+import pt.florinhas.common_data.domain.Utente;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

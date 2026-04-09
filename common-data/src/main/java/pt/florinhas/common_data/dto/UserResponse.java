@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.dto;
+package pt.florinhas.common_data.dto;
 
 /**
  * DTO imutável (Java record) com os dados públicos de um utilizador autenticado.

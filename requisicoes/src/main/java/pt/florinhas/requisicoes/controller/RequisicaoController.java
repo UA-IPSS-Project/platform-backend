@@ -24,7 +24,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
-import pt.florinhas.requisicoes.domain.Utilizador;
 import pt.florinhas.requisicoes.dto.AtualizarEstadoRequisicaoRequest;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
@@ -33,6 +32,8 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
 import pt.florinhas.requisicoes.service.RequisicaoService;
+
+import pt.florinhas.common_data.domain.Utilizador;
 
 @RestController
 @RequestMapping("/api/requisicoes")

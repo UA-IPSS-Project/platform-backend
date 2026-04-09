@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.domain;
+package pt.florinhas.common_data.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

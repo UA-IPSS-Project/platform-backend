@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
-import pt.florinhas.marcacoes.domain.Utente;
+import pt.florinhas.common_data.repository.UtenteRepository;
+
+import pt.florinhas.common_data.domain.Utente;
 
 import java.util.List;
 import java.util.Optional;

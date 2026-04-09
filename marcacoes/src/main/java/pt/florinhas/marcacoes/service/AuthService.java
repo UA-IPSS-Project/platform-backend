@@ -13,20 +13,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 
 import lombok.extern.slf4j.Slf4j;
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.dto.AuthResponse;
 import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
 import pt.florinhas.marcacoes.dto.LoginFuncionarioRequest;
 import pt.florinhas.marcacoes.dto.LoginUtenteRequest;
 import pt.florinhas.marcacoes.dto.UtenteRegisterRequest;
 import pt.florinhas.marcacoes.exception.BadRequestException;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.validation.NifValidator;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.

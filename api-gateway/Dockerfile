@@ -7,6 +7,7 @@ COPY pom.xml .
 COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
 COPY requisicoes/pom.xml requisicoes/
+COPY common-data/pom.xml common-data/
 
 # Baixar dependências (layer caching)
 RUN --mount=type=cache,target=/root/.m2 \

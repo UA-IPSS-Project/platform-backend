@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.repository;
+package pt.florinhas.common_data.repository;
 
 import java.util.List;
 import java.util.Optional;
@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.domain.Valencia;
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
+import pt.florinhas.common_data.domain.Valencia;
 
 /**
  * Repositório Spring Data JPA para a entidade Funcionario.

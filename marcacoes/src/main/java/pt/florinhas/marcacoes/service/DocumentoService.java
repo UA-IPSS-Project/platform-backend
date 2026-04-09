@@ -28,18 +28,19 @@ import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import pt.florinhas.common_data.domain.NotificacaoTipo;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
 import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.domain.NotificacaoTipo;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
+import pt.florinhas.common_data.domain.Utilizador;
 
 /**
  * Serviço responsável pela gestão de documentos anexados a marcações.

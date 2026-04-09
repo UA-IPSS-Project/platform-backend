@@ -6,7 +6,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 
 /**
  * Implementação de UserDetailsService que integra a autenticação

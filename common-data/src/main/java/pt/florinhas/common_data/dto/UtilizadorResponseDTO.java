@@ -1,11 +1,12 @@
-package pt.florinhas.marcacoes.dto;
+package pt.florinhas.common_data.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Utilizador;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
 
 /**
  * DTO de resposta com os dados públicos de um Utilizador.

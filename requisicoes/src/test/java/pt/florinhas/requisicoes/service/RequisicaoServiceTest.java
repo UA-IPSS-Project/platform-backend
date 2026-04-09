@@ -18,7 +18,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import pt.florinhas.requisicoes.domain.Funcionario;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
@@ -32,13 +31,15 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.exception.ResourceNotFoundException;
-import pt.florinhas.requisicoes.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
 
 @ExtendWith(MockitoExtension.class)
 class RequisicaoServiceTest {

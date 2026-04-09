@@ -24,6 +24,7 @@
         <module>marcacoes</module>
         <module>requisicoes</module>
         <module>api-gateway</module>
+        <module>common-data</module>
     </modules>
 
     <!-- ===== Versões centralizadas ===== -->
@@ -42,6 +43,13 @@
     <!-- ===== BOM e versões geridas centralmente ===== -->
     <dependencyManagement>
         <dependencies>
+            <!-- Shared domain module -->
+            <dependency>
+                <groupId>pt.florinhas</groupId>
+                <artifactId>common-data</artifactId>
+                <version>1.0-SNAPSHOT</version>
+            </dependency>
+
             <!-- Spring Cloud BOM -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>

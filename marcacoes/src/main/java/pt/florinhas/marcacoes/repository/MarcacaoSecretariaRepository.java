@@ -11,7 +11,8 @@ import org.springframework.stereotype.Repository;
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
-import pt.florinhas.marcacoes.domain.Utente;
+
+import pt.florinhas.common_data.domain.Utente;
 /**
  * Repositório Spring Data JPA para a entidade MarcacaoSecretaria.
  *

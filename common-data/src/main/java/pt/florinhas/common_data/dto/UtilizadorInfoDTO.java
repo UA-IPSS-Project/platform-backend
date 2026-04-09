@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.dto;
+package pt.florinhas.common_data.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

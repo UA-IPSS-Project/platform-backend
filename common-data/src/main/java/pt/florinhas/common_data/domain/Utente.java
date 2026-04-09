@@ -1,10 +1,6 @@
-package pt.florinhas.marcacoes.domain;
+package pt.florinhas.common_data.domain;
 
-import java.util.Set;
-
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,14 +28,4 @@ public class Utente extends Utilizador {
      * A validação de uso deste flag vive na camada de serviço.
      */
     private boolean activo;
-
-    /**
-     * Relação 1:N com registos de MarcacaoSecretaria em que este utente é o alvo.
-     *
-     * mappedBy = "utente" indica que a FK está do lado de MarcacaoSecretaria (coluna utente_id).
-     * CascadeType.ALL propaga operações: ao remover o Utente, as suas marcações associadas
-     * são também removidas (atenção a requisitos de auditoria/retenção).
-     */
-	@OneToMany(mappedBy = "utente", cascade = CascadeType.ALL)
-    private Set<MarcacaoSecretaria> marcacoes;
 }

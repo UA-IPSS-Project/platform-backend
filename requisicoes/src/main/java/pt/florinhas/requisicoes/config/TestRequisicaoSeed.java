@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.extern.slf4j.Slf4j;
-import pt.florinhas.requisicoes.domain.Funcionario;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
@@ -24,7 +23,6 @@ import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.Transporte;
-import pt.florinhas.requisicoes.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoManutencaoItemRepository;
@@ -33,6 +31,10 @@ import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+
 import org.springframework.context.annotation.Profile;
 
 @Slf4j
