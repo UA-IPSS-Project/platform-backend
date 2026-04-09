@@ -35,10 +35,6 @@ public class CriarMarcacaoRequest {
     @Size(max = 200, message = "O assunto não pode exceder 200 caracteres")
     private String assunto;
 
-    // Descrição detalhada do pedido/atendimento.
-    @Size(max = 2000, message = "A descrição não pode exceder 2000 caracteres")
-    private String descricao;
-
     // ID do utente associado à marcação (se já existir).
     private Long utenteId;
 

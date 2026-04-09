@@ -34,7 +34,6 @@ public class AssuntoService {
                 .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));
         
         existindo.setNome(dados.getNome());
-        existindo.setDescricao(dados.getDescricao());
         existindo.setAtivo(dados.isAtivo());
         
         return assuntoRepository.save(existindo);

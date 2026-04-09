@@ -24,9 +24,6 @@ public class Assunto {
     @Column(name = "nome", nullable = false, unique = true, length = 100)
     private String nome;
 
-    @Column(name = "descricao", length = 300)
-    private String descricao;
-
     @Column(name = "ativo", nullable = false)
     private boolean ativo = true;
 

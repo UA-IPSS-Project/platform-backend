@@ -222,7 +222,6 @@ public class MarcacaoService {
 
         MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
         detalhes.setAssunto(request.getAssunto());
-        detalhes.setDescricao(request.getDescricao());
         detalhes.setTipoAtendimento(tipo);
         detalhes.setUtente(utente);
 
@@ -598,7 +597,6 @@ public class MarcacaoService {
         } else {
             MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
             detalhes.setAssunto("Reserva temporária");
-            detalhes.setDescricao("Reserva temporária de slot");
             detalhes.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
             if (request.getUtenteId() != null) {
                 Utente utente = utenteRepository.findById(request.getUtenteId()).orElse(null);
@@ -675,7 +673,6 @@ public class MarcacaoService {
             MarcacaoSecretaria sec = m.getMarcacaoSecretaria();
             MarcacaoResponseDTO.MarcacaoSecretariaDTO secDTO = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
             secDTO.setAssunto(sec.getAssunto());
-            secDTO.setDescricao(sec.getDescricao());
             secDTO.setTipoAtendimento(sec.getTipoAtendimento());
 
             if (sec.getUtente() != null) {
