@@ -21,11 +21,12 @@ import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
-import pt.florinhas.requisicoes.domain.Utilizador;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.service.RequisicaoService;
+
+import pt.florinhas.common_data.domain.Utilizador;
 
 @ExtendWith(MockitoExtension.class)
 class RequisicaoControllerTest {
