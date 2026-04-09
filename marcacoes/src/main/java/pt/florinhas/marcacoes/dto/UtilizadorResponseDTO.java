@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import pt.florinhas.marcacoes.domain.Funcionario;
+import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.domain.Utilizador;
 
 /**
@@ -69,6 +70,11 @@ public class UtilizadorResponseDTO {
                 dto.setFuncao(func.getTipo().toString());
             }
             // Se termsAcceptedAt é null, foi criado pela secretaria
+            dto.setCreatedBySecretaria(utilizador.getTermsAcceptedAt() == null);
+        } else if (utilizador instanceof Utente) {
+            Utente utente = (Utente) utilizador;
+            dto.setActive(utente.isActivo());
+            dto.setFuncao("UTENTE");
             dto.setCreatedBySecretaria(utilizador.getTermsAcceptedAt() == null);
         } else {
             dto.setActive(true);

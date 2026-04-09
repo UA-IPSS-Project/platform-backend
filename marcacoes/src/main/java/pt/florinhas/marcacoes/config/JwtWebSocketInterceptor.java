@@ -43,7 +43,6 @@ public class JwtWebSocketInterceptor implements ChannelInterceptor {
             } catch (Exception e) {
                 // Invalid token, do not set user
             }
-        } else {
         }
         return message;
     }
