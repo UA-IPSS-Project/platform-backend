@@ -25,6 +25,9 @@ public class AssuntoService {
 
     @Transactional
     public Assunto criar(Assunto assunto) {
+        if (assunto.getNome() != null) {
+            assunto.setNome(assunto.getNome().trim().toLowerCase());
+        }
         return assuntoRepository.save(assunto);
     }
 
@@ -33,7 +36,9 @@ public class AssuntoService {
         Assunto existindo = assuntoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));
         
-        existindo.setNome(dados.getNome());
+        if (dados.getNome() != null) {
+            existindo.setNome(dados.getNome().trim().toLowerCase());
+        }
         existindo.setAtivo(dados.isAtivo());
         
         return assuntoRepository.save(existindo);
