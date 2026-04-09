@@ -5,14 +5,16 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AtualizarConfiguracaoSlotRequest;
 import pt.florinhas.marcacoes.dto.BloquearHorarioRequest;
 import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.CalendarioService;
 import pt.florinhas.marcacoes.exception.NotFoundException;
+
+import pt.florinhas.common_data.domain.Utilizador;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
