@@ -12,7 +12,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import pt.florinhas.requisicoes.domain.Funcionario;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
@@ -35,7 +34,6 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
 import pt.florinhas.requisicoes.exception.ResourceNotFoundException;
-import pt.florinhas.requisicoes.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoManutencaoItemRepository;
@@ -45,6 +43,9 @@ import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TipoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
 
 @Service
 public class RequisicaoService {
