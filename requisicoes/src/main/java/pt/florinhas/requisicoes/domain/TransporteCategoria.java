@@ -18,5 +18,10 @@ public enum TransporteCategoria {
     ESCOLAR,           // transporte de crianças
     AMBULANCIA,
     TRACTOR,
-    OUTRO
+    OUTRO,
+
+    // Deprecated - Manter para compatibilidade com dados existentes
+    @Deprecated LIGEIRO,
+    @Deprecated PESADO,
+    @Deprecated PASSAGEIROS
 }
