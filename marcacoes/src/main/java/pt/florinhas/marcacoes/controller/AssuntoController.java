@@ -33,14 +33,14 @@ public class AssuntoController {
 
     @PostMapping
     @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<Assunto> criar(@RequestBody Assunto assunto) {
-        return ResponseEntity.status(201).body(assuntoService.criar(assunto));
+    public ResponseEntity<Assunto> criar(@Valid @RequestBody AssuntoRequest request) {
+        return ResponseEntity.status(201).body(assuntoService.criar(request.nome()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<Assunto> atualizar(@PathVariable Long id, @RequestBody Assunto assunto) {
-        return ResponseEntity.ok(assuntoService.atualizar(id, assunto));
+    public ResponseEntity<Assunto> atualizar(@PathVariable Long id, @Valid @RequestBody AssuntoRequest request) {
+        return ResponseEntity.ok(assuntoService.atualizar(id, request.nome()));
     }
 
     @DeleteMapping("/{id}")
