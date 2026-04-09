@@ -25,8 +25,13 @@ public class AssuntoService {
 
     @Transactional
     public Assunto criar(String nome) {
+        String normalized = nome.trim().toLowerCase();
+        if (assuntoRepository.findByNome(normalized).isPresent()) {
+            throw new IllegalArgumentException("Já existe um assunto com este nome.");
+        }
+
         Assunto assunto = new Assunto();
-        assunto.setNome(nome.trim().toLowerCase());
+        assunto.setNome(normalized);
         assunto.setAtivo(true);
         return assuntoRepository.save(assunto);
     }
@@ -37,7 +42,13 @@ public class AssuntoService {
                 .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));
         
         if (novoNome != null) {
-            existindo.setNome(novoNome.trim().toLowerCase());
+            String normalized = novoNome.trim().toLowerCase();
+            assuntoRepository.findByNome(normalized).ifPresent(a -> {
+                if (!a.getId().equals(id)) {
+                    throw new IllegalArgumentException("Já existe um assunto com este nome.");
+                }
+            });
+            existindo.setNome(normalized);
         }
         
         return assuntoRepository.save(existindo);
