@@ -7,15 +7,17 @@ COPY pom.xml .
 COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
 COPY requisicoes/pom.xml requisicoes/
+COPY common-data/pom.xml common-data/
 
 # Download dependencies
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn dependency:go-offline -B -f marcacoes/pom.xml
+    mvn dependency:go-offline -pl marcacoes -am -B
 
 # Copy source code and build
 COPY marcacoes/src marcacoes/src
+COPY common-data/src common-data/src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn clean package -DskipTests -f marcacoes/pom.xml
+    mvn clean package -pl marcacoes -am -DskipTests
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
