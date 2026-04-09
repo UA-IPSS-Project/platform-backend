@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import pt.florinhas.marcacoes.domain.Assunto;
+import pt.florinhas.marcacoes.dto.AtualizarEstadoAssuntoRequest;
 import pt.florinhas.marcacoes.service.AssuntoService;
 
 import java.util.List;
@@ -45,5 +46,13 @@ public class AssuntoController {
     public ResponseEntity<?> apagar(@PathVariable Long id) {
         assuntoService.apagar(id);
         return ResponseEntity.ok(Map.of("message", "Assunto desativado com sucesso"));
+    }
+
+    @PatchMapping("/{id}/ativo")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Assunto> atualizarEstado(
+            @PathVariable Long id, 
+            @RequestBody AtualizarEstadoAssuntoRequest request) {
+        return ResponseEntity.ok(assuntoService.setAtivo(id, request.ativo()));
     }
 }

@@ -49,4 +49,13 @@ public class AssuntoService {
         existindo.setAtivo(false);
         assuntoRepository.save(existindo);
     }
+
+    @Transactional
+    public Assunto setAtivo(Long id, boolean ativo) {
+        Assunto existindo = assuntoRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));
+        
+        existindo.setAtivo(ativo);
+        return assuntoRepository.save(existindo);
+    }
 }
