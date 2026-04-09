@@ -6,6 +6,6 @@ import jakarta.validation.constraints.NotNull;
 public record CriarMaterialRequest(
         @NotBlank String nome,
         @NotNull String categoria,
-        @NotBlank String atributo,
-        @NotBlank String valorAtributo) {
+        String atributo,
+        String valorAtributo) {
 }

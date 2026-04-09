@@ -14,12 +14,12 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +44,8 @@ import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.RoupaDTO;
 import pt.florinhas.marcacoes.repository.FuncionarioRepository;
-import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
+import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.UtenteRepository;
 import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
@@ -217,12 +217,12 @@ public class MarcacaoService {
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
+        marcacao.setDescricao(request.getDescricao());
         // Centralized duration logic: secretaria = 15min
         marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
 
         MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
         detalhes.setAssunto(request.getAssunto());
-        detalhes.setDescricao(request.getDescricao());
         detalhes.setTipoAtendimento(tipo);
         detalhes.setUtente(utente);
 
@@ -598,7 +598,6 @@ public class MarcacaoService {
         } else {
             MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
             detalhes.setAssunto("Reserva temporária");
-            detalhes.setDescricao("Reserva temporária de slot");
             detalhes.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
             if (request.getUtenteId() != null) {
                 Utente utente = utenteRepository.findById(request.getUtenteId()).orElse(null);
@@ -675,7 +674,6 @@ public class MarcacaoService {
             MarcacaoSecretaria sec = m.getMarcacaoSecretaria();
             MarcacaoResponseDTO.MarcacaoSecretariaDTO secDTO = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
             secDTO.setAssunto(sec.getAssunto());
-            secDTO.setDescricao(sec.getDescricao());
             secDTO.setTipoAtendimento(sec.getTipoAtendimento());
 
             if (sec.getUtente() != null) {
