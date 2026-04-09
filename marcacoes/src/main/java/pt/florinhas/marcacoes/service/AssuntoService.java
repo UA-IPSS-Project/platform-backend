@@ -24,22 +24,21 @@ public class AssuntoService {
     }
 
     @Transactional
-    public Assunto criar(Assunto assunto) {
-        if (assunto.getNome() != null) {
-            assunto.setNome(assunto.getNome().trim().toLowerCase());
-        }
+    public Assunto criar(String nome) {
+        Assunto assunto = new Assunto();
+        assunto.setNome(nome.trim().toLowerCase());
+        assunto.setAtivo(true);
         return assuntoRepository.save(assunto);
     }
 
     @Transactional
-    public Assunto atualizar(Long id, Assunto dados) {
+    public Assunto atualizar(Long id, String novoNome) {
         Assunto existindo = assuntoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));
         
-        if (dados.getNome() != null) {
-            existindo.setNome(dados.getNome().trim().toLowerCase());
+        if (novoNome != null) {
+            existindo.setNome(novoNome.trim().toLowerCase());
         }
-        existindo.setAtivo(dados.isAtivo());
         
         return assuntoRepository.save(existindo);
     }
