@@ -217,6 +217,7 @@ public class MarcacaoService {
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
+        marcacao.setDescricao(request.getDescricao());
         // Centralized duration logic: secretaria = 15min
         marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
 

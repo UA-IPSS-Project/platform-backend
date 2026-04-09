@@ -105,6 +105,10 @@ public class Marcacao {
     @Column(name = "motivo_cancelamento")
     private String motivoCancelamento;
 
+    // Descrição curta da marcação (opcional)
+    @Column(name = "descricao")
+    private String descricao;
+
     /**
      * Detalhes específicos quando a marcação segue o fluxo de secretaria.
      * Relação 1:1 bidirecional. 'mappedBy' indica que a FK está do lado de
