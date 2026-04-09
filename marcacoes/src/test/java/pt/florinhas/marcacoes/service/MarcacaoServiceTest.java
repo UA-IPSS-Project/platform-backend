@@ -14,19 +14,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
-import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
 import pt.florinhas.marcacoes.validation.NifValidator;
+
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Funcionario;
+
 
 @ExtendWith(MockitoExtension.class)
 class MarcacaoServiceTest {

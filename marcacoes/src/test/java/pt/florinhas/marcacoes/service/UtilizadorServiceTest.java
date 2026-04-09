@@ -18,13 +18,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import pt.florinhas.marcacoes.domain.Utente;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.exception.BadRequestException;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.NifValidator;
+
+import pt.florinhas.common_data.domain.Utente;
 
 import java.util.Collections;
 import java.util.List;
@@ -137,7 +138,7 @@ public class UtilizadorServiceTest {
         when(utenteRepository.findAll()).thenReturn(List.of(activeUtente, inactiveUtente));
 
         // Act
-        List<pt.florinhas.marcacoes.dto.UtilizadorResponseDTO> result = utilizadorService.listarTodosUtentes();
+        List<pt.florinhas.common_data.dto.UtilizadorResponseDTO> result = utilizadorService.listarTodosUtentes();
 
         // Assert
         assertNotNull(result);

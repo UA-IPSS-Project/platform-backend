@@ -13,10 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Utilizador;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
 
 @DataJpaTest
 class UtilizadorRepositoryTest {
