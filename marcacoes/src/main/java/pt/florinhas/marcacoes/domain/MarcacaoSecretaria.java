@@ -66,13 +66,6 @@ public class MarcacaoSecretaria {
     private String assunto;
 
     /**
-     * Descrição detalhada do pedido/atendimento.
-     * Comprimento máximo: 300 caracteres.
-     */
-    @Column(name = "descricao", length = 300)
-    private String descricao;
-
-    /**
      * Tipo de atendimento (PRESENCIAL, REMOTO).
      * Persistido como string para legibilidade e robustez a reordenações do enum.
      */

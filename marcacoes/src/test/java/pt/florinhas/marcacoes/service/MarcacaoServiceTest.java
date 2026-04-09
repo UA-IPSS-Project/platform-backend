@@ -106,7 +106,6 @@ class MarcacaoServiceTest {
         request.setUtenteId(1L);
         request.setCriadoPorId(2L);
         request.setAssunto("Consulta");
-        request.setDescricao("Dor de cabeça");
 
         Utente utente = new Utente();
         utente.setId(1L);
@@ -143,7 +142,6 @@ class MarcacaoServiceTest {
         request.setData(now);
         request.setUtenteId(1L);
         request.setAssunto("Consulta Remota");
-        request.setDescricao("Follow up");
 
         Utente utente = new Utente();
         utente.setId(1L);
