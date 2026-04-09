@@ -24,6 +24,7 @@
         <module>marcacoes</module>
         <module>requisicoes</module>
         <module>api-gateway</module>
+        <module>common-data</module>
     </modules>
 
     <!-- ===== Versões centralizadas ===== -->
