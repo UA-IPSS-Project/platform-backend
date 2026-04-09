@@ -90,7 +90,8 @@ public class JwtAuthenticationFilter implements WebFilter {
                 || path.startsWith("/api/auth/register/")
                 || path.startsWith("/marcacoes/api/auth/login/")
                 || path.startsWith("/marcacoes/api/auth/register/")
-                || path.equals("/api/auth/logout");
+                || path.equals("/api/auth/logout")
+                || path.startsWith("/actuator/health");
     }
 
     private String extractToken(ServerWebExchange exchange) {
