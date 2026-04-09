@@ -1,5 +1,7 @@
 package pt.florinhas.marcacoes.domain;
 
+import pt.florinhas.common_data.domain.Utilizador;
+
 import java.time.LocalDateTime;
 
 import java.util.ArrayList;
