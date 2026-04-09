@@ -293,8 +293,8 @@ public class RequisicaoService {
         Material material = new Material();
         material.setNome(request.nome().trim());
         material.setCategoria(request.categoria());
-        material.setAtributo(request.atributo() != null && !request.atributo().trim().isEmpty() ? request.atributo().trim() : null);
-        material.setValorAtributo(request.valorAtributo() != null && !request.valorAtributo().trim().isEmpty() ? request.valorAtributo().trim() : null);
+        material.setAtributo(normalizarTextoOpcional(request.atributo()));
+        material.setValorAtributo(normalizarTextoOpcional(request.valorAtributo()));
         return materialRepository.save(material);
     }
 
@@ -305,8 +305,8 @@ public class RequisicaoService {
 
         material.setNome(request.nome().trim());
         material.setCategoria(request.categoria());
-        material.setAtributo(request.atributo() != null && !request.atributo().trim().isEmpty() ? request.atributo().trim() : null);
-        material.setValorAtributo(request.valorAtributo() != null && !request.valorAtributo().trim().isEmpty() ? request.valorAtributo().trim() : null);
+        material.setAtributo(normalizarTextoOpcional(request.atributo()));
+        material.setValorAtributo(normalizarTextoOpcional(request.valorAtributo()));
 
         return materialRepository.save(material);
     }
