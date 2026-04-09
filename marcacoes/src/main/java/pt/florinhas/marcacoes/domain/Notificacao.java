@@ -43,7 +43,7 @@ public class Notificacao {
     private String mensagem;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(255)")
     private NotificacaoTipo tipo;
 
     @Column(nullable = false)

@@ -38,7 +38,8 @@ public class JwtWebSocketInterceptor implements ChannelInterceptor {
             }
             try {
                 Claims claims = jwtService.parseClaims(token);
-                accessor.setUser(new WebSocketUserPrincipal(claims.getSubject(), claims));
+                String subject = claims.getSubject();
+                accessor.setUser(new WebSocketUserPrincipal(subject, claims));
             } catch (Exception e) {
                 // Invalid token, do not set user
             }

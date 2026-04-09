@@ -10,6 +10,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -44,6 +46,9 @@ public class UtilizadorServiceTest {
 
     @Mock
     private NifValidator nifValidator;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UtilizadorService utilizadorService;
@@ -114,5 +119,37 @@ public class UtilizadorServiceTest {
         BadRequestException ex = assertThrows(BadRequestException.class,
                 () -> utilizadorService.obterOuCriarUtente(invalidNif, "Name", "email@test.com", "912345678"));
         assertEquals("NIF deve conter exatamente 9 dígitos numéricos", ex.getMessage());
+    }
+
+    @Test
+    void listarTodosUtentes_ShouldReturnAllUtentesWithCorrectStatus() {
+        // Arrange
+        Utente activeUtente = new Utente();
+        activeUtente.setId(1L);
+        activeUtente.setNome("Active Utente");
+        activeUtente.setActivo(true);
+
+        Utente inactiveUtente = new Utente();
+        inactiveUtente.setId(2L);
+        inactiveUtente.setNome("Inactive Utente");
+        inactiveUtente.setActivo(false);
+
+        when(utenteRepository.findAll()).thenReturn(List.of(activeUtente, inactiveUtente));
+
+        // Act
+        List<pt.florinhas.marcacoes.dto.UtilizadorResponseDTO> result = utilizadorService.listarTodosUtentes();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        
+        // Check active status mapping
+        assertEquals(true, result.get(0).isActive());
+        assertEquals("Active Utente", result.get(0).getNome());
+        
+        assertEquals(false, result.get(1).isActive());
+        assertEquals("Inactive Utente", result.get(1).getNome());
+
+        verify(utenteRepository).findAll();
     }
 }

@@ -270,6 +270,15 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Lista todos os utentes (ativos e inativos).
+     */
+    public List<UtilizadorResponseDTO> listarTodosUtentes() {
+        return utenteRepository.findAll().stream()
+                .map(UtilizadorResponseDTO::fromUtilizador)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void aprovarFuncionario(Long id) {
         Funcionario funcionario = funcionarioRepository.findById(id)
@@ -301,8 +310,8 @@ public class UtilizadorService {
         Utilizador novoUtilizador;
 
         boolean employeeByRole = request.getRole() != null
-            && !request.getRole().trim().isEmpty()
-            && !"UTENTE".equalsIgnoreCase(request.getRole().trim());
+                && !request.getRole().trim().isEmpty()
+                && !"UTENTE".equalsIgnoreCase(request.getRole().trim());
         boolean shouldCreateEmployee = request.isEmployee() || employeeByRole;
 
         if (shouldCreateEmployee) {
@@ -423,13 +432,15 @@ public class UtilizadorService {
      * =========================================================
      */
 
-    // Character set aligned with the updated flow used in other account creation paths.
+    // Character set aligned with the updated flow used in other account creation
+    // paths.
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     /**
      * Gera uma password temporária segura com ~130 bits de entropia.
-     * Usa apenas caracteres alfanuméricos para evitar ambiguidades na cópia do email
+     * Usa apenas caracteres alfanuméricos para evitar ambiguidades na cópia do
+     * email
      * no primeiro login.
      */
     private String gerarPasswordSegura() {
