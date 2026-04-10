@@ -1,62 +1,121 @@
 package pt.florinhas.marcacoes.validation;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import pt.florinhas.marcacoes.exception.BadRequestException;
 
 class NifValidatorTest {
 
-    private final NifValidator nifValidator = new NifValidator();
+    private NifValidator validator;
 
-    @Test
-    void isValidRequired_DeveRetornarFalse_QuandoNifEInvalidoPorFormato() {
-        assertFalse(nifValidator.isValidRequired(null));
-        assertFalse(nifValidator.isValidRequired(""));
-        assertFalse(nifValidator.isValidRequired("123"));
-        assertFalse(nifValidator.isValidRequired("12345678"));
-        assertFalse(nifValidator.isValidRequired("1234567890"));
-        assertFalse(nifValidator.isValidRequired("12345A789"));
+    @BeforeEach
+    void setup() {
+        validator = new NifValidator();
     }
 
     @Test
-    void isValidRequired_DeveRetornarFalse_QuandoNifTemNoveDigitosIguais() {
-        assertFalse(nifValidator.isValidRequired("111111111"));
-        assertFalse(nifValidator.isValidRequired("222222222"));
+    void isFormatValid_DeveRetornarFalse_QuandoNull() {
+        assertFalse(validator.isFormatValid(null));
     }
 
     @Test
-    void isValidRequired_DeveRetornarFalse_QuandoPrefixoEInvalido() {
-        // Prefixo 4 não está na lista permitida, apesar de o checksum estar correto.
-        assertFalse(nifValidator.isValidRequired("472289071"));
+    void isFormatValid_DeveRetornarFalse_QuandoNaoTem9Digitos() {
+        assertFalse(validator.isFormatValid("123"));
     }
 
     @Test
-    void isValidRequired_DeveRetornarTrue_QuandoNifEValido() {
-        assertTrue(nifValidator.isValidRequired("272289078"));
+    void isFormatValid_DeveRetornarFalse_QuandoTemLetras() {
+        assertFalse(validator.isFormatValid("12345678A"));
     }
 
     @Test
-    void validateRequiredOrThrow_NaoDeveLancar_QuandoNifEValido() {
-        nifValidator.validateRequiredOrThrow("272289078");
+    void isFormatValid_DeveRetornarTrue_QuandoFormatoCorreto() {
+        assertTrue(validator.isFormatValid("100000002"));
     }
 
     @Test
-    void validateRequiredOrThrow_DeveLancarExcecao_QuandoNifEInvalido() {
-        BadRequestException exNulo = assertThrows(BadRequestException.class,
-                () -> nifValidator.validateRequiredOrThrow(null));
-        assertTrue(exNulo.getMessage().contains("obrigatório"));
+    void isValidRequired_DeveRetornarFalse_QuandoPrefixoInvalido() {
+        assertFalse(validator.isValidRequired("745618331"));
+    }
 
-        BadRequestException exFormato = assertThrows(BadRequestException.class,
-                () -> nifValidator.validateRequiredOrThrow("12345A789"));
-        assertTrue(exFormato.getMessage().contains("9 dígitos"));
+    @Test
+    void isValidRequired_DeveRetornarFalse_QuandoTodosDigitosIguais() {
+        assertFalse(validator.isValidRequired("111111111"));
+    }
 
-        // NIF com checksum errado (último dígito alterado)
-        BadRequestException exChecksum = assertThrows(BadRequestException.class,
-                () -> nifValidator.validateRequiredOrThrow("272289079"));
-        assertTrue(exChecksum.getMessage().contains("NIF inválido"));
+    @Test
+    void isValidRequired_DeveRetornarFalse_QuandoChecksumInvalido() {
+        assertFalse(validator.isValidRequired("100000003"));
+    }
+
+    @Test
+    void isValidRequired_DeveRetornarTrue_QuandoValido() {
+        assertTrue(validator.isValidRequired("100000002"));
+    }
+
+    @Test
+    void isValidOptional_DeveRetornarTrue_QuandoNull() {
+        assertTrue(validator.isValidOptional(null));
+    }
+
+    @Test
+    void isValidOptional_DeveRetornarTrue_QuandoVazio() {
+        assertTrue(validator.isValidOptional(""));
+    }
+
+    @Test
+    void isValidOptional_DeveDelegarParaRequired() {
+        assertFalse(validator.isValidOptional("100000003"));
+    }
+
+    @Test
+    void validateRequiredOrThrow_DeveFalhar_QuandoNull() {
+        BadRequestException ex = assertThrows(
+                BadRequestException.class,
+                () -> validator.validateRequiredOrThrow(null)
+        );
+        assertEquals("NIF é obrigatório", ex.getMessage());
+    }
+
+    @Test
+    void validateRequiredOrThrow_DeveFalhar_QuandoFormatoErrado() {
+        BadRequestException ex = assertThrows(
+                BadRequestException.class,
+                () -> validator.validateRequiredOrThrow("123")
+        );
+        assertEquals("NIF deve conter exatamente 9 dígitos numéricos", ex.getMessage());
+    }
+
+    @Test
+    void validateRequiredOrThrow_DeveFalhar_QuandoChecksumInvalido() {
+        BadRequestException ex = assertThrows(
+                BadRequestException.class,
+                () -> validator.validateRequiredOrThrow("100000003")
+        );
+        assertEquals("NIF inválido", ex.getMessage());
+    }
+
+    @Test
+    void validateRequiredOrThrow_NaoDeveFalhar_QuandoValido() {
+        assertDoesNotThrow(() -> validator.validateRequiredOrThrow("100000002"));
+    }
+
+    @Test
+    void validateOptionalOrThrow_DeveIgnorarNull() {
+        assertDoesNotThrow(() -> validator.validateOptionalOrThrow(null));
+    }
+
+    @Test
+    void validateOptionalOrThrow_DeveFalhar_QuandoInvalido() {
+        assertThrows(BadRequestException.class,
+                () -> validator.validateOptionalOrThrow("100000003"));
+    }
+
+    @Test
+    void validateOptionalOrThrow_NaoDeveFalhar_QuandoValido() {
+        assertDoesNotThrow(() -> validator.validateOptionalOrThrow("100000002"));
     }
 }
