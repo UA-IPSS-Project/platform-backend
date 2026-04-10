@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.dto;
+package pt.florinhas.api_gateway.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
