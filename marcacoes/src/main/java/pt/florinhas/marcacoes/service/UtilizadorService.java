@@ -17,17 +17,20 @@ import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
 import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
+import pt.florinhas.common_data.exception.BadRequestException;
 
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
+import pt.florinhas.marcacoes.exception.ConflictException;
+import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.service.email.EmailService;
-import pt.florinhas.marcacoes.validation.NifValidator;
 
 /**
  * Serviço responsável pela gestão de utilizadores e utentes.
@@ -71,7 +74,7 @@ public class UtilizadorService {
     public Utilizador buscarPorEmail(String email) {
         List<Utilizador> users = utilizadorRepository.findByEmail(email);
         if (users.isEmpty()) {
-            throw new RuntimeException("Utilizador não encontrado com email: " + email);
+            throw new NotFoundException("Utilizador não encontrado com email: " + email);
         }
         return users.get(0);
     }
@@ -130,7 +133,7 @@ public class UtilizadorService {
             if (u instanceof Utente) {
                 return (Utente) u;
             } else {
-                throw new RuntimeException(
+                throw new ConflictException(
                         "Este NIF (" + nif + ") já está registado como Funcionário. Não pode ser usado como Utente.");
             }
         }
@@ -144,7 +147,7 @@ public class UtilizadorService {
         validarCampoObrigatorio(telefone, "Telefone do utente é obrigatório para criar novo registo");
 
         if (utenteRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email já está registado no sistema");
+            throw new ConflictException("Email já está registado no sistema");
         }
 
         Utente novoUtente = new Utente();
@@ -181,7 +184,7 @@ public class UtilizadorService {
 
     public Utilizador obterUtilizadorPorId(Long utilizadorId) {
         return utilizadorRepository.findById(utilizadorId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + utilizadorId));
+                .orElseThrow(() -> new NotFoundException("Utilizador não encontrado com ID: " + utilizadorId));
     }
 
     /**
@@ -202,7 +205,7 @@ public class UtilizadorService {
             if (!users.isEmpty()) {
                 Utilizador u = users.get(0);
                 if (!u.getId().equals(utilizadorId)) {
-                    throw new RuntimeException("Email já está em uso por outro utilizador");
+                    throw new ConflictException("Email já está em uso por outro utilizador");
                 }
             }
             utilizador.setEmail(request.getEmail());
@@ -219,7 +222,7 @@ public class UtilizadorService {
                         DateTimeFormatter.ISO_LOCAL_DATE);
                 utilizador.setDataNasc(dataNasc);
             } catch (Exception e) {
-                throw new RuntimeException("Formato de data inválido. Use YYYY-MM-DD");
+                throw new BadRequestException("Formato de data inválido. Use YYYY-MM-DD");
             }
         }
 
@@ -284,7 +287,7 @@ public class UtilizadorService {
     @Transactional
     public void aprovarFuncionario(Long id) {
         Funcionario funcionario = funcionarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado com ID: " + id));
+                .orElseThrow(() -> new NotFoundException("Funcionário não encontrado com ID: " + id));
 
         funcionario.setActivo(true);
         funcionarioRepository.save(funcionario);
@@ -303,10 +306,10 @@ public class UtilizadorService {
     public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
         nifValidator.validateRequiredOrThrow(request.getNif());
         if (utilizadorRepository.existsByNif(request.getNif())) {
-            throw new RuntimeException("Já existe um utilizador com este NIF.");
+            throw new ConflictException("Já existe um utilizador com este NIF.");
         }
         if (utilizadorRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Já existe um utilizador com este Email.");
+            throw new ConflictException("Já existe um utilizador com este Email.");
         }
 
         Utilizador novoUtilizador;
@@ -369,8 +372,6 @@ public class UtilizadorService {
         } catch (Exception e) {
             log.error("Erro ao enviar email de criação: {}", e.getMessage());
         }
-
-        System.out.println(">>> DEBUG PASSWORD (CREATE): " + passwordInicial);
         return salvo;
     }
 
@@ -381,7 +382,7 @@ public class UtilizadorService {
     public void recuperarConta(RecoverAccountDTO request) {
         List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
         if (users.isEmpty()) {
-            throw new RuntimeException("Utilizador não encontrado com NIF: " + request.getNif());
+            throw new NotFoundException("Utilizador não encontrado com NIF: " + request.getNif());
         }
         Utilizador utilizador = users.get(0);
 
@@ -389,7 +390,7 @@ public class UtilizadorService {
                 && !request.getUpdatedEmail().equals(utilizador.getEmail())) {
 
             if (utilizadorRepository.existsByEmail(request.getUpdatedEmail())) {
-                throw new RuntimeException("O novo email já está associado a outra conta.");
+                throw new ConflictException("O novo email já está associado a outra conta.");
             }
             utilizador.setEmail(request.getUpdatedEmail());
         }
@@ -411,10 +412,9 @@ public class UtilizadorService {
         utilizadorRepository.save(utilizador);
 
         try {
-            System.out.println(">>> DEBUG PASSWORD (RECOVER): " + novaPassword);
             emailService.sendPassword(utilizador.getEmail(), novaPassword);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao enviar email de recuperação: " + e.getMessage());
+            throw new IllegalStateException("Erro ao enviar email de recuperação: " + e.getMessage(), e);
         }
     }
 
@@ -459,7 +459,7 @@ public class UtilizadorService {
 
     private void validarCampoObrigatorio(String valor, String mensagemErro) {
         if (valor == null || valor.trim().isEmpty()) {
-            throw new RuntimeException(mensagemErro);
+            throw new BadRequestException(mensagemErro);
         }
     }
 }

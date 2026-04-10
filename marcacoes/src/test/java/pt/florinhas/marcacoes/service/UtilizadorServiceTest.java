@@ -21,11 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.exception.BadRequestException;
+import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.marcacoes.service.email.EmailService;
-import pt.florinhas.marcacoes.validation.NifValidator;
 
 import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.exception.BadRequestException;
 
 import java.util.Collections;
 import java.util.List;

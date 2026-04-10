@@ -47,6 +47,7 @@ class MarcacaoRepositoryTest {
         // Setup Marcacao
         marcacao = new Marcacao();
         marcacao.setData(LocalDateTime.now().plusDays(1).truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
+        marcacao.setDuration(15);
         marcacao.setEstado(EventoEstado.AGENDADO);
         marcacao.setCriadoPor(funcionario);
         marcacao = entityManager.persist(marcacao);

@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.exception;
+package pt.florinhas.common_data.exception;
 /**
  * Exceção de domínio para sinalizar erros de validação/negócio
  * que correspondem a um HTTP 400 (Bad Request) ao nível da API.

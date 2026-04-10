@@ -1,8 +1,9 @@
-package pt.florinhas.marcacoes.validation;
+package pt.florinhas.common_data.validation;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import pt.florinhas.marcacoes.exception.BadRequestException;
+
+import pt.florinhas.common_data.exception.BadRequestException;
 
 /**
  * Validador modular de NIFs portugueses.

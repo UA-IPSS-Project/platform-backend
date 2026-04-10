@@ -29,7 +29,7 @@ import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
-import pt.florinhas.marcacoes.service.AuthService;
+import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
@@ -61,7 +61,7 @@ public class MarcacaoController {
     /**
      * Serviço de autenticação para verificação de permissões.
      */
-    private final AuthService authService;
+    private final AuthorizationService authorizationService;
 
     // =====================================================================
     // MÉTODOS AUXILIARES DE PERMISSÕES (DRY)
@@ -79,8 +79,8 @@ public class MarcacaoController {
      * @throws AccessDeniedException se não tiver permissão
      */
     private Long verificarPermissaoUtente(Long targetUtenteId) {
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
+        Long currentUserId = authorizationService.getCurrentUserId();
+        boolean isAdmin = authorizationService.isAdmin();
 
         if (!isAdmin) {
             if (targetUtenteId != null && !targetUtenteId.equals(currentUserId)) {
@@ -101,8 +101,8 @@ public class MarcacaoController {
      * @throws AccessDeniedException se não tiver permissão
      */
     private void verificarPermissaoProprietario(Long ownerId, String resourceType) {
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
+        Long currentUserId = authorizationService.getCurrentUserId();
+        boolean isAdmin = authorizationService.isAdmin();
 
         if (!isAdmin && (currentUserId == null || !currentUserId.equals(ownerId))) {
             throw new AccessDeniedException(
@@ -225,7 +225,7 @@ public class MarcacaoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
             @RequestParam(required = false) String tipo) {
 
-        if (!authService.isAdmin()) {
+        if (!authorizationService.isAdmin()) {
             throw new AccessDeniedException("Acesso restrito a administradores/secretaria.");
         }
 
@@ -279,8 +279,8 @@ public class MarcacaoController {
             @Valid @RequestBody AtualizarEstadoRequest request) {
 
         // Validar permissões
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
+        Long currentUserId = authorizationService.getCurrentUserId();
+        boolean isAdmin = authorizationService.isAdmin();
 
         if (!isAdmin) {
             // Se não é admin, verificar se a marcação pertence ao utilizador
@@ -408,8 +408,8 @@ public class MarcacaoController {
     public ResponseEntity<MarcacaoResponseDTO> obterMarcacao(
             @PathVariable Long id) {
 
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
+        Long currentUserId = authorizationService.getCurrentUserId();
+        boolean isAdmin = authorizationService.isAdmin();
 
         // Obter marcação primeiro para verificar ownership
         MarcacaoResponseDTO response = marcacaoService.obterMarcacaoDTO(id);
@@ -447,7 +447,7 @@ public class MarcacaoController {
     public ResponseEntity<Page<MarcacaoResponseDTO>> listarTodasMarcacoes(
             @PageableDefault(size = 20, sort = "data") Pageable pageable) {
 
-        if (!authService.isAdmin()) {
+        if (!authorizationService.isAdmin()) {
             throw new AccessDeniedException("Acesso restrito a administradores.");
         }
         Page<MarcacaoResponseDTO> response = marcacaoService.listarTodasMarcacoesPaginated(pageable);
@@ -512,7 +512,7 @@ public class MarcacaoController {
             @RequestParam(defaultValue = "MES") String periodo) {
 
         // Apenas funcionários/admin (que têm ROLE_SECRETARIA ou ROLE_BALNEARIO) podem ver estatísticas
-        if (!authService.isAdmin()) {
+        if (!authorizationService.isAdmin()) {
             throw new AccessDeniedException("Não tem permissão para consultar estatísticas de frequência.");
         }
 

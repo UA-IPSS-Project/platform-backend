@@ -7,10 +7,18 @@ import java.util.List;
 public class WebSocketUserPrincipal implements Principal {
     private final String name;
     private final Claims claims;
+    private final List<String> roles;
 
     public WebSocketUserPrincipal(String name, Claims claims) {
         this.name = name;
         this.claims = claims;
+        this.roles = List.of();
+    }
+
+    public WebSocketUserPrincipal(String name, List<String> roles) {
+        this.name = name;
+        this.claims = null;
+        this.roles = roles != null ? roles : List.of();
     }
 
     @Override
@@ -23,6 +31,12 @@ public class WebSocketUserPrincipal implements Principal {
     }
 
     public List<String> getRoles() {
+        if (!roles.isEmpty()) {
+            return roles;
+        }
+        if (claims == null) {
+            return List.of();
+        }
         Object roles = claims.get("roles");
         if (roles instanceof List<?>) {
             return ((List<?>) roles).stream()

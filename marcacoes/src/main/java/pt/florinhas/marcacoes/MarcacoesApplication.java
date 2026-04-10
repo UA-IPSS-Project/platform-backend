@@ -6,6 +6,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -13,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import pt.florinhas.common_data.domain.*;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.validation.NifValidator;
 
 @SpringBootApplication
 @EntityScan(basePackages = {
@@ -44,6 +46,12 @@ public class MarcacoesApplication {
 	 * CommandLineRunner que garante a existência de contas base funcionais
 	 * (Secretaria, Balneário, Escola) ao iniciar a aplicação.
 	 */
+	@Bean
+	NifValidator nifValidator() {
+		return new NifValidator();
+	}
+	@ConditionalOnBean(PasswordEncoder.class)
+
 	@Bean
 	CommandLineRunner initDefaultFuncionarios(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
 		return args -> {

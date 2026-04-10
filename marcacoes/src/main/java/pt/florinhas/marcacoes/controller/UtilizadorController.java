@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
-import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
 import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
+import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
 
 import jakarta.validation.Valid;
 
