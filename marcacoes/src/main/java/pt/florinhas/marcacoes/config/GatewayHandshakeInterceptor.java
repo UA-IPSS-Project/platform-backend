@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -16,12 +17,16 @@ public class GatewayHandshakeInterceptor implements HandshakeInterceptor {
 
     private static final String ATTR_USER = "gatewayUser";
     private static final String ATTR_ROLES = "gatewayRoles";
+    private final String expectedGatewaySecret;
+
+    public GatewayHandshakeInterceptor(@Value("${gateway.shared-secret:}") String expectedGatewaySecret) {
+        this.expectedGatewaySecret = expectedGatewaySecret;
+    }
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
             WebSocketHandler wsHandler, Map<String, Object> attributes) {
         String gatewaySecret = request.getHeaders().getFirst("X-Gateway-Secret");
-        String expectedGatewaySecret = System.getenv("GATEWAY_SHARED_SECRET");
         if (!StringUtils.hasText(gatewaySecret)
                 || !StringUtils.hasText(expectedGatewaySecret)
                 || !gatewaySecret.equals(expectedGatewaySecret)) {

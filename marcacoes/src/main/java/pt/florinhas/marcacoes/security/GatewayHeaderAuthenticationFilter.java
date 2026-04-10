@@ -9,6 +9,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -22,9 +23,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
     private final CustomUserDetailsService userDetailsService;
+    private final String expectedGatewaySecret;
 
-    public GatewayHeaderAuthenticationFilter(CustomUserDetailsService userDetailsService) {
+    public GatewayHeaderAuthenticationFilter(CustomUserDetailsService userDetailsService,
+            @Value("${gateway.shared-secret:}") String expectedGatewaySecret) {
         this.userDetailsService = userDetailsService;
+        this.expectedGatewaySecret = expectedGatewaySecret;
     }
 
     @Override
@@ -43,7 +47,6 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
         // Verify that the request comes from the trusted gateway by checking a shared secret header.
         String gatewaySecret = request.getHeader("X-Gateway-Secret");
-        String expectedGatewaySecret = System.getenv("GATEWAY_SHARED_SECRET");
         if (!StringUtils.hasText(gatewaySecret)
                 || !StringUtils.hasText(expectedGatewaySecret)
                 || !gatewaySecret.equals(expectedGatewaySecret)) {
