@@ -734,8 +734,11 @@ public class MarcacaoService {
     @Transactional
     public void limparReservasExpiradas() {
         LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
-        // Usa o método customizado que também limpa registos com criadoEm NULL
-        marcacaoRepository.deleteExpiredOrorphan(EventoEstado.EM_PREENCHIMENTO, expirationTime);
+        List<Marcacao> expiradas = marcacaoRepository.findByEstadoAndCriadoEmBefore(
+                EventoEstado.EM_PREENCHIMENTO,
+                expirationTime);
+
+        expiradas.forEach(marcacaoRepository::delete);
     }
 
     @Scheduled(cron = "0 59 23 * * *") // Run every day at 23:59
