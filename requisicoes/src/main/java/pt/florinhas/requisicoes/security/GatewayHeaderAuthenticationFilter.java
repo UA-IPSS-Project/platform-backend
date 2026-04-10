@@ -41,18 +41,33 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
-        if (authorities.isEmpty()) {
-            authorities = userDetails.getAuthorities();
+        String gatewaySecret = request.getHeader("X-Gateway-Secret");
+        String expectedGatewaySecret = System.getenv("GATEWAY_SHARED_SECRET");
+        if (!StringUtils.hasText(gatewaySecret)
+                || !StringUtils.hasText(expectedGatewaySecret)
+                || !gatewaySecret.equals(expectedGatewaySecret)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized gateway origin");
+            return;
         }
 
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                authorities);
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
+            if (authorities.isEmpty()) {
+                authorities = userDetails.getAuthorities();
+            }
 
-        SecurityContextHolder.getContext().setAuthentication(authToken);
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    authorities);
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+        } catch (Exception e) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid authenticated user");
+            return;
+        }
+
         filterChain.doFilter(request, response);
     }
 

@@ -47,9 +47,7 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
         if (!StringUtils.hasText(gatewaySecret)
                 || !StringUtils.hasText(expectedGatewaySecret)
                 || !gatewaySecret.equals(expectedGatewaySecret)) {
-            // If the gateway secret is missing, not configured, or does not match,
-            // do not trust the X-Authenticated-* headers.
-            filterChain.doFilter(request, response);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized gateway origin");
             return;
         }
         try {
@@ -66,7 +64,8 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.getContext().setAuthentication(authToken);
         } catch (Exception e) {
-            // Log but allow filter chain to proceed for permitAll() paths
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid authenticated user");
+            return;
         }
         
         filterChain.doFilter(request, response);
