@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -168,5 +169,27 @@ class MarcacaoServiceTest {
         assertEquals(AtendimentoTipo.REMOTO, resultado.getMarcacaoSecretaria().getTipoAtendimento());
         assertEquals(utente, resultado.getMarcacaoSecretaria().getUtente());
         assertEquals("Consulta Remota", resultado.getMarcacaoSecretaria().getAssunto());
+    }
+
+    @Test
+    void limparReservasExpiradas_DeveEliminarMarcacoesUmaAUma() {
+        // Arrange
+        Marcacao expiradas1 = new Marcacao();
+        expiradas1.setId(1L);
+
+        Marcacao expiradas2 = new Marcacao();
+        expiradas2.setId(2L);
+
+        when(marcacaoRepository.findByEstadoAndCriadoEmBefore(eq(EventoEstado.EM_PREENCHIMENTO), any()))
+                .thenReturn(List.of(expiradas1, expiradas2));
+
+        // Act
+        marcacaoService.limparReservasExpiradas();
+
+        // Assert
+        verify(marcacaoRepository).findByEstadoAndCriadoEmBefore(eq(EventoEstado.EM_PREENCHIMENTO), any());
+        verify(marcacaoRepository).delete(expiradas1);
+        verify(marcacaoRepository).delete(expiradas2);
+        verify(marcacaoRepository, never()).deleteAllInBatch(any());
     }
 }
