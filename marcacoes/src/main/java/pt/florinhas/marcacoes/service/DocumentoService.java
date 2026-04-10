@@ -34,13 +34,13 @@ import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
 import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
-import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 
 import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.exception.ResourceNotFoundException;
 
 /**
  * Serviço responsável pela gestão de documentos anexados a marcações.
