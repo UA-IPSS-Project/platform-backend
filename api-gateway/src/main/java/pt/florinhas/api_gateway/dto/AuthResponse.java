@@ -20,29 +20,6 @@ public record AuthResponse(
         String nif,
         String telefone,
         long expiresAt,
-    boolean active,
-    boolean requiresPasswordSetup) {
-    /**
-     * Construtor principal.
-     */
-    public AuthResponse(
-            Long id,
-            String email,
-            String nome,
-            String role,
-            String nif,
-            String telefone,
-            long expiresAt,
-            boolean active,
-            boolean requiresPasswordSetup) {
-        this.id = id;
-        this.email = email;
-        this.nome = nome;
-        this.role = role;
-        this.nif = nif;
-        this.telefone = telefone;
-        this.expiresAt = expiresAt;
-        this.active = active;
-        this.requiresPasswordSetup = requiresPasswordSetup;
-    }
+        boolean active,
+        boolean requiresPasswordSetup) {
 }
