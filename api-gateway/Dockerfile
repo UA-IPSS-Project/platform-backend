@@ -15,6 +15,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 # Agora o código fonte
 COPY api-gateway/src api-gateway/src
+COPY common-data/src common-data/src
 
 # Build
 RUN --mount=type=cache,target=/root/.m2 \
