@@ -58,7 +58,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
 
         // Depois por NIF (utentes) - devolve Lista
-        var usersByNif = utilizadorRepository.findByNif(email);
+        var usersByNif = utilizadorRepository.findByNif(trimmedEmail);
         if (!usersByNif.isEmpty()) {
             return usersByNif.get(0);
         }
