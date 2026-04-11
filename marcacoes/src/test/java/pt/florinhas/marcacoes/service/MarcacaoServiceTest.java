@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -16,17 +17,22 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
-import pt.florinhas.marcacoes.domain.Funcionario;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utente;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
-import pt.florinhas.marcacoes.validation.NifValidator;
+
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Funcionario;
+
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
+
+import pt.florinhas.common_data.validation.NifValidator;
+
+
 
 @ExtendWith(MockitoExtension.class)
 class MarcacaoServiceTest {
@@ -104,7 +110,6 @@ class MarcacaoServiceTest {
         request.setUtenteId(1L);
         request.setCriadoPorId(2L);
         request.setAssunto("Consulta");
-        request.setDescricao("Dor de cabeça");
 
         Utente utente = new Utente();
         utente.setId(1L);
@@ -141,7 +146,6 @@ class MarcacaoServiceTest {
         request.setData(now);
         request.setUtenteId(1L);
         request.setAssunto("Consulta Remota");
-        request.setDescricao("Follow up");
 
         Utente utente = new Utente();
         utente.setId(1L);
@@ -165,5 +169,27 @@ class MarcacaoServiceTest {
         assertEquals(AtendimentoTipo.REMOTO, resultado.getMarcacaoSecretaria().getTipoAtendimento());
         assertEquals(utente, resultado.getMarcacaoSecretaria().getUtente());
         assertEquals("Consulta Remota", resultado.getMarcacaoSecretaria().getAssunto());
+    }
+
+    @Test
+    void limparReservasExpiradas_DeveEliminarMarcacoesUmaAUma() {
+        // Arrange
+        Marcacao expiradas1 = new Marcacao();
+        expiradas1.setId(1L);
+
+        Marcacao expiradas2 = new Marcacao();
+        expiradas2.setId(2L);
+
+        when(marcacaoRepository.findByEstadoAndCriadoEmBefore(eq(EventoEstado.EM_PREENCHIMENTO), any()))
+                .thenReturn(List.of(expiradas1, expiradas2));
+
+        // Act
+        marcacaoService.limparReservasExpiradas();
+
+        // Assert
+        verify(marcacaoRepository).findByEstadoAndCriadoEmBefore(eq(EventoEstado.EM_PREENCHIMENTO), any());
+        verify(marcacaoRepository).delete(expiradas1);
+        verify(marcacaoRepository).delete(expiradas2);
+        verify(marcacaoRepository, never()).deleteAllInBatch(any());
     }
 }

@@ -14,40 +14,47 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
+import pt.florinhas.marcacoes.domain.ItemArmazem;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
 import pt.florinhas.marcacoes.domain.Roupa;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
+import pt.florinhas.marcacoes.dto.BalnearioAttendanceStatsDTO;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
 import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.RoupaDTO;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
-import pt.florinhas.marcacoes.validation.NifValidator;
+
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
+
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
+
+import pt.florinhas.common_data.validation.NifValidator;
 
 @Slf4j
 @Service
@@ -58,6 +65,7 @@ public class MarcacaoService {
     private final UtenteRepository utenteRepository;
     private final FuncionarioRepository funcionarioRepository;
     private final UtilizadorRepository utilizadorRepository;
+    private final ItemArmazemRepository itemArmazemRepository;
     private final NotificacaoService notificacaoService;
     private final MarcacaoValidator marcacaoValidator;
     private final NifValidator nifValidator;
@@ -140,7 +148,7 @@ public class MarcacaoService {
                 // Enviar email com a password (Side-effect isolado para evitar rollback)
                 final String finalEmail = request.getUtenteEmail();
                 final String finalPassword = rawPassword;
-
+                
                 if (TransactionSynchronizationManager.isActualTransactionActive()) {
                     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                         @Override
@@ -179,7 +187,7 @@ public class MarcacaoService {
 
         // Notify utente about new appointment
         if (utente != null) {
-            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), request.getAssunto());
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
         }
 
         return saved;
@@ -200,11 +208,11 @@ public class MarcacaoService {
 
         Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
         marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
-
+        
         Marcacao saved = marcacaoRepository.save(marcacao);
 
         // Notify utente about new remote appointment (async)
-        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), request.getAssunto());
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
 
         return saved;
     }
@@ -213,12 +221,12 @@ public class MarcacaoService {
         Marcacao marcacao = new Marcacao();
         marcacao.setData(request.getData());
         marcacao.setEstado(EventoEstado.AGENDADO);
+        marcacao.setDescricao(request.getDescricao());
         // Centralized duration logic: secretaria = 15min
         marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
 
         MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
         detalhes.setAssunto(request.getAssunto());
-        detalhes.setDescricao(request.getDescricao());
         detalhes.setTipoAtendimento(tipo);
         detalhes.setUtente(utente);
 
@@ -280,6 +288,13 @@ public class MarcacaoService {
                 r.setCategoria(rDTO.getCategoria());
                 r.setTamanho(rDTO.getTamanho());
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
+                
+                if (rDTO.getItemId() != null) {
+                    ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
+                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                    r.setItem(item);
+                }
+                
                 detalhes.addRoupa(r);
             }
         }
@@ -288,9 +303,9 @@ public class MarcacaoService {
         marcacao.setMarcacaoBalneario(detalhes);
 
         Marcacao saved = marcacaoRepository.save(marcacao);
-
+        
         // No specific utente notification here for now, but we could add if needed
-
+        
         return saved;
     }
 
@@ -300,6 +315,8 @@ public class MarcacaoService {
     @Transactional
     public MarcacaoResponseDTO atualizarDetalhesBalneario(Long marcacaoId,
             Boolean produtosHigiene, Boolean lavagemRoupa, List<RoupaDTO> roupas) {
+
+        marcacaoValidator.validarRoupas(roupas);
 
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
                 .orElseThrow(() -> new IllegalArgumentException("Marcação não encontrada"));
@@ -320,6 +337,13 @@ public class MarcacaoService {
                 r.setCategoria(rDTO.getCategoria());
                 r.setTamanho(rDTO.getTamanho());
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
+                
+                if (rDTO.getItemId() != null) {
+                    ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
+                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                    r.setItem(item);
+                }
+                
                 detalhes.addRoupa(r);
             }
         }
@@ -578,7 +602,6 @@ public class MarcacaoService {
         } else {
             MarcacaoSecretaria detalhes = new MarcacaoSecretaria();
             detalhes.setAssunto("Reserva temporária");
-            detalhes.setDescricao("Reserva temporária de slot");
             detalhes.setTipoAtendimento(AtendimentoTipo.PRESENCIAL);
             if (request.getUtenteId() != null) {
                 Utente utente = utenteRepository.findById(request.getUtenteId()).orElse(null);
@@ -655,7 +678,6 @@ public class MarcacaoService {
             MarcacaoSecretaria sec = m.getMarcacaoSecretaria();
             MarcacaoResponseDTO.MarcacaoSecretariaDTO secDTO = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
             secDTO.setAssunto(sec.getAssunto());
-            secDTO.setDescricao(sec.getDescricao());
             secDTO.setTipoAtendimento(sec.getTipoAtendimento());
 
             if (sec.getUtente() != null) {
@@ -691,6 +713,11 @@ public class MarcacaoService {
                     rDTO.setCategoria(r.getCategoria());
                     rDTO.setTamanho(r.getTamanho());
                     rDTO.setQuantidade(r.getQuantidade());
+                    if (r.getItem() != null) {
+                        rDTO.setItemId(r.getItem().getId());
+                        // Ensure categoria matches item name if available
+                        rDTO.setCategoria(r.getItem().getNome());
+                    }
                     return rDTO;
                 }).collect(Collectors.toList());
                 balnDTO.setRoupas(roupasDTO);
@@ -707,8 +734,11 @@ public class MarcacaoService {
     @Transactional
     public void limparReservasExpiradas() {
         LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
-        // Usa o método customizado que também limpa registos com criadoEm NULL
-        marcacaoRepository.deleteExpiredOrorphan(EventoEstado.EM_PREENCHIMENTO, expirationTime);
+        List<Marcacao> expiradas = marcacaoRepository.findByEstadoAndCriadoEmBefore(
+                EventoEstado.EM_PREENCHIMENTO,
+                expirationTime);
+
+        expiradas.forEach(marcacaoRepository::delete);
     }
 
     @Scheduled(cron = "0 59 23 * * *") // Run every day at 23:59
@@ -747,13 +777,13 @@ public class MarcacaoService {
         }
     }
 
-    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, Integer duration, String summary) {
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration != null ? duration : 15, summary);
+                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
                     } catch (Exception e) {
                         log.error("Falha ao notificar utente sobre marcação", e);
                     }
@@ -761,7 +791,7 @@ public class MarcacaoService {
             });
         } else {
             try {
-                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration != null ? duration : 15, summary);
+                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
             } catch (Exception e) {
                 log.error("Falha ao notificar utente sobre marcação", e);
             }
@@ -774,5 +804,43 @@ public class MarcacaoService {
         }
         String tipo = tipoAgenda.trim().toUpperCase();
         return "BALNEARIO".equals(tipo) ? "BALNEARIO" : "SECRETARIA";
+    }
+    /**
+     * Obtém estatísticas de frequência do balneário (presenças confirmadas).
+     */
+    public BalnearioAttendanceStatsDTO obterEstatisticasFrequenciaBalneario(String periodo) {
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime inicio;
+        LocalDateTime fim = agora.plusYears(1);
+
+        switch (periodo.toUpperCase()) {
+            case "DIA":
+                inicio = agora.truncatedTo(ChronoUnit.DAYS);
+                fim = inicio.plusDays(1).minusNanos(1);
+                break;
+            case "SEMANA":
+                inicio = agora.minusWeeks(1).truncatedTo(ChronoUnit.DAYS);
+                break;
+            case "MES":
+            default:
+                inicio = agora.minusMonths(1).truncatedTo(ChronoUnit.DAYS);
+                break;
+        }
+
+        long totalPresencas = marcacaoRepository.countBalnearioAttendance(inicio, fim);
+        long totalMarcacoes = marcacaoRepository.countTotalBalnearioAttendance(inicio, fim);
+        long totalFaltas = marcacaoRepository.countBalnearioFaltas(inicio, fim);
+        long totalAgendadas = marcacaoRepository.countBalnearioAgendadas(inicio, fim);
+
+        List<Object[]> queryPresencasPorDia = marcacaoRepository.findAttendanceByDay(inicio, fim);
+        List<BalnearioAttendanceStatsDTO.AttendanceData> presencasPorDia = queryPresencasPorDia.stream()
+                .map(obj -> new BalnearioAttendanceStatsDTO.AttendanceData(obj[0].toString(), (Long) obj[1]))
+                .collect(Collectors.toList());
+
+        List<Object[]> queryPresencasPorHora = marcacaoRepository.findAttendanceByHour(inicio, fim);
+        Map<Integer, Long> presencasPorHora = queryPresencasPorHora.stream()
+                .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
+
+        return new BalnearioAttendanceStatsDTO(periodo, totalPresencas, totalMarcacoes, totalFaltas, totalAgendadas, presencasPorDia, presencasPorHora);
     }
 }

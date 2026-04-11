@@ -58,9 +58,6 @@ public class MarcacaoResponseDTO {
         // Assunto curto da marcação.
         private String assunto;
 
-        // Descrição detalhada do atendimento.
-        private String descricao;
-
         // Tipo de atendimento: PRESENCIAL ou REMOTO.
         private AtendimentoTipo tipoAtendimento;
 

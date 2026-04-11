@@ -14,13 +14,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
-import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
-import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.service.UtilizadorService;
+
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
+import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
+
 import jakarta.validation.Valid;
 
 /**
@@ -78,7 +80,7 @@ public class UtilizadorController {
     @GetMapping("/nif/{nif}")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
-            .orElseThrow(() -> new NotFoundException(
+                .orElseThrow(() -> new NotFoundException(
                         "Utilizador não encontrado com NIF: " + nif));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
@@ -126,6 +128,15 @@ public class UtilizadorController {
     }
 
     /**
+     * Lista todos os utentes (ativos e inativos).
+     */
+    @GetMapping("/utentes")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosUtentes() {
+        return ResponseEntity.ok(utilizadorService.listarTodosUtentes());
+    }
+
+    /**
      * Lista os funcionários pendentes de aprovação.
      */
     @GetMapping("/funcionarios/pendentes")
@@ -161,7 +172,7 @@ public class UtilizadorController {
         // Se serviço lançar exceção, deve ser tratado globalmente ou aqui
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
                 .orElseThrow(
-                () -> new NotFoundException("Utilizador não encontrado"));
+                        () -> new NotFoundException("Utilizador não encontrado"));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
 

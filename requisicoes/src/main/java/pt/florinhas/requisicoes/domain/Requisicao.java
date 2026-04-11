@@ -1,5 +1,7 @@
 package pt.florinhas.requisicoes.domain;
 
+import pt.florinhas.common_data.domain.Funcionario;
+
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;

@@ -1,5 +1,7 @@
 package pt.florinhas.marcacoes.domain;
 
+import pt.florinhas.common_data.domain.Funcionario;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -4,16 +4,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
+import pt.florinhas.common_data.domain.*;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.validation.NifValidator;
 
 @SpringBootApplication
+@EntityScan(basePackages = {
+		"pt.florinhas.marcacoes.domain",
+		"pt.florinhas.common_data.domain"
+})
+@EnableJpaRepositories(basePackages = {
+		"pt.florinhas.marcacoes.repository",
+		"pt.florinhas.common_data.repository"
+})
 @EnableScheduling
 public class MarcacoesApplication {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MarcacoesApplication.class);
@@ -32,22 +43,20 @@ public class MarcacoesApplication {
 	}
 
 	/**
-	 * CommandLineRunner que garante a existência de contas base para administração
-	 * e secretaria ao iniciar a aplicação.
+	 * CommandLineRunner que garante a existência de contas base funcionais
+	 * (Secretaria, Balneário, Escola) ao iniciar a aplicação.
 	 */
 	@Bean
-	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
+	NifValidator nifValidator() {
+		return new NifValidator();
+	}
+	@ConditionalOnBean(PasswordEncoder.class)
+
+	@Bean
+	CommandLineRunner initDefaultFuncionarios(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
 		return args -> {
 
 			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
-					"999999999",
-					"Admin Plataforma",
-					"admin@florinhasdovouga.pt",
-					"999999999",
-					"admin123",
-					FuncionarioTipo.ADMIN));
-
-			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
 				    "999999998",
 				    "Funcionário Secretaria",
 				    "secretaria@florinhasdovouga.pt",

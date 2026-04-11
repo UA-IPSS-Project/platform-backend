@@ -16,8 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
+
+import pt.florinhas.common_data.domain.Utente;
 
 import java.util.Collections;
 import java.util.List;

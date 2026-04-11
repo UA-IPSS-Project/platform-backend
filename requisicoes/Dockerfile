@@ -7,15 +7,17 @@ COPY pom.xml .
 COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
 COPY requisicoes/pom.xml requisicoes/
+COPY common-data/pom.xml common-data/
 
 # Download dependencies
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f requisicoes/pom.xml dependency:go-offline -B
+    mvn dependency:go-offline -pl requisicoes -am -B
 
 # Copy source and build
 COPY requisicoes/src requisicoes/src
+COPY common-data/src common-data/src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn -f requisicoes/pom.xml clean package -DskipTests
+    mvn clean package -pl requisicoes -am -DskipTests
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine

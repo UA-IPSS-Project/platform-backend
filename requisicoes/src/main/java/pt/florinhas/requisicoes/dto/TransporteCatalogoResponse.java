@@ -18,7 +18,7 @@ public record TransporteCatalogoResponse(
                 transporte.getId(),
                 transporte.getCodigo(),
                 transporte.getTipo(),
-                transporte.getCategoria(),
+                transporte.getCategoria() != null ? transporte.getCategoria().name() : null,
                 transporte.getMatricula(),
                 transporte.getMarca(),
                 transporte.getModelo(),

@@ -1,31 +1,46 @@
 package pt.florinhas.api_gateway.security;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
 
 import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpCookie;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 
+import lombok.extern.slf4j.Slf4j;
+import pt.florinhas.common_data.domain.Utilizador;
 import reactor.core.publisher.Mono;
 
 @Component
+@Slf4j
 public class JwtAuthenticationFilter implements WebFilter {
 
     private final JwtService jwtService;
+    private final UserDetailsService userDetailsService;
     private final String gatewaySharedSecret;
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
+            UserDetailsService userDetailsService,
             @Value("${gateway.shared-secret:}") String gatewaySharedSecret) {
         this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
         this.gatewaySharedSecret = gatewaySharedSecret;
     }
 
@@ -40,6 +55,7 @@ public class JwtAuthenticationFilter implements WebFilter {
 
         String token = extractToken(exchange);
         if (!StringUtils.hasText(token)) {
+            log.debug("JWT ausente para path={} method={}", path, method);
             return writeUnauthorized(exchange, "Token em falta");
         }
 
@@ -47,8 +63,31 @@ public class JwtAuthenticationFilter implements WebFilter {
         try {
             claims = jwtService.parseClaims(token);
         } catch (Exception ex) {
+            log.warn("JWT inválido para path={} method={}: {}", path, method, ex.getMessage());
             return writeUnauthorized(exchange, "Token inválido");
         }
+
+        String subject = claims.getSubject();
+        if (!StringUtils.hasText(subject)) {
+            log.warn("JWT sem subject para path={} method={}", path, method);
+            return writeUnauthorized(exchange, "Token inválido");
+        }
+
+        UserDetails userDetails;
+        try {
+            userDetails = userDetailsService.loadUserByUsername(subject);
+        } catch (Exception ex) {
+            log.warn("Utilizador do JWT não encontrado subject={} path={} method={}", subject, path, method);
+            return writeUnauthorized(exchange, "Token inválido");
+        }
+
+        Collection<? extends GrantedAuthority> authorities = extractAuthorities(claims, userDetails);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                authorities);
+
+        log.debug("JWT válido para subject={} path={} method={}", subject, path, method);
 
         ServerWebExchange mutatedExchange = exchange.mutate()
                 .request(builder -> {
@@ -60,15 +99,18 @@ public class JwtAuthenticationFilter implements WebFilter {
                         httpHeaders.remove("X-Gateway-Secret");
 
                         // Set trusted headers based on validated JWT claims
-                        httpHeaders.set("X-Authenticated-User", claims.getSubject());
+                        httpHeaders.set("X-Authenticated-User", userDetails.getUsername());
 
                         Number userId = claims.get("userId", Number.class);
                         if (userId != null) {
                             httpHeaders.set("X-Authenticated-User-Id", String.valueOf(userId.longValue()));
+                        } else if (userDetails instanceof Utilizador utilizador && utilizador.getId() != null) {
+                            httpHeaders.set("X-Authenticated-User-Id", String.valueOf(utilizador.getId()));
                         }
 
-                        @SuppressWarnings("unchecked")
-                        List<String> roles = claims.get("roles", List.class);
+                        List<String> roles = authorities.stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .toList();
                         if (roles != null && !roles.isEmpty()) {
                             httpHeaders.set("X-Authenticated-Roles", String.join(",", roles));
                         }
@@ -82,25 +124,42 @@ public class JwtAuthenticationFilter implements WebFilter {
                 })
                 .build();
 
-        return chain.filter(mutatedExchange);
+            return chain.filter(mutatedExchange)
+                .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(
+                    Mono.just(new SecurityContextImpl(authentication))));
     }
+
+            private Collection<? extends GrantedAuthority> extractAuthorities(Claims claims, UserDetails userDetails) {
+            @SuppressWarnings("unchecked")
+            List<String> tokenRoles = claims.get("roles", List.class);
+
+            if (tokenRoles != null && !tokenRoles.isEmpty()) {
+                return tokenRoles.stream()
+                    .filter(StringUtils::hasText)
+                    .map(SimpleGrantedAuthority::new)
+                    .toList();
+            }
+
+            return userDetails.getAuthorities();
+            }
 
     private boolean isPublicPath(String path) {
         return path.startsWith("/api/auth/login/")
                 || path.startsWith("/api/auth/register/")
-                || path.startsWith("/marcacoes/api/auth/login/")
-                || path.startsWith("/marcacoes/api/auth/register/")
-                || path.equals("/api/auth/logout");
+                || path.equals("/api/auth/logout")
+                || path.startsWith("/actuator/health");
     }
 
     private String extractToken(ServerWebExchange exchange) {
         HttpCookie jwtCookie = exchange.getRequest().getCookies().getFirst("jwt");
         if (jwtCookie != null && StringUtils.hasText(jwtCookie.getValue())) {
+            log.trace("Autenticação via cookie jwt");
             return jwtCookie.getValue();
         }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            log.trace("Autenticação via header Authorization");
             return authHeader.substring(7);
         }
 
@@ -109,6 +168,7 @@ public class JwtAuthenticationFilter implements WebFilter {
 
     private Mono<Void> writeUnauthorized(ServerWebExchange exchange, String message) {
         exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.UNAUTHORIZED);
+        exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         byte[] payload = ("{\"message\":\"" + message + "\"}").getBytes(StandardCharsets.UTF_8);
         return exchange.getResponse().writeWith(

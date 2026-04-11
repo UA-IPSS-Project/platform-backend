@@ -15,8 +15,9 @@ import org.springframework.data.domain.Pageable;
 
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Utilizador;
+
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
 
 /**
  * Repositório Spring Data JPA para a entidade Marcacao.
@@ -147,16 +148,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
          * Remove marcações com determinado estado criadas antes de um limite temporal.
          * Usado para limpeza de reservas temporárias (ex.: EM_PREENCHIMENTO expiradas).
          */
-        void deleteByEstadoAndCriadoEmBefore(EventoEstado emPreenchimento, LocalDateTime limite);
-
-        /**
-         * Remove marcações "EM_PREENCHIMENTO" que estejam expiradas OU com timestamp
-         * nulo
-         * (para corrigir bugs antigos onde o timestamp não era gravado).
-         */
-        @Modifying
-        @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
-        void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
+        List<Marcacao> findByEstadoAndCriadoEmBefore(EventoEstado estado, LocalDateTime limite);
 
         @Modifying(clearAutomatically = true)
         @Query("UPDATE Marcacao m SET m.estado = :novoEstado, m.version = m.version + 1 WHERE m.estado NOT IN :estadosExcluidos AND m.data < :limite")
@@ -178,4 +170,37 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp", countQuery = "SELECT COUNT(m) FROM Marcacao m")
         Page<Marcacao> findAllWithRelations(Pageable pageable);
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado != 'CANCELADO' " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countTotalBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado = 'NAO_COMPARECIDO' " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioFaltas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('AGENDADO', 'AVISO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAgendadas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT FUNCTION('date', m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY FUNCTION('date', m.data) " +
+            "ORDER BY FUNCTION('date', m.data)")
+    List<Object[]> findAttendanceByDay(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT HOUR(m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY HOUR(m.data) " +
+            "ORDER BY HOUR(m.data)")
+    List<Object[]> findAttendanceByHour(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 }

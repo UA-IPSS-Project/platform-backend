@@ -8,6 +8,7 @@ COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
 COPY requisicoes/pom.xml requisicoes/   
 COPY candidaturas/pom.xml candidaturas/
+COPY common-data/pom.xml common-data/
 
 # Baixar dependências (layer caching)
 RUN --mount=type=cache,target=/root/.m2 \
@@ -15,6 +16,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 # Agora o código fonte
 COPY api-gateway/src api-gateway/src
+COPY common-data/src common-data/src
 
 # Build
 RUN --mount=type=cache,target=/root/.m2 \

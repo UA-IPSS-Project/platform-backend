@@ -20,13 +20,14 @@ import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
 import pt.florinhas.marcacoes.dto.FeriadoDTO;
-import pt.florinhas.marcacoes.exception.BadRequestException;
 import pt.florinhas.marcacoes.repository.BloqueioRepository;
 import pt.florinhas.marcacoes.repository.ConfiguracaoAgendaRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.exception.BadRequestException;
 
 /**
  * Serviço responsável pela gestão do calendário e disponibilidade.

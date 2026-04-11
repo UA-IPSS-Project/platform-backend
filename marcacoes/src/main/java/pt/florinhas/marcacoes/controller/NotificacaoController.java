@@ -13,10 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
 import lombok.RequiredArgsConstructor;
-import pt.florinhas.marcacoes.domain.Utilizador;
-import pt.florinhas.marcacoes.dto.NotificacaoResponseDTO;
 import pt.florinhas.marcacoes.service.NotificacaoService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
+
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.NotificacaoResponseDTO;
 
 @RestController
 @RequestMapping("/api/notificacoes")

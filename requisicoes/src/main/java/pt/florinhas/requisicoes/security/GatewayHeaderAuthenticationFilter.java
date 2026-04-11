@@ -9,6 +9,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -22,9 +23,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
     private final CustomUserDetailsService userDetailsService;
+    private final String expectedGatewaySecret;
 
-    public GatewayHeaderAuthenticationFilter(CustomUserDetailsService userDetailsService) {
+    public GatewayHeaderAuthenticationFilter(CustomUserDetailsService userDetailsService,
+            @Value("${gateway.shared-secret:}") String expectedGatewaySecret) {
         this.userDetailsService = userDetailsService;
+        this.expectedGatewaySecret = expectedGatewaySecret;
     }
 
     @Override
@@ -41,18 +45,32 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
-        if (authorities.isEmpty()) {
-            authorities = userDetails.getAuthorities();
+        String gatewaySecret = request.getHeader("X-Gateway-Secret");
+        if (!StringUtils.hasText(gatewaySecret)
+                || !StringUtils.hasText(expectedGatewaySecret)
+                || !gatewaySecret.equals(expectedGatewaySecret)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized gateway origin");
+            return;
         }
 
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                authorities);
+        try {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
+            if (authorities.isEmpty()) {
+                authorities = userDetails.getAuthorities();
+            }
 
-        SecurityContextHolder.getContext().setAuthentication(authToken);
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    authorities);
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+        } catch (Exception e) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid authenticated user");
+            return;
+        }
+
         filterChain.doFilter(request, response);
     }
 

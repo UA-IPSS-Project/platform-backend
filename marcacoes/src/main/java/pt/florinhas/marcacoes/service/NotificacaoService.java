@@ -15,17 +15,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import lombok.RequiredArgsConstructor;
-import pt.florinhas.marcacoes.domain.Notificacao;
-import pt.florinhas.marcacoes.domain.NotificacaoTipo;
+import pt.florinhas.common_data.domain.Notificacao;
+import pt.florinhas.common_data.domain.NotificacaoTipo;
+import pt.florinhas.common_data.repository.NotificacaoRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utilizador;
-import pt.florinhas.marcacoes.dto.NotificacaoResponseDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.repository.NotificacaoRepository;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
+
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.NotificacaoResponseDTO;
+
 
 @Service
 @RequiredArgsConstructor

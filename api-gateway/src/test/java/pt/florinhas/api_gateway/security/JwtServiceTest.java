@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,6 +18,7 @@ class JwtServiceTest {
         // Set secret and expiration via reflection for test
         TestUtils.setField(jwtService, "secret", "test-secret-key-12345678901234567890123456789012");
         TestUtils.setField(jwtService, "jwtExpiration", 3600000L);
+        jwtService.init();
     }
 
     @Test
@@ -42,6 +42,7 @@ class JwtServiceTest {
         assertEquals("ADMIN", parsed.get("role"));
         assertEquals("123456789", parsed.get("nif"));
         assertEquals("912345678", parsed.get("telefone"));
+        assertEquals("user@example.com", parsed.getSubject());
         assertTrue(((List<?>) parsed.get("roles")).contains("ROLE_ADMIN"));
     }
 
@@ -60,5 +61,23 @@ class JwtServiceTest {
         Claims parsed = jwtService.parseClaims(token);
         assertNotNull(parsed.getExpiration());
         assertTrue(parsed.getExpiration().getTime() > System.currentTimeMillis());
+    }
+
+    @Test
+    void generateToken_ShouldFallbackSubjectToNif_WhenEmailIsBlank() {
+        JwtService.AuthUserClaims claims = new JwtService.AuthUserClaims(
+                3L,
+                "   ",
+                "Sem Email",
+                "UTENTE",
+                "245907318",
+                "910000000",
+                List.of(new SimpleGrantedAuthority("ROLE_UTENTE"))
+        );
+
+        String token = jwtService.generateToken(claims);
+        Claims parsed = jwtService.parseClaims(token);
+
+        assertEquals("245907318", parsed.getSubject());
     }
 }

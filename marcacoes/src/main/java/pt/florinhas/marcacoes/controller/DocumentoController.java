@@ -10,7 +10,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,7 +25,7 @@ import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
 import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.service.AuthService;
+import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.service.DocumentoService;
 
 /**
@@ -45,7 +44,7 @@ import pt.florinhas.marcacoes.service.DocumentoService;
 public class DocumentoController {
 
     private final DocumentoService documentoService;
-    private final AuthService authService;
+    private final AuthorizationService authorizationService;
     private final MarcacaoRepository marcacaoRepository;
 
     /**
@@ -144,16 +143,7 @@ public class DocumentoController {
     }
 
     private boolean isSecretariaOuStaff() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return false;
-        }
-
-        return authentication.getAuthorities().stream().anyMatch(a ->
-            "ROLE_SECRETARIA".equals(a.getAuthority())
-                || "ROLE_ADMIN".equals(a.getAuthority())
-                || "ROLE_FUNCIONARIO".equals(a.getAuthority())
-        );
+        return authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_FUNCIONARIO");
     }
 
     /**
@@ -250,8 +240,8 @@ public class DocumentoController {
      * @throws AccessDeniedException se o utilizador não tiver permissão
      */
     private void verificarPermissaoMarcacao(Long marcacaoId) {
-        Long currentUserId = authService.getCurrentUserId();
-        boolean isAdmin = authService.isAdmin();
+        Long currentUserId = authorizationService.getCurrentUserId();
+        boolean isAdmin = authorizationService.isAdmin();
 
         // Admin e funcionários têm acesso total
         if (isAdmin) {
