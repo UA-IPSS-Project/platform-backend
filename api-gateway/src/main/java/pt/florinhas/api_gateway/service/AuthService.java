@@ -1,7 +1,8 @@
-package pt.florinhas.marcacoes.service;
+package pt.florinhas.api_gateway.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,18 +17,16 @@ import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.dto.AuthResponse;
-import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequest;
-import pt.florinhas.marcacoes.dto.LoginFuncionarioRequest;
-import pt.florinhas.marcacoes.dto.LoginUtenteRequest;
-import pt.florinhas.marcacoes.dto.UtenteRegisterRequest;
-import pt.florinhas.marcacoes.exception.BadRequestException;
-import pt.florinhas.marcacoes.validation.NifValidator;
+
+import pt.florinhas.api_gateway.dto.*;
 
 import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
+
+import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.exception.BadRequestException;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.
@@ -320,6 +319,43 @@ public class AuthService {
          */
         public boolean requiresPasswordSetup(Utilizador user, boolean isActive) {
                 return !isActive && user.getTermsAcceptedAt() == null;
+        }
+
+        public Optional<AuthResponse> getCurrentUserResponse(Utilizador principal) {
+                if (principal == null) {
+                        return Optional.empty();
+                }
+
+                String role = principal.getAuthorities().stream()
+                                .findFirst()
+                                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                                .orElse("UTENTE");
+
+                var persistedUser = utilizadorRepository.findById(principal.getId());
+                if (persistedUser.isEmpty()) {
+                        return Optional.empty();
+                }
+
+                Utilizador user = persistedUser.get();
+                boolean active = true;
+                if (user instanceof Utente u) {
+                        active = u.isActivo();
+                } else if (user instanceof Funcionario f) {
+                        active = f.isActivo();
+                }
+
+                boolean requiresPasswordSetup = requiresPasswordSetup(user, active);
+
+                return Optional.of(new AuthResponse(
+                                principal.getId(),
+                                principal.getEmail(),
+                                principal.getNome(),
+                                role,
+                                principal.getNif(),
+                                principal.getTelefone(),
+                                System.currentTimeMillis() + jwtExpiration,
+                                active,
+                                requiresPasswordSetup));
         }
 
         public record AuthResult(AuthResponse response) {

@@ -5,7 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import pt.florinhas.marcacoes.exception.BadRequestException;
+import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.validation.NifValidator;
 
 class NifValidatorTest {
 

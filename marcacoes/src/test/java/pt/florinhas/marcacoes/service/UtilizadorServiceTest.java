@@ -15,10 +15,14 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
+import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.marcacoes.service.email.EmailService;
-import pt.florinhas.marcacoes.validation.NifValidator;
 
 import java.time.LocalDate;
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.exception.BadRequestException;
+
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 

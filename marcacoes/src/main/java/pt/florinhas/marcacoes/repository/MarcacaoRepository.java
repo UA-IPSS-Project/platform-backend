@@ -148,16 +148,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
          * Remove marcações com determinado estado criadas antes de um limite temporal.
          * Usado para limpeza de reservas temporárias (ex.: EM_PREENCHIMENTO expiradas).
          */
-        void deleteByEstadoAndCriadoEmBefore(EventoEstado emPreenchimento, LocalDateTime limite);
-
-        /**
-         * Remove marcações "EM_PREENCHIMENTO" que estejam expiradas OU com timestamp
-         * nulo
-         * (para corrigir bugs antigos onde o timestamp não era gravado).
-         */
-        @Modifying
-        @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
-        void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
+        List<Marcacao> findByEstadoAndCriadoEmBefore(EventoEstado estado, LocalDateTime limite);
 
         @Modifying(clearAutomatically = true)
         @Query("UPDATE Marcacao m SET m.estado = :novoEstado, m.version = m.version + 1 WHERE m.estado NOT IN :estadosExcluidos AND m.data < :limite")

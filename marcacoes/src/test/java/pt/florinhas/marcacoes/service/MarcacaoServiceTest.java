@@ -12,6 +12,7 @@ import java.util.List;
 import jakarta.persistence.EntityNotFoundException;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -38,11 +39,17 @@ import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
-import pt.florinhas.marcacoes.validation.NifValidator;
 
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.domain.Funcionario;
+
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
+
+import pt.florinhas.common_data.validation.NifValidator;
+
 
 
 @ExtendWith(MockitoExtension.class)
@@ -424,6 +431,27 @@ void reagendarMarcacao_DeveReagendarComSucesso() {
     assertNotNull(resultado);
     assertEquals(novaData, resultado.getData());
     verify(marcacaoValidator).validarReagendamento(request, "SECRETARIA");
+    @Test
+    void limparReservasExpiradas_DeveEliminarMarcacoesUmaAUma() {
+        // Arrange
+        Marcacao expiradas1 = new Marcacao();
+        expiradas1.setId(1L);
+
+        Marcacao expiradas2 = new Marcacao();
+        expiradas2.setId(2L);
+
+        when(marcacaoRepository.findByEstadoAndCriadoEmBefore(eq(EventoEstado.EM_PREENCHIMENTO), any()))
+                .thenReturn(List.of(expiradas1, expiradas2));
+
+        // Act
+        marcacaoService.limparReservasExpiradas();
+
+        // Assert
+        verify(marcacaoRepository).findByEstadoAndCriadoEmBefore(eq(EventoEstado.EM_PREENCHIMENTO), any());
+        verify(marcacaoRepository).delete(expiradas1);
+        verify(marcacaoRepository).delete(expiradas2);
+        verify(marcacaoRepository, never()).deleteAllInBatch(any());
+    }
 }
 
 @Test

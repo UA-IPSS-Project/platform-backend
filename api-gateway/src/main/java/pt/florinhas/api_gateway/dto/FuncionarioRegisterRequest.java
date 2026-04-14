@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.dto;
+package pt.florinhas.api_gateway.dto;
 
 import java.time.LocalDate;
 
@@ -11,33 +11,37 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Pattern;
 
 /**
- * DTO (Java record) para pedido de registo de Utente.
+ * DTO (Java record) para pedido de registo de Funcionário.
  *
  * Características:
- * - Imutável por definição (record), adequado para transporte de dados entre
+ * - Imutável por definição (record): ideal para transporte de dados entre
  * camadas.
- * - Integra Bean Validation para validação automática em controllers
- * com @Valid.
+ * - Integra Bean Validation nas componentes, permitindo validação automática em
+ * controllers
+ * com @Valid (ex.: mensagens de erro personalizadas em português).
  */
-public record UtenteRegisterRequest(
+public record FuncionarioRegisterRequest(
 
-        // Nome completo do utente (obrigatório).
+        // Nome completo do funcionário (obrigatório).
         @NotBlank(message = "Nome é obrigatório") String nome,
 
-        // Email do utente (obrigatório e com formato válido).
+        // Email institucional/pessoal do funcionário (obrigatório e válido).
         @NotBlank(message = "Email é obrigatório") @Email(message = "Email deve ser válido") String email,
 
         /**
          * Palavra-passe em claro recebida do frontend (obrigatória; mínimo 6).
-         * Será cifrada (ex.: BCrypt) antes de persistência.
+         * Será posteriormente cifrada (ex.: BCrypt) antes de persistência.
          */
         @NotBlank(message = "Password é obrigatória") @Size(min = 6, message = "Password deve ter pelo menos 6 caracteres") String password,
 
         // NIF com exatamente 9 dígitos (obrigatório).
         @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos") String nif,
 
-        // Telefone de contacto do utente (opcional; se preenchido, deve ter 9 dígitos).
-        @Pattern(regexp = "\\d{9}", message = "Telefone deve ter 9 dígitos") String telefone,
+        // Contacto telefónico (opcional; se preenchido, deve ter 9 dígitos).
+        @Pattern(regexp = "\\d{9}", message = "Contacto deve ter 9 dígitos") String contacto,
+
+        // Função/cargo do funcionário (obrigatório). Ex.: "SECRETARIA", "BALNEARIO".
+        @NotBlank(message = "Função é obrigatória") String funcao,
 
         // Data de nascimento (obrigatória).
         @NotNull(message = "Data de nascimento é obrigatória") LocalDate dataNasc,
