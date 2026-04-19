@@ -28,7 +28,6 @@ import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import pt.florinhas.common_data.domain.NotificacaoTipo;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
@@ -80,23 +79,22 @@ public class DocumentoService {
      * Tipos MIME permitidos para upload.
      */
     private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList(
-        "application/pdf",
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    );
+            "application/pdf",
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
     /**
      * Faz upload de um documento para uma marcação específica.
      * 
      * @param marcacaoId ID da marcação
-     * @param file ficheiro a fazer upload
+     * @param file       ficheiro a fazer upload
      * @return DTO com dados do documento criado
      * @throws ResourceNotFoundException se a marcação não existir
-     * @throws IllegalArgumentException se o ficheiro for inválido
-     * @throws IOException se houver erro ao guardar o ficheiro
+     * @throws IllegalArgumentException  se o ficheiro for inválido
+     * @throws IOException               se houver erro ao guardar o ficheiro
      */
     @Transactional
 
@@ -106,7 +104,7 @@ public class DocumentoService {
 
         // Validar marcação
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
-            .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
+                .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
 
         // Limite de 10 ficheiros por marcação
         Long ficheirosExistentes = documentoRepository.countByMarcacaoId(marcacaoId);
@@ -116,7 +114,6 @@ public class DocumentoService {
 
         // Validações do ficheiro
         validarFicheiro(file);
-
 
         // Obter NIF do utente associado à marcação (via MarcacaoSecretaria)
         String nif = null;
@@ -146,14 +143,14 @@ public class DocumentoService {
         Integer proximaSequencia = documentoRepository.findMaxSequenciaByMarcacaoId(marcacaoId).orElse(0) + 1;
 
         String nomeOriginal = String.format("%s_%s_%d_%s%s",
-            nif != null ? nif : "SEM_NIF",
-            assunto,
-            proximaSequencia,
-            dataMarcacao,
-            extensao
-        );
+                nif != null ? nif : "SEM_NIF",
+                assunto,
+                proximaSequencia,
+                dataMarcacao,
+                extensao);
 
-        // Nome armazenado passa a ser determinístico por marcação: M{ID}_D{SEQ}.extensao
+        // Nome armazenado passa a ser determinístico por marcação:
+        // M{ID}_D{SEQ}.extensao
         String nomeArmazenado = String.format("M%d_D%d%s", marcacaoId, proximaSequencia, extensao);
 
         // Criar diretório organizado por ano/mês
@@ -166,13 +163,12 @@ public class DocumentoService {
             garantirBucketExiste();
 
             minioClient.putObject(
-                PutObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(objectName)
-                    .stream(inputStream, file.getSize(), -1)
-                    .contentType(tipo)
-                    .build()
-            );
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .stream(inputStream, file.getSize(), -1)
+                            .contentType(tipo)
+                            .build());
         } catch (Exception e) {
             throw new IOException("Erro ao guardar ficheiro no MinIO", e);
         }
@@ -192,10 +188,10 @@ public class DocumentoService {
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);
 
-
         log.info("Documento {} salvo com sucesso para marcação {}", documentoSalvo.getId(), marcacaoId);
 
-        // Notificar secretarias apenas se o criador da marcação for utente (não funcionário/secretaria)
+        // Notificar secretarias apenas se o criador da marcação for utente (não
+        // funcionário/secretaria)
         Utilizador criador = marcacao.getCriadoPor();
         if (criador != null && criador.getClass().getSimpleName().equals("Utente")) {
             try {
@@ -204,10 +200,9 @@ public class DocumentoService {
                 String mensagem = String.format("Um novo documento foi enviado para a marcação #%d.", marcacaoId);
                 for (Funcionario secretaria : secretarias) {
                     notificacaoService.criarNotificacao(
-                        secretaria.getId(),
-                        titulo,
-                        mensagem,
-                        NotificacaoTipo.FICHEIRO
+                            secretaria.getId(),
+                            titulo,
+                            mensagem
                     );
                 }
             } catch (Exception e) {
@@ -227,37 +222,36 @@ public class DocumentoService {
     @Transactional(readOnly = true)
     public List<DocumentoDTO> listarDocumentosDaMarcacao(Long marcacaoId) {
         log.info("Listando documentos da marcação {}", marcacaoId);
-        
+
         List<Documento> documentos = documentoRepository.findByMarcacaoId(marcacaoId);
         return documentos.stream()
-            .map(DocumentoDTO::fromDocumento)
-            .toList();
+                .map(DocumentoDTO::fromDocumento)
+                .toList();
     }
 
     /**
      * Pesquisa documentos por metadados com filtros opcionais.
      *
-     * @param marcacaoId ID da marcação
-     * @param nomeOriginal parte do nome original
+     * @param marcacaoId     ID da marcação
+     * @param nomeOriginal   parte do nome original
      * @param nomeArmazenado parte do nome armazenado
-     * @param tipo tipo MIME
-    * @param utenteNome parte do nome do utente associado
-    * @param utenteNif parte do NIF do utente associado
-     * @param uploadedDesde data/hora inicial de upload
-     * @param uploadedAte data/hora final de upload
+     * @param tipo           tipo MIME
+     * @param utenteNome     parte do nome do utente associado
+     * @param utenteNif      parte do NIF do utente associado
+     * @param uploadedDesde  data/hora inicial de upload
+     * @param uploadedAte    data/hora final de upload
      * @return lista de documentos encontrados
      */
     @Transactional(readOnly = true)
     public List<DocumentoDTO> pesquisarDocumentosPorMetadados(
-        Long marcacaoId,
-        String nomeOriginal,
-        String nomeArmazenado,
-        String tipo,
-        String utenteNome,
-        String utenteNif,
-        LocalDateTime marcacaoDesde,
-        LocalDateTime marcacaoAte
-    ) {
+            Long marcacaoId,
+            String nomeOriginal,
+            String nomeArmazenado,
+            String tipo,
+            String utenteNome,
+            String utenteNif,
+            LocalDateTime marcacaoDesde,
+            LocalDateTime marcacaoAte) {
         if (marcacaoDesde != null && marcacaoAte != null && marcacaoDesde.isAfter(marcacaoAte)) {
             throw new IllegalArgumentException("marcacaoDesde não pode ser posterior a marcacaoAte");
         }
@@ -267,56 +261,59 @@ public class DocumentoService {
         List<Documento> documentosBase = obterDocumentosPorIntervalo(marcacaoId, marcacaoDesde, marcacaoAte);
 
         return documentosBase
-            .stream()
-            .filter(documento -> {
-                if (nomeOriginal == null || nomeOriginal.isBlank()) {
-                    return true;
-                }
-                String valor = documento.getNomeOriginal();
-                return valor != null && valor.toLowerCase(Locale.ROOT).contains(nomeOriginal.toLowerCase(Locale.ROOT));
-            })
-            .filter(documento -> {
-                if (nomeArmazenado == null || nomeArmazenado.isBlank()) {
-                    return true;
-                }
-                String valor = documento.getNomeArmazenado();
-                return valor != null && valor.toLowerCase(Locale.ROOT).contains(nomeArmazenado.toLowerCase(Locale.ROOT));
-            })
-            .filter(documento -> {
-                if (tipo == null || tipo.isBlank()) {
-                    return true;
-                }
-                String valor = documento.getTipo();
-                return valor != null && valor.equalsIgnoreCase(tipo);
-            })
-            .filter(documento -> {
-                if (utenteNome == null || utenteNome.isBlank()) {
-                    return true;
-                }
-                String nome = obterNomeUtenteMarcacao(documento.getMarcacao());
-                return nome != null && nome.toLowerCase(Locale.ROOT).contains(utenteNome.toLowerCase(Locale.ROOT));
-            })
-            .filter(documento -> {
-                if (utenteNif == null || utenteNif.isBlank()) {
-                    return true;
-                }
-                String nif = obterNifUtenteMarcacao(documento.getMarcacao());
-                return nif != null && nif.contains(utenteNif);
-            })
-            .map(DocumentoDTO::fromDocumento)
-            .toList();
+                .stream()
+                .filter(documento -> {
+                    if (nomeOriginal == null || nomeOriginal.isBlank()) {
+                        return true;
+                    }
+                    String valor = documento.getNomeOriginal();
+                    return valor != null
+                            && valor.toLowerCase(Locale.ROOT).contains(nomeOriginal.toLowerCase(Locale.ROOT));
+                })
+                .filter(documento -> {
+                    if (nomeArmazenado == null || nomeArmazenado.isBlank()) {
+                        return true;
+                    }
+                    String valor = documento.getNomeArmazenado();
+                    return valor != null
+                            && valor.toLowerCase(Locale.ROOT).contains(nomeArmazenado.toLowerCase(Locale.ROOT));
+                })
+                .filter(documento -> {
+                    if (tipo == null || tipo.isBlank()) {
+                        return true;
+                    }
+                    String valor = documento.getTipo();
+                    return valor != null && valor.equalsIgnoreCase(tipo);
+                })
+                .filter(documento -> {
+                    if (utenteNome == null || utenteNome.isBlank()) {
+                        return true;
+                    }
+                    String nome = obterNomeUtenteMarcacao(documento.getMarcacao());
+                    return nome != null && nome.toLowerCase(Locale.ROOT).contains(utenteNome.toLowerCase(Locale.ROOT));
+                })
+                .filter(documento -> {
+                    if (utenteNif == null || utenteNif.isBlank()) {
+                        return true;
+                    }
+                    String nif = obterNifUtenteMarcacao(documento.getMarcacao());
+                    return nif != null && nif.contains(utenteNif);
+                })
+                .map(DocumentoDTO::fromDocumento)
+                .toList();
     }
 
     private List<Documento> obterDocumentosPorIntervalo(
-        Long marcacaoId,
-        LocalDateTime marcacaoDesde,
-        LocalDateTime marcacaoAte
-    ) {
-        // Com marcacaoId: filtrar dentro desse ID (queries existentes por uploadedEm quando sem datas,
+            Long marcacaoId,
+            LocalDateTime marcacaoDesde,
+            LocalDateTime marcacaoAte) {
+        // Com marcacaoId: filtrar dentro desse ID (queries existentes por uploadedEm
+        // quando sem datas,
         // ou por data da marcação quando com datas)
         if (marcacaoId != null) {
             if (marcacaoDesde != null && marcacaoAte != null) {
-                return documentoRepository.findByMarcacaoIdAndMarcacaoDataBetween(marcacaoId, marcacaoDesde, marcacaoAte);
+                return documentoRepository.findByMarcacaoIdAndMarcacaoDataBetween(marcacaoId, marcacaoDesde,
+                        marcacaoAte);
             }
             // sem intervalo de datas: devolver todos os documentos da marcação
             return documentoRepository.findByMarcacaoIdOrderByUploadedEmDesc(marcacaoId);
@@ -345,8 +342,8 @@ public class DocumentoService {
     @Transactional(readOnly = true)
     public DocumentoDTO obterDocumento(Long documentoId) {
         Documento documento = documentoRepository.findById(documentoId)
-            .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
-        
+                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+
         return DocumentoDTO.fromDocumento(documento);
     }
 
@@ -359,38 +356,36 @@ public class DocumentoService {
     @Transactional(readOnly = true)
     public DocumentoMetadataDTO obterMetadadosDocumento(Long documentoId) {
         Documento documento = documentoRepository.findById(documentoId)
-            .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
 
         try {
             StatObjectResponse statObject = minioClient.statObject(
-                StatObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(documento.getCaminho())
-                    .build()
-            );
+                    StatObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(documento.getCaminho())
+                            .build());
 
             Map<String, String> minioUserMetadata = statObject.userMetadata() != null
-                ? statObject.userMetadata()
-                : Collections.emptyMap();
+                    ? statObject.userMetadata()
+                    : Collections.emptyMap();
 
             String minioLastModified = statObject.lastModified() != null
-                ? statObject.lastModified().toString()
-                : null;
+                    ? statObject.lastModified().toString()
+                    : null;
 
             return new DocumentoMetadataDTO(
-                documento.getId(),
-                documento.getNomeOriginal(),
-                documento.getNomeArmazenado(),
-                documento.getCaminho(),
-                documento.getTipo(),
-                documento.getTamanho(),
-                documento.getUploadedEm(),
-                documento.getMarcacao().getId(),
-                statObject.etag(),
-                minioLastModified,
-                minioUserMetadata,
-                documento.getSequencia()
-            );
+                    documento.getId(),
+                    documento.getNomeOriginal(),
+                    documento.getNomeArmazenado(),
+                    documento.getCaminho(),
+                    documento.getTipo(),
+                    documento.getTamanho(),
+                    documento.getUploadedEm(),
+                    documento.getMarcacao().getId(),
+                    statObject.etag(),
+                    minioLastModified,
+                    minioUserMetadata,
+                    documento.getSequencia());
         } catch (Exception e) {
             throw new ResourceNotFoundException("Erro ao obter metadados do documento: " + e.getMessage());
         }
@@ -401,23 +396,24 @@ public class DocumentoService {
      * 
      * @param documentoId ID do documento
      * @return Resource com o conteúdo do ficheiro
-     * @throws ResourceNotFoundException se o documento não existir ou ficheiro não for encontrado
+     * @throws ResourceNotFoundException se o documento não existir ou ficheiro não
+     *                                   for encontrado
      */
     @Transactional(readOnly = true)
     public Resource carregarFicheiro(Long documentoId) {
         Documento documento = documentoRepository.findById(documentoId)
-            .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
 
         try {
             GetObjectResponse objeto = minioClient.getObject(
-                GetObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(documento.getCaminho())
-                    .build()
-            );
+                    GetObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(documento.getCaminho())
+                            .build());
             return new InputStreamResource(objeto);
         } catch (Exception e) {
-            throw new ResourceNotFoundException("Erro ao carregar ficheiro: " + documento.getNomeOriginal() + ", " + e.getMessage());
+            throw new ResourceNotFoundException(
+                    "Erro ao carregar ficheiro: " + documento.getNomeOriginal() + ", " + e.getMessage());
         }
     }
 
@@ -432,40 +428,43 @@ public class DocumentoService {
         log.info("Removendo documento {}", documentoId);
 
         Documento documento = documentoRepository.findById(documentoId)
-            .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
 
         // Remover registo da base de dados
         documentoRepository.delete(documento);
         log.info("Documento {} removido com sucesso", documentoId);
     }
 
-        /**
-         * Notifica o utente de que um documento enviado é inválido.
-         * @param marcacaoId ID da marcação
-         * @param documentoId ID do documento inválido
-         * @param motivo Observações/motivo da invalidação
-         */
-        @Transactional
-        public void notificarDocumentoInvalido(Long marcacaoId, Long documentoId, String motivo) {
-            Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
+    /**
+     * Notifica o utente de que um documento enviado é inválido.
+     * 
+     * @param marcacaoId  ID da marcação
+     * @param documentoId ID do documento inválido
+     * @param motivo      Observações/motivo da invalidação
+     */
+    @Transactional
+    public void notificarDocumentoInvalido(Long marcacaoId, Long documentoId, String motivo) {
+        Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
-            Documento documento = documentoRepository.findById(documentoId)
+        Documento documento = documentoRepository.findById(documentoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
-            Utilizador utente = null;
-            if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
-                utente = marcacao.getMarcacaoSecretaria().getUtente();
-            } else if (marcacao.getCriadoPor() != null) {
-                utente = marcacao.getCriadoPor();
-            }
-            if (utente == null) {
-                throw new IllegalArgumentException("Não foi possível identificar o utente para notificação.");
-            }
-            String titulo = "Documento inválido";
-            String dataMarcacao = marcacao.getData() != null ? marcacao.getData().toLocalDate().toString() : "(data desconhecida)";
-            String nomeDoc = documento.getNomeOriginal();
-            String mensagem = String.format("Na marcação do dia %s, o documento '%s' é inválido.%s", dataMarcacao, nomeDoc, (motivo != null && !motivo.isBlank() ? " Motivo: " + motivo : ""));
-            notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, NotificacaoTipo.DOCUMENTO_INVALIDO);
+        Utilizador utente = null;
+        if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+            utente = marcacao.getMarcacaoSecretaria().getUtente();
+        } else if (marcacao.getCriadoPor() != null) {
+            utente = marcacao.getCriadoPor();
         }
+        if (utente == null) {
+            throw new IllegalArgumentException("Não foi possível identificar o utente para notificação.");
+        }
+        String titulo = "Documento inválido";
+        String dataMarcacao = marcacao.getData() != null ? marcacao.getData().toLocalDate().toString()
+                : "(data desconhecida)";
+        String nomeDoc = documento.getNomeOriginal();
+        String mensagem = String.format("Na marcação do dia %s, o documento '%s' é inválido.%s", dataMarcacao, nomeDoc,
+                (motivo != null && !motivo.isBlank() ? " Motivo: " + motivo : ""));
+        notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem);
+    }
 
     /**
      * Valida se o ficheiro atende aos critérios de upload.
@@ -482,16 +481,14 @@ public class DocumentoService {
         // Verificar tamanho
         if (file.getSize() > maxFileSize) {
             throw new IllegalArgumentException(
-                String.format("Ficheiro excede o tamanho máximo permitido de %d MB", maxFileSize / (1024 * 1024))
-            );
+                    String.format("Ficheiro excede o tamanho máximo permitido de %d MB", maxFileSize / (1024 * 1024)));
         }
 
         // Verificar tipo MIME
         String tipo = file.getContentType();
         if (tipo == null || !ALLOWED_MIME_TYPES.contains(tipo)) {
             throw new IllegalArgumentException(
-                "Tipo de ficheiro não permitido. Tipos aceites: PDF, JPEG, PNG, DOC, DOCX"
-            );
+                    "Tipo de ficheiro não permitido. Tipos aceites: PDF, JPEG, PNG, DOC, DOCX");
         }
 
         // Verificar se tem nome
@@ -516,17 +513,15 @@ public class DocumentoService {
 
     private void garantirBucketExiste() throws Exception {
         boolean bucketExiste = minioClient.bucketExists(
-            BucketExistsArgs.builder()
-                .bucket(bucketName)
-                .build()
-        );
+                BucketExistsArgs.builder()
+                        .bucket(bucketName)
+                        .build());
 
         if (!bucketExiste) {
             minioClient.makeBucket(
-                MakeBucketArgs.builder()
-                    .bucket(bucketName)
-                    .build()
-            );
+                    MakeBucketArgs.builder()
+                            .bucket(bucketName)
+                            .build());
             log.info("Bucket MinIO criado automaticamente: {}", bucketName);
         }
     }
@@ -558,10 +553,11 @@ public class DocumentoService {
     }
 
     private String sanitizarNome(String nome) {
-        if (nome == null) return "SEM_ASSUNTO";
+        if (nome == null)
+            return "SEM_ASSUNTO";
         return nome.trim()
-            .replaceAll("[\\s/\\\\:*?\"<>|]", "_") // Substituir caracteres inválidos e espaços por underscore
-            .replaceAll("_+", "_") // Remover underscores duplicados
-            .toUpperCase();
+                .replaceAll("[\\s/\\\\:*?\"<>|]", "_") // Substituir caracteres inválidos e espaços por underscore
+                .replaceAll("_+", "_") // Remover underscores duplicados
+                .toUpperCase();
     }
 }

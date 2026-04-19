@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import pt.florinhas.common_data.domain.NotificacaoTipo;
 import pt.florinhas.notificacoes.service.NotificacaoService;
 import pt.florinhas.notificacoes.service.email.EmailService;
 
@@ -25,7 +24,7 @@ public class InternalCommunicationController {
 
     @PostMapping("/criar")
     public ResponseEntity<Void> criarNotificacao(@RequestBody CriarNotificacaoRequest req) {
-        notificacaoService.criarNotificacao(req.getUtilizadorId(), req.getTitulo(), req.getMensagem(), req.getTipo(), req.getMetadata());
+        notificacaoService.criarNotificacao(req.getUtilizadorId(), req.getTitulo(), req.getMensagem(), req.getMetadata());
         return ResponseEntity.ok().build();
     }
 
@@ -58,7 +57,6 @@ public class InternalCommunicationController {
         private Long utilizadorId;
         private String titulo;
         private String mensagem;
-        private NotificacaoTipo tipo;
         private Map<String, Object> metadata;
     }
 

@@ -6,7 +6,6 @@ import org.springframework.web.client.RestTemplate;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import pt.florinhas.common_data.domain.NotificacaoTipo;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,8 +25,8 @@ public class NotificacaoService {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
 
-    public void criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo) {
-        enviarParaMicrosservico(utilizadorId, titulo, mensagem, tipo, null);
+    public void criarNotificacao(Long utilizadorId, String titulo, String mensagem) {
+        enviarParaMicrosservico(utilizadorId, titulo, mensagem, null);
     }
 
     public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, int durationMinutes, String summary) {
@@ -41,7 +40,7 @@ public class NotificacaoService {
         metadata.put("createdTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "CREATED");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, metadata);
     }
 
     public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
@@ -54,7 +53,7 @@ public class NotificacaoService {
         metadata.put("cancelledTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "CANCELLED");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, metadata);
     }
 
     public void notificarCancelamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime data) {
@@ -66,24 +65,37 @@ public class NotificacaoService {
         metadata.put("cancelledDate", data.format(DATE_FORMATTER));
         metadata.put("cancelledTime", data.format(TIME_FORMATTER));
 
-        enviarParaMicrosservico(destinatarioId, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, metadata);
     }
 
     public void notificarDocumentosInvalidos(Long utilizadorId, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, NotificacaoTipo.LEMBRETE, null);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, null);
     }
 
-    private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo, Map<String, Object> metadata) {
+    public void notificarReagendamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime dataAntiga, LocalDateTime dataNova) {
+        String dataAntigaFmt = dataAntiga.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String dataNovaFmt = dataNova.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "O utente " + nomeUtente + " reagendou a marcação de " + dataAntigaFmt + " para " + dataNovaFmt;
+        String assunto = "Marcação Reagendada pelo Utente";
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("oldDate", dataAntiga.format(DATE_FORMATTER));
+        metadata.put("newDate", dataNova.format(DATE_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "RESCHEDULED");
+
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, metadata);
+    }
+
+    private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, Map<String, Object> metadata) {
         try {
             String url = notificacoesUrl + "/api/internal/notificacoes/criar";
             Map<String, Object> request = new HashMap<>();
             request.put("utilizadorId", utilizadorId);
             request.put("titulo", titulo);
             request.put("mensagem", mensagem);
-            request.put("tipo", tipo);
             request.put("metadata", metadata);
 
             restTemplate.postForObject(url, request, Void.class);

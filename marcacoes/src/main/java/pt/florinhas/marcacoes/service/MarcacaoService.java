@@ -72,6 +72,7 @@ public class MarcacaoService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final ArmazemService armazemService;
+    private final AuthorizationService authorizationService;
 
     @Lazy
     private final CalendarioService calendarioService;
@@ -654,10 +655,29 @@ public class MarcacaoService {
         }
 
         // Atualizar data/hora
+        LocalDateTime dataAntiga = marcacao.getData();
         marcacao.setData(request.getNovaDataHora());
 
         // Persistir alteração
         Marcacao saved = marcacaoRepository.save(marcacao);
+
+        // Notificar secretaria se for o utente a reagendar
+        try {
+            Long actorId = authorizationService.getCurrentUserId();
+            boolean actorIsAdmin = authorizationService.isAdmin();
+            
+            MarcacaoSecretaria secDetails = saved.getMarcacaoSecretaria();
+            if (!actorIsAdmin && secDetails != null && secDetails.getUtente() != null && actorId.equals(secDetails.getUtente().getId())) {
+                // Notificar todas as secretarias
+                List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+                for (Funcionario sec : secretarias) {
+                    notificacaoService.notificarReagendamentoPeloUtente(sec.getId(), secDetails.getUtente().getNome(), dataAntiga, saved.getData());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Erro ao processar notificação de reagendamento", e);
+        }
+
         return toDTO(saved);
     }
 
