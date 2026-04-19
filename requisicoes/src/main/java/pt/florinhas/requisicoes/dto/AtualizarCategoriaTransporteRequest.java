@@ -5,7 +5,7 @@ import pt.florinhas.requisicoes.domain.TransporteCategoria;
 
 /**
  * DTO para atualizar a categoria de um transporte.
- * Especialmente utilizado para transições para estado ABATE_VENDIDO.
+ * Especialmente utilizado para transições para estado ABATIDO_VENDIDO_DESCONTINUADO.
  */
 public record AtualizarCategoriaTransporteRequest(
         @NotNull(message = "A categoria do transporte é obrigatória.")

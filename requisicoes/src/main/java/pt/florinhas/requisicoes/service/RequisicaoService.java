@@ -402,9 +402,8 @@ public class RequisicaoService {
         Transporte transporte = transporteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
 
-        // Se está a ser movido para categorias de indisponibilidade, validar que não há requisições ativas
-        if (novaCategoria == TransporteCategoria.ABATE_VENDIDO || 
-            novaCategoria == TransporteCategoria.ABATE_VENDIDO_DESCONTINUADO) {
+        // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há requisições ativas
+        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO) {
             if (requisicaoTransporteRepository.existsByTransporteId(id)
                     || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
                 throw new IllegalStateException(
