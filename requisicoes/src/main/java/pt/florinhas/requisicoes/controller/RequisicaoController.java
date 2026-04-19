@@ -115,13 +115,6 @@ public class RequisicaoController {
         return ResponseEntity.ok(requisicaoService.atualizarTransporteCatalogo(id, request));
     }
 
-    @DeleteMapping("/transportes/{id}")
-    @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<Void> apagarTransporteCatalogo(@PathVariable Long id) {
-        requisicaoService.apagarTransporteCatalogo(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PatchMapping("/transportes/{id}/categoria")
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Transporte> atualizarCategoriaTransporte(
