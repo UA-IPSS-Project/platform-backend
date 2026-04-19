@@ -172,7 +172,7 @@ public class RequisicaoService {
         }
 
         RequisicaoMaterial saved = requisicaoMaterialRepository.save(requisicao);
-        notificarSecretarias(saved);
+        notificarSecretarias(saved, authenticatedUtilizadorId);
         return saved;
     }
 
@@ -209,7 +209,7 @@ public class RequisicaoService {
         }
 
         RequisicaoTransporte saved = requisicaoTransporteRepository.save(requisicao);
-        notificarSecretarias(saved);
+        notificarSecretarias(saved, authenticatedUtilizadorId);
         return saved;
     }
 
@@ -278,7 +278,7 @@ public class RequisicaoService {
 
         // Single save operation handles all items via CascadeType.ALL
         RequisicaoManutencao saved = requisicaoManutencaoRepository.save(requisicao);
-        notificarSecretarias(saved);
+        notificarSecretarias(saved, authenticatedUtilizadorId);
         return saved;
     }
 
@@ -293,19 +293,23 @@ public class RequisicaoService {
 
         Requisicao saved = requisicaoRepository.save(requisicao);
         
-        // Notificar o criador da requisição sobre a mudança de estado
-        if (saved.getCriadoPor() != null) {
+        // Notificar o criador da requisição sobre a mudança de estado, 
+        // a menos que tenha sido o próprio criador a fazer a alteração
+        if (saved.getCriadoPor() != null && !saved.getCriadoPor().getId().equals(alteradoPorId)) {
             notificacaoService.notificarMudancaEstado(saved.getCriadoPor().getId(), saved);
         }
 
         return saved;
     }
 
-    private void notificarSecretarias(Requisicao requisicao) {
+    private void notificarSecretarias(Requisicao requisicao, Long autorId) {
         try {
             List<Funcionario> secretarias = funcionarioRepository.findByTipo(pt.florinhas.common_data.domain.FuncionarioTipo.SECRETARIA);
             for (Funcionario sec : secretarias) {
-                notificacaoService.notificarNovaRequisicao(sec.getId(), requisicao);
+                // Não notificar a própria pessoa que criou a requisição
+                if (!sec.getId().equals(autorId)) {
+                    notificacaoService.notificarNovaRequisicao(sec.getId(), requisicao);
+                }
             }
         } catch (Exception e) {
             // Log but don't fail the transaction
