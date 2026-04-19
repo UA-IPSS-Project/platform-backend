@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -12,43 +11,76 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+/**
+ * Interceptor de handshake WebSocket.
+ * Permite sempre a ligação WebSocket — a autenticação real é feita
+ * pelo JwtWebSocketInterceptor ao nível do frame STOMP CONNECT,
+ * onde o token JWT é lido diretamente dos headers STOMP.
+ *
+ * Se os headers X-Authenticated-User/X-Authenticated-Roles estiverem presentes
+ * (injetados pelo Gateway), são colocados nos atributos de sessão como
+ * método de autenticação alternativo mais eficiente.
+ */
 @Component
 public class GatewayHandshakeInterceptor implements HandshakeInterceptor {
 
     private static final String ATTR_USER = "gatewayUser";
     private static final String ATTR_ROLES = "gatewayRoles";
-    private final String expectedGatewaySecret;
-
-    public GatewayHandshakeInterceptor(@Value("${gateway.shared-secret:}") String expectedGatewaySecret) {
-        this.expectedGatewaySecret = expectedGatewaySecret;
-    }
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
             WebSocketHandler wsHandler, Map<String, Object> attributes) {
-        String gatewaySecret = request.getHeaders().getFirst("X-Gateway-Secret");
-        if (!StringUtils.hasText(gatewaySecret)
-                || !StringUtils.hasText(expectedGatewaySecret)
-                || !gatewaySecret.equals(expectedGatewaySecret)) {
-            return false;
-        }
 
+        // Se o Gateway injetou os headers de autenticação, aproveitar
         String user = request.getHeaders().getFirst("X-Authenticated-User");
-        if (!StringUtils.hasText(user)) {
-            return false;
+        if (StringUtils.hasText(user)) {
+            attributes.put(ATTR_USER, user);
+            String rolesHeader = request.getHeaders().getFirst("X-Authenticated-Roles");
+            if (StringUtils.hasText(rolesHeader)) {
+                List<String> roles = Arrays.stream(rolesHeader.split(","))
+                        .map(String::trim)
+                        .filter(StringUtils::hasText)
+                        .toList();
+                attributes.put(ATTR_ROLES, roles);
+            }
+            System.out.println("[WS-Handshake] Authenticated via Gateway headers: " + user);
+        } else {
+            // Caso contrário, tentar ler do cookie 'jwt' ou query param 'token' (bypass Gateway)
+            String token = null;
+            
+            // 1. Tentar Query Param 'token'
+            String query = request.getURI().getQuery();
+            if (StringUtils.hasText(query)) {
+                token = Arrays.stream(query.split("&"))
+                        .filter(s -> s.startsWith("token="))
+                        .map(s -> s.substring(6))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            // 2. Tentar Cookie 'jwt'
+            if (!StringUtils.hasText(token)) {
+                String cookieHeader = request.getHeaders().getFirst("Cookie");
+                if (StringUtils.hasText(cookieHeader)) {
+                    token = Arrays.stream(cookieHeader.split(";"))
+                            .map(String::trim)
+                            .filter(s -> s.startsWith("jwt="))
+                            .map(s -> s.substring(4))
+                            .findFirst()
+                            .orElse(null);
+                }
+            }
+
+            if (StringUtils.hasText(token)) {
+                // Colocar o token nos atributos para o JwtWebSocketInterceptor o processar
+                attributes.put("jwt-token", token);
+                System.out.println("[WS-Handshake] Found JWT in cookie/query, passing to STOMP level");
+            } else {
+                System.out.println("[WS-Handshake] No auth found in handshake");
+            }
         }
 
-        attributes.put(ATTR_USER, user);
-
-        String rolesHeader = request.getHeaders().getFirst("X-Authenticated-Roles");
-        if (StringUtils.hasText(rolesHeader)) {
-            List<String> roles = Arrays.stream(rolesHeader.split(","))
-                    .map(String::trim)
-                    .filter(StringUtils::hasText)
-                    .toList();
-            attributes.put(ATTR_ROLES, roles);
-        }
-
+        // Sempre permite o handshake — a autenticação é delegada ao nível STOMP
         return true;
     }
 

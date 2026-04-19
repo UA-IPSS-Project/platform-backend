@@ -62,7 +62,7 @@ public class SecurityConfig {
                 // Configuração de autorização dos pedidos HTTP
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/internal/**").permitAll()
-                        .requestMatchers("/ws/**", "/ws-notificacoes/**").permitAll()
+                        .requestMatchers("/ws", "/ws/**", "/ws-notificacoes", "/ws-notificacoes/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
 
