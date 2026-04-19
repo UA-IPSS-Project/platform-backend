@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.config;
+package pt.florinhas.notificacoes.config;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;

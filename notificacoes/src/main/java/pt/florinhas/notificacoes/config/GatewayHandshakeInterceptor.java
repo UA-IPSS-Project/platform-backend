@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.config;
+package pt.florinhas.notificacoes.config;
 
 import java.util.Arrays;
 import java.util.List;

@@ -15,7 +15,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.12</version>
+        <version>3.5.13</version>
         <relativePath/>
     </parent>
 
@@ -25,6 +25,7 @@
         <module>requisicoes</module>
         <module>api-gateway</module>
         <module>common-data</module>
+        <module>notificacoes</module>
     </modules>
 
     <!-- ===== Versões centralizadas ===== -->
