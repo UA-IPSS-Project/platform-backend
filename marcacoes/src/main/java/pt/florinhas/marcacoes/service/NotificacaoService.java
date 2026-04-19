@@ -25,8 +25,8 @@ public class NotificacaoService {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
 
-    public void criarNotificacao(Long utilizadorId, String titulo, String mensagem) {
-        enviarParaMicrosservico(utilizadorId, titulo, mensagem, null);
+    public void criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo) {
+        enviarParaMicrosservico(utilizadorId, titulo, mensagem, tipo, null);
     }
 
     public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, int durationMinutes, String summary) {
@@ -40,7 +40,7 @@ public class NotificacaoService {
         metadata.put("createdTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "CREATED");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
     public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
@@ -53,7 +53,7 @@ public class NotificacaoService {
         metadata.put("cancelledTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "CANCELLED");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
     public void notificarCancelamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime data) {
@@ -65,14 +65,14 @@ public class NotificacaoService {
         metadata.put("cancelledDate", data.format(DATE_FORMATTER));
         metadata.put("cancelledTime", data.format(TIME_FORMATTER));
 
-        enviarParaMicrosservico(destinatarioId, assunto, mensagem, metadata);
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
     public void notificarDocumentosInvalidos(Long utilizadorId, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, null);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", null);
     }
 
     public void notificarReagendamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime dataAntiga, LocalDateTime dataNova) {
@@ -86,16 +86,17 @@ public class NotificacaoService {
         metadata.put("newDate", dataNova.format(DATE_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "RESCHEDULED");
 
-        enviarParaMicrosservico(destinatarioId, assunto, mensagem, metadata);
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
-    private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, Map<String, Object> metadata) {
+    private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, String tipo, Map<String, Object> metadata) {
         try {
             String url = notificacoesUrl + "/api/internal/notificacoes/criar";
             Map<String, Object> request = new HashMap<>();
             request.put("utilizadorId", utilizadorId);
             request.put("titulo", titulo);
             request.put("mensagem", mensagem);
+            request.put("tipo", tipo);
             request.put("metadata", metadata);
 
             restTemplate.postForObject(url, request, Void.class);

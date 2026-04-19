@@ -52,6 +52,7 @@ public class NotificacaoService {
             request.put("utilizadorId", utilizadorId);
             request.put("titulo", titulo);
             request.put("mensagem", mensagem);
+            request.put("tipo", "REQUISICAO");
             request.put("metadata", metadata);
 
             restTemplate.postForObject(url, request, Void.class);

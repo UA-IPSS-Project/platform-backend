@@ -24,7 +24,7 @@ public class InternalCommunicationController {
 
     @PostMapping("/criar")
     public ResponseEntity<Void> criarNotificacao(@RequestBody CriarNotificacaoRequest req) {
-        notificacaoService.criarNotificacao(req.getUtilizadorId(), req.getTitulo(), req.getMensagem(), req.getMetadata());
+        notificacaoService.criarNotificacao(req.getUtilizadorId(), req.getTitulo(), req.getMensagem(), req.getTipo(), req.getMetadata());
         return ResponseEntity.ok().build();
     }
 
@@ -57,6 +57,7 @@ public class InternalCommunicationController {
         private Long utilizadorId;
         private String titulo;
         private String mensagem;
+        private String tipo;
         private Map<String, Object> metadata;
     }
 

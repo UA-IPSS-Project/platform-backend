@@ -41,6 +41,9 @@ public class Notificacao {
     private String mensagem;
 
     @Column(nullable = false)
+    private String tipo;
+
+    @Column(nullable = false)
     private boolean lida = false;
 
     @JdbcTypeCode(SqlTypes.JSON)

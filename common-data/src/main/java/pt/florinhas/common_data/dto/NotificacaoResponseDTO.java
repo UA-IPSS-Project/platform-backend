@@ -10,6 +10,7 @@ public class NotificacaoResponseDTO {
     private Long id;
     private String titulo;
     private String mensagem;
+    private String tipo;
     private boolean lida;
     private LocalDateTime dataCriacao;
     private Long utilizadorId;

@@ -40,24 +40,25 @@ public class NotificacaoService {
     private final EmailService emailService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem) {
-        return criarNotificacao(utilizadorId, titulo, mensagem, null);
+    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo) {
+        return criarNotificacao(utilizadorId, titulo, mensagem, tipo, null);
     }
 
-    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem,
+    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo,
             Map<String, Object> metadata) {
         Utilizador user = utilizadorRepository.findById(utilizadorId)
                 .orElseThrow(() -> new IllegalArgumentException("Utilizador não encontrado"));
-        return criarNotificacao(user, titulo, mensagem, metadata);
+        return criarNotificacao(user, titulo, mensagem, tipo, metadata);
     }
 
-    public Notificacao criarNotificacao(Utilizador user, String titulo, String mensagem,
+    public Notificacao criarNotificacao(Utilizador user, String titulo, String mensagem, String tipo,
             Map<String, Object> metadata) {
 
         Notificacao notificacao = new Notificacao();
         notificacao.setUtilizador(user);
         notificacao.setTitulo(titulo);
         notificacao.setMensagem(mensagem);
+        notificacao.setTipo(tipo);
         notificacao.setLida(false);
         notificacao.setMetadata(metadata);
 
@@ -98,6 +99,7 @@ public class NotificacaoService {
         dto.setId(n.getId());
         dto.setTitulo(n.getTitulo());
         dto.setMensagem(n.getMensagem());
+        dto.setTipo(n.getTipo());
         dto.setLida(n.isLida());
         dto.setDataCriacao(n.getDataCriacao());
         dto.setUtilizadorId(n.getUtilizador().getId());
@@ -151,7 +153,7 @@ public class NotificacaoService {
             "createdTime", data.format(TIME_FORMATTER),
             METADATA_SUBTYPE_KEY, "CREATED");
         
-        criarNotificacao(utilizadorId, assunto, mensagem, metadata);
+        criarNotificacao(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
         
         utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
             sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCreated(user.getEmail(), data, marcacaoId, summary, durationMinutes));
@@ -169,7 +171,7 @@ public class NotificacaoService {
             "cancelledTime", data.format(TIME_FORMATTER),
             METADATA_SUBTYPE_KEY, "CANCELLED");
         
-        criarNotificacao(utilizadorId, assunto, mensagem, metadata);
+        criarNotificacao(utilizadorId, assunto, mensagem, "CANCELAMENTO", metadata);
         
         utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
             sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCancelled(user.getEmail(), motivoTexto));
@@ -191,7 +193,7 @@ public class NotificacaoService {
             "cancelledDate", data.format(DATE_FORMATTER),
             "cancelledTime", data.format(TIME_FORMATTER));
         
-        criarNotificacao(destinatarioId, assunto, mensagem, metadata);
+        criarNotificacao(destinatarioId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -199,7 +201,7 @@ public class NotificacaoService {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
         
-        criarNotificacao(utilizadorId, assunto, mensagem, null);
+        criarNotificacao(utilizadorId, assunto, mensagem, "LEMBRETE", null);
     }
 
     // Cron job for 1 day reminders moved to marcacoes module

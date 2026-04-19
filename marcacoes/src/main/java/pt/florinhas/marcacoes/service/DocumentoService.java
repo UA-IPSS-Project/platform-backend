@@ -202,7 +202,8 @@ public class DocumentoService {
                     notificacaoService.criarNotificacao(
                             secretaria.getId(),
                             titulo,
-                            mensagem
+                            mensagem,
+                            "LEMBRETE"
                     );
                 }
             } catch (Exception e) {
@@ -463,7 +464,7 @@ public class DocumentoService {
         String nomeDoc = documento.getNomeOriginal();
         String mensagem = String.format("Na marcação do dia %s, o documento '%s' é inválido.%s", dataMarcacao, nomeDoc,
                 (motivo != null && !motivo.isBlank() ? " Motivo: " + motivo : ""));
-        notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem);
+        notificacaoService.criarNotificacao(utente.getId(), titulo, mensagem, "LEMBRETE");
     }
 
     /**
