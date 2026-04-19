@@ -415,6 +415,27 @@ public class RequisicaoService {
         return transporteRepository.save(transporte);
     }
 
+    @Transactional
+    public void moverVeiculosPorCategoria(TransporteCategoria origem, TransporteCategoria destino) {
+        if (origem == null || destino == null) {
+            throw new IllegalArgumentException("As categorias de origem e destino são obrigatórias.");
+        }
+        
+        if (origem.equals(destino)) {
+            throw new IllegalArgumentException("As categorias de origem e destino não podem ser iguais.");
+        }
+        
+        // Encontrar todos os veículos na categoria de origem
+        List<Transporte> veiculos = transporteRepository.findByCategoria(origem);
+        
+        // Mover cada veículo para a categoria de destino
+        for (Transporte veiculo : veiculos) {
+            veiculo.setCategoria(destino);
+        }
+        
+        transporteRepository.saveAll(veiculos);
+    }
+
     public List<TipoManutencao> listarTiposManutencao() {
         return tipoManutencaoRepository.findAllByOrderByNomeAsc();
     }
