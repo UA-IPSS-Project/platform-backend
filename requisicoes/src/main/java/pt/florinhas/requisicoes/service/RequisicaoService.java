@@ -26,6 +26,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
+import pt.florinhas.requisicoes.domain.TransporteCategoria;
 import pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
@@ -404,6 +405,28 @@ public class RequisicaoService {
         }
 
         transporteRepository.deleteById(id);
+    }
+
+    @Transactional
+    public Transporte atualizarCategoriaTransporte(Long id, TransporteCategoria novaCategoria) {
+        if (novaCategoria == null) {
+            throw new IllegalArgumentException("A categoria do transporte é obrigatória.");
+        }
+
+        Transporte transporte = transporteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
+
+        // Se está a ser movido para ABATE_VENDIDO, validar que não há requisições ativas
+        if (novaCategoria == TransporteCategoria.ABATE_VENDIDO) {
+            if (requisicaoTransporteRepository.existsByTransporteId(id)
+                    || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
+                throw new IllegalStateException(
+                        "Não é possível marcar como abatido/vendido: transporte está associado a requisições ativas.");
+            }
+        }
+
+        transporte.setCategoria(novaCategoria);
+        return transporteRepository.save(transporte);
     }
 
     public List<TipoManutencao> listarTiposManutencao() {
