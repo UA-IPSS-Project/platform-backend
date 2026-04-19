@@ -698,6 +698,7 @@ public class MarcacaoService {
             MarcacaoSecretaria sec = m.getMarcacaoSecretaria();
             MarcacaoResponseDTO.MarcacaoSecretariaDTO secDTO = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
             secDTO.setAssunto(sec.getAssunto());
+            secDTO.setDescricao(m.getDescricao());
             secDTO.setTipoAtendimento(sec.getTipoAtendimento());
 
             if (sec.getUtente() != null) {
