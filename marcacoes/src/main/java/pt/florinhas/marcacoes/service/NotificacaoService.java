@@ -11,6 +11,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.HashMap;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +22,9 @@ public class NotificacaoService {
 
     @Value("${notificacoes.url:http://notificacoes:8080}")
     private String notificacoesUrl;
+
+    @Value("${gateway.shared-secret:}")
+    private String gatewaySecret;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -113,7 +119,13 @@ public class NotificacaoService {
             request.put("tipo", tipo);
             request.put("metadata", metadata);
 
-            restTemplate.postForObject(url, request, Void.class);
+            HttpHeaders headers = new HttpHeaders();
+            if (StringUtils.hasText(gatewaySecret)) {
+                headers.set("X-Gateway-Secret", gatewaySecret);
+            }
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request, headers);
+
+            restTemplate.postForObject(url, requestEntity, Void.class);
             log.info("Notificação enviada para o microsserviço de notificações: {}", titulo);
         } catch (Exception e) {
             log.error("Erro ao enviar notificação para o microsserviço", e);

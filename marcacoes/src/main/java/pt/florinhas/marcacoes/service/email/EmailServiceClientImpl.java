@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.util.StringUtils;
 
 @Service
 @Slf4j
@@ -16,7 +19,19 @@ public class EmailServiceClientImpl implements EmailService {
     @Value("${notificacoes.url:http://notificacoes:8080}")
     private String notificacoesUrl;
 
+    @Value("${gateway.shared-secret:}")
+    private String gatewaySecret;
+
     private final RestTemplate restTemplate = new RestTemplate();
+
+    private void postWithSecret(String url, Map<String, Object> req) {
+        HttpHeaders headers = new HttpHeaders();
+        if (StringUtils.hasText(gatewaySecret)) {
+            headers.set("X-Gateway-Secret", gatewaySecret);
+        }
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(req, headers);
+        restTemplate.postForObject(url, requestEntity, Void.class);
+    }
 
     @Override
     public void sendPassword(String to, String password) {
@@ -25,7 +40,7 @@ public class EmailServiceClientImpl implements EmailService {
             Map<String, Object> req = new HashMap<>();
             req.put("to", to);
             req.put("password", password);
-            restTemplate.postForObject(url, req, Void.class);
+            postWithSecret(url, req);
         } catch (Exception e) {
             log.error("Erro ao solicitar envio de password via notificacoes para {}", to, e);
         }
@@ -41,7 +56,7 @@ public class EmailServiceClientImpl implements EmailService {
             req.put("appointmentId", appointmentId);
             req.put("summary", summary);
             req.put("durationMinutes", durationMinutes);
-            restTemplate.postForObject(url, req, Void.class);
+            postWithSecret(url, req);
         } catch (Exception e) {
             log.error("Erro ao solicitar envio de marcacao criada via notificacoes para {}", to, e);
         }
@@ -54,7 +69,7 @@ public class EmailServiceClientImpl implements EmailService {
             Map<String, Object> req = new HashMap<>();
             req.put("to", to);
             req.put("motivo", motivo);
-            restTemplate.postForObject(url, req, Void.class);
+            postWithSecret(url, req);
         } catch (Exception e) {
             log.error("Erro ao solicitar envio de marcacao cancelada via notificacoes para {}", to, e);
         }
@@ -67,7 +82,7 @@ public class EmailServiceClientImpl implements EmailService {
             Map<String, Object> req = new HashMap<>();
             req.put("to", to);
             req.put("appointmentDateTime", appointmentDateTime);
-            restTemplate.postForObject(url, req, Void.class);
+            postWithSecret(url, req);
         } catch (Exception e) {
             log.error("Erro ao solicitar envio de lembrete via notificacoes para {}", to, e);
         }
