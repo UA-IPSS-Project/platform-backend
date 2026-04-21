@@ -50,7 +50,6 @@ public abstract class Requisicao {
     @Column(nullable = false, length = 40)
     private RequisicaoTipo tipo;
 
-
     @ManyToOne
     @JoinColumn(name = "criado_por_id", nullable = false)
     private Funcionario criadoPor;

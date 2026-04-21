@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.controller;
+package pt.florinhas.notificacoes.controller;
 
 import java.util.List;
 
@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
 import lombok.RequiredArgsConstructor;
-import pt.florinhas.marcacoes.service.NotificacaoService;
-import pt.florinhas.marcacoes.service.UtilizadorService;
+import pt.florinhas.notificacoes.service.NotificacaoService;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 
 import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.dto.NotificacaoResponseDTO;
@@ -25,17 +25,17 @@ import pt.florinhas.common_data.dto.NotificacaoResponseDTO;
 public class NotificacaoController {
 
     private final NotificacaoService notificacaoService;
-    private final UtilizadorService utilizadorService;
+    private final UtilizadorRepository utilizadorRepository;
 
     @GetMapping
     public ResponseEntity<List<NotificacaoResponseDTO>> listar(@AuthenticationPrincipal UserDetails userDetails) {
-        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        Utilizador user = utilizadorRepository.findByEmail(userDetails.getUsername()).stream().findFirst().orElseThrow();
         return ResponseEntity.ok(notificacaoService.listarPorUtilizador(user.getId()));
     }
 
     @GetMapping("/unread-count")
     public ResponseEntity<Long> contarNaoLidas(@AuthenticationPrincipal UserDetails userDetails) {
-        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        Utilizador user = utilizadorRepository.findByEmail(userDetails.getUsername()).stream().findFirst().orElseThrow();
         return ResponseEntity.ok(notificacaoService.contarNaoLidas(user.getId()));
     }
 
@@ -43,14 +43,14 @@ public class NotificacaoController {
     public ResponseEntity<Void> marcarComoLida(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        Utilizador user = utilizadorRepository.findByEmail(userDetails.getUsername()).stream().findFirst().orElseThrow();
         notificacaoService.marcarComoLida(id, user.getId());
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/ler-todas")
     public ResponseEntity<Void> marcarTodasComoLidas(@AuthenticationPrincipal UserDetails userDetails) {
-        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        Utilizador user = utilizadorRepository.findByEmail(userDetails.getUsername()).stream().findFirst().orElseThrow();
         notificacaoService.marcarTodasComoLidas(user.getId());
         return ResponseEntity.ok().build();
     }
@@ -59,14 +59,14 @@ public class NotificacaoController {
     public ResponseEntity<Void> eliminarNotificacao(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        Utilizador user = utilizadorRepository.findByEmail(userDetails.getUsername()).stream().findFirst().orElseThrow();
         notificacaoService.eliminarNotificacao(id, user.getId());
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping
     public ResponseEntity<Void> eliminarTodas(@AuthenticationPrincipal UserDetails userDetails) {
-        Utilizador user = utilizadorService.buscarPorEmail(userDetails.getUsername());
+        Utilizador user = utilizadorRepository.findByEmail(userDetails.getUsername()).stream().findFirst().orElseThrow();
         notificacaoService.eliminarTodas(user.getId());
         return ResponseEntity.ok().build();
     }

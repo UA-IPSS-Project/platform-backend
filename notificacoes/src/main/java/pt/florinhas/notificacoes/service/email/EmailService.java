@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.service.email;
+package pt.florinhas.notificacoes.service.email;
 
 import java.time.LocalDateTime;
 
@@ -10,8 +10,6 @@ public interface EmailService {
     void sendAppointmentCancelled(String to, String motivo);
 
     void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime);
-
     void sendGenericEmail(String to, String subject, String body);
-
     void sendEmailWithAttachment(String to, String subject, String body, byte[] attachment, String fileName);
 }

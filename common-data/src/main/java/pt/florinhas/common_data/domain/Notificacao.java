@@ -8,8 +8,6 @@ import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,9 +40,8 @@ public class Notificacao {
     @Column(nullable = false, length = 500)
     private String mensagem;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "varchar(255)")
-    private NotificacaoTipo tipo;
+    @Column(nullable = false)
+    private String tipo;
 
     @Column(nullable = false)
     private boolean lida = false;

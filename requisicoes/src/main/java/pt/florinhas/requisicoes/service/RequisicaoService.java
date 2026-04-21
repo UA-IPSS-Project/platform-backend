@@ -61,6 +61,7 @@ public class RequisicaoService {
     private final TipoManutencaoRepository tipoManutencaoRepository;
     private final ManutencaoItemRepository manutencaoItemRepository;
     private final RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository;
+    private final NotificacaoService notificacaoService;
 
     public RequisicaoService(
             RequisicaoRepository requisicaoRepository,
@@ -72,7 +73,8 @@ public class RequisicaoService {
             TransporteRepository transporteRepository,
             TipoManutencaoRepository tipoManutencaoRepository,
             ManutencaoItemRepository manutencaoItemRepository,
-            RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository) {
+            RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository,
+            NotificacaoService notificacaoService) {
         this.requisicaoRepository = requisicaoRepository;
         this.requisicaoMaterialRepository = requisicaoMaterialRepository;
         this.requisicaoTransporteRepository = requisicaoTransporteRepository;
@@ -83,6 +85,7 @@ public class RequisicaoService {
         this.tipoManutencaoRepository = tipoManutencaoRepository;
         this.manutencaoItemRepository = manutencaoItemRepository;
         this.requisicaoManutencaoItemRepository = requisicaoManutencaoItemRepository;
+        this.notificacaoService = notificacaoService;
     }
 
     public List<Requisicao> listarTodas() {
@@ -169,7 +172,9 @@ public class RequisicaoService {
             requisicao.getItens().add(requisicaoMaterialItem);
         }
 
-        return requisicaoMaterialRepository.save(requisicao);
+        RequisicaoMaterial saved = requisicaoMaterialRepository.save(requisicao);
+        notificarSecretarias(saved, authenticatedUtilizadorId);
+        return saved;
     }
 
     @Transactional
@@ -204,7 +209,9 @@ public class RequisicaoService {
             requisicao.getTransportes().add(item);
         }
 
-        return requisicaoTransporteRepository.save(requisicao);
+        RequisicaoTransporte saved = requisicaoTransporteRepository.save(requisicao);
+        notificarSecretarias(saved, authenticatedUtilizadorId);
+        return saved;
     }
 
     private List<Long> resolverIdsTransporte(List<Long> transporteIds, Long transporteId) {
@@ -271,7 +278,9 @@ public class RequisicaoService {
         }
 
         // Single save operation handles all items via CascadeType.ALL
-        return requisicaoManutencaoRepository.save(requisicao);
+        RequisicaoManutencao saved = requisicaoManutencaoRepository.save(requisicao);
+        notificarSecretarias(saved, authenticatedUtilizadorId);
+        return saved;
     }
 
     @Transactional
@@ -283,7 +292,29 @@ public class RequisicaoService {
         requisicao.setGeridoPor(obterFuncionario(alteradoPorId));
         requisicao.setUltimaAlteracaoEstadoEm(LocalDateTime.now());
 
-        return requisicaoRepository.save(requisicao);
+        Requisicao saved = requisicaoRepository.save(requisicao);
+        
+        // Notificar o criador da requisição sobre a mudança de estado, 
+        // a menos que tenha sido o próprio criador a fazer a alteração
+        if (saved.getCriadoPor() != null && !saved.getCriadoPor().getId().equals(alteradoPorId)) {
+            notificacaoService.notificarMudancaEstado(saved.getCriadoPor().getId(), saved);
+        }
+
+        return saved;
+    }
+
+    private void notificarSecretarias(Requisicao requisicao, Long autorId) {
+        try {
+            List<Funcionario> secretarias = funcionarioRepository.findByTipo(pt.florinhas.common_data.domain.FuncionarioTipo.SECRETARIA);
+            for (Funcionario sec : secretarias) {
+                // Não notificar a própria pessoa que criou a requisição
+                if (!sec.getId().equals(autorId)) {
+                    notificacaoService.notificarNovaRequisicao(sec.getId(), requisicao);
+                }
+            }
+        } catch (Exception e) {
+            // Log but don't fail the transaction
+        }
     }
 
     public List<Material> listarMateriais() {
