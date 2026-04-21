@@ -20,7 +20,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class NotificacaoService {
 
-    @Value("${notificacoes.url:http://notificacoes:8080}")
+    @Value("${notificacoes.url:http://notificacoes:8083}")
     private String notificacoesUrl;
 
     @Value("${gateway.shared-secret:}")

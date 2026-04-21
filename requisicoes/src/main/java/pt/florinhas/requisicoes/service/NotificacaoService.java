@@ -14,8 +14,11 @@ import java.util.HashMap;
 @Slf4j
 public class NotificacaoService {
 
-    @Value("${notificacoes.url:http://notificacoes:8080}")
+    @Value("${notificacoes.url:http://notificacoes:8083}")
     private String notificacoesUrl;
+
+    @Value("${gateway.shared-secret:}")
+    private String gatewaySecret;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -46,19 +49,23 @@ public class NotificacaoService {
     }
 
     private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, Map<String, Object> metadata) {
+        String url = notificacoesUrl + "/api/internal/notificacoes/criar";
         try {
-            String url = notificacoesUrl + "/api/internal/notificacoes/criar";
-            Map<String, Object> request = new HashMap<>();
-            request.put("utilizadorId", utilizadorId);
-            request.put("titulo", titulo);
-            request.put("mensagem", mensagem);
-            request.put("tipo", "REQUISICAO");
-            request.put("metadata", metadata);
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("utilizadorId", utilizadorId);
+            requestBody.put("titulo", titulo);
+            requestBody.put("mensagem", mensagem);
+            requestBody.put("tipo", "REQUISICAO");
+            requestBody.put("metadata", metadata);
 
-            restTemplate.postForObject(url, request, Void.class);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("X-Gateway-Secret", gatewaySecret);
+            org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
+
+            restTemplate.postForObject(url, entity, Void.class);
             log.info("Notificação de requisição enviada para o utilizador {}: {}", utilizadorId, titulo);
         } catch (Exception e) {
-            log.error("Erro ao enviar notificação de requisição", e);
+            log.error("Erro ao enviar notificação de requisição para {}: {}", url, e.getMessage());
         }
     }
 }
