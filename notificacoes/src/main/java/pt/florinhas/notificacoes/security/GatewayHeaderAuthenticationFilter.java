@@ -34,6 +34,28 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        
+        // Internal endpoints REQUIRE the gateway secret
+        if (request.getRequestURI().startsWith("/api/internal/")) {
+             String gatewaySecret = request.getHeader("X-Gateway-Secret");
+             if (!StringUtils.hasText(gatewaySecret)
+                     || !StringUtils.hasText(expectedGatewaySecret)
+                     || !gatewaySecret.equals(expectedGatewaySecret)) {
+                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized internal origin");
+                 return;
+             }
+             
+             // Set a technical authentication for internal service communication
+             UsernamePasswordAuthenticationToken internalAuth = new UsernamePasswordAuthenticationToken(
+                     "INTERNAL_SERVICE",
+                     null,
+                     Arrays.asList(new SimpleGrantedAuthority("ROLE_INTERNAL")));
+             SecurityContextHolder.getContext().setAuthentication(internalAuth);
+             
+             filterChain.doFilter(request, response);
+             return;
+        }
+
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
