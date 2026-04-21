@@ -188,7 +188,7 @@ public class MarcacaoService {
 
         // Notify utente about new appointment
         if (utente != null) {
-            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto(), authorizationService.getCurrentUserId());
         }
 
         return saved;
@@ -213,7 +213,8 @@ public class MarcacaoService {
         Marcacao saved = marcacaoRepository.save(marcacao);
 
         // Notify utente about new remote appointment (async)
-        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
+        // Notify utente about new remote appointment (async)
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto(), utente.getId());
 
         return saved;
     }
@@ -467,10 +468,13 @@ public class MarcacaoService {
                 } else {
                     // Cancelado pela Secretaria -> Notificar Utente
                     try {
-                        notificacaoService.notificarCancelamento(
-                                utenteAlvo.getId(),
-                                marcacao.getData(),
-                                request.getMotivoCancelamento());
+                        // Não notificar se o ator for o próprio utente alvo
+                        if (!utenteAlvo.getId().equals(atorId)) {
+                            notificacaoService.notificarCancelamento(
+                                    utenteAlvo.getId(),
+                                    marcacao.getData(),
+                                    request.getMotivoCancelamento());
+                        }
                     } catch (Exception e) {
                         log.error("Erro ao notificar utente {}", utenteAlvo.getId(), e);
                     }
@@ -671,7 +675,10 @@ public class MarcacaoService {
                 // Notificar todas as secretarias
                 List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
                 for (Funcionario sec : secretarias) {
-                    notificacaoService.notificarReagendamentoPeloUtente(sec.getId(), secDetails.getUtente().getNome(), dataAntiga, saved.getData());
+                    // Não notificar a própria pessoa que reagendou (se for o caso)
+                    if (!sec.getId().equals(actorId)) {
+                        notificacaoService.notificarReagendamentoPeloUtente(sec.getId(), secDetails.getUtente().getNome(), dataAntiga, saved.getData());
+                    }
                 }
             }
         } catch (Exception e) {
@@ -798,13 +805,16 @@ public class MarcacaoService {
         }
     }
 
-    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary) {
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary, Long actorId) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                        // Não notificar se o ator for o próprio utente alvo
+                        if (!utenteId.equals(actorId)) {
+                            notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                        }
                     } catch (Exception e) {
                         log.error("Falha ao notificar utente sobre marcação", e);
                     }
@@ -812,7 +822,9 @@ public class MarcacaoService {
             });
         } else {
             try {
-                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                if (!utenteId.equals(actorId)) {
+                    notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                }
             } catch (Exception e) {
                 log.error("Falha ao notificar utente sobre marcação", e);
             }
