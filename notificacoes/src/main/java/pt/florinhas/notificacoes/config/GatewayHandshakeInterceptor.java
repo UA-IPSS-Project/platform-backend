@@ -11,6 +11,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Interceptor de handshake WebSocket.
  * Permite sempre a ligação WebSocket — a autenticação real é feita
@@ -22,6 +24,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
  * método de autenticação alternativo mais eficiente.
  */
 @Component
+@Slf4j
 public class GatewayHandshakeInterceptor implements HandshakeInterceptor {
 
     private static final String ATTR_USER = "gatewayUser";
@@ -43,7 +46,7 @@ public class GatewayHandshakeInterceptor implements HandshakeInterceptor {
                         .toList();
                 attributes.put(ATTR_ROLES, roles);
             }
-            System.out.println("[WS-Handshake] Authenticated via Gateway headers: " + user);
+            log.info("[WS-Handshake] Authenticated via Gateway headers: {}", user);
         } else {
             // Caso contrário, tentar ler do cookie 'jwt' (bypass Gateway)
             String token = null;
@@ -62,9 +65,9 @@ public class GatewayHandshakeInterceptor implements HandshakeInterceptor {
             if (StringUtils.hasText(token)) {
                 // Colocar o token nos atributos para o JwtWebSocketInterceptor o processar
                 attributes.put("jwt-token", token);
-                System.out.println("[WS-Handshake] Found JWT in cookie/query, passing to STOMP level");
+                log.info("[WS-Handshake] Found JWT in cookie/query, passing to STOMP level");
             } else {
-                System.out.println("[WS-Handshake] No auth found in handshake");
+                log.info("[WS-Handshake] No auth found in handshake");
             }
         }
 

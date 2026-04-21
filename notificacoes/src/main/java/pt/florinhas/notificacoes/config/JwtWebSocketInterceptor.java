@@ -8,6 +8,8 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Component;
+
+import lombok.extern.slf4j.Slf4j;
 import io.jsonwebtoken.Claims;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,7 @@ import java.util.Map;
  * 2. Via JWT no header Authorization do frame STOMP CONNECT (fallback direto)
  */
 @Component
+@Slf4j
 public class JwtWebSocketInterceptor implements ChannelInterceptor {
 
     private final WsJwtService wsJwtService;
@@ -47,7 +50,7 @@ public class JwtWebSocketInterceptor implements ChannelInterceptor {
                 @SuppressWarnings("unchecked")
                 List<String> gatewayRoles = (List<String>) sessionAttributes.getOrDefault("gatewayRoles", List.of());
                 accessor.setUser(new WebSocketUserPrincipal(user, gatewayRoles));
-                System.out.println("[JwtWsInterceptor] Authenticated via session attributes: " + user);
+                log.info("[JwtWsInterceptor] Authenticated via session attributes: {}", user);
                 return message;
             }
         }
@@ -73,16 +76,16 @@ public class JwtWebSocketInterceptor implements ChannelInterceptor {
                         @SuppressWarnings("unchecked")
                         List<String> roles = claims.get("roles", List.class);
                         accessor.setUser(new WebSocketUserPrincipal(subject, roles != null ? roles : List.of()));
-                        System.out.println("[JwtWsInterceptor] Authenticated via STOMP JWT header: " + subject);
+                        log.info("[JwtWsInterceptor] Authenticated via STOMP JWT header: {}", subject);
                         return message;
                     }
                 } catch (Exception e) {
-                    System.err.println("[JwtWsInterceptor] STOMP JWT validation failed: " + e.getMessage());
+                    log.error("[JwtWsInterceptor] STOMP JWT validation failed: {}", e.getMessage());
                 }
             }
 
             // No valid auth found — reject the CONNECT
-            System.err.println("[JwtWsInterceptor] REJECTED STOMP CONNECT: No valid auth found");
+            log.error("[JwtWsInterceptor] REJECTED STOMP CONNECT: No valid auth found");
             return null;
         }
 
