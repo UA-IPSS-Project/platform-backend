@@ -10,9 +10,9 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>marcacoes</artifactId>
-	<name>marcacoes</name>
-	<description>Serviço de marcações da plataforma Florinhas Digital.</description>
+	<artifactId>notificacoes</artifactId>
+	<name>notificacoes</name>
+	<description>Serviço de notificações da plataforma Florinhas Digital.</description>
 
 	<dependencies>
 		<!-- Shared domain entities and enums -->
@@ -40,7 +40,15 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 
 		<!-- Development -->
@@ -74,12 +82,6 @@
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId>
-		</dependency>
-
-		<!-- MinIO (versão gerida no POM central) -->
-		<dependency>
-			<groupId>io.minio</groupId>
-			<artifactId>minio</artifactId>
 		</dependency>
 
 		<!-- Testes -->

@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.config;
+package pt.florinhas.notificacoes.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -28,6 +28,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
+            .setAllowedOriginPatterns("*")
             .addInterceptors(gatewayHandshakeInterceptor);
     }
     
