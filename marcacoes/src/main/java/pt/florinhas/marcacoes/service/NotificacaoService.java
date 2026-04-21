@@ -43,6 +43,20 @@ public class NotificacaoService {
         enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
+    public void notificarLembreteUmDia(Long utilizadorId, Long marcacaoId, LocalDateTime data) {
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "Relembramos que tem uma marcação amanhã, " + dataFormatada + ".";
+        String assunto = "Lembrete de Marcação";
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("appointmentId", marcacaoId.toString());
+        metadata.put("appointmentDate", data.format(DATE_FORMATTER));
+        metadata.put("appointmentTime", data.format(TIME_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
+
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
+    }
+
     public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
         String assunto = "Marcacao Cancelada";
         String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;

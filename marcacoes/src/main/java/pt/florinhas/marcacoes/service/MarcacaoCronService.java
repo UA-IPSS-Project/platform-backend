@@ -33,24 +33,16 @@ public class MarcacaoCronService {
 
         for (Marcacao marcacao : marcacoes) {
             if (marcacao.getEstado() == EventoEstado.AGENDADO
-                && marcacao.getMarcacaoSecretaria() != null
-                && marcacao.getMarcacaoSecretaria().getUtente() != null) {
-                
+                    && marcacao.getMarcacaoSecretaria() != null
+                    && marcacao.getMarcacaoSecretaria().getUtente() != null) {
+
                 Utilizador utente = marcacao.getMarcacaoSecretaria().getUtente();
 
-                // Note: Em ambiente de microserviços, o ideal seria o marcacoes publicar um evento
-                // e o notificacoes verificar se já enviou. Por agora, chamamos os clientes HTTP:
-                
-                // O notificacaoService envia para o backend de notificacoes
-                // (No novo modelo, o backend de notificacoes gere duplicados ou cria sempre)
-                // Para simplificar, assumimos que envia o evento:
-                notificacaoService.notificarNovaMarcacao(
-                    utente.getId(), 
-                    marcacao.getId(), 
-                    marcacao.getData(), 
-                    marcacao.getDuration(), 
-                    "Lembrete de Marcacao");
-                
+                notificacaoService.notificarLembreteUmDia(
+                        utente.getId(),
+                        marcacao.getId(),
+                        marcacao.getData());
+
                 if (utente.getEmail() != null && !utente.getEmail().isBlank()) {
                     emailService.sendAppointmentReminderOneDay(utente.getEmail(), marcacao.getData());
                 }

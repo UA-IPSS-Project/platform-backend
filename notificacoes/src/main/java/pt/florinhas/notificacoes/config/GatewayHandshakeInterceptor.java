@@ -45,30 +45,18 @@ public class GatewayHandshakeInterceptor implements HandshakeInterceptor {
             }
             System.out.println("[WS-Handshake] Authenticated via Gateway headers: " + user);
         } else {
-            // Caso contrário, tentar ler do cookie 'jwt' ou query param 'token' (bypass Gateway)
+            // Caso contrário, tentar ler do cookie 'jwt' (bypass Gateway)
             String token = null;
-            
-            // 1. Tentar Query Param 'token'
-            String query = request.getURI().getQuery();
-            if (StringUtils.hasText(query)) {
-                token = Arrays.stream(query.split("&"))
-                        .filter(s -> s.startsWith("token="))
-                        .map(s -> s.substring(6))
+
+            // 1. Tentar Cookie 'jwt'
+            String cookieHeader = request.getHeaders().getFirst("Cookie");
+            if (StringUtils.hasText(cookieHeader)) {
+                token = Arrays.stream(cookieHeader.split(";"))
+                        .map(String::trim)
+                        .filter(s -> s.startsWith("jwt="))
+                        .map(s -> s.substring(4))
                         .findFirst()
                         .orElse(null);
-            }
-
-            // 2. Tentar Cookie 'jwt'
-            if (!StringUtils.hasText(token)) {
-                String cookieHeader = request.getHeaders().getFirst("Cookie");
-                if (StringUtils.hasText(cookieHeader)) {
-                    token = Arrays.stream(cookieHeader.split(";"))
-                            .map(String::trim)
-                            .filter(s -> s.startsWith("jwt="))
-                            .map(s -> s.substring(4))
-                            .findFirst()
-                            .orElse(null);
-                }
             }
 
             if (StringUtils.hasText(token)) {
