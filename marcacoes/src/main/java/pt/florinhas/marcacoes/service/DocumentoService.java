@@ -203,7 +203,7 @@ public class DocumentoService {
                             secretaria.getId(),
                             titulo,
                             mensagem,
-                            "LEMBRETE"
+                            "FICHEIRO"
                     );
                 }
             } catch (Exception e) {
