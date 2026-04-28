@@ -12,23 +12,23 @@ COPY common-data/pom.xml common-data/
 
 # Download dependencies
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn dependency:go-offline -pl requisicoes -am -B
+    mvn dependency:go-offline -pl notificacoes -am -B
 
-# Copy source and build
-COPY requisicoes/src requisicoes/src
+# Copy source code and build
+COPY notificacoes/src notificacoes/src
 COPY common-data/src common-data/src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn clean package -pl requisicoes -am -DskipTests
+    mvn clean package -pl notificacoes -am -DskipTests
 
 # Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copy jar from build stage
-COPY --from=build /app/requisicoes/target/*.jar app.jar
+COPY --from=build /app/notificacoes/target/*.jar app.jar
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8083
 
 # Run application
 ENTRYPOINT ["java", "-jar", "app.jar"]

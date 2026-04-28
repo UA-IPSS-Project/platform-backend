@@ -20,6 +20,9 @@ public enum TransporteCategoria {
     TRACTOR,
     OUTRO,
 
+    // Estados especiais - Veículo indisponível (admin-only)
+    ABATIDO_VENDIDO_DESCONTINUADO,      // Veículo abatido, vendido ou descontinuado
+
     // Deprecated - Manter para compatibilidade com dados existentes
     @Deprecated LIGEIRO,
     @Deprecated PESADO,

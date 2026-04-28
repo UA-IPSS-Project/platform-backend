@@ -6,8 +6,8 @@ WORKDIR /app
 COPY pom.xml .
 COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
-COPY requisicoes/pom.xml requisicoes/   
-COPY candidaturas/pom.xml candidaturas/
+COPY requisicoes/pom.xml requisicoes/
+COPY notificacoes/pom.xml notificacoes/
 COPY common-data/pom.xml common-data/
 
 # Baixar dependências (layer caching)

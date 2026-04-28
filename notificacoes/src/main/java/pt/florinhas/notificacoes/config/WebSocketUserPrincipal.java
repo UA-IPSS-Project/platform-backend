@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.config;
+package pt.florinhas.notificacoes.config;
 
 import io.jsonwebtoken.Claims;
 import java.security.Principal;

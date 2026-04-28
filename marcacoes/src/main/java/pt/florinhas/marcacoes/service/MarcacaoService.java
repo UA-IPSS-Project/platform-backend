@@ -72,6 +72,7 @@ public class MarcacaoService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final ArmazemService armazemService;
+    private final AuthorizationService authorizationService;
 
     @Lazy
     private final CalendarioService calendarioService;
@@ -187,7 +188,7 @@ public class MarcacaoService {
 
         // Notify utente about new appointment
         if (utente != null) {
-            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto(), authorizationService.getCurrentUserId());
         }
 
         return saved;
@@ -212,7 +213,8 @@ public class MarcacaoService {
         Marcacao saved = marcacaoRepository.save(marcacao);
 
         // Notify utente about new remote appointment (async)
-        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto());
+        // Notify utente about new remote appointment (async)
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto(), utente.getId());
 
         return saved;
     }
@@ -466,10 +468,13 @@ public class MarcacaoService {
                 } else {
                     // Cancelado pela Secretaria -> Notificar Utente
                     try {
-                        notificacaoService.notificarCancelamento(
-                                utenteAlvo.getId(),
-                                marcacao.getData(),
-                                request.getMotivoCancelamento());
+                        // Não notificar se o ator for o próprio utente alvo
+                        if (!utenteAlvo.getId().equals(atorId)) {
+                            notificacaoService.notificarCancelamento(
+                                    utenteAlvo.getId(),
+                                    marcacao.getData(),
+                                    request.getMotivoCancelamento());
+                        }
                     } catch (Exception e) {
                         log.error("Erro ao notificar utente {}", utenteAlvo.getId(), e);
                     }
@@ -654,10 +659,32 @@ public class MarcacaoService {
         }
 
         // Atualizar data/hora
+        LocalDateTime dataAntiga = marcacao.getData();
         marcacao.setData(request.getNovaDataHora());
 
         // Persistir alteração
         Marcacao saved = marcacaoRepository.save(marcacao);
+
+        // Notificar secretaria se for o utente a reagendar
+        try {
+            Long actorId = authorizationService.getCurrentUserId();
+            boolean actorIsAdmin = authorizationService.isAdmin();
+            
+            MarcacaoSecretaria secDetails = saved.getMarcacaoSecretaria();
+            if (!actorIsAdmin && secDetails != null && secDetails.getUtente() != null && actorId.equals(secDetails.getUtente().getId())) {
+                // Notificar todas as secretarias
+                List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+                for (Funcionario sec : secretarias) {
+                    // Não notificar a própria pessoa que reagendou (se for o caso)
+                    if (!sec.getId().equals(actorId)) {
+                        notificacaoService.notificarReagendamentoPeloUtente(sec.getId(), secDetails.getUtente().getNome(), dataAntiga, saved.getData());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Erro ao processar notificação de reagendamento", e);
+        }
+
         return toDTO(saved);
     }
 
@@ -678,6 +705,7 @@ public class MarcacaoService {
             MarcacaoSecretaria sec = m.getMarcacaoSecretaria();
             MarcacaoResponseDTO.MarcacaoSecretariaDTO secDTO = new MarcacaoResponseDTO.MarcacaoSecretariaDTO();
             secDTO.setAssunto(sec.getAssunto());
+            secDTO.setDescricao(sec.getDescricao());
             secDTO.setTipoAtendimento(sec.getTipoAtendimento());
 
             if (sec.getUtente() != null) {
@@ -777,13 +805,16 @@ public class MarcacaoService {
         }
     }
 
-    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary) {
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary, Long actorId) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                        // Não notificar se o ator for o próprio utente alvo
+                        if (!utenteId.equals(actorId)) {
+                            notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                        }
                     } catch (Exception e) {
                         log.error("Falha ao notificar utente sobre marcação", e);
                     }
@@ -791,7 +822,9 @@ public class MarcacaoService {
             });
         } else {
             try {
-                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                if (!utenteId.equals(actorId)) {
+                    notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                }
             } catch (Exception e) {
                 log.error("Falha ao notificar utente sobre marcação", e);
             }

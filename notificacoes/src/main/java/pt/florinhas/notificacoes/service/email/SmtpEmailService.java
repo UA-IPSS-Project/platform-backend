@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.service.email;
+package pt.florinhas.notificacoes.service.email;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
