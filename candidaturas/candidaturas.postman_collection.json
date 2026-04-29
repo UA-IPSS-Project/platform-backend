@@ -1,0 +1,432 @@
+{
+	"info": {
+		"_postman_id": "c1f2e3d4-b5a6-7890-1234-567890abcdef",
+		"name": "Candidaturas API",
+		"description": "Coleção de testes para os endpoints do módulo Candidaturas",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Forms",
+			"item": [
+				{
+					"name": "Get All Forms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Form Types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms/types",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								"types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Form By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69f2404bc216265565cad64d"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Form",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-User-Id",
+								"value": "1",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Novo Formulário Teste\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"campo1\": {\n        \"type\": \"string\"\n      }\n    }\n  },\n  \"uiSchema\": {}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/forms",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Form",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-User-Id",
+								"value": "1",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Formulário Atualizado\",\n  \"schema\": {},\n  \"uiSchema\": {}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/forms/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69f2404bc216265565cad64d"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Form",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/forms/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"forms",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "id-a-apagar"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Candidaturas",
+			"item": [
+				{
+					"name": "Get All Candidaturas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas"
+							],
+							"query": [
+								{
+									"key": "nif",
+									"value": "123456789",
+									"disabled": true
+								},
+								{
+									"key": "estado",
+									"value": "PENDENTE",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Candidatura By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69f2404bc216265565cad650"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Candidaturas By Form ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas/form/:formId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas",
+								"form",
+								":formId"
+							],
+							"variable": [
+								{
+									"key": "formId",
+									"value": "69f2404bc216265565cad64d"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Candidaturas By User ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas/user/:userId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas",
+								"user",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Candidatura",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-User-Id",
+								"value": "2",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"formId\": \"69f2404bc216265565cad64d\",\n  \"nif\": \"123456789\",\n  \"nome\": \"Candidato Teste\",\n  \"respostas\": {\n    \"campo1\": \"Resposta de Teste\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Candidatura",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-User-Id",
+								"value": "2",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"respostas\": {\n    \"campo1\": \"Resposta Atualizada\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69f2404bc216265565cad650"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Candidatura Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "X-User-Id",
+								"value": "1",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estado\": \"APROVADA\",\n  \"assinado\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas/:id/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas",
+								":id",
+								"status"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69f2404bc216265565cad650"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Candidatura",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/candidaturas/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"candidaturas",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "id-a-apagar"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080"
+		}
+	]
+}
