@@ -96,6 +96,9 @@ public class DataInitializer implements CommandLineRunner {
                 // ----------------------------------------------------------------
                 Candidatura c1 = new Candidatura();
                 c1.setFormId(form1.getId());
+                c1.setNif("123456789");
+                c1.setNome("Ana Ferreira");
+                c1.setAssinado(false);
                 c1.setRespostas(Map.of(
                                 "nome", "Ana Ferreira",
                                 "email", "ana.ferreira@universidade.pt",
@@ -112,6 +115,9 @@ public class DataInitializer implements CommandLineRunner {
                 // ----------------------------------------------------------------
                 Candidatura c2 = new Candidatura();
                 c2.setFormId(form1.getId());
+                c2.setNif("234567899");
+                c2.setNome("Bruno Silva");
+                c2.setAssinado(true);
                 c2.setRespostas(Map.of(
                                 "nome", "Bruno Silva",
                                 "email", "bruno.silva@universidade.pt",
@@ -130,6 +136,9 @@ public class DataInitializer implements CommandLineRunner {
                 // ----------------------------------------------------------------
                 Candidatura c3 = new Candidatura();
                 c3.setFormId(form2.getId());
+                c3.setNif("501234560");
+                c3.setNome("Catarina Lopes");
+                c3.setAssinado(false);
                 c3.setRespostas(Map.of(
                                 "nome", "Catarina Lopes",
                                 "email", "catarina.lopes@email.com",

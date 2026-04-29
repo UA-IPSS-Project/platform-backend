@@ -3,6 +3,7 @@ package pt.florinhas.candidaturas.service;
 // Java
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.time.Instant;
 
 // Spring
@@ -13,24 +14,20 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
-// Lombok
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-// From this project
-import pt.florinhas.candidaturas.repository.*;
-import pt.florinhas.candidaturas.domain.*;
-import pt.florinhas.common_data.validation.NifValidator;
-import pt.florinhas.common_data.exception.BadRequestException;
-
-// JSON Schema Validation
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
-import java.util.Set;
+
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import pt.florinhas.candidaturas.repository.*;
+import pt.florinhas.candidaturas.domain.*;
+import pt.florinhas.candidaturas.dto.*;
+import pt.florinhas.common_data.exception.BadRequestException;
 
 @Service
 @AllArgsConstructor
@@ -39,72 +36,78 @@ public class CandidaturaService {
     private final CandidaturaRepository candidaturaRepository;
     private final FormRepository formRepository;
     private final MongoTemplate mongoTemplate;
-
-    private final NifValidator nifValidator;
     private final ObjectMapper objectMapper;
 
-    public Candidatura createCandidatura(Candidatura candidatura) {
-        if (!isCandidaturaValid(candidatura)) {
-            return null;
-        }
-
-        Form form = formRepository.findById(candidatura.getFormId()).get();
-
+    public Candidatura createCandidatura(CandidaturaCreate dto, Long userId) {
+        Form form = formRepository.findById(dto.getFormId()).orElse(null);
         if (form == null) {
-            log.warn("Form with id {} does not exist.", candidatura.getFormId());
-            return null;
+            log.warn("Form with id {} does not exist.", dto.getFormId());
+            throw new BadRequestException("Form with id " + dto.getFormId() + " does not exist.");
         }
 
-        validateResponsesAgainstSchema(candidatura.getRespostas(), form.getSchema());
+        validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
 
-        if (candidatura.getCriadoEm() == null) {
-            log.info("Application created date setting to now.");
-            candidatura.setCriadoEm(Instant.now());
-        }
-
-        log.info("Creating application for NIF: {}", candidatura.getNif());
+        Candidatura candidatura = new Candidatura();
+        candidatura.setFormId(dto.getFormId());
+        candidatura.setNif(dto.getNif());
+        candidatura.setNome(dto.getNome());
+        candidatura.setRespostas(dto.getRespostas());
 
         candidatura.setEstado(CandidaturaEstado.PENDENTE);
-        candidatura.setAssinado(false); // Verificar a existência de um documento assinado
+        candidatura.setCriadoPor(userId);
+        candidatura.setCriadoEm(Instant.now());
+        candidatura.setAssinado(false);
 
+        log.info("Creating application for NIF: {}", candidatura.getNif());
         return candidaturaRepository.save(candidatura);
     }
 
-    public Candidatura updateCandidatura(String id, Candidatura candidatura) {
-        if (!isCandidaturaValid(candidatura)) {
-            return null;
-        }
-
-        if (candidatura.getAtualizadoPor() == null) {
-            log.warn("UpdatedBy is required.");
-            return null;
-        }
-
-        Form form = formRepository.findById(candidatura.getFormId()).get();
-
-        if (form == null) {
-            log.warn("Form with id {} does not exist.", candidatura.getFormId());
-            return null;
-        }
-
-        validateResponsesAgainstSchema(candidatura.getRespostas(), form.getSchema());
-
-        if (candidatura.getAtualizadoEm() == null) {
-            log.info("Application updated date setting to now.");
-            candidatura.setAtualizadoEm(Instant.now());
-        }
-
-        if (!candidaturaRepository.existsById(id)) {
+    public Candidatura updateCandidatura(String id, CandidaturaUpdate dto, Long userId) {
+        Candidatura candidatura = candidaturaRepository.findById(id).orElse(null);
+        if (candidatura == null) {
             log.error("Application with id {} does not exist.", id);
             return null;
         }
 
+        Form form = formRepository.findById(candidatura.getFormId()).orElse(null);
+        if (form == null) {
+            log.warn("Form with id {} does not exist.", candidatura.getFormId());
+            return null;
+        }
+
+        validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
+
+        candidatura.setRespostas(dto.getRespostas());
+        candidatura.setAtualizadoPor(userId);
+        candidatura.setAtualizadoEm(Instant.now());
+
+        log.info("Application updated date setting to now.");
+        return candidaturaRepository.save(candidatura);
+    }
+
+    public Candidatura updateCandidaturaStatus(String id, CandidaturaStatusUpdate dto, Long userId) {
+        Candidatura candidatura = candidaturaRepository.findById(id).orElse(null);
+        if (candidatura == null) {
+            log.error("Application with id {} does not exist.", id);
+            return null;
+        }
+
+        if (dto.getEstado() != null) {
+            candidatura.setEstado(dto.getEstado());
+        }
+        if (dto.getAssinado() != null) {
+            candidatura.setAssinado(dto.getAssinado());
+        }
+
+        candidatura.setAtualizadoPor(userId);
+        candidatura.setAtualizadoEm(Instant.now());
+
+        log.info("Application status updated by user {}.", userId);
         return candidaturaRepository.save(candidatura);
     }
 
     public List<Candidatura> getCandidaturas(String nif, String nome, CandidaturaEstado estado, Boolean assinado,
             Integer idade) {
-
         Query query = new Query();
 
         if (nif != null) {
@@ -140,7 +143,6 @@ public class CandidaturaService {
             log.warn("Application with id {} does not exist.", id);
             return null;
         }
-
         return candidatura;
     }
 
@@ -154,44 +156,7 @@ public class CandidaturaService {
             log.error("Application with id {} does not exist.", id);
             return false;
         }
-
         candidaturaRepository.deleteById(id);
-        return true;
-    }
-
-    // Check if Application has a valid FormId and responses are not empty
-    private boolean isCandidaturaValid(Candidatura candidatura) {
-
-        if (!nifValidator.isValidRequired(candidatura.getNif())) {
-            log.warn("NIF is not valid.");
-            return false;
-        }
-
-        if (candidatura.getNome() == null || candidatura.getNome().trim().isEmpty()) {
-            log.warn("Name is required.");
-            return false;
-        }
-
-        if (candidatura.getFormId() == null || candidatura.getFormId().isEmpty()) {
-            log.warn("FormId is required.");
-            return false;
-        }
-
-        if (!formRepository.existsById(candidatura.getFormId())) {
-            log.warn("Form with id {} does not exist.", candidatura.getFormId());
-            return false;
-        }
-
-        if (candidatura.getRespostas() == null || candidatura.getRespostas().isEmpty()) {
-            log.warn("Answers are required.");
-            return false;
-        }
-
-        if (candidatura.getCriadoPor() == null) {
-            log.warn("CreatedBy is required.");
-            return false;
-        }
-
         return true;
     }
 

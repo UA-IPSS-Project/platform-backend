@@ -6,7 +6,6 @@ import java.util.Map;
 
 // Mongo
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.boot.context.properties.bind.Name;
 import org.springframework.data.annotation.Id;
 
 // Validation
@@ -31,7 +30,6 @@ public class Candidatura {
     private String nif;
 
     @NotBlank(message = "Name is required")
-    @Pattern(regexp = "^[A-Za-zÁÉÍÓÚáéíóúÂÊÎÔÛâêîôûÃÑÕãñõÇç ]*$", message = "Invalid name")
     private String nome;
 
     private Map<String, Object> respostas;

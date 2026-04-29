@@ -5,15 +5,15 @@ import lombok.AllArgsConstructor;
 
 // Java
 import java.util.List;
+import java.util.stream.Collectors;
 
-// From this project
-import pt.florinhas.candidaturas.service.*;
-import pt.florinhas.candidaturas.domain.*;
-
-// Spring
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
+
+import pt.florinhas.candidaturas.service.*;
+import pt.florinhas.candidaturas.domain.*;
+import pt.florinhas.candidaturas.dto.*;
 
 @RestController
 @RequestMapping("/api")
@@ -24,25 +24,42 @@ public class CandidaturaController {
 
     // Forms
     @GetMapping("/forms")
-    public ResponseEntity<List<Form>> GetForms() {
-        List<Form> forms = formService.getForms();
+    public ResponseEntity<List<FormResponse>> getForms() {
+        List<FormResponse> forms = formService.getForms().stream()
+                .map(FormResponse::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(forms);
+    }
+
+    @GetMapping("/forms/types")
+    public ResponseEntity<List<FormTypeResponse>> getFormTypes() {
+        List<FormTypeResponse> forms = formService.getForms().stream()
+                .map(FormTypeResponse::fromEntity)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(forms);
     }
 
     @PostMapping("/forms")
-    public ResponseEntity<Form> createForm(@RequestBody Form form) {
-        Form createdForm = formService.createForm(form);
+    public ResponseEntity<FormResponse> createForm(
+            @Valid @RequestBody FormCreate dto,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        if (userId == null) userId = 1L; // Fallback for testing
+        Form createdForm = formService.createForm(dto, userId);
         if (createdForm != null) {
-            return ResponseEntity.ok(createdForm);
+            return ResponseEntity.ok(FormResponse.fromEntity(createdForm));
         }
         return ResponseEntity.badRequest().build();
     }
 
     @PutMapping("/forms/{id}")
-    public ResponseEntity<Form> updateForm(@PathVariable String id, @RequestBody Form form) {
-        Form updatedForm = formService.updateForm(id, form);
+    public ResponseEntity<FormResponse> updateForm(
+            @PathVariable String id, 
+            @Valid @RequestBody FormUpdate dto,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        if (userId == null) userId = 1L; // Fallback for testing
+        Form updatedForm = formService.updateForm(id, dto, userId);
         if (updatedForm != null) {
-            return ResponseEntity.ok(updatedForm);
+            return ResponseEntity.ok(FormResponse.fromEntity(updatedForm));
         }
         return ResponseEntity.notFound().build();
     }
@@ -56,47 +73,63 @@ public class CandidaturaController {
     }
 
     @GetMapping("/forms/{id}")
-    public ResponseEntity<Form> getFormByID(@PathVariable String id) {
+    public ResponseEntity<FormResponse> getFormByID(@PathVariable String id) {
         Form form = formService.getFormById(id);
         if (form != null) {
-            return ResponseEntity.ok(form);
+            return ResponseEntity.ok(FormResponse.fromEntity(form));
         }
         return ResponseEntity.notFound().build();
     }
 
     // Candidaturas
     @GetMapping("/candidaturas")
-
-    public ResponseEntity<List<Candidatura>> getCandidaturas(
+    public ResponseEntity<List<CandidaturaResponse>> getCandidaturas(
             @RequestParam(required = false) String nif,
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) CandidaturaEstado estado,
             @RequestParam(required = false) Boolean assinado,
             @RequestParam(required = false) Integer idade) {
-        List<Candidatura> candidaturas = candidaturaService.getCandidaturas(
-                nif,
-                nome,
-                estado,
-                assinado,
-                idade);
+        List<CandidaturaResponse> candidaturas = candidaturaService.getCandidaturas(
+                nif, nome, estado, assinado, idade).stream()
+                .map(CandidaturaResponse::fromEntity)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(candidaturas);
     }
 
     @PostMapping("/candidaturas")
-    public ResponseEntity<Candidatura> createCandidatura(@Valid @RequestBody Candidatura candidatura) {
-        Candidatura createdCandidatura = candidaturaService.createCandidatura(candidatura);
+    public ResponseEntity<CandidaturaResponse> createCandidatura(
+            @Valid @RequestBody CandidaturaCreate dto,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        if (userId == null) userId = 1L; // Fallback for testing
+        Candidatura createdCandidatura = candidaturaService.createCandidatura(dto, userId);
         if (createdCandidatura != null) {
-            return ResponseEntity.ok(createdCandidatura);
+            return ResponseEntity.ok(CandidaturaResponse.fromEntity(createdCandidatura));
         }
         return ResponseEntity.badRequest().build();
     }
 
     @PutMapping("/candidaturas/{id}")
-    public ResponseEntity<Candidatura> putCandidatura(@PathVariable String id,
-            @Valid @RequestBody Candidatura candidatura) {
-        Candidatura updatedCandidatura = candidaturaService.updateCandidatura(id, candidatura);
+    public ResponseEntity<CandidaturaResponse> updateCandidatura(
+            @PathVariable String id,
+            @Valid @RequestBody CandidaturaUpdate dto,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        if (userId == null) userId = 1L; // Fallback for testing
+        Candidatura updatedCandidatura = candidaturaService.updateCandidatura(id, dto, userId);
         if (updatedCandidatura != null) {
-            return ResponseEntity.ok(updatedCandidatura);
+            return ResponseEntity.ok(CandidaturaResponse.fromEntity(updatedCandidatura));
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    @PatchMapping("/candidaturas/{id}/status")
+    public ResponseEntity<CandidaturaResponse> updateCandidaturaStatus(
+            @PathVariable String id,
+            @Valid @RequestBody CandidaturaStatusUpdate dto,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        if (userId == null) userId = 1L; // Fallback for testing
+        Candidatura updatedCandidatura = candidaturaService.updateCandidaturaStatus(id, dto, userId);
+        if (updatedCandidatura != null) {
+            return ResponseEntity.ok(CandidaturaResponse.fromEntity(updatedCandidatura));
         }
         return ResponseEntity.badRequest().build();
     }
@@ -110,31 +143,33 @@ public class CandidaturaController {
     }
 
     @GetMapping("/candidaturas/{id}")
-    public ResponseEntity<Candidatura> getCandidaturaByID(@PathVariable String id) {
+    public ResponseEntity<CandidaturaResponse> getCandidaturaByID(@PathVariable String id) {
         Candidatura candidatura = candidaturaService.getCandidaturaById(id);
         if (candidatura != null) {
-            return ResponseEntity.ok(candidatura);
+            return ResponseEntity.ok(CandidaturaResponse.fromEntity(candidatura));
         }
         return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/candidaturas/form/{formId}")
-    public ResponseEntity<List<Candidatura>> getCandidaturasByFormID(@PathVariable String formId) {
-        List<Candidatura> candidaturas = candidaturaService.getCandidaturasByFormId(formId);
-        if (candidaturas != null && !candidaturas.isEmpty()) {
+    public ResponseEntity<List<CandidaturaResponse>> getCandidaturasByFormID(@PathVariable String formId) {
+        List<CandidaturaResponse> candidaturas = candidaturaService.getCandidaturasByFormId(formId).stream()
+                .map(CandidaturaResponse::fromEntity)
+                .collect(Collectors.toList());
+        if (!candidaturas.isEmpty()) {
             return ResponseEntity.ok(candidaturas);
         }
         return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/candidaturas/user/{userId}")
-    public ResponseEntity<List<Candidatura>> getCandidaturasByUserID(@PathVariable Long userId) {
-        List<Candidatura> candidaturas = candidaturaService.getCandidaturasByUserId(userId);
-        if (candidaturas != null && !candidaturas.isEmpty()) {
+    public ResponseEntity<List<CandidaturaResponse>> getCandidaturasByUserID(@PathVariable Long userId) {
+        List<CandidaturaResponse> candidaturas = candidaturaService.getCandidaturasByUserId(userId).stream()
+                .map(CandidaturaResponse::fromEntity)
+                .collect(Collectors.toList());
+        if (!candidaturas.isEmpty()) {
             return ResponseEntity.ok(candidaturas);
         }
         return ResponseEntity.notFound().build();
-
     }
-
 }
