@@ -162,6 +162,16 @@ public class CandidaturaService {
 
     private void validateResponsesAgainstSchema(Map<String, Object> responses, Map<String, Object> schema) {
         try {
+            // Verificar se não há campos extra (campos a mais que não estão no form)
+            if (schema.containsKey("properties") && schema.get("properties") instanceof Map) {
+                Map<?, ?> properties = (Map<?, ?>) schema.get("properties");
+                for (String key : responses.keySet()) {
+                    if (!properties.containsKey(key)) {
+                        throw new BadRequestException("O campo '" + key + "' não faz parte deste formulário.");
+                    }
+                }
+            }
+
             JsonNode responsesNode = objectMapper.valueToTree(responses);
             JsonNode schemaNode = objectMapper.valueToTree(schema);
 

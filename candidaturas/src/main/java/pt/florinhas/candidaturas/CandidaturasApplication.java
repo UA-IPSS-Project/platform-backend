@@ -5,8 +5,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
+import org.springframework.context.annotation.ComponentScan;
+
 @SpringBootApplication(excludeName = {
 		"de.flapdoodle.embed.mongo.spring.autoconfigure.EmbeddedMongoAutoConfiguration"
+})
+@ComponentScan(basePackages = {
+		"pt.florinhas.candidaturas",
+		"pt.florinhas.common_data"
 })
 @EntityScan(basePackages = {
 		"pt.florinhas.candidaturas.domain",
