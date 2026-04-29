@@ -6,12 +6,15 @@ import java.util.Map;
 
 // Mongo
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.boot.context.properties.bind.Name;
 import org.springframework.data.annotation.Id;
+
+// Validation
+import jakarta.validation.constraints.*;
 
 // Lombok
 import lombok.Getter;
 import lombok.Setter;
-import lombok.AccessLevel;
 
 @Getter
 @Setter
@@ -19,19 +22,34 @@ import lombok.AccessLevel;
 public class Candidatura {
 
     @Id
-    @Setter(AccessLevel.NONE)
     private String id;
 
-    private String formId; // ref. ao Form
+    @NotBlank(message = "formId is required")
+    private String formId; // ref. to Form
+
+    @NotBlank(message = "NIF is required")
+    private String nif;
+
+    @NotBlank(message = "Name is required")
+    @Pattern(regexp = "^[A-Za-zÁÉÍÓÚáéíóúÂÊÎÔÛâêîôûÃÑÕãñõÇç ]*$", message = "Invalid name")
+    private String nome;
 
     private Map<String, Object> respostas;
 
-    private String estado;
+    @NotNull(message = "Estado is required")
+    private CandidaturaEstado estado;
 
+    @NotNull(message = "criadoPor is required")
     private Long criadoPor;
+
+    @NotNull(message = "criadoEm is required")
     private Instant criadoEm;
-    
-    // Resubmissões
+
+    private Boolean assinado;
+
+    private Integer ranking;
+
+    // Resubmissions
     private Long atualizadoPor;
     private Instant atualizadoEm;
 }

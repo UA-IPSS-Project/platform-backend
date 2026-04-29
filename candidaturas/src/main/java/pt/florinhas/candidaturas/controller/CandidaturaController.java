@@ -13,6 +13,7 @@ import pt.florinhas.candidaturas.domain.*;
 // Spring
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api")
@@ -65,14 +66,24 @@ public class CandidaturaController {
 
     // Candidaturas
     @GetMapping("/candidaturas")
-    public ResponseEntity<List<Candidatura>> getCandidaturas() {
-        List<Candidatura> candidaturas = candidaturaService.getCandidaturas();
+
+    public ResponseEntity<List<Candidatura>> getCandidaturas(
+            @RequestParam(required = false) String nif,
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) CandidaturaEstado estado,
+            @RequestParam(required = false) Boolean assinado,
+            @RequestParam(required = false) Integer idade) {
+        List<Candidatura> candidaturas = candidaturaService.getCandidaturas(
+                nif,
+                nome,
+                estado,
+                assinado,
+                idade);
         return ResponseEntity.ok(candidaturas);
     }
 
     @PostMapping("/candidaturas")
-    public ResponseEntity<Candidatura> createCandidatura(@RequestBody Candidatura candidatura
-    ) {
+    public ResponseEntity<Candidatura> createCandidatura(@Valid @RequestBody Candidatura candidatura) {
         Candidatura createdCandidatura = candidaturaService.createCandidatura(candidatura);
         if (createdCandidatura != null) {
             return ResponseEntity.ok(createdCandidatura);
@@ -81,7 +92,8 @@ public class CandidaturaController {
     }
 
     @PutMapping("/candidaturas/{id}")
-    public ResponseEntity<Candidatura> putCandidatura(@PathVariable String id, @RequestBody Candidatura candidatura) {
+    public ResponseEntity<Candidatura> putCandidatura(@PathVariable String id,
+            @Valid @RequestBody Candidatura candidatura) {
         Candidatura updatedCandidatura = candidaturaService.updateCandidatura(id, candidatura);
         if (updatedCandidatura != null) {
             return ResponseEntity.ok(updatedCandidatura);
