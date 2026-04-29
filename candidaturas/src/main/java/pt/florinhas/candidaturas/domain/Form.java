@@ -18,9 +18,9 @@ import lombok.AccessLevel;
 @Document(collection = "forms")
 public class Form {
     @Id
-    @Setter(AccessLevel.NONE) // Para não permitir mudanças do ID
+    @Setter(AccessLevel.NONE) // To not allow ID changes
     private String id;
-    
+
     private String name;
 
     private Map<String, Object> schema;

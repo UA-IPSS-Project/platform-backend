@@ -1,5 +1,6 @@
 package pt.florinhas.candidaturas.service;
 
+import java.time.Instant;
 // Java
 import java.util.List;
 
@@ -12,9 +13,11 @@ import pt.florinhas.candidaturas.domain.Form;
 
 // Lombok
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class FormService {
     private final FormRepository formRepository;
 
@@ -22,13 +25,17 @@ public class FormService {
         String formName = form.getName();
 
         if (!isFormValid(form)) {
-            System.out.println("Form is not valid. Name and schema are required.");
             return null;
         }
 
         if (formRepository.existsByName(formName)) {
-            System.out.println("Form with name " + formName + " already exists.");
+            log.warn("Form with name {} already exists.", formName);
             return null;
+        }
+
+        if (form.getCriadoEm() == null) {
+            log.info("Form created at time is null, setting it to current time.");
+            form.setCriadoEm(Instant.now());
         }
 
         return formRepository.save(form);
@@ -38,19 +45,38 @@ public class FormService {
         String formName = form.getName();
 
         if (!formRepository.existsById(id)) {
-            System.out.println("Form with id " + id + " does not exist.");
+            log.error("Form with id {} does not exist.", id);
             return null;
         }
 
         if (!isFormValid(form)) {
-            System.out.println("Form is not valid. Name and schema are required.");
+            log.warn("Form is not valid. Name and schema are required.");
             return null;
         }
 
-        // Verifico o caso de dar update ao nome do form para um nome que já existe mas com id diferente (outro form)
-        if (!formRepository.findByName(formName).getId().equals(id)) {
-            System.out.println("Form with name " + formName + " already exists.");
+        Form beforeForm = formRepository.findById(id).get();
+
+        if (!beforeForm.getId().equals(form.getId())) {
+            log.error("Form id changed. Access Denied.");
             return null;
+        }
+
+        // Check if updating the form name to an already existing name with a different
+        // id
+        if (formName != null && !formName.equals(beforeForm.getName()) &&
+                formRepository.existsByName(formName)) {
+            log.warn("Form with name {} already exists.", formName);
+            return null;
+        }
+
+        if (form.getAtualizadoPor() != null) {
+            log.warn("Form without user whose update the form");
+            return null;
+        }
+
+        if (form.getAtualizadoEm() != null) {
+            log.info("Form updated at time is null, setting it to current time.");
+            form.setAtualizadoEm(Instant.now());
         }
 
         return formRepository.save(form);
@@ -60,22 +86,22 @@ public class FormService {
         Form form = formRepository.findById(id).orElse(null);
 
         if (form == null) {
-            System.out.println("Form with id " + id + " does not exist.");
+            log.error("Form with id {} does not exist.", id);
             return false;
         }
 
         formRepository.deleteById(id);
-        
+
         return true;
     }
 
     public Form getFormById(String id) {
         Form form = formRepository.findById(id).orElse(null);
-        
+
         if (form == null) {
-            System.out.println("Form with id " + id + " does not exist.");
+            log.warn("Form with id {} does not exist.", id);
         }
-        
+
         return form;
     }
 
@@ -83,16 +109,23 @@ public class FormService {
         return formRepository.findAll();
     }
 
-    
     private boolean isFormValid(Form form) {
         if (form.getName() == null || form.getName().isEmpty()) {
+            log.warn("Form name is required.");
             return false;
         }
 
         if (form.getSchema() == null || form.getSchema().isEmpty()) {
+            log.warn("Form schema is required.");
+            return false;
+        }
+
+        if (form.getCriadoPor() == null || form.getCriadoPor() <= 0) {
+            log.warn("Form creator is required.");
             return false;
         }
 
         return true;
     }
+
 }
