@@ -18,6 +18,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
@@ -37,9 +39,6 @@ import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
-
-import pt.florinhas.common_data.domain.Funcionario;
-import pt.florinhas.common_data.repository.FuncionarioRepository;
 
 @ExtendWith(MockitoExtension.class)
 class RequisicaoServiceTest {
@@ -156,7 +155,7 @@ class RequisicaoServiceTest {
                 2L,
                 List.of(
                         new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
-                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(4L, 2)));
+                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(4L, 2)), null);
 
         RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, 1L);
 
@@ -189,7 +188,7 @@ class RequisicaoServiceTest {
                 null,
                 List.of(
                         new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
-                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 8)));
+                        new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 8)), null);
 
         RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, 1L);
 
@@ -207,7 +206,7 @@ class RequisicaoServiceTest {
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
                 null,
-                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(30L, 1)));
+                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(30L, 1)), null);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarMaterial(request, 1L));
@@ -226,17 +225,20 @@ class RequisicaoServiceTest {
         when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
+        LocalDateTime saida = LocalDateTime.now().plusDays(10);
+        LocalDateTime regresso = saida.plusHours(4);
+
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido de carrinha",
                 RequisicaoPrioridade.ALTA,
                 20L,
                 "Centro de Dia",
-                LocalDateTime.of(2026, 4, 11, 9, 0),
-                LocalDateTime.of(2026, 4, 11, 13, 0),
+                saida,
+                regresso,
                 8,
                 "Condutor 1",
                 List.of(30L),
-                null);
+                null, null);
 
         RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
 
@@ -256,17 +258,20 @@ class RequisicaoServiceTest {
         when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
         when(transporteRepository.findById(90L)).thenReturn(Optional.empty());
 
+        LocalDateTime saida = LocalDateTime.now().plusDays(2);
+        LocalDateTime regresso = saida.plusHours(2);
+
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido",
                 RequisicaoPrioridade.BAIXA,
                 null,
                 "Hospital",
-                LocalDateTime.of(2026, 4, 12, 9, 0),
-                LocalDateTime.of(2026, 4, 12, 11, 0),
+                saida,
+                regresso,
                 3,
                 "Condutor Teste",
                 List.of(90L),
-                null);
+                null, null);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -285,17 +290,20 @@ class RequisicaoServiceTest {
         when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
+        LocalDateTime saida = LocalDateTime.now().plusDays(10);
+        LocalDateTime regresso = saida.plusHours(4);
+
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido compatível",
                 RequisicaoPrioridade.MEDIA,
                 null,
                 "Centro",
-                LocalDateTime.of(2026, 4, 13, 9, 0),
-                LocalDateTime.of(2026, 4, 13, 10, 0),
+                saida,
+                regresso,
                 2,
                 "Condutor Teste",
                 null,
-                30L);
+                30L, null);
 
         RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
 
@@ -315,7 +323,7 @@ class RequisicaoServiceTest {
                 2,
                 "Condutor Teste",
                 List.of(30L),
-                31L);
+                31L, null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -336,7 +344,7 @@ class RequisicaoServiceTest {
                 2,
                 "Condutor Teste",
                 null,
-                null);
+                null, null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -346,17 +354,20 @@ class RequisicaoServiceTest {
 
     @Test
     void criarTransporte_quandoRegressoAntesDaSaida_deveLancarErro() {
+        LocalDateTime saida = LocalDateTime.now().plusDays(10);
+        LocalDateTime regresso = saida.minusHours(1);
+
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
                 RequisicaoPrioridade.MEDIA,
                 null,
                 "Centro",
-                LocalDateTime.of(2026, 4, 13, 10, 0),
-                LocalDateTime.of(2026, 4, 13, 9, 0),
+                saida,
+                regresso,
                 2,
                 "Condutor Teste",
                 List.of(30L),
-                null);
+                null, null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -366,7 +377,7 @@ class RequisicaoServiceTest {
 
     @Test
     void criarTransporte_quandoRegressoIgualSaida_deveLancarErro() {
-        LocalDateTime dataHora = LocalDateTime.of(2026, 4, 13, 10, 0);
+        LocalDateTime dataHora = LocalDateTime.now().plusDays(10);
 
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",
@@ -378,7 +389,7 @@ class RequisicaoServiceTest {
                 2,
                 "Condutor Teste",
                 List.of(30L),
-                null);
+                null, null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -400,7 +411,7 @@ class RequisicaoServiceTest {
                 2,
                 "Condutor Teste",
                 List.of(30L),
-                null);
+                null, null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -422,7 +433,7 @@ class RequisicaoServiceTest {
                 2,
                 "Condutor Teste",
                 List.of(30L),
-                null);
+                null, null);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -441,7 +452,7 @@ class RequisicaoServiceTest {
                 "Reparar janela",
                 RequisicaoPrioridade.URGENTE,
                 200L,
-                List.of());
+                List.of(), null);
 
         RequisicaoManutencao resultado = requisicaoService.criarManutencao(request, 100L);
 
@@ -459,7 +470,7 @@ class RequisicaoServiceTest {
                 "Teste",
                 RequisicaoPrioridade.MEDIA,
                 null,
-                List.of());
+                List.of(), null);
 
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                 () -> requisicaoService.criarManutencao(request, 404L));

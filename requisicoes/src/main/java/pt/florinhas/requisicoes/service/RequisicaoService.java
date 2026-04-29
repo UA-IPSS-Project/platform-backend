@@ -12,6 +12,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
@@ -44,9 +46,6 @@ import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TipoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
-
-import pt.florinhas.common_data.domain.Funcionario;
-import pt.florinhas.common_data.repository.FuncionarioRepository;
 
 @Service
 public class RequisicaoService {
@@ -172,6 +171,12 @@ public class RequisicaoService {
             requisicao.getItens().add(requisicaoMaterialItem);
         }
 
+        if (request.periodica() != null) {
+            requisicao.setPeriodicaFrequencia(request.periodica().frequencia());
+            requisicao.setPeriodicaDataInicio(request.periodica().dataInicio());
+            requisicao.setPeriodicaDataFim(request.periodica().dataFim());
+        }
+
         RequisicaoMaterial saved = requisicaoMaterialRepository.save(requisicao);
         notificarSecretarias(saved, authenticatedUtilizadorId);
         return saved;
@@ -207,6 +212,12 @@ public class RequisicaoService {
             item.setTransporte(transporte);
             item.setRequisicao(requisicao);
             requisicao.getTransportes().add(item);
+        }
+
+        if (request.periodica() != null) {
+            requisicao.setPeriodicaFrequencia(request.periodica().frequencia());
+            requisicao.setPeriodicaDataInicio(request.periodica().dataInicio());
+            requisicao.setPeriodicaDataFim(request.periodica().dataFim());
         }
 
         RequisicaoTransporte saved = requisicaoTransporteRepository.save(requisicao);
@@ -275,6 +286,12 @@ public class RequisicaoService {
 
                 requisicao.getItens().add(requisicaoItem);
             }
+        }
+
+        if (request.periodica() != null) {
+            requisicao.setPeriodicaFrequencia(request.periodica().frequencia());
+            requisicao.setPeriodicaDataInicio(request.periodica().dataInicio());
+            requisicao.setPeriodicaDataFim(request.periodica().dataFim());
         }
 
         // Single save operation handles all items via CascadeType.ALL

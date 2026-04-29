@@ -1,11 +1,11 @@
 package pt.florinhas.requisicoes.domain;
 
-import pt.florinhas.common_data.domain.Funcionario;
-
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,8 +18,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import pt.florinhas.common_data.domain.Funcionario;
 
 @Entity
 @Table(name = "Requisicao")
@@ -63,6 +62,20 @@ public abstract class Requisicao {
 
     @Column(name = "ultima_alteracao_estado_em", nullable = false)
     private LocalDateTime ultimaAlteracaoEstadoEm;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "periodica_frequencia", length = 10)
+    private PeriodicidadeFrequencia periodicaFrequencia;
+
+    @Column(name = "periodica_data_inicio")
+    private java.time.LocalDate periodicaDataInicio;
+
+    @Column(name = "periodica_data_fim")
+    private java.time.LocalDate periodicaDataFim;
+
+    public boolean isPeriodica() {
+        return periodicaFrequencia != null;
+    }
 
     @PrePersist
     protected void onCreate() {

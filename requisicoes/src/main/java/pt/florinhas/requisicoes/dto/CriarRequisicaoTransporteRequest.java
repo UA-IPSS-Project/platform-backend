@@ -20,5 +20,6 @@ public record CriarRequisicaoTransporteRequest(
         @NotBlank String condutor,
         @NotEmpty List<Long> transporteIds,
         @Deprecated
-        Long transporteId) {
+        Long transporteId,
+        RequisicaoPeriodicaConfigRequest periodica) {
 }
