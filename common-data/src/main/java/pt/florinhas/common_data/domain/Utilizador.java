@@ -209,6 +209,7 @@ public class Utilizador implements UserDetails {
             createdAt = LocalDateTime.now();
         }
         if (this.nif != null) {
+            this.nif = this.nif.replaceAll("\\D", "");
             this.nifHash = HashUtil.sha256Hex(this.nif);
         }
     }
