@@ -23,12 +23,17 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        var usersByEmail = utilizadorRepository.findByEmail(email);
+        if (email == null || email.isBlank()) {
+            throw new UsernameNotFoundException("Username is null or blank");
+        }
+        String trimmed = email.trim();
+
+        var usersByEmail = utilizadorRepository.findByEmail(trimmed);
         if (!usersByEmail.isEmpty()) {
             return usersByEmail.get(0);
         }
 
-        var usersByNif = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(email));
+        var usersByNif = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(trimmed));
         if (!usersByNif.isEmpty()) {
             return usersByNif.get(0);
         }

@@ -24,9 +24,6 @@ public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
     // Encontrar utilizador por email (List para tolerar duplicados)
     List<Utilizador> findByEmail(String email);
 
-    // Encontrar utilizador por NIF (mudado para List para tolerar duplicados)
-    List<Utilizador> findByNif(String nif);
-
     // Encontrar utilizador por blind index do NIF
     List<Utilizador> findByNifHash(String nifHash);
 
@@ -36,9 +33,6 @@ public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
 
     // Verificar se email existe
     boolean existsByEmail(String email);
-
-    // Verificar se NIF existe
-    boolean existsByNif(String nif);
 
     // Verificar se NIF existe (via blind index)
     boolean existsByNifHash(String nifHash);

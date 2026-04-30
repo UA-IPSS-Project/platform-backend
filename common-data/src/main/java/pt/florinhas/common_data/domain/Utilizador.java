@@ -224,7 +224,11 @@ public class Utilizador implements UserDetails {
     }
 
     private void updateNifHash() {
-        if (cryptoUtils == null || this.nif == null) return;
+        if (this.nif == null) return;
+        if (cryptoUtils == null) {
+            throw new IllegalStateException(
+                "CryptoUtils must be initialized before persisting or updating a Utilizador with a NIF.");
+        }
         this.nifHash = cryptoUtils.generateBlindIndex(this.nif);
     }
 }

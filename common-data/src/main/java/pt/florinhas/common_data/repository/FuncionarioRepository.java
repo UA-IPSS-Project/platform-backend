@@ -23,14 +23,8 @@ import pt.florinhas.common_data.domain.Valencia;
 @Repository
 public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> {
 
-    // Encontrar funcionário por NIF
-    Optional<Funcionario> findByNif(String nif);
-
     // Encontrar funcionário por blind index do NIF
     Optional<Funcionario> findByNifHash(String nifHash);
-
-    // Verificar se NIF existe
-    boolean existsByNif(String nif);
 
     // Verificar se NIF existe (via blind index)
     boolean existsByNifHash(String nifHash);
