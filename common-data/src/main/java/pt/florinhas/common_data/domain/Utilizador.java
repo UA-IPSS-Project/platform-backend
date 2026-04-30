@@ -54,7 +54,7 @@ public class Utilizador implements UserDetails {
      * Número de Identificação Fiscal (9 dígitos).
      * Único e obrigatório.
      */
-    @Column(name = "nif", nullable = false, unique = true, length = 9)
+    @Column(name = "nif", nullable = false, unique = true, length = 64)
     private String nif;
 
     // Nome completo do utilizador. Obrigatório.

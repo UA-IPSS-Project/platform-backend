@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import pt.florinhas.common_data.domain.*;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.validation.NifValidator;
+import java.security.MessageDigest;
 
 @SpringBootApplication
 @EntityScan(basePackages = {
@@ -86,26 +87,40 @@ public class MarcacoesApplication {
 			FuncionarioRepository funcionarioRepository,
 			PasswordEncoder encoder,
 			SeedAccount account) {
-		Funcionario funcionario = funcionarioRepository.findByNif(account.nif()).orElseGet(Funcionario::new);
-		boolean isNew = funcionario.getId() == null;
+		String nifHash = sha256(account.nif());
+		var byEmail = funcionarioRepository.findByEmail(account.email());
+		Funcionario funcionario = funcionarioRepository.findByNif(nifHash)
+				.or(() -> byEmail.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(byEmail.get(0)))
+				.orElseGet(Funcionario::new);
 
-		if (!isNew) {
-			return;
-		}
+		boolean isNew = funcionario.getId() == null;
 
 		funcionario.setNome(account.nome());
 		funcionario.setEmail(account.email());
-		funcionario.setNif(account.nif());
+		funcionario.setNif(nifHash);
 		funcionario.setTelefone(account.telefone());
 		funcionario.setTipo(account.tipo());
 		funcionario.setActivo(true);
+		funcionario.setTermsAcceptedAt(java.time.LocalDateTime.now());
 
-		if (isNew || funcionario.getPassHash() == null || funcionario.getPassHash().isBlank()) {
+		if (funcionario.getPassHash() == null || funcionario.getPassHash().isBlank()) {
 			funcionario.setPassHash(encoder.encode(account.defaultPassword()));
 		}
 
 		funcionarioRepository.save(funcionario);
 		LOGGER.info(">>> Conta base {} ({}) {}.", account.email(), account.tipo().name(), isNew ? "criada" : "atualizada");
+	}
+
+	private static String sha256(String input) {
+		try {
+			MessageDigest md = MessageDigest.getInstance("SHA-256");
+			byte[] hash = md.digest(input.getBytes());
+			StringBuilder sb = new StringBuilder();
+			for (byte b : hash) sb.append(String.format("%02x", b));
+			return sb.toString();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 }

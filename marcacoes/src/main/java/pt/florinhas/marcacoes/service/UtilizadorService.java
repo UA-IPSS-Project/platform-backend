@@ -121,8 +121,6 @@ public class UtilizadorService {
      */
     @Transactional
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
-        nifValidator.validateRequiredOrThrow(nif);
-
         // Verificar se já existe
         List<Utilizador> existingUsers = utilizadorRepository.findByNif(nif);
         Optional<Utilizador> existingUser = existingUsers.isEmpty() ? Optional.empty()
@@ -304,7 +302,6 @@ public class UtilizadorService {
      */
     @Transactional
     public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
-        nifValidator.validateRequiredOrThrow(request.getNif());
         if (utilizadorRepository.existsByNif(request.getNif())) {
             throw new ConflictException("Já existe um utilizador com este NIF.");
         }
