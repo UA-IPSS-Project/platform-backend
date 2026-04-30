@@ -61,7 +61,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
 
         // Depois por NIF (utentes) - devolve Lista
-        var usersByNif = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(email));
+        var usersByNif = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(trimmedEmail));
         if (!usersByNif.isEmpty()) {
             return usersByNif.get(0);
         }
