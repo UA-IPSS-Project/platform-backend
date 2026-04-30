@@ -13,7 +13,7 @@ public record CriarRequisicaoMaterialRequest(
         @NotNull RequisicaoPrioridade prioridade,
         Long geridoPorId,
         @NotEmpty List<@Valid ItemMaterialRequest> itens,
-        RequisicaoPeriodicaConfigRequest periodica) {
+        @Valid RequisicaoPeriodicaConfigRequest periodica) {
 
     public record ItemMaterialRequest(
             @NotNull Long materialId,
