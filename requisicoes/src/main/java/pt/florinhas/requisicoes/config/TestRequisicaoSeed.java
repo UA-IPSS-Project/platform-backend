@@ -34,7 +34,6 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 
 import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
-import java.security.MessageDigest;
 
 import org.springframework.context.annotation.Profile;
 
@@ -86,11 +85,11 @@ public class TestRequisicaoSeed implements CommandLineRunner {
         }
 
         // 1. Ensure employee for seeding exists
-        Funcionario ana = funcionarioRepository.findByNif(sha256("123456789"))
+        Funcionario ana = funcionarioRepository.findByNif("123456789")
                 .orElseGet(() -> {
                     Funcionario f = new Funcionario();
                     f.setNome("Ana Silva");
-                    f.setNif(sha256("123456789"));
+                    f.setNif("123456789");
                     f.setEmail("ana.silva@florinhas.pt");
                     f.setActivo(true);
                     return funcionarioRepository.save(f);
@@ -175,17 +174,5 @@ public class TestRequisicaoSeed implements CommandLineRunner {
         }
         
         log.info("--- TEST REQUISICAO SEED COMPLETED ---");
-    }
-
-    private static String sha256(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(input.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }
