@@ -11,6 +11,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
+
+import io.minio.MinioClient;
+import io.minio.SetBucketEncryptionArgs;
+import io.minio.messages.SseConfiguration;
 
 import pt.florinhas.common_data.domain.*;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
@@ -50,6 +55,23 @@ public class MarcacoesApplication {
 	@Bean
 	NifValidator nifValidator() {
 		return new NifValidator();
+	}
+
+	@Bean
+	CommandLineRunner configureBucketEncryption(
+			MinioClient minioClient,
+			@Value("${minio.bucket:marcacoes}") String bucketName) {
+		return args -> {
+			try {
+				minioClient.setBucketEncryption(SetBucketEncryptionArgs.builder()
+						.bucket(bucketName)
+						.config(SseConfiguration.serverSideEncryptionS3())
+						.build());
+				LOGGER.info(">>> SSE-S3 encryption enabled on bucket '{}'.", bucketName);
+			} catch (Exception e) {
+				LOGGER.warn(">>> Could not enable SSE-S3 on bucket '{}': {}", bucketName, e.getMessage());
+			}
+		};
 	}
 	@ConditionalOnBean(PasswordEncoder.class)
 

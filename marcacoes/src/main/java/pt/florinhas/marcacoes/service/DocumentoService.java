@@ -61,7 +61,6 @@ public class DocumentoService {
     private final MinioClient minioClient;
     private final FuncionarioRepository funcionarioRepository;
     private final NotificacaoService notificacaoService;
-    private final DocumentoEncryptionService encryptionService;
 
     /**
      * Bucket MinIO onde os documentos são armazenados.
@@ -163,13 +162,12 @@ public class DocumentoService {
         try (InputStream inputStream = file.getInputStream()) {
             garantirBucketExiste();
 
-            DocumentoEncryptionService.EncryptedResult encrypted = encryptionService.encrypt(inputStream, file.getSize());
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucketName)
                             .object(objectName)
-                            .stream(encrypted.stream(), encrypted.size(), -1)
-                            .contentType("application/octet-stream")
+                            .stream(inputStream, file.getSize(), -1)
+                            .contentType(tipo)
                             .build());
         } catch (Exception e) {
             throw new IOException("Erro ao guardar ficheiro no MinIO", e);
@@ -407,12 +405,13 @@ public class DocumentoService {
         Documento documento = documentoRepository.findById(documentoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
 
-        try (GetObjectResponse objeto = minioClient.getObject(
+        try {
+            GetObjectResponse objeto = minioClient.getObject(
                     GetObjectArgs.builder()
                             .bucket(bucketName)
                             .object(documento.getCaminho())
-                            .build())) {
-            return new InputStreamResource(encryptionService.decrypt(objeto));
+                            .build());
+            return new InputStreamResource(objeto);
         } catch (Exception e) {
             throw new ResourceNotFoundException(
                     "Erro ao carregar ficheiro: " + documento.getNomeOriginal() + ", " + e.getMessage());
