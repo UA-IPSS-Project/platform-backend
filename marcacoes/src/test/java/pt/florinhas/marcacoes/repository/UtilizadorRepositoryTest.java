@@ -107,7 +107,7 @@ class UtilizadorRepositoryTest {
     @Test
     void existsByNif_DeveRetornarTrue_QuandoNifExiste() {
         // Act
-        boolean existe = utilizadorRepository.existsByNif("123456789");
+        boolean existe = utilizadorRepository.existsByNifHash(HashUtil.sha256Hex("123456789"));
 
         // Assert
         assertTrue(existe);
@@ -116,7 +116,7 @@ class UtilizadorRepositoryTest {
     @Test
     void existsByNif_DeveRetornarFalse_QuandoNifNaoExiste() {
         // Act
-        boolean existe = utilizadorRepository.existsByNif("000000000");
+        boolean existe = utilizadorRepository.existsByNifHash(HashUtil.sha256Hex("000000000"));
 
         // Assert
         assertFalse(existe);

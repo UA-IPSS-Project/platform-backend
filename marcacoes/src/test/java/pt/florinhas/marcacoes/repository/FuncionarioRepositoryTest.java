@@ -85,7 +85,7 @@ class FuncionarioRepositoryTest {
     @Test
     void existsByNif_DeveRetornarTrue() {
         // Act
-        boolean existe = funcionarioRepository.existsByNif("123456789");
+        boolean existe = funcionarioRepository.existsByNifHash(HashUtil.sha256Hex("123456789"));
 
         // Assert
         assertTrue(existe);
@@ -94,7 +94,7 @@ class FuncionarioRepositoryTest {
     @Test
     void existsByNif_DeveRetornarFalse() {
         // Act
-        boolean existe = funcionarioRepository.existsByNif("999999998");
+        boolean existe = funcionarioRepository.existsByNifHash(HashUtil.sha256Hex("999999998"));
 
         // Assert
         assertFalse(existe);

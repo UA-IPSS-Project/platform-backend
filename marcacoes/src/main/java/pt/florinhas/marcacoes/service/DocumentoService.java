@@ -408,12 +408,11 @@ public class DocumentoService {
         Documento documento = documentoRepository.findById(documentoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
 
-        try {
-            GetObjectResponse objeto = minioClient.getObject(
-                    GetObjectArgs.builder()
-                            .bucket(bucketName)
-                            .object(documento.getCaminho())
-                            .build());
+        try (GetObjectResponse objeto = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(documento.getCaminho())
+                        .build())) {
             return new InputStreamResource(encryptionService.decrypt(objeto));
         } catch (Exception e) {
             throw new ResourceNotFoundException(

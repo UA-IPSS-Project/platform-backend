@@ -76,7 +76,13 @@ public class DocumentoEncryptionService {
      * conteúdo tiver sido adulterado.
      */
     public InputStream decrypt(InputStream encryptedStream) throws Exception {
-        byte[] blob = encryptedStream.readAllBytes();
+        byte[] blob;
+        try (encryptedStream) {
+            blob = encryptedStream.readAllBytes();
+        }
+        if (blob.length < IV_LENGTH + TAG_LENGTH_BITS / 8) {
+            throw new IllegalArgumentException("Blob encriptado demasiado curto — dados corrompidos ou inválidos");
+        }
 
         byte[] iv = new byte[IV_LENGTH];
         System.arraycopy(blob, 0, iv, 0, IV_LENGTH);

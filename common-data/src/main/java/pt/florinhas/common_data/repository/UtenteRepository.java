@@ -24,8 +24,8 @@ public interface UtenteRepository extends JpaRepository<Utente, Long> {
     // Encontrar utente por NIF (mudado para List para tolerar duplicados)
     List<Utente> findByNifHash(String nifHash);
 
-    // Verificar se NIF existe
-    boolean existsByNif(String nif);
+    // Verificar se NIF existe (via hash — não depende do converter)
+    boolean existsByNifHash(String nifHash);
 
     // Encontrar utentes por nome
     @Query("SELECT u FROM Utente u WHERE LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")

@@ -26,8 +26,8 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     // Encontrar funcionário por NIF
     Optional<Funcionario> findByNifHash(String nifHash);
 
-    // Verificar se NIF existe
-    boolean existsByNif(String nif);
+    // Verificar se NIF existe (via hash — não depende do converter)
+    boolean existsByNifHash(String nifHash);
 
     // Encontrar funcionários por tipo (SECRETARIA, BALNEARIO)
     List<Funcionario> findByTipo(FuncionarioTipo tipo);

@@ -82,7 +82,7 @@ class UtenteRepositoryTest {
     @Test
     void existsByNif_DeveRetornarTrue() {
         // Act
-        boolean existe = utenteRepository.existsByNif("987654321");
+        boolean existe = utenteRepository.existsByNifHash(HashUtil.sha256Hex("987654321"));
 
         // Assert
         assertTrue(existe);
@@ -91,7 +91,7 @@ class UtenteRepositoryTest {
     @Test
     void existsByNif_DeveRetornarFalse() {
         // Act
-        boolean existe = utenteRepository.existsByNif("000000000");
+        boolean existe = utenteRepository.existsByNifHash(HashUtil.sha256Hex("000000000"));
 
         // Assert
         assertFalse(existe);
