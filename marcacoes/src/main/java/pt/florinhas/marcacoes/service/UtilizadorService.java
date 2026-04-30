@@ -25,6 +25,7 @@ import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
 import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
 import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
@@ -65,6 +66,9 @@ public class UtilizadorService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private CryptoUtils cryptoUtils;
+
     /*
      * =========================================================
      * CONSULTAS
@@ -92,7 +96,7 @@ public class UtilizadorService {
         String searchNif = nif.trim();
         log.info("Searching for user with NIF: '{}'", searchNif);
 
-        List<Utilizador> results = utilizadorRepository.findByNif(searchNif);
+        List<Utilizador> results = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(searchNif));
         if (!results.isEmpty()) {
             log.trace("Found user: ID={}", results.get(0).getId());
             return Optional.of(results.get(0));
@@ -122,7 +126,7 @@ public class UtilizadorService {
     @Transactional
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
         // Verificar se já existe
-        List<Utilizador> existingUsers = utilizadorRepository.findByNif(nif);
+        List<Utilizador> existingUsers = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif));
         Optional<Utilizador> existingUser = existingUsers.isEmpty() ? Optional.empty()
                 : Optional.of(existingUsers.get(0));
 
@@ -302,7 +306,7 @@ public class UtilizadorService {
      */
     @Transactional
     public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
-        if (utilizadorRepository.existsByNif(request.getNif())) {
+        if (utilizadorRepository.existsByNifHash(cryptoUtils.generateBlindIndex(request.getNif()))) {
             throw new ConflictException("Já existe um utilizador com este NIF.");
         }
         if (utilizadorRepository.existsByEmail(request.getEmail())) {
@@ -377,7 +381,7 @@ public class UtilizadorService {
      */
     @Transactional
     public void recuperarConta(RecoverAccountDTO request) {
-        List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
+        List<Utilizador> users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(request.getNif()));
         if (users.isEmpty()) {
             throw new NotFoundException("Utilizador não encontrado com NIF: " + request.getNif());
         }

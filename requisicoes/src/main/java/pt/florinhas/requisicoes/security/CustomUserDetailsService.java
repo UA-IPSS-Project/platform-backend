@@ -7,15 +7,18 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 @Service
 @Primary
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UtilizadorRepository utilizadorRepository;
+    private final CryptoUtils cryptoUtils;
 
-    public CustomUserDetailsService(UtilizadorRepository utilizadorRepository) {
+    public CustomUserDetailsService(UtilizadorRepository utilizadorRepository, CryptoUtils cryptoUtils) {
         this.utilizadorRepository = utilizadorRepository;
+        this.cryptoUtils = cryptoUtils;
     }
 
     @Override
@@ -25,7 +28,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             return usersByEmail.get(0);
         }
 
-        var usersByNif = utilizadorRepository.findByNif(email);
+        var usersByNif = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(email));
         if (!usersByNif.isEmpty()) {
             return usersByNif.get(0);
         }

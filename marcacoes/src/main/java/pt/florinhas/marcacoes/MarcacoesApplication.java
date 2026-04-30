@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,8 +23,13 @@ import io.minio.messages.SseAlgorithm;
 import pt.florinhas.common_data.domain.*;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 @SpringBootApplication
+@ComponentScan(basePackages = {
+		"pt.florinhas.marcacoes",
+		"pt.florinhas.common_data"
+})
 @EntityScan(basePackages = {
 		"pt.florinhas.marcacoes.domain",
 		"pt.florinhas.common_data.domain"
@@ -77,10 +83,10 @@ public class MarcacoesApplication {
 	@ConditionalOnBean(PasswordEncoder.class)
 
 	@Bean
-	CommandLineRunner initDefaultFuncionarios(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
+	CommandLineRunner initDefaultFuncionarios(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder, CryptoUtils cryptoUtils) {
 		return args -> {
 
-			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
 				    "999999998",
 				    "Funcionário Secretaria",
 				    "secretaria@florinhasdovouga.pt",
@@ -88,7 +94,7 @@ public class MarcacoesApplication {
 				    "sec123",
 				    FuncionarioTipo.SECRETARIA));
 
-			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+			    upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
 				    "999999997",
 				    "Funcionário Balneário",
 				    "balneario@florinhasdovouga.pt",
@@ -96,7 +102,7 @@ public class MarcacoesApplication {
 				    "bal123",
 				    FuncionarioTipo.BALNEARIO));
 
-				upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+				upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
 				    "999999996",
 				    "Funcionário Escola",
 				    "escola@florinhasdovouga.pt",
@@ -109,10 +115,11 @@ public class MarcacoesApplication {
 	private static void upsertFuncionario(
 			FuncionarioRepository funcionarioRepository,
 			PasswordEncoder encoder,
+			CryptoUtils cryptoUtils,
 			SeedAccount account) {
 		String nif = account.nif();
 		var byEmail = funcionarioRepository.findByEmail(account.email());
-		Funcionario funcionario = funcionarioRepository.findByNif(nif)
+		Funcionario funcionario = funcionarioRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif))
 				.or(() -> byEmail.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(byEmail.get(0)))
 				.orElseGet(Funcionario::new);
 

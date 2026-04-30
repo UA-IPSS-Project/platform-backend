@@ -55,6 +55,7 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 
 import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 @Slf4j
 @Service
@@ -68,6 +69,7 @@ public class MarcacaoService {
     private final ItemArmazemRepository itemArmazemRepository;
     private final NotificacaoService notificacaoService;
     private final MarcacaoValidator marcacaoValidator;
+    private final CryptoUtils cryptoUtils;
     private final NifValidator nifValidator;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
@@ -125,7 +127,7 @@ public class MarcacaoService {
             nifValidator.validateRequiredOrThrow(request.getUtenteNif());
 
             // Verificar se já existe por NIF
-            List<Utente> users = utenteRepository.findByNif(request.getUtenteNif());
+            List<Utente> users = utenteRepository.findByNifHash(cryptoUtils.generateBlindIndex(request.getUtenteNif()));
             if (!users.isEmpty()) {
                 utente = users.get(0);
             }
