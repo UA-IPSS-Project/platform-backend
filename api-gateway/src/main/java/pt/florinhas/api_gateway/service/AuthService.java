@@ -176,6 +176,7 @@ public class AuthService {
          * - JWT é gerado automaticamente.
          */
         public AuthResult registerUtente(UtenteRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -209,6 +210,7 @@ public class AuthService {
          * - JWT é devolvido após criação.
          */
         public AuthResult registerFuncionario(FuncionarioRegisterRequest request) {
+                nifValidator.validateRequiredOrThrow(request.nif());
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {

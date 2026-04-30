@@ -19,7 +19,9 @@ public class NifEncryptorConverter implements AttributeConverter<String, String>
     @Override
     public String convertToDatabaseColumn(String nif) {
         if (nif == null) return null;
-        // Já cifrado (contém ":") — evitar dupla cifra
+        if (cryptoUtils == null) {
+            throw new IllegalStateException("CryptoUtils não inicializado — verifique a configuração de app.security.encryption.key");
+        }
         if (nif.contains(":")) return nif;
         return cryptoUtils.encrypt(nif);
     }
@@ -27,7 +29,9 @@ public class NifEncryptorConverter implements AttributeConverter<String, String>
     @Override
     public String convertToEntityAttribute(String dbData) {
         if (dbData == null) return null;
-        // Valores sem ":" são NIFs em claro (pré-migração) — devolver tal como estão
+        if (cryptoUtils == null) {
+            throw new IllegalStateException("CryptoUtils não inicializado — verifique a configuração de app.security.encryption.key");
+        }
         if (!dbData.contains(":")) return dbData;
         return cryptoUtils.decrypt(dbData);
     }

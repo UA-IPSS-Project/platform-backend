@@ -65,7 +65,10 @@ public class CryptoUtils {
     public String decrypt(String cipherText) {
         if (cipherText == null) return null;
         try {
-            String[] parts = cipherText.split(":");
+            String[] parts = cipherText.split(":", 2);
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Formato inválido do texto cifrado. Esperado 'iv:ciphertext'.");
+            }
             byte[] iv = Base64.getDecoder().decode(parts[0]);
             byte[] encrypted = Base64.getDecoder().decode(parts[1]);
 
