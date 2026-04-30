@@ -1,5 +1,6 @@
 package pt.florinhas.requisicoes.domain;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -68,10 +69,10 @@ public abstract class Requisicao {
     private PeriodicidadeFrequencia periodicaFrequencia;
 
     @Column(name = "periodica_data_inicio")
-    private java.time.LocalDate periodicaDataInicio;
+    private LocalDate periodicaDataInicio;
 
     @Column(name = "periodica_data_fim")
-    private java.time.LocalDate periodicaDataFim;
+    private LocalDate periodicaDataFim;
 
     public boolean isPeriodica() {
         return periodicaFrequencia != null;
