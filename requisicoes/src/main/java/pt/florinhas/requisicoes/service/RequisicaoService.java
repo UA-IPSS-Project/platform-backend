@@ -16,6 +16,7 @@ import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
+import pt.florinhas.requisicoes.domain.PeriodicidadeFrequencia;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
@@ -36,6 +37,7 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
+import pt.florinhas.requisicoes.dto.RequisicaoPeriodicaConfigRequest;
 import pt.florinhas.requisicoes.exception.ResourceNotFoundException;
 import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
@@ -171,11 +173,7 @@ public class RequisicaoService {
             requisicao.getItens().add(requisicaoMaterialItem);
         }
 
-        if (request.periodica() != null) {
-            requisicao.setPeriodicaFrequencia(request.periodica().frequencia());
-            requisicao.setPeriodicaDataInicio(request.periodica().dataInicio());
-            requisicao.setPeriodicaDataFim(request.periodica().dataFim());
-        }
+        aplicarConfiguracaoPeriodica(requisicao, request.periodica());
 
         RequisicaoMaterial saved = requisicaoMaterialRepository.save(requisicao);
         notificarSecretarias(saved, authenticatedUtilizadorId);
@@ -214,11 +212,7 @@ public class RequisicaoService {
             requisicao.getTransportes().add(item);
         }
 
-        if (request.periodica() != null) {
-            requisicao.setPeriodicaFrequencia(request.periodica().frequencia());
-            requisicao.setPeriodicaDataInicio(request.periodica().dataInicio());
-            requisicao.setPeriodicaDataFim(request.periodica().dataFim());
-        }
+        aplicarConfiguracaoPeriodica(requisicao, request.periodica());
 
         RequisicaoTransporte saved = requisicaoTransporteRepository.save(requisicao);
         notificarSecretarias(saved, authenticatedUtilizadorId);
@@ -288,11 +282,7 @@ public class RequisicaoService {
             }
         }
 
-        if (request.periodica() != null) {
-            requisicao.setPeriodicaFrequencia(request.periodica().frequencia());
-            requisicao.setPeriodicaDataInicio(request.periodica().dataInicio());
-            requisicao.setPeriodicaDataFim(request.periodica().dataFim());
-        }
+        aplicarConfiguracaoPeriodica(requisicao, request.periodica());
 
         // Single save operation handles all items via CascadeType.ALL
         RequisicaoManutencao saved = requisicaoManutencaoRepository.save(requisicao);
@@ -609,6 +599,30 @@ public class RequisicaoService {
             throw new IllegalArgumentException(campo + " é obrigatório.");
         }
         return normalized;
+    }
+
+    private void aplicarConfiguracaoPeriodica(Requisicao requisicao, RequisicaoPeriodicaConfigRequest config) {
+        if (config == null) {
+            return;
+        }
+
+        validarConfiguracaoPeriodica(config);
+
+        requisicao.setPeriodicaFrequencia(config.frequencia());
+        requisicao.setPeriodicaDataInicio(config.dataInicio());
+        requisicao.setPeriodicaDataFim(config.dataFim());
+    }
+
+    private void validarConfiguracaoPeriodica(RequisicaoPeriodicaConfigRequest config) {
+        if (config.frequencia() == null) {
+            throw new IllegalArgumentException("A frequência da requisição periódica é obrigatória.");
+        }
+        if (config.dataInicio() == null) {
+            throw new IllegalArgumentException("A data de início da requisição periódica é obrigatória.");
+        }
+        if (config.dataFim() != null && config.dataFim().isBefore(config.dataInicio())) {
+            throw new IllegalArgumentException("A data de fim da requisição periódica não pode ser anterior à data de início.");
+        }
     }
 
     private String normalizarDescricao(String descricao) {
