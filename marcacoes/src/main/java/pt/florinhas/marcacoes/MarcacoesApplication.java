@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import pt.florinhas.common_data.domain.*;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.security.HashUtil;
 
 @SpringBootApplication
 @EntityScan(basePackages = {
@@ -86,7 +87,7 @@ public class MarcacoesApplication {
 			FuncionarioRepository funcionarioRepository,
 			PasswordEncoder encoder,
 			SeedAccount account) {
-		Funcionario funcionario = funcionarioRepository.findByNif(account.nif()).orElseGet(Funcionario::new);
+		Funcionario funcionario = funcionarioRepository.findByNifHash(HashUtil.sha256Hex(account.nif())).orElseGet(Funcionario::new);
 		boolean isNew = funcionario.getId() == null;
 
 		if (!isNew) {

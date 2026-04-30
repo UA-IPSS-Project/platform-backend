@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.security.HashUtil;
 
 @Service
 @Primary
@@ -25,7 +26,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             return usersByEmail.get(0);
         }
 
-        var usersByNif = utilizadorRepository.findByNif(email);
+        var usersByNif = utilizadorRepository.findByNifHash(HashUtil.sha256Hex(email));
         if (!usersByNif.isEmpty()) {
             return usersByNif.get(0);
         }

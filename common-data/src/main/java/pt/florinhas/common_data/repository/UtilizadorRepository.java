@@ -25,7 +25,7 @@ public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
     List<Utilizador> findByEmail(String email);
 
     // Encontrar utilizador por NIF (mudado para List para tolerar duplicados)
-    List<Utilizador> findByNif(String nif);
+    List<Utilizador> findByNifHash(String nifHash);
 
     // Encontrar utilizadores por nome
     @Query("SELECT u FROM Utilizador u WHERE LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")

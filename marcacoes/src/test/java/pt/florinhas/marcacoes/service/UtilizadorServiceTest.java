@@ -29,6 +29,7 @@ import pt.florinhas.common_data.exception.BadRequestException;
 
 import java.util.Collections;
 import java.util.List;
+import pt.florinhas.common_data.security.HashUtil;
 
 @ExtendWith(MockitoExtension.class)
 public class UtilizadorServiceTest {
@@ -62,7 +63,7 @@ public class UtilizadorServiceTest {
         String email = "test@example.com";
         String telefone = "912345678";
 
-        when(utilizadorRepository.findByNif(nif)).thenReturn(Collections.emptyList());
+        when(utilizadorRepository.findByNifHash(HashUtil.sha256Hex(nif))).thenReturn(Collections.emptyList());
         when(utenteRepository.existsByEmail(email)).thenReturn(false);
         when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
             Utente u = invocation.getArgument(0);
@@ -100,7 +101,7 @@ public class UtilizadorServiceTest {
 
         // When user exists, the service returns immediately after findByNif
         // without calling external NIF validation - so no additional stub needed
-        when(utilizadorRepository.findByNif(nif)).thenReturn(List.of(existingStart));
+        when(utilizadorRepository.findByNifHash(HashUtil.sha256Hex(nif))).thenReturn(List.of(existingStart));
 
         // Act
         Utente result = utilizadorService.obterOuCriarUtente(nif, "Ignored", "Ignored", "Ignored");

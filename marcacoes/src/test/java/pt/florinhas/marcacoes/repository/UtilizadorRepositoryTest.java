@@ -19,6 +19,7 @@ import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.security.HashUtil;
 
 @DataJpaTest
 class UtilizadorRepositoryTest {
@@ -75,9 +76,9 @@ class UtilizadorRepositoryTest {
     }
 
     @Test
-    void findByNif_DeveRetornarUtilizador_QuandoNifExiste() {
+    void findByNifHash_DeveRetornarUtilizador_QuandoNifExiste() {
         // Act
-        List<Utilizador> resultado = utilizadorRepository.findByNif("987654321");
+        List<Utilizador> resultado = utilizadorRepository.findByNifHash(HashUtil.sha256Hex("987654321"));
 
         // Assert
         assertFalse(resultado.isEmpty());

@@ -31,6 +31,7 @@ import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.exception.ConflictException;
 import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.service.email.EmailService;
+import pt.florinhas.common_data.security.HashUtil;
 
 /**
  * Serviço responsável pela gestão de utilizadores e utentes.
@@ -92,7 +93,7 @@ public class UtilizadorService {
         String searchNif = nif.trim();
         log.info("Searching for user with NIF: '{}'", searchNif);
 
-        List<Utilizador> results = utilizadorRepository.findByNif(searchNif);
+        List<Utilizador> results = utilizadorRepository.findByNifHash(HashUtil.sha256Hex(searchNif));
         if (!results.isEmpty()) {
             log.trace("Found user: ID={}", results.get(0).getId());
             return Optional.of(results.get(0));
@@ -124,7 +125,7 @@ public class UtilizadorService {
         nifValidator.validateRequiredOrThrow(nif);
 
         // Verificar se já existe
-        List<Utilizador> existingUsers = utilizadorRepository.findByNif(nif);
+        List<Utilizador> existingUsers = utilizadorRepository.findByNifHash(HashUtil.sha256Hex(nif));
         Optional<Utilizador> existingUser = existingUsers.isEmpty() ? Optional.empty()
                 : Optional.of(existingUsers.get(0));
 
@@ -380,7 +381,7 @@ public class UtilizadorService {
      */
     @Transactional
     public void recuperarConta(RecoverAccountDTO request) {
-        List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
+        List<Utilizador> users = utilizadorRepository.findByNifHash(HashUtil.sha256Hex(request.getNif()));
         if (users.isEmpty()) {
             throw new NotFoundException("Utilizador não encontrado com NIF: " + request.getNif());
         }

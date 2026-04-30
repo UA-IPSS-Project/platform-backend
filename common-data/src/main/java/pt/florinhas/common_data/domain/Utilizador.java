@@ -14,6 +14,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import pt.florinhas.common_data.security.AesEncryptorConverter;
+import pt.florinhas.common_data.security.HashUtil;
 
 /**
  * Entidade JPA base para todos os utilizadores do sistema.
@@ -51,11 +53,17 @@ public class Utilizador implements UserDetails {
     // ========= Atributos de identidade e contacto =========
 
     /**
-     * Número de Identificação Fiscal (9 dígitos).
-     * Único e obrigatório.
+     * Número de Identificação Fiscal encriptado (AES-256).
      */
-    @Column(name = "nif", nullable = false, unique = true, length = 9)
+    @Convert(converter = AesEncryptorConverter.class)
+    @Column(name = "nif", nullable = false, length = 255)
     private String nif;
+
+    /**
+     * Hash do NIF para pesquisas rápidas e unicidade.
+     */
+    @Column(name = "nif_hash", nullable = false, unique = true, length = 64)
+    private String nifHash;
 
     // Nome completo do utilizador. Obrigatório.
     @Column(name = "nome", nullable = false, length = 100)
@@ -195,7 +203,13 @@ public class Utilizador implements UserDetails {
      * Define o timestamp de criação.
      */
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
+    @PreUpdate
+    protected void onSave() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (this.nif != null) {
+            this.nifHash = HashUtil.sha256Hex(this.nif);
+        }
     }
 }

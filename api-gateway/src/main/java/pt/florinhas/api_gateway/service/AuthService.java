@@ -27,6 +27,7 @@ import pt.florinhas.common_data.domain.Utilizador;
 
 import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.security.HashUtil;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.
@@ -139,7 +140,7 @@ public class AuthService {
                 }
 
                 // Obter utilizador pelo NIF (handle duplicate data by taking first)
-                var users = utilizadorRepository.findByNif(request.nif());
+                var users = utilizadorRepository.findByNifHash(HashUtil.sha256Hex(request.nif()));
 
                 if (users.isEmpty()) {
                         throw new BadRequestException("Utente não encontrado");

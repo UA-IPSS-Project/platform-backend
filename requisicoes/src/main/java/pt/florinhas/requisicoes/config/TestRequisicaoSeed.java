@@ -36,6 +36,7 @@ import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 
 import org.springframework.context.annotation.Profile;
+import pt.florinhas.common_data.security.HashUtil;
 
 @Slf4j
 @Component
@@ -85,7 +86,7 @@ public class TestRequisicaoSeed implements CommandLineRunner {
         }
 
         // 1. Ensure employee for seeding exists
-        Funcionario ana = funcionarioRepository.findByNif("123456789")
+        Funcionario ana = funcionarioRepository.findByNifHash(HashUtil.sha256Hex("123456789"))
                 .orElseGet(() -> {
                     Funcionario f = new Funcionario();
                     f.setNome("Ana Silva");

@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.security.HashUtil;
 
 /**
  * Implementação de UserDetailsService que integra a autenticação
@@ -58,7 +59,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
 
         // Depois por NIF (utentes) - devolve Lista
-        var usersByNif = utilizadorRepository.findByNif(trimmedEmail);
+        var usersByNif = utilizadorRepository.findByNifHash(HashUtil.sha256Hex(trimmedEmail));
         if (!usersByNif.isEmpty()) {
             return usersByNif.get(0);
         }
@@ -93,7 +94,7 @@ public class CustomUserDetailsService implements UserDetailsService {
      * throws UsernameNotFoundException se não existir utilizador com esse NIF
      */
     public UserDetails loadUserByNif(String nif) throws UsernameNotFoundException {
-        var users = utilizadorRepository.findByNif(nif);
+        var users = utilizadorRepository.findByNifHash(HashUtil.sha256Hex(nif));
         if (users.isEmpty()) {
             throw new UsernameNotFoundException("Utente não encontrado com NIF: " + nif);
         }

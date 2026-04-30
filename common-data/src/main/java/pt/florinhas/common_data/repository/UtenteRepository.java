@@ -22,7 +22,7 @@ import pt.florinhas.common_data.domain.Utente;
 public interface UtenteRepository extends JpaRepository<Utente, Long> {
 
     // Encontrar utente por NIF (mudado para List para tolerar duplicados)
-    List<Utente> findByNif(String nif);
+    List<Utente> findByNifHash(String nifHash);
 
     // Verificar se NIF existe
     boolean existsByNif(String nif);

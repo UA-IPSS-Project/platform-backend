@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import pt.florinhas.common_data.security.HashUtil;
 
 @DataJpaTest
 class FuncionarioRepositoryTest {
@@ -40,9 +41,9 @@ class FuncionarioRepositoryTest {
     }
 
     @Test
-    void findByNif_DeveRetornarFuncionario() {
+    void findByNifHash_DeveRetornarFuncionario() {
         // Act
-        Optional<Funcionario> resultado = funcionarioRepository.findByNif("123456789");
+        Optional<Funcionario> resultado = funcionarioRepository.findByNifHash(HashUtil.sha256Hex("123456789"));
 
         // Assert
         assertTrue(resultado.isPresent());

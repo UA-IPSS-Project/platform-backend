@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import pt.florinhas.common_data.security.HashUtil;
 
 @DataJpaTest
 class UtenteRepositoryTest {
@@ -38,9 +39,9 @@ class UtenteRepositoryTest {
     }
 
     @Test
-    void findByNif_DeveRetornarUtente() {
+    void findByNifHash_DeveRetornarUtente() {
         // Act
-        List<Utente> resultado = utenteRepository.findByNif("987654321");
+        List<Utente> resultado = utenteRepository.findByNifHash(HashUtil.sha256Hex("987654321"));
 
         // Assert
         assertFalse(resultado.isEmpty());
