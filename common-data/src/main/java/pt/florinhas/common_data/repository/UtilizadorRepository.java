@@ -34,8 +34,8 @@ public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
     // Verificar se email existe
     boolean existsByEmail(String email);
 
-    // Verificar se NIF existe
-    boolean existsByNif(String nif);
+    // Verificar se NIF existe (via hash — não depende do converter)
+    boolean existsByNifHash(String nifHash);
 
     // Encontrar utilizador por telefone
     Optional<Utilizador> findByTelefone(String telefone);

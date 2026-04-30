@@ -306,7 +306,7 @@ public class UtilizadorService {
     @Transactional
     public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
         nifValidator.validateRequiredOrThrow(request.getNif());
-        if (utilizadorRepository.existsByNif(request.getNif())) {
+        if (utilizadorRepository.existsByNifHash(HashUtil.sha256Hex(request.getNif()))) {
             throw new ConflictException("Já existe um utilizador com este NIF.");
         }
         if (utilizadorRepository.existsByEmail(request.getEmail())) {

@@ -289,7 +289,7 @@ public class AuthService {
                 if (utilizadorRepository.existsByEmail(email)) {
                         throw new BadRequestException("Email já está em uso");
                 }
-                if (utilizadorRepository.existsByNif(nif)) {
+                if (utilizadorRepository.existsByNifHash(HashUtil.sha256Hex(nif))) {
                         throw new BadRequestException("NIF já está em uso");
                 }
         }
