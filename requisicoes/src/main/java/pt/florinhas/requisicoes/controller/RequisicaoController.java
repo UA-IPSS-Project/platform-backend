@@ -31,6 +31,8 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
+import pt.florinhas.requisicoes.dto.AtualizarCategoriaTransporteRequest;
+import pt.florinhas.requisicoes.dto.MoverCategoriaTransporteRequest;
 import pt.florinhas.requisicoes.service.RequisicaoService;
 
 import pt.florinhas.common_data.domain.Utilizador;
@@ -114,10 +116,19 @@ public class RequisicaoController {
         return ResponseEntity.ok(requisicaoService.atualizarTransporteCatalogo(id, request));
     }
 
-    @DeleteMapping("/transportes/{id}")
+    @PatchMapping("/transportes/{id}/categoria")
     @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<Void> apagarTransporteCatalogo(@PathVariable Long id) {
-        requisicaoService.apagarTransporteCatalogo(id);
+    public ResponseEntity<Transporte> atualizarCategoriaTransporte(
+            @PathVariable Long id,
+            @Valid @RequestBody AtualizarCategoriaTransporteRequest request) {
+        return ResponseEntity.ok(requisicaoService.atualizarCategoriaTransporte(id, request.categoria()));
+    }
+
+    @PatchMapping("/transportes/mover-categoria")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> moverCategoria(
+            @Valid @RequestBody MoverCategoriaTransporteRequest request) {
+        requisicaoService.moverVeiculosPorCategoria(request.origem(), request.destino());
         return ResponseEntity.noContent().build();
     }
 

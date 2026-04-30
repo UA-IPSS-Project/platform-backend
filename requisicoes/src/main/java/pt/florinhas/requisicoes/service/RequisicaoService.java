@@ -26,6 +26,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
 import pt.florinhas.requisicoes.domain.RequisicaoTransporteItem;
 import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
+import pt.florinhas.requisicoes.domain.TransporteCategoria;
 import pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
@@ -424,17 +425,46 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public void apagarTransporteCatalogo(Long id) {
-        if (requisicaoTransporteRepository.existsByTransporteId(id)
-                || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
-            throw new IllegalArgumentException("Não é possível apagar: transporte está associado a requisições.");
+    public Transporte atualizarCategoriaTransporte(Long id, TransporteCategoria novaCategoria) {
+        if (novaCategoria == null) {
+            throw new IllegalArgumentException("A categoria do transporte é obrigatória.");
         }
 
-        if (!transporteRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Transporte não encontrado: " + id);
+        Transporte transporte = transporteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
+
+        // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há requisições ativas
+        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO) {
+            if (requisicaoTransporteRepository.existsByTransporteId(id)
+                    || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
+                throw new IllegalStateException(
+                        "Não é possível marcar como indisponível: transporte está associado a requisições ativas.");
+            }
         }
 
-        transporteRepository.deleteById(id);
+        transporte.setCategoria(novaCategoria);
+        return transporteRepository.save(transporte);
+    }
+
+    @Transactional
+    public void moverVeiculosPorCategoria(TransporteCategoria origem, TransporteCategoria destino) {
+        if (origem == null || destino == null) {
+            throw new IllegalArgumentException("As categorias de origem e destino são obrigatórias.");
+        }
+        
+        if (origem.equals(destino)) {
+            throw new IllegalArgumentException("As categorias de origem e destino não podem ser iguais.");
+        }
+        
+        // Encontrar todos os veículos na categoria de origem
+        List<Transporte> veiculos = transporteRepository.findByCategoria(origem);
+        
+        // Mover cada veículo para a categoria de destino
+        for (Transporte veiculo : veiculos) {
+            veiculo.setCategoria(destino);
+        }
+        
+        transporteRepository.saveAll(veiculos);
     }
 
     public List<TipoManutencao> listarTiposManutencao() {
