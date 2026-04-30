@@ -808,27 +808,46 @@ public class MarcacaoService {
     }
 
     private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary, Long actorId) {
+        String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
+        boolean criadoPeloUtente = utenteId.equals(actorId);
+
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        // Não notificar se o ator for o próprio utente alvo
-                        if (!utenteId.equals(actorId)) {
+                        if (!criadoPeloUtente) {
                             notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                        } else {
+                            // Utente criou a marcação — notificar todas as secretarias
+                            funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+                                try {
+                                    notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+                                } catch (Exception e) {
+                                    log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
+                                }
+                            });
                         }
                     } catch (Exception e) {
-                        log.error("Falha ao notificar utente sobre marcação", e);
+                        log.error("Falha ao notificar sobre marcação", e);
                     }
                 }
             });
         } else {
             try {
-                if (!utenteId.equals(actorId)) {
+                if (!criadoPeloUtente) {
                     notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                } else {
+                    funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+                        try {
+                            notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+                        } catch (Exception e) {
+                            log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
+                        }
+                    });
                 }
             } catch (Exception e) {
-                log.error("Falha ao notificar utente sobre marcação", e);
+                log.error("Falha ao notificar sobre marcação", e);
             }
         }
     }
