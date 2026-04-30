@@ -16,11 +16,12 @@ import org.springframework.beans.factory.annotation.Value;
 import io.minio.MinioClient;
 import io.minio.SetBucketEncryptionArgs;
 import io.minio.messages.SseConfiguration;
+import io.minio.messages.SseConfigurationRule;
+import io.minio.messages.SseAlgorithm;
 
 import pt.florinhas.common_data.domain.*;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.validation.NifValidator;
-import java.security.MessageDigest;
 
 @SpringBootApplication
 @EntityScan(basePackages = {
@@ -65,7 +66,7 @@ public class MarcacoesApplication {
 			try {
 				minioClient.setBucketEncryption(SetBucketEncryptionArgs.builder()
 						.bucket(bucketName)
-						.config(SseConfiguration.serverSideEncryptionS3())
+						.config(new SseConfiguration(new SseConfigurationRule(SseAlgorithm.AES256, null)))
 						.build());
 				LOGGER.info(">>> SSE-S3 encryption enabled on bucket '{}'.", bucketName);
 			} catch (Exception e) {
@@ -109,9 +110,9 @@ public class MarcacoesApplication {
 			FuncionarioRepository funcionarioRepository,
 			PasswordEncoder encoder,
 			SeedAccount account) {
-		String nifHash = sha256(account.nif());
+		String nif = account.nif();
 		var byEmail = funcionarioRepository.findByEmail(account.email());
-		Funcionario funcionario = funcionarioRepository.findByNif(nifHash)
+		Funcionario funcionario = funcionarioRepository.findByNif(nif)
 				.or(() -> byEmail.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(byEmail.get(0)))
 				.orElseGet(Funcionario::new);
 
@@ -119,7 +120,7 @@ public class MarcacoesApplication {
 
 		funcionario.setNome(account.nome());
 		funcionario.setEmail(account.email());
-		funcionario.setNif(nifHash);
+		funcionario.setNif(nif);
 		funcionario.setTelefone(account.telefone());
 		funcionario.setTipo(account.tipo());
 		funcionario.setActivo(true);
@@ -131,18 +132,6 @@ public class MarcacoesApplication {
 
 		funcionarioRepository.save(funcionario);
 		LOGGER.info(">>> Conta base {} ({}) {}.", account.email(), account.tipo().name(), isNew ? "criada" : "atualizada");
-	}
-
-	private static String sha256(String input) {
-		try {
-			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			byte[] hash = md.digest(input.getBytes());
-			StringBuilder sb = new StringBuilder();
-			for (byte b : hash) sb.append(String.format("%02x", b));
-			return sb.toString();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
 	}
 
 }

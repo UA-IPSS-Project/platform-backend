@@ -12,9 +12,9 @@ import jakarta.validation.constraints.Pattern;
  */
 public record LoginUtenteRequest(
 
-    // Hash SHA-256 do NIF (64 chars hex), calculado pelo frontend.
+    // NIF do utente (9 dígitos).
     @NotBlank(message = "NIF é obrigatório")
-    @Pattern(regexp = "^[0-9a-f]{64}$", message = "NIF inválido")
+    @Pattern(regexp = "\\d{9}", message = "NIF deve ter 9 dígitos")
     String nif,
 
     // Palavra-passe em claro recebida do frontend (será verificada no servidor).
