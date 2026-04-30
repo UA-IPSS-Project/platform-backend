@@ -224,8 +224,7 @@ public class Utilizador implements UserDetails {
     }
 
     private void updateNifHash() {
-        if (this.nif != null && cryptoUtils != null) {
-            this.nifHash = cryptoUtils.generateBlindIndex(this.nif);
-        }
+        if (cryptoUtils == null || this.nif == null) return;
+        this.nifHash = cryptoUtils.generateBlindIndex(this.nif);
     }
 }
