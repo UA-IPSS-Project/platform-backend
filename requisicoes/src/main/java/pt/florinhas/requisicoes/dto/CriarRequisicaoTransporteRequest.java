@@ -21,5 +21,5 @@ public record CriarRequisicaoTransporteRequest(
         List<Long> transporteIds,
         @Deprecated
         Long transporteId,
-        RequisicaoPeriodicaConfigRequest periodica) {
+        @jakarta.validation.Valid RequisicaoPeriodicaConfigRequest periodica) {
 }
