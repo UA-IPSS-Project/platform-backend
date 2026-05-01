@@ -19,6 +19,13 @@ public class NifValidator {
 
     private static final String NIF_REGEX = "\\d{9}";
 
+    /** Normaliza um NIF: trim + apenas dígitos. Devolve null se vazio. */
+    public static String normalize(String nif) {
+        if (nif == null) return null;
+        String digits = nif.trim().replaceAll("\\D", "");
+        return digits.isEmpty() ? null : digits;
+    }
+
     public boolean isFormatValid(String nif) {
         return nif != null && nif.matches(NIF_REGEX);
     }

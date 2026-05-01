@@ -33,8 +33,8 @@ public record UtenteRegisterRequest(
          */
         @NotBlank(message = "Password é obrigatória") @Size(min = 6, message = "Password deve ter pelo menos 6 caracteres") String password,
 
-        // NIF com exatamente 9 dígitos (obrigatório).
-        @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos") String nif,
+        // NIF do utente (9 dígitos).
+        @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve ter 9 dígitos") String nif,
 
         // Telefone de contacto do utente (opcional; se preenchido, deve ter 9 dígitos).
         @Pattern(regexp = "\\d{9}", message = "Telefone deve ter 9 dígitos") String telefone,

@@ -35,6 +35,19 @@ public class NotificacaoService {
         enviarParaMicrosservico(utilizadorId, titulo, mensagem, tipo, null);
     }
 
+    public void notificarNovaMarcacaoParaSecretaria(Long secretariaId, String nomeUtente, Long marcacaoId, LocalDateTime data, String assunto) {
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "O utente " + nomeUtente + " criou uma marcação para " + dataFormatada + " — " + assunto;
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("appointmentId", marcacaoId.toString());
+        metadata.put("createdDate", data.format(DATE_FORMATTER));
+        metadata.put("createdTime", data.format(TIME_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "CREATED_BY_UTENTE");
+
+        enviarParaMicrosservico(secretariaId, "Nova Marcação", mensagem, "SISTEMA", metadata);
+    }
+
     public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, int durationMinutes, String summary) {
         String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'as' HH:mm"));
         String mensagem = "Marcacao criada para " + dataFormatada + ".";

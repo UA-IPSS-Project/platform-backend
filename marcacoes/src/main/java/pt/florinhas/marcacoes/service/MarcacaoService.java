@@ -55,6 +55,7 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 
 import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 @Slf4j
 @Service
@@ -68,6 +69,7 @@ public class MarcacaoService {
     private final ItemArmazemRepository itemArmazemRepository;
     private final NotificacaoService notificacaoService;
     private final MarcacaoValidator marcacaoValidator;
+    private final CryptoUtils cryptoUtils;
     private final NifValidator nifValidator;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
@@ -125,7 +127,7 @@ public class MarcacaoService {
             nifValidator.validateRequiredOrThrow(request.getUtenteNif());
 
             // Verificar se já existe por NIF
-            List<Utente> users = utenteRepository.findByNif(request.getUtenteNif());
+            List<Utente> users = utenteRepository.findByNifHash(cryptoUtils.generateBlindIndex(request.getUtenteNif()));
             if (!users.isEmpty()) {
                 utente = users.get(0);
             }
@@ -806,27 +808,46 @@ public class MarcacaoService {
     }
 
     private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary, Long actorId) {
+        String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
+        boolean criadoPeloUtente = utenteId.equals(actorId);
+
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     try {
-                        // Não notificar se o ator for o próprio utente alvo
-                        if (!utenteId.equals(actorId)) {
+                        if (!criadoPeloUtente) {
                             notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                        } else {
+                            // Utente criou a marcação — notificar todas as secretarias
+                            funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+                                try {
+                                    notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+                                } catch (Exception e) {
+                                    log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
+                                }
+                            });
                         }
                     } catch (Exception e) {
-                        log.error("Falha ao notificar utente sobre marcação", e);
+                        log.error("Falha ao notificar sobre marcação", e);
                     }
                 }
             });
         } else {
             try {
-                if (!utenteId.equals(actorId)) {
+                if (!criadoPeloUtente) {
                     notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                } else {
+                    funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+                        try {
+                            notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+                        } catch (Exception e) {
+                            log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
+                        }
+                    });
                 }
             } catch (Exception e) {
-                log.error("Falha ao notificar utente sobre marcação", e);
+                log.error("Falha ao notificar sobre marcação", e);
             }
         }
     }

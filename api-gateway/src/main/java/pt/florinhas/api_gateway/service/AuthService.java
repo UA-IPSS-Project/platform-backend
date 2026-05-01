@@ -27,6 +27,7 @@ import pt.florinhas.common_data.domain.Utilizador;
 
 import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 /**
  * Serviço responsável por autenticação e registo de utilizadores.
@@ -55,19 +56,23 @@ public class AuthService {
         @Value("${jwt.expiration:86400000}")
         private long jwtExpiration;
 
+        private final CryptoUtils cryptoUtils;
+
         public AuthService(
                         UtilizadorRepository utilizadorRepository,
                         FuncionarioRepository funcionarioRepository,
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
                         AuthenticationManager authenticationManager,
-                        NifValidator nifValidator) {
+                        NifValidator nifValidator,
+                        CryptoUtils cryptoUtils) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
                 this.authenticationManager = authenticationManager;
                 this.nifValidator = nifValidator;
+                this.cryptoUtils = cryptoUtils;
         }
 
         /**
@@ -139,7 +144,7 @@ public class AuthService {
                 }
 
                 // Obter utilizador pelo NIF (handle duplicate data by taking first)
-                var users = utilizadorRepository.findByNif(request.nif());
+                var users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(request.nif()));
 
                 if (users.isEmpty()) {
                         throw new BadRequestException("Utente não encontrado");
@@ -172,7 +177,6 @@ public class AuthService {
          */
         public AuthResult registerUtente(UtenteRegisterRequest request) {
                 nifValidator.validateRequiredOrThrow(request.nif());
-
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -207,7 +211,6 @@ public class AuthService {
          */
         public AuthResult registerFuncionario(FuncionarioRegisterRequest request) {
                 nifValidator.validateRequiredOrThrow(request.nif());
-
                 checkUserExists(request.email(), request.nif());
 
                 if (!request.termsAccepted()) {
@@ -288,7 +291,7 @@ public class AuthService {
                 if (utilizadorRepository.existsByEmail(email)) {
                         throw new BadRequestException("Email já está em uso");
                 }
-                if (utilizadorRepository.existsByNif(nif)) {
+                if (utilizadorRepository.existsByNifHash(cryptoUtils.generateBlindIndex(nif))) {
                         throw new BadRequestException("NIF já está em uso");
                 }
         }
