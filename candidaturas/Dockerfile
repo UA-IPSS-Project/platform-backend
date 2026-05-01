@@ -2,7 +2,7 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copiamos os pom.xml para satisfazer os módulos do projeto pai
+# Copy parent and module poms so Maven can resolve the multi-module structure
 COPY pom.xml .
 COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
@@ -11,7 +11,7 @@ COPY notificacoes/pom.xml notificacoes/
 COPY candidaturas/pom.xml candidaturas/
 COPY common-data/pom.xml common-data/
 
-# Download dependencies (layer caching)
+# Download dependencies
 RUN --mount=type=cache,target=/root/.m2 \
     mvn dependency:go-offline -pl candidaturas -am -B
 
