@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -43,7 +44,9 @@ public class CandidaturaController {
     public ResponseEntity<FormResponse> createForm(
             @Valid @RequestBody FormCreate dto,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if (userId == null) userId = 1L; // Fallback for testing
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Form createdForm = formService.createForm(dto, userId);
         if (createdForm != null) {
             return ResponseEntity.ok(FormResponse.fromEntity(createdForm));
@@ -53,10 +56,12 @@ public class CandidaturaController {
 
     @PutMapping("/forms/{id}")
     public ResponseEntity<FormResponse> updateForm(
-            @PathVariable String id, 
+            @PathVariable String id,
             @Valid @RequestBody FormUpdate dto,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if (userId == null) userId = 1L; // Fallback for testing
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Form updatedForm = formService.updateForm(id, dto, userId);
         if (updatedForm != null) {
             return ResponseEntity.ok(FormResponse.fromEntity(updatedForm));
@@ -100,7 +105,9 @@ public class CandidaturaController {
     public ResponseEntity<CandidaturaResponse> createCandidatura(
             @Valid @RequestBody CandidaturaCreate dto,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if (userId == null) userId = 1L; // Fallback for testing
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Candidatura createdCandidatura = candidaturaService.createCandidatura(dto, userId);
         if (createdCandidatura != null) {
             return ResponseEntity.ok(CandidaturaResponse.fromEntity(createdCandidatura));
@@ -113,7 +120,9 @@ public class CandidaturaController {
             @PathVariable String id,
             @Valid @RequestBody CandidaturaUpdate dto,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if (userId == null) userId = 1L; // Fallback for testing
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Candidatura updatedCandidatura = candidaturaService.updateCandidatura(id, dto, userId);
         if (updatedCandidatura != null) {
             return ResponseEntity.ok(CandidaturaResponse.fromEntity(updatedCandidatura));
@@ -126,7 +135,9 @@ public class CandidaturaController {
             @PathVariable String id,
             @Valid @RequestBody CandidaturaStatusUpdate dto,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
-        if (userId == null) userId = 1L; // Fallback for testing
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Candidatura updatedCandidatura = candidaturaService.updateCandidaturaStatus(id, dto, userId);
         if (updatedCandidatura != null) {
             return ResponseEntity.ok(CandidaturaResponse.fromEntity(updatedCandidatura));

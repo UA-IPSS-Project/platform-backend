@@ -8,6 +8,7 @@ COPY api-gateway/pom.xml api-gateway/
 COPY marcacoes/pom.xml marcacoes/
 COPY requisicoes/pom.xml requisicoes/
 COPY notificacoes/pom.xml notificacoes/
+COPY candidaturas/pom.xml candidaturas/
 COPY common-data/pom.xml common-data/
 
 # Download dependencies
