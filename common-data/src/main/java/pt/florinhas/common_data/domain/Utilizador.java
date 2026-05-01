@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import pt.florinhas.common_data.security.CryptoUtils;
+import pt.florinhas.common_data.security.NifEncryptorConverter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -52,10 +54,26 @@ public class Utilizador implements UserDetails {
 
     /**
      * Número de Identificação Fiscal (9 dígitos).
-     * Único e obrigatório.
+     * Único e obrigatório. Cifrado em repouso com AES-GCM.
      */
-    @Column(name = "nif", nullable = false, unique = true, length = 9)
+    @Convert(converter = NifEncryptorConverter.class)
+    @Column(name = "nif", nullable = false, unique = false, length = 500)
     private String nif;
+
+    /**
+     * Blind index do NIF (SHA-256 com salt) para pesquisas sem decifrar.
+     * Único e indexado.
+     */
+    @Column(name = "nif_hash", unique = true, length = 64)
+    private String nifHash;
+
+    // Instância estática do CryptoUtils para uso nos callbacks JPA (@PrePersist/@PreUpdate)
+    @Transient
+    private static CryptoUtils cryptoUtils;
+
+    public static void setCryptoUtils(CryptoUtils utils) {
+        Utilizador.cryptoUtils = utils;
+    }
 
     // Nome completo do utilizador. Obrigatório.
     @Column(name = "nome", nullable = false, length = 100)
@@ -192,10 +210,25 @@ public class Utilizador implements UserDetails {
 
     /**
      * Lifecycle callback executado antes da primeira persistência.
-     * Define o timestamp de criação.
+     * Define o timestamp de criação e calcula o blind index do NIF.
      */
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        updateNifHash();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updateNifHash();
+    }
+
+    private void updateNifHash() {
+        if (this.nif == null) return;
+        if (cryptoUtils == null) {
+            throw new IllegalStateException(
+                "CryptoUtils must be initialized before persisting or updating a Utilizador with a NIF.");
+        }
+        this.nifHash = cryptoUtils.generateBlindIndex(this.nif);
     }
 }

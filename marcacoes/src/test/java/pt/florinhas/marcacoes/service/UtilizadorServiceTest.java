@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.security.CryptoUtils;
 import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.marcacoes.service.email.EmailService;
 
@@ -51,18 +52,23 @@ public class UtilizadorServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private CryptoUtils cryptoUtils;
+
     @InjectMocks
     private UtilizadorService utilizadorService;
 
+    private static final String NIF = "123456789";
+    private static final String NIF_HASH = "hash_123456789";
+
     @Test
     void obterOuCriarUtente_NewUser_ShouldGenerateSecurePasswordAndSendEmail() {
-        // Arrange
-        String nif = "123456789";
         String nome = "Test User";
         String email = "test@example.com";
         String telefone = "912345678";
 
-        when(utilizadorRepository.findByNif(nif)).thenReturn(Collections.emptyList());
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(Collections.emptyList());
         when(utenteRepository.existsByEmail(email)).thenReturn(false);
         when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
             Utente u = invocation.getArgument(0);
@@ -70,53 +76,33 @@ public class UtilizadorServiceTest {
             return u;
         });
 
-        // Act
-        Utente result = utilizadorService.obterOuCriarUtente(nif, nome, email, telefone);
+        Utente result = utilizadorService.obterOuCriarUtente(NIF, nome, email, telefone);
 
-        // Assert
         assertNotNull(result);
-        assertEquals(nif, result.getNif());
-
-        // Initial password logic was NIF. Now it should NOT be NIF.
-        // We can't easily check the plain text password here because it's hashed inside
-        // the service before saving.
-        // But we can verify that emailService was called with a password that is NOT
-        // the NIF.
-
+        assertEquals(NIF, result.getNif());
         verify(emailService).sendPassword(anyString(), anyString());
-
-        // Verify we are not saving the NIF as password (comparing hash would require
-        // knowing the random password)
-        // But we can assert the logic flow by verifying mocks.
     }
 
     @Test
     void obterOuCriarUtente_ExistingUser_ShouldReturnIt() {
-        // Arrange
-        String nif = "123456789";
-        Utente existingStart = new Utente();
-        existingStart.setNif(nif);
-        existingStart.setId(1L);
+        Utente existing = new Utente();
+        existing.setNif(NIF);
+        existing.setId(1L);
 
-        // When user exists, the service returns immediately after findByNif
-        // without calling external NIF validation - so no additional stub needed
-        when(utilizadorRepository.findByNif(nif)).thenReturn(List.of(existingStart));
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(List.of(existing));
 
-        // Act
-        Utente result = utilizadorService.obterOuCriarUtente(nif, "Ignored", "Ignored", "Ignored");
+        Utente result = utilizadorService.obterOuCriarUtente(NIF, "Ignored", "Ignored", "Ignored");
 
-        // Assert
-        assertEquals(existingStart, result);
+        assertEquals(existing, result);
     }
 
     @Test
     void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
-        // Arrange
         String invalidNif = "123";
         doThrow(new BadRequestException("NIF deve conter exatamente 9 dígitos numéricos"))
                 .when(nifValidator).validateRequiredOrThrow(eq(invalidNif));
 
-        // Act & Assert
         BadRequestException ex = assertThrows(BadRequestException.class,
                 () -> utilizadorService.obterOuCriarUtente(invalidNif, "Name", "email@test.com", "912345678"));
         assertEquals("NIF deve conter exatamente 9 dígitos numéricos", ex.getMessage());
@@ -124,7 +110,6 @@ public class UtilizadorServiceTest {
 
     @Test
     void listarTodosUtentes_ShouldReturnAllUtentesWithCorrectStatus() {
-        // Arrange
         Utente activeUtente = new Utente();
         activeUtente.setId(1L);
         activeUtente.setNome("Active Utente");
@@ -137,20 +122,14 @@ public class UtilizadorServiceTest {
 
         when(utenteRepository.findAll()).thenReturn(List.of(activeUtente, inactiveUtente));
 
-        // Act
         List<pt.florinhas.common_data.dto.UtilizadorResponseDTO> result = utilizadorService.listarTodosUtentes();
 
-        // Assert
         assertNotNull(result);
         assertEquals(2, result.size());
-        
-        // Check active status mapping
         assertEquals(true, result.get(0).isActive());
         assertEquals("Active Utente", result.get(0).getNome());
-        
         assertEquals(false, result.get(1).isActive());
         assertEquals("Inactive Utente", result.get(1).getNome());
-
         verify(utenteRepository).findAll();
     }
 }
