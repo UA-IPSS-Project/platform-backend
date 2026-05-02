@@ -60,14 +60,15 @@ public class DocumentoController {
     @PostMapping("/marcacao/{marcacaoId}/upload")
     public ResponseEntity<DocumentoDTO> uploadDocumento(
             @PathVariable Long marcacaoId,
-            @RequestParam("file") MultipartFile file) throws IOException {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "finalidade", required = false) String finalidade) throws IOException {
         
         log.info("Recebido pedido de upload de documento para marcação {}", marcacaoId);
 
         // Verificar permissões
         verificarPermissaoMarcacao(marcacaoId);
 
-        DocumentoDTO documento = documentoService.uploadDocumento(marcacaoId, file);
+        DocumentoDTO documento = documentoService.uploadDocumento(marcacaoId, file, finalidade);
         
         return ResponseEntity.ok(documento);
     }

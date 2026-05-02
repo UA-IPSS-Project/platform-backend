@@ -98,7 +98,7 @@ public class DocumentoService {
      */
     @Transactional
 
-    public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file) throws IOException {
+    public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file, String finalidade) throws IOException {
 
         log.info("Iniciando upload de documento para marcação {}", marcacaoId);
 
@@ -184,6 +184,7 @@ public class DocumentoService {
         documento.setTamanho(file.getSize());
         documento.setMarcacao(marcacao);
         documento.setSequencia(proximaSequencia);
+        documento.setFinalidade(finalidade);
 
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);

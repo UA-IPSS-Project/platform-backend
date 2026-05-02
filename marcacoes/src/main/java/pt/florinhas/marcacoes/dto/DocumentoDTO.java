@@ -19,7 +19,8 @@ public record DocumentoDTO(
     Long marcacaoId,
     String utenteNome,
     String utenteNif,
-    Integer sequencia
+    Integer sequencia,
+    String finalidade
 ) {
     /**
      * Converte uma entidade Documento em DTO.
@@ -47,7 +48,8 @@ public record DocumentoDTO(
             documento.getMarcacao().getId(),
             utenteNome,
             utenteNif,
-            documento.getSequencia()
+            documento.getSequencia(),
+            documento.getFinalidade()
         );
     }
 }

@@ -79,6 +79,13 @@ public class Documento {
     private Long tamanho;
 
     /**
+     * Finalidade do documento (RGPD - art.º 13.º).
+     * Exemplo: "Comprovativo de residência", "Atestado médico", etc.
+     */
+    @Column(name = "finalidade", length = 255)
+    private String finalidade;
+
+    /**
      * Data/hora em que o documento foi enviado.
      */
     @Column(name = "uploaded_em", nullable = false, updatable = false)
