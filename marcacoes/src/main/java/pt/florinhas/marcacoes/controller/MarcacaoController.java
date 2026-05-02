@@ -91,24 +91,7 @@ public class MarcacaoController {
         return targetUtenteId; // Admin pode usar qualquer ID
     }
 
-    /**
-     * Verifica se o utilizador atual (não-admin) tem permissão de aceder a um
-     * recurso
-     * baseado no ID do proprietário.
-     *
-     * @param ownerId      ID do proprietário do recurso
-     * @param resourceType tipo de recurso para a mensagem de erro
-     * @throws AccessDeniedException se não tiver permissão
-     */
-    private void verificarPermissaoProprietario(Long ownerId, String resourceType) {
-        Long currentUserId = authorizationService.getCurrentUserId();
-        boolean isAdmin = authorizationService.isAdmin();
-
-        if (!isAdmin && (currentUserId == null || !currentUserId.equals(ownerId))) {
-            throw new AccessDeniedException(
-                    String.format("Não tem permissão para %s.", resourceType));
-        }
-    }
+    // Removido verificarPermissaoProprietario pois agora usamos authorizationService.checkPermission
 
     /**
      * Endpoint para contar o número de marcações do dia atual.
@@ -289,15 +272,11 @@ public class MarcacaoController {
                     && existing.getMarcacaoSecretaria().getUtente() != null) {
 
                 Long ownerId = existing.getMarcacaoSecretaria().getUtente().getId();
-                if (!ownerId.equals(currentUserId)) {
-                    throw new AccessDeniedException("Não tem permissão para alterar esta marcação.");
-                }
+                authorizationService.checkPermission(ownerId, "alterar esta marcação");
             } else if (existing != null) {
-                // Se não tem dados de utente (estranho), por segurança bloqueamos se não for
-                // admin
+                // Se não tem dados de utente (estranho), por segurança bloqueamos se não for admin
                 throw new AccessDeniedException("Não tem permissão para alterar esta marcação.");
             }
-            // Se existing == null, deixamos o serviço lidar com o 404 normal
         }
 
         MarcacaoResponseDTO response = marcacaoService.atualizarEstadoMarcacao(id, request);
@@ -357,7 +336,7 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesUtente(
             @PathVariable Long utenteId) {
 
-        verificarPermissaoProprietario(utenteId, "consultar dados de outro utente");
+        authorizationService.checkPermission(utenteId, "consultar dados de outro utente");
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesUtente(utenteId);
         return ResponseEntity.ok(response);
@@ -376,7 +355,7 @@ public class MarcacaoController {
     public ResponseEntity<List<Map<String, Object>>> consultarMarcacoesBloqueadas(
             @PathVariable Long utenteId) {
 
-        verificarPermissaoProprietario(utenteId, "consultar dados de outro utente");
+        authorizationService.checkPermission(utenteId, "consultar dados de outro utente");
 
         List<Map<String, Object>> marcacoesBloqueadas = marcacaoService.consultarMarcacoesBloqueadas(utenteId);
         return ResponseEntity.ok(marcacoesBloqueadas);
@@ -392,7 +371,7 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesFuncionario(
             @PathVariable Long funcionarioId) {
 
-        verificarPermissaoProprietario(funcionarioId, "consultar marcações deste funcionário");
+        authorizationService.checkPermission(funcionarioId, "consultar marcações deste funcionário");
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesFuncionario(funcionarioId);
         return ResponseEntity.ok(response);
@@ -426,10 +405,10 @@ public class MarcacaoController {
                 ownerId = response.getMarcacaoSecretaria().getUtente().getId();
             }
 
-            boolean isOwner = ownerId != null && ownerId.equals(currentUserId);
-
-            if (!isOwner) {
-                throw new AccessDeniedException("Não tem permissão para visualizar esta marcação.");
+            if (ownerId != null) {
+                authorizationService.checkPermission(ownerId, "visualizar esta marcação");
+            } else {
+                 throw new AccessDeniedException("Não tem permissão para visualizar esta marcação.");
             }
         }
 

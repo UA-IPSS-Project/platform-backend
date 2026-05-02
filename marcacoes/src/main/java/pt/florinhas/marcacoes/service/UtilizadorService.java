@@ -71,6 +71,9 @@ public class UtilizadorService {
     private AuditLogService auditLogService;
 
     @Autowired
+    private NotificacaoService notificacaoService;
+
+    @Autowired
     private NifValidator nifValidator;
 
     @Autowired
@@ -497,12 +500,28 @@ public class UtilizadorService {
 
         // Notificar secretaria
         try {
+            List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
             String titulo = "Pedido de Eliminação de Conta (RGPD)";
             String mensagem = String.format(
                 "O utilizador %s (NIF: %s) solicitou a eliminação da sua conta. " +
                 "Por favor, processe a anonimização dos dados no prazo de 1 mês conforme RGPD Art.º 17.",
                 utilizador.getNome(), utilizador.getNif()
             );
+            
+            // Criar notificação para cada secretária
+            for (Funcionario secretaria : secretarias) {
+                try {
+                    notificacaoService.criarNotificacao(
+                        secretaria.getId(),
+                        titulo,
+                        mensagem,
+                        "ALERTA"
+                    );
+                } catch (Exception e) {
+                    log.error("Erro ao criar notificação para secretaria ID {}: {}", secretaria.getId(), e.getMessage());
+                }
+            }
+
             // Enviar email à secretaria
             emailService.sendGenericEmail(
                 "secretaria@florinhasdovouga.pt",
@@ -563,6 +582,33 @@ public class UtilizadorService {
         );
         
         log.info("Utilizador ID {} (NIF original: {}) foi anonimizado com sucesso", id, nifOriginal);
+    }
+
+    /**
+     * Anonimiza e elimina completamente um utilizador (RGPD Art.º 17).
+     * Primeiro anonimiza os dados, depois remove o registo da base de dados.
+     */
+    @Transactional
+    public void anonimizarEEliminarUtilizador(Long id) {
+        Utilizador utilizador = obterUtilizadorPorId(id);
+        String nifOriginal = utilizador.getNif();
+        String nomeOriginal = utilizador.getNome();
+        
+        // Primeiro anonimizar
+        anonimizarUtilizador(id);
+        
+        // Depois eliminar
+        utilizadorRepository.deleteById(id);
+        
+        auditLogService.log(
+            "ELIMINAR_UTILIZADOR",
+            "UTILIZADOR",
+            id,
+            String.format("Utilizador eliminado após anonimização (Nome: %s, NIF: %s) - RGPD Art.º 17", 
+                nomeOriginal, nifOriginal)
+        );
+        
+        log.info("Utilizador ID {} (NIF original: {}) foi anonimizado e eliminado", id, nifOriginal);
     }
 
     /**

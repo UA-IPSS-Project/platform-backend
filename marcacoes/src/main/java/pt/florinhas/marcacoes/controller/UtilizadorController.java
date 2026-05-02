@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pt.florinhas.marcacoes.service.AuthorizationService;
 
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
@@ -53,6 +55,9 @@ public class UtilizadorController {
     @Autowired
     private UtilizadorService utilizadorService;
 
+    @Autowired
+    private AuthorizationService authorizationService;
+
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
      * frontend.
@@ -63,6 +68,7 @@ public class UtilizadorController {
     // Buscar utilizador por ID
     @GetMapping("/{id}")
     public ResponseEntity<UtilizadorResponseDTO> obterUtilizadorPorId(@PathVariable Long id) {
+        authorizationService.checkPermission(id, "visualizar este perfil");
         Utilizador utilizador = utilizadorService.obterUtilizadorPorId(id);
         UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
         return ResponseEntity.ok(response);
@@ -79,6 +85,7 @@ public class UtilizadorController {
      */
     // Buscar utilizador por NIF
     @GetMapping("/nif/{nif}")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
                 .orElseThrow(() -> new NotFoundException(
@@ -218,6 +225,18 @@ public class UtilizadorController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> anonimizarUtilizador(@PathVariable Long id) {
         utilizadorService.anonimizarUtilizador(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Anonimiza e elimina completamente um utilizador (RGPD Art.º 17).
+     * Primeiro anonimiza os dados, depois remove o registo.
+     * Apenas secretaria pode executar.
+     */
+    @DeleteMapping("/{id}/anonimizar-eliminar")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> anonimizarEEliminarUtilizador(@PathVariable Long id) {
+        utilizadorService.anonimizarEEliminarUtilizador(id);
         return ResponseEntity.ok().build();
     }
 
