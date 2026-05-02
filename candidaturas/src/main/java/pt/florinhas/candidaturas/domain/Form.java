@@ -2,6 +2,7 @@ package pt.florinhas.candidaturas.domain;
 
 // Java
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 // Mongo
@@ -25,6 +26,7 @@ public class Form {
 
     private Map<String, Object> schema;
     private Map<String, Object> uiSchema;
+    private List<FormPage> pages;
 
     private Long criadoPor;
     private Instant criadoEm;

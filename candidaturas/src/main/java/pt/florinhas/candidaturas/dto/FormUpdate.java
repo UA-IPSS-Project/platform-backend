@@ -1,9 +1,11 @@
 package pt.florinhas.candidaturas.dto;
 
+import java.util.List;
 import java.util.Map;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import pt.florinhas.candidaturas.domain.FormPage;
 
 @Data
 public class FormUpdate {
@@ -14,4 +16,5 @@ public class FormUpdate {
     private Map<String, Object> schema;
 
     private Map<String, Object> uiSchema;
+    private List<FormPage> pages;
 }

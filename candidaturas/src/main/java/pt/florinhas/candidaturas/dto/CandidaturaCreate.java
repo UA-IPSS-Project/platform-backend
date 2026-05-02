@@ -8,6 +8,7 @@ import jakarta.validation.constraints.*;
 
 // Common Data
 import pt.florinhas.common_data.validation.Nif;
+import pt.florinhas.candidaturas.domain.CandidaturaEstado;
 
 // Lombok
 import lombok.Data;
@@ -26,4 +27,6 @@ public class CandidaturaCreate {
 
     @NotNull(message = "Respostas are required")
     private Map<String, Object> respostas;
+
+    private CandidaturaEstado estado;
 }

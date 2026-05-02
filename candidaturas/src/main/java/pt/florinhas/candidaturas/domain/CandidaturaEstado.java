@@ -4,5 +4,6 @@ public enum CandidaturaEstado {
     PENDENTE,
     LISTA_ESPERA,
     APROVADA,
-    REJEITADA
+    REJEITADA,
+    RASCUNHO
 }

@@ -45,15 +45,17 @@ public class CandidaturaService {
             throw new BadRequestException("Form with id " + dto.getFormId() + " does not exist.");
         }
 
-        validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
+        CandidaturaEstado estado = dto.getEstado() != null ? dto.getEstado() : CandidaturaEstado.PENDENTE;
+        if (estado != CandidaturaEstado.RASCUNHO) {
+            validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
+        }
 
         Candidatura candidatura = new Candidatura();
         candidatura.setFormId(dto.getFormId());
         candidatura.setNif(dto.getNif());
         candidatura.setNome(dto.getNome());
         candidatura.setRespostas(dto.getRespostas());
-
-        candidatura.setEstado(CandidaturaEstado.PENDENTE);
+        candidatura.setEstado(estado);
         candidatura.setCriadoPor(userId);
         candidatura.setCriadoEm(Instant.now());
         candidatura.setAssinado(false);
@@ -75,9 +77,14 @@ public class CandidaturaService {
             return null;
         }
 
-        validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
+        if (dto.getEstado() != CandidaturaEstado.RASCUNHO) {
+            validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
+        }
 
         candidatura.setRespostas(dto.getRespostas());
+        if (dto.getEstado() != null) {
+            candidatura.setEstado(dto.getEstado());
+        }
         candidatura.setAtualizadoPor(userId);
         candidatura.setAtualizadoEm(Instant.now());
 
