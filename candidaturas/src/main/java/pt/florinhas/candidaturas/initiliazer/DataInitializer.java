@@ -27,6 +27,9 @@ public class DataInitializer implements CommandLineRunner {
         private final FormRepository formRepository;
         private final CandidaturaRepository candidaturaRepository;
 
+        @org.springframework.beans.factory.annotation.Value("${INITIALIZE_DATA:false}")
+        private boolean forceInitialize;
+
         public DataInitializer(FormRepository formRepository,
                         CandidaturaRepository candidaturaRepository) {
                 this.formRepository = formRepository;
@@ -35,7 +38,11 @@ public class DataInitializer implements CommandLineRunner {
 
         @Override
         public void run(String... args) {
-                if (formRepository.count() > 0 || candidaturaRepository.count() > 0) {
+                if (forceInitialize) {
+                        log.info("[DataInitializer] Force initialize is TRUE — clearing existing data...");
+                        formRepository.deleteAll();
+                        candidaturaRepository.deleteAll();
+                } else if (formRepository.count() > 0 || candidaturaRepository.count() > 0) {
                         log.info("[DataInitializer] Data already exists — seed skipped.");
                         return;
                 }
@@ -152,6 +159,24 @@ public class DataInitializer implements CommandLineRunner {
                 candidaturaRepository.save(c3);
                 log.info("[DataInitializer] Candidatura 3 criada (Form2 / REJEITADA)");
 
-                log.info("[DataInitializer] Seed concluído — 2 forms e 3 candidaturas inseridos.");
+                // ----------------------------------------------------------------
+                // Candidatura 4 — ao Form 2 (Estágio), estado RASCUNHO (Campos em falta)
+                // ----------------------------------------------------------------
+                Candidatura c4 = new Candidatura();
+                c4.setFormId(form2.getId());
+                c4.setNif("999999999");
+                c4.setNome("Daniel Rascunho");
+                c4.setAssinado(false);
+                c4.setRespostas(Map.of(
+                                "nome", "Daniel Rascunho"
+                                // email, curso e disponibilidade em falta de propósito
+                                ));
+                c4.setEstado(CandidaturaEstado.RASCUNHO);
+                c4.setCriadoPor(13L);
+                c4.setCriadoEm(Instant.parse("2025-05-01T10:00:00Z"));
+                candidaturaRepository.save(c4);
+                log.info("[DataInitializer] Candidatura 4 criada (Form2 / RASCUNHO)");
+
+                log.info("[DataInitializer] Seed concluído — 2 forms e 4 candidaturas inseridos.");
         }
 }
