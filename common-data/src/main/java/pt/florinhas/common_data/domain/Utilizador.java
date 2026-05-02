@@ -2,6 +2,7 @@ package pt.florinhas.common_data.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -95,6 +96,7 @@ public class Utilizador implements UserDetails {
      * Indica se o utilizador solicitou a eliminação da sua conta (RGPD Art.º 17).
      * Quando true, a secretaria deve processar o pedido de anonimização.
      */
+    @Builder.Default
     @Column(name = "delete_requested")
     private Boolean deleteRequested = false;
 

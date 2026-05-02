@@ -1,0 +1,6 @@
+# Ignorar todos os backups
+backups/
+*.sql
+*.sql.gz
+*.tar.gz
+*.backup
