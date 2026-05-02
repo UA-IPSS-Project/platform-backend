@@ -61,6 +61,7 @@ public class DocumentoService {
     private final MinioClient minioClient;
     private final FuncionarioRepository funcionarioRepository;
     private final NotificacaoService notificacaoService;
+    private final SystemConfigService systemConfigService;
 
     /**
      * Bucket MinIO onde os documentos são armazenados.
@@ -185,6 +186,10 @@ public class DocumentoService {
         documento.setMarcacao(marcacao);
         documento.setSequencia(proximaSequencia);
         documento.setFinalidade(finalidade);
+
+        // Calcular data de expiração (default: 5 anos)
+        int anosRetencao = systemConfigService.getConfigValueAsInt("documento.retencao.anos", 5);
+        documento.setDataExpiracao(LocalDateTime.now().plusYears(anosRetencao));
 
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);

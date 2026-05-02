@@ -104,4 +104,12 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
 
     @Query("SELECT d FROM Documento d WHERE d.marcacao.id = :marcacaoId AND d.marcacao.data >= :desde AND d.marcacao.data <= :ate ORDER BY d.uploadedEm DESC")
     List<Documento> findByMarcacaoIdAndMarcacaoDataBetween(@Param("marcacaoId") Long marcacaoId, @Param("desde") LocalDateTime desde, @Param("ate") LocalDateTime ate);
+
+    /**
+     * Encontra documentos expirados (data de expiração anterior à data fornecida).
+     * 
+     * @param dataLimite data limite para considerar expirado
+     * @return lista de documentos expirados ordenados por data de expiração
+     */
+    List<Documento> findByDataExpiracaoBeforeOrderByDataExpiracaoAsc(LocalDateTime dataLimite);
 }

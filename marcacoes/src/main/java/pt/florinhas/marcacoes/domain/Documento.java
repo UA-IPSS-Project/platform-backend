@@ -92,6 +92,13 @@ public class Documento {
     private LocalDateTime uploadedEm;
 
     /**
+     * Data de expiração do documento (RGPD - retenção de dados).
+     * Após esta data, o documento pode ser automaticamente removido.
+     */
+    @Column(name = "data_expiracao")
+    private LocalDateTime dataExpiracao;
+
+    /**
      * Marcação à qual este documento está associado.
      * Relação N:1 (vários documentos podem pertencer a uma marcação).
      */
