@@ -134,6 +134,9 @@ services:
       - notificacoes
     ports:
       - "3000:80"
+      - "3443:443"
+    volumes:
+      - ../platform-frontend/ssl:/etc/nginx/ssl:ro
 
     restart: unless-stopped
 
