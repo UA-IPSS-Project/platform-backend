@@ -456,6 +456,14 @@ public class UtilizadorService {
         utilizador.setPassHash(passwordEncoder.encode(novaPassword));
 
         utilizadorRepository.save(utilizador);
+        
+        auditLogService.log(
+            "RECUPERAR_CONTA",
+            "UTILIZADOR",
+            utilizador.getId(),
+            String.format("Conta recuperada pela secretaria: %s (%s)", 
+                utilizador.getNome(), utilizador.getNif())
+        );
 
         try {
             emailService.sendPassword(utilizador.getEmail(), novaPassword);
@@ -497,6 +505,14 @@ public class UtilizadorService {
         utilizadorRepository.save(utilizador);
 
         log.info("Pedido de eliminação registado para utilizador ID: {}", utilizador.getId());
+
+        auditLogService.log(
+            "SOLICITAR_ELIMINACAO",
+            "UTILIZADOR",
+            utilizador.getId(),
+            String.format("Pedido de eliminação registado para utilizador: %s (%s)", 
+                utilizador.getNome(), utilizador.getNif())
+        );
 
         // Notificar secretaria
         try {

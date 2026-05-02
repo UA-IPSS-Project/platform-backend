@@ -91,7 +91,8 @@ public class MarcacaoController {
         return targetUtenteId; // Admin pode usar qualquer ID
     }
 
-    // Removido verificarPermissaoProprietario pois agora usamos authorizationService.checkPermission
+    // Removido verificarPermissaoProprietario pois agora usamos
+    // authorizationService.checkPermission
 
     /**
      * Endpoint para contar o número de marcações do dia atual.
@@ -158,7 +159,7 @@ public class MarcacaoController {
      * return dados básicos da marcação criada
      */
     @PostMapping("/balneario")
-        public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
+    public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
             @Valid @RequestBody CriarMarcacaoBalnearioRequest request) {
 
         Marcacao marcacao = marcacaoService.criarMarcacaoBalneario(request);
@@ -166,14 +167,14 @@ public class MarcacaoController {
         String durationLabel = "Duração da marcação";
         String durationBalneario = String.format("Duração padrão para balneário: %d minutos", marcacao.getDuration());
         return ResponseEntity.ok().body(Map.of(
-            "id", marcacao.getId().toString(),
-            "data", marcacao.getData().toString(),
-            "estado", marcacao.getEstado().toString(),
-            "duration", String.valueOf(marcacao.getDuration()),
-            "durationLabel", durationLabel,
-            "durationBalneario", durationBalneario,
-            "message", "Marcação de balneário registada com sucesso"));
-        }
+                "id", marcacao.getId().toString(),
+                "data", marcacao.getData().toString(),
+                "estado", marcacao.getEstado().toString(),
+                "duration", String.valueOf(marcacao.getDuration()),
+                "durationLabel", durationLabel,
+                "durationBalneario", durationBalneario,
+                "message", "Marcação de balneário registada com sucesso"));
+    }
 
     /**
      * Atualiza os detalhes de serviços de uma marcação de balneário.
@@ -262,7 +263,6 @@ public class MarcacaoController {
             @Valid @RequestBody AtualizarEstadoRequest request) {
 
         // Validar permissões
-        Long currentUserId = authorizationService.getCurrentUserId();
         boolean isAdmin = authorizationService.isAdmin();
 
         if (!isAdmin) {
@@ -274,7 +274,8 @@ public class MarcacaoController {
                 Long ownerId = existing.getMarcacaoSecretaria().getUtente().getId();
                 authorizationService.checkPermission(ownerId, "alterar esta marcação");
             } else if (existing != null) {
-                // Se não tem dados de utente (estranho), por segurança bloqueamos se não for admin
+                // Se não tem dados de utente (estranho), por segurança bloqueamos se não for
+                // admin
                 throw new AccessDeniedException("Não tem permissão para alterar esta marcação.");
             }
         }
@@ -387,7 +388,6 @@ public class MarcacaoController {
     public ResponseEntity<MarcacaoResponseDTO> obterMarcacao(
             @PathVariable Long id) {
 
-        Long currentUserId = authorizationService.getCurrentUserId();
         boolean isAdmin = authorizationService.isAdmin();
 
         // Obter marcação primeiro para verificar ownership
@@ -408,7 +408,7 @@ public class MarcacaoController {
             if (ownerId != null) {
                 authorizationService.checkPermission(ownerId, "visualizar esta marcação");
             } else {
-                 throw new AccessDeniedException("Não tem permissão para visualizar esta marcação.");
+                throw new AccessDeniedException("Não tem permissão para visualizar esta marcação.");
             }
         }
 
@@ -480,6 +480,7 @@ public class MarcacaoController {
         MarcacaoResponseDTO response = marcacaoService.reagendarMarcacao(id, request);
         return ResponseEntity.ok(response);
     }
+
     /**
      * Endpoint para obter estatísticas de frequência do Balneário.
      *
@@ -490,7 +491,8 @@ public class MarcacaoController {
     public ResponseEntity<BalnearioAttendanceStatsDTO> getBalnearioFrequenciaEstatisticas(
             @RequestParam(defaultValue = "MES") String periodo) {
 
-        // Apenas funcionários/admin (que têm ROLE_SECRETARIA ou ROLE_BALNEARIO) podem ver estatísticas
+        // Apenas funcionários/admin (que têm ROLE_SECRETARIA ou ROLE_BALNEARIO) podem
+        // ver estatísticas
         if (!authorizationService.isAdmin()) {
             throw new AccessDeniedException("Não tem permissão para consultar estatísticas de frequência.");
         }
