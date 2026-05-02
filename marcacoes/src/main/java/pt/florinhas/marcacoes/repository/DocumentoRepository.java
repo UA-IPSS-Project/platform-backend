@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.common_data.domain.Utente;
 
 /**
  * Repositório Spring Data JPA para a entidade Documento.
@@ -31,6 +32,15 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
      */
     @Query("SELECT d FROM Documento d WHERE d.marcacao = :marcacao ORDER BY d.uploadedEm DESC")
     List<Documento> findByMarcacao(@Param("marcacao") Marcacao marcacao);
+
+    /**
+     * Encontra todos os documentos de um utente específico.
+     * 
+     * @param utente o utente alvo
+     * @return lista de documentos
+     */
+    @Query("SELECT d FROM Documento d WHERE d.marcacao.marcacaoSecretaria.utente = :utente ORDER BY d.uploadedEm DESC")
+    List<Documento> findByUtente(@Param("utente") Utente utente);
 
     /**
      * Encontra todos os documentos de uma marcação pelo ID da marcação.

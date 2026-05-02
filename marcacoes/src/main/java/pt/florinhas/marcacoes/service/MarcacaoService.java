@@ -73,6 +73,7 @@ public class MarcacaoService {
     private final PasswordEncoder passwordEncoder;
     private final ArmazemService armazemService;
     private final AuthorizationService authorizationService;
+    private final AuditLogService auditLogService;
 
     @Lazy
     private final CalendarioService calendarioService;
@@ -185,6 +186,14 @@ public class MarcacaoService {
         }
 
         Marcacao saved = marcacaoRepository.save(marcacao);
+
+        auditLogService.log(
+            "CRIAR_MARCACAO_PRESENCIAL",
+            "MARCACAO",
+            saved.getId(),
+            String.format("Marcação presencial criada para %s - Data: %s, Assunto: %s", 
+                utente.getNome(), saved.getData(), saved.getMarcacaoSecretaria().getAssunto())
+        );
 
         // Notify utente about new appointment
         if (utente != null) {

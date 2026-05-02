@@ -92,6 +92,20 @@ public class Utilizador implements UserDetails {
     private LocalDateTime createdAt;
 
     /**
+     * Indica se o utilizador solicitou a eliminação da sua conta (RGPD Art.º 17).
+     * Quando true, a secretaria deve processar o pedido de anonimização.
+     */
+    @Column(name = "delete_requested")
+    private Boolean deleteRequested = false;
+
+    /**
+     * Timestamp do pedido de eliminação de conta.
+     * Usado para rastreabilidade e cumprimento de prazos RGPD (1 mês).
+     */
+    @Column(name = "delete_requested_at")
+    private LocalDateTime deleteRequestedAt;
+
+    /**
      * Hash da palavra-passe (ex.: BCrypt -> 60 chars).
      * Nunca armazenar passwords em claro.
      */

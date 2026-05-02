@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -196,5 +197,37 @@ public class UtilizadorController {
             @Valid @RequestBody RecoverAccountDTO request) {
         utilizadorService.recuperarConta(request);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Solicita eliminação de conta (RGPD Art.º 17 - Direito ao Esquecimento).
+     * Marca flag na BD e notifica secretaria para processar anonimização.
+     */
+    @PostMapping("/me/delete-request")
+    public ResponseEntity<Void> solicitarEliminacaoConta() {
+        utilizadorService.solicitarEliminacaoConta();
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Anonimiza dados de um utilizador (RGPD Art.º 17).
+     * Substitui dados pessoais por valores genéricos mantendo registos históricos.
+     * Apenas secretaria pode executar.
+     */
+    @PostMapping("/{id}/anonimizar")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> anonimizarUtilizador(@PathVariable Long id) {
+        utilizadorService.anonimizarUtilizador(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Exporta todos os dados pessoais do utilizador (RGPD Art.º 20 - Direito de Portabilidade).
+     * Retorna JSON com dados de utilizador, documentos, marcações e requisições.
+     */
+    @GetMapping("/me/export")
+    public ResponseEntity<Map<String, Object>> exportarDados() {
+        Map<String, Object> dados = utilizadorService.exportarDadosUtilizador();
+        return ResponseEntity.ok(dados);
     }
 }

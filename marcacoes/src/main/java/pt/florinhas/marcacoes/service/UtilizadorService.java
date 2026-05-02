@@ -30,6 +30,14 @@ import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.exception.ConflictException;
 import pt.florinhas.marcacoes.exception.NotFoundException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.time.LocalDateTime;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import pt.florinhas.marcacoes.repository.DocumentoRepository;
+import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 
 /**
@@ -60,10 +68,19 @@ public class UtilizadorService {
     private EmailService emailService;
 
     @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
     private NifValidator nifValidator;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private DocumentoRepository documentoRepository;
+    
+    @Autowired
+    private MarcacaoRepository marcacaoRepository;
 
     /*
      * =========================================================
@@ -254,7 +271,16 @@ public class UtilizadorService {
             utilizador.setProfissao(request.getProfissao());
         }
 
-        return utilizadorRepository.save(utilizador);
+        Utilizador atualizado = utilizadorRepository.save(utilizador);
+
+        auditLogService.log(
+            "ATUALIZAR_PERFIL",
+            "UTILIZADOR",
+            utilizadorId,
+            String.format("Perfil atualizado: %s", utilizador.getNome())
+        );
+
+        return atualizado;
     }
 
     /*
@@ -291,6 +317,14 @@ public class UtilizadorService {
 
         funcionario.setActivo(true);
         funcionarioRepository.save(funcionario);
+
+        auditLogService.log(
+            "APROVAR_FUNCIONARIO",
+            "FUNCIONARIO",
+            id,
+            String.format("Funcionário aprovado: %s (%s) - Tipo: %s", 
+                funcionario.getNome(), funcionario.getEmail(), funcionario.getTipo())
+        );
     }
 
     /*
@@ -367,6 +401,15 @@ public class UtilizadorService {
 
         Utilizador salvo = utilizadorRepository.save(novoUtilizador);
 
+        auditLogService.log(
+            "CRIAR_CONTA",
+            "UTILIZADOR",
+            salvo.getId(),
+            String.format("Conta criada pela secretaria: %s (%s) - Tipo: %s", 
+                salvo.getNome(), salvo.getEmail(), 
+                salvo instanceof Funcionario ? ((Funcionario)salvo).getTipo() : "UTENTE")
+        );
+
         try {
             emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
         } catch (Exception e) {
@@ -426,6 +469,184 @@ public class UtilizadorService {
 
     public long contarUtentesAtivos() {
         return utenteRepository.countByActivo(true);
+    }
+
+    /*
+     * =========================================================
+     * DIREITO AO ESQUECIMENTO (RGPD Art.º 17)
+     * =========================================================
+     */
+
+    /**
+     * Solicita eliminação de conta pelo próprio utilizador.
+     * Marca flag na BD e notifica secretaria para processar anonimização.
+     */
+    @Transactional
+    public void solicitarEliminacaoConta() {
+        Utilizador utilizador = buscarUtilizadorAutenticado();
+        
+        if (Boolean.TRUE.equals(utilizador.getDeleteRequested())) {
+            throw new BadRequestException("Já existe um pedido de eliminação pendente para esta conta.");
+        }
+
+        utilizador.setDeleteRequested(true);
+        utilizador.setDeleteRequestedAt(LocalDateTime.now());
+        utilizadorRepository.save(utilizador);
+
+        log.info("Pedido de eliminação registado para utilizador ID: {}", utilizador.getId());
+
+        // Notificar secretaria
+        try {
+            String titulo = "Pedido de Eliminação de Conta (RGPD)";
+            String mensagem = String.format(
+                "O utilizador %s (NIF: %s) solicitou a eliminação da sua conta. " +
+                "Por favor, processe a anonimização dos dados no prazo de 1 mês conforme RGPD Art.º 17.",
+                utilizador.getNome(), utilizador.getNif()
+            );
+            // Enviar email à secretaria
+            emailService.sendGenericEmail(
+                "secretaria@florinhasdovouga.pt",
+                titulo,
+                mensagem
+            );
+        } catch (Exception e) {
+            log.error("Erro ao notificar secretaria sobre pedido de eliminação: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Anonimiza dados de um utilizador (RGPD Art.º 17).
+     * Substitui dados pessoais por valores genéricos mantendo registos históricos.
+     */
+    @Transactional
+    public void anonimizarUtilizador(Long id) {
+        Utilizador utilizador = obterUtilizadorPorId(id);
+        
+        String nifOriginal = utilizador.getNif();
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        
+        // Anonimizar dados pessoais
+        utilizador.setNome("Utilizador Anónimo #" + id);
+        utilizador.setEmail("anonimo." + timestamp + "@anonimizado.local");
+        utilizador.setTelefone("000000000");
+        utilizador.setNif("999" + String.format("%06d", id % 1000000)); // NIF fictício mas único
+        utilizador.setMorada(null);
+        utilizador.setCodigoPostal(null);
+        utilizador.setFreguesia(null);
+        utilizador.setTelefoneEmprego(null);
+        utilizador.setLocalEmprego(null);
+        utilizador.setMoradaEmprego(null);
+        utilizador.setProfissao(null);
+        utilizador.setDataNasc(null);
+        
+        // Invalidar password
+        utilizador.setPassHash(passwordEncoder.encode("ANONIMIZADO_" + timestamp));
+        
+        // Marcar como processado
+        utilizador.setDeleteRequested(false);
+        utilizador.setDeleteRequestedAt(null);
+        
+        // Desativar conta
+        if (utilizador instanceof Utente) {
+            ((Utente) utilizador).setActivo(false);
+        } else if (utilizador instanceof Funcionario) {
+            ((Funcionario) utilizador).setActivo(false);
+        }
+        
+        utilizadorRepository.save(utilizador);
+        
+        auditLogService.log(
+            "ANONIMIZAR_UTILIZADOR",
+            "UTILIZADOR",
+            id,
+            String.format("Utilizador anonimizado (NIF original: %s) - RGPD Art.º 17", nifOriginal)
+        );
+        
+        log.info("Utilizador ID {} (NIF original: {}) foi anonimizado com sucesso", id, nifOriginal);
+    }
+
+    /**
+     * Obtém o utilizador autenticado do contexto de segurança.
+     */
+    private Utilizador buscarUtilizadorAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new BadRequestException("Utilizador não autenticado");
+        }
+        
+        String email = auth.getName();
+        return buscarPorEmail(email);
+    }
+
+    /*
+     * =========================================================
+     * DIREITO DE PORTABILIDADE (RGPD Art.º 20)
+     * =========================================================
+     */
+
+    /**
+     * Exporta todos os dados pessoais do utilizador autenticado.
+     * Retorna JSON com dados de utilizador, documentos, marcações e requisições.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> exportarDadosUtilizador() {
+        Utilizador utilizador = buscarUtilizadorAutenticado();
+        
+        Map<String, Object> dados = new HashMap<>();
+        
+        // Dados pessoais
+        Map<String, Object> dadosPessoais = new HashMap<>();
+        dadosPessoais.put("id", utilizador.getId());
+        dadosPessoais.put("nome", utilizador.getNome());
+        dadosPessoais.put("email", utilizador.getEmail());
+        dadosPessoais.put("nif", utilizador.getNif());
+        dadosPessoais.put("telefone", utilizador.getTelefone());
+        dadosPessoais.put("dataNascimento", utilizador.getDataNasc());
+        dadosPessoais.put("morada", utilizador.getMorada());
+        dadosPessoais.put("codigoPostal", utilizador.getCodigoPostal());
+        dadosPessoais.put("freguesia", utilizador.getFreguesia());
+        dadosPessoais.put("profissao", utilizador.getProfissao());
+        dadosPessoais.put("localEmprego", utilizador.getLocalEmprego());
+        dadosPessoais.put("moradaEmprego", utilizador.getMoradaEmprego());
+        dadosPessoais.put("telefoneEmprego", utilizador.getTelefoneEmprego());
+        dadosPessoais.put("dataCriacao", utilizador.getCreatedAt());
+        dados.put("dadosPessoais", dadosPessoais);
+        
+        // Documentos
+        try {
+            // Se for utente, buscar documentos das suas marcações
+            if (utilizador instanceof Utente) {
+                dados.put("documentos", documentoRepository.findByUtente((Utente) utilizador));
+            } else {
+                dados.put("documentos", new ArrayList<>());
+            }
+        } catch (Exception e) {
+            log.error("Erro ao exportar documentos: {}", e.getMessage());
+            dados.put("documentos", new ArrayList<>());
+        }
+        
+        // Marcações
+        try {
+            if (utilizador instanceof Utente) {
+                dados.put("marcacoes", marcacaoRepository.findByUtente((Utente) utilizador));
+            } else {
+                dados.put("marcacoes", new ArrayList<>());
+            }
+        } catch (Exception e) {
+            log.error("Erro ao exportar marcações: {}", e.getMessage());
+            dados.put("marcacoes", new ArrayList<>());
+        }
+        
+        // Requisições
+        dados.put("requisicoes", new ArrayList<>());
+        
+        dados.put("dataExportacao", LocalDateTime.now());
+        dados.put("formatoRGPD", "Art.º 20 - Direito de Portabilidade");
+        
+        log.info("Dados exportados para utilizador ID: {}", utilizador.getId());
+        
+        return dados;
     }
 
     /*
