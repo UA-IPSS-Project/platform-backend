@@ -3,6 +3,7 @@ package pt.florinhas.marcacoes.controller;
 import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,20 +12,29 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import pt.florinhas.marcacoes.domain.AuditLog;
 import pt.florinhas.marcacoes.dto.AuditLogDTO;
+import pt.florinhas.marcacoes.dto.InternalAuditRequest;
+import pt.florinhas.marcacoes.repository.AuditLogRepository;
 import pt.florinhas.marcacoes.service.AuditLogService;
 
 @RestController
 @RequestMapping("/api/audit")
-@PreAuthorize("hasRole('SECRETARIA')")
 public class AuditLogController {
 
     @Autowired
     private AuditLogService auditLogService;
 
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Value("${gateway.shared-secret:florinhas}")
+    private String gatewaySharedSecret;
+
     private static final int MAX_PAGE_SIZE = 200;
 
     @GetMapping("/logs")
+    @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<?> getLogs(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String action,
@@ -41,5 +51,34 @@ public class AuditLogController {
         Page<AuditLogDTO> logs = auditLogService.findWithFilters(userId, action, entityType, startDate, endDate, pageable)
             .map(AuditLogDTO::fromEntity);
         return ResponseEntity.ok(logs);
+    }
+
+    /**
+     * Endpoint interno: permite ao api-gateway registar eventos de autenticação
+     * (login, registo, logout) sem passar pelo contexto de segurança normal.
+     * Autenticado pelo cabeçalho X-Gateway-Secret.
+     */
+    @PostMapping("/internal/log")
+    public ResponseEntity<Void> logInternal(
+            @RequestHeader("X-Gateway-Secret") String secret,
+            @RequestBody InternalAuditRequest req) {
+
+        if (!gatewaySharedSecret.equals(secret)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        AuditLog entry = AuditLog.builder()
+            .userId(req.userId())
+            .userName(req.userName())
+            .action(req.action())
+            .entityType(req.entityType())
+            .entityId(req.entityId())
+            .details(req.details())
+            .ipAddress(req.ipAddress())
+            .timestamp(LocalDateTime.now())
+            .build();
+
+        auditLogRepository.save(entry);
+        return ResponseEntity.ok().build();
     }
 }

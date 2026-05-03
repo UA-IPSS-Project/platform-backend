@@ -315,7 +315,13 @@ public class MarcacaoService {
 
         Marcacao saved = marcacaoRepository.save(marcacao);
         
-        // No specific utente notification here for now, but we could add if needed
+        auditLogService.log(
+            "CRIAR_MARCACAO_BALNEARIO",
+            "MARCACAO",
+            saved.getId(),
+            String.format("Marcação de balneário registada para: %s - Data: %s", 
+                detalhes.getNomeUtente(), saved.getData())
+        );
         
         return saved;
     }
@@ -360,6 +366,12 @@ public class MarcacaoService {
         }
 
         marcacaoRepository.save(marcacao);
+        auditLogService.log(
+            "ATUALIZAR_DETALHES_BALNEARIO",
+            "MARCACAO",
+            marcacaoId,
+            "Atualizados detalhes (serviços/roupa) da marcação de balneário"
+        );
         return toDTO(marcacao);
     }
 
@@ -451,10 +463,15 @@ public class MarcacaoService {
             }
         }
 
-        log.debug("Updating Marcacao {} to state {}. Reason: {}", id, request.getNovoEstadoEnum(),
-                request.getMotivoCancelamento());
-
         marcacao = marcacaoRepository.save(marcacao);
+
+        auditLogService.log(
+            "ATUALIZAR_ESTADO_MARCACAO",
+            "MARCACAO",
+            id,
+            String.format("Estado alterado de %s para %s. Motivo: %s", 
+                estadoAnterior, request.getNovoEstadoEnum(), request.getMotivoCancelamento())
+        );
 
         // Notificar intervenientes se cancelado
         if (request.getNovoEstadoEnum() == EventoEstado.CANCELADO) {
@@ -673,6 +690,13 @@ public class MarcacaoService {
 
         // Persistir alteração
         Marcacao saved = marcacaoRepository.save(marcacao);
+
+        auditLogService.log(
+            "REAGENDAR_MARCACAO",
+            "MARCACAO",
+            id,
+            String.format("Marcação reagendada de %s para %s", dataAntiga, saved.getData())
+        );
 
         // Notificar secretaria se for o utente a reagendar
         try {

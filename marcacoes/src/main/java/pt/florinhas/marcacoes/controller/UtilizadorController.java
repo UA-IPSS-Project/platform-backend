@@ -20,6 +20,7 @@ import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
+import pt.florinhas.marcacoes.service.AuditLogService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
 import pt.florinhas.common_data.domain.Utilizador;
@@ -57,6 +58,9 @@ public class UtilizadorController {
 
     @Autowired
     private AuthorizationService authorizationService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
