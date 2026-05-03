@@ -1,18 +1,17 @@
 package pt.florinhas.common_data.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserResponse {
-
-    private Long id;
-    private String email;
-    private String nome;
-    private String role;
-    private String nif;
-    private String telefone;
-}
+/**
+ * DTO imutável (Java record) com os dados públicos de um utilizador autenticado.
+ *
+ * Usos típicos:
+ *  - Responder ao endpoint /api/auth/me
+ *  - Preencher o contexto de sessão no frontend (nome, role, contacto)
+ */
+public record UserResponse(
+    Long id,
+    String email,
+    String nome,
+    String role,
+    String nif,
+    String telefone
+) { }
