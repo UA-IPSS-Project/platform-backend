@@ -1,54 +1,41 @@
 package pt.florinhas.api_gateway.dto;
 
 import java.time.LocalDate;
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.AssertTrue;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class FuncionarioRegisterRequest {
 
-import jakarta.validation.constraints.Pattern;
+    @NotBlank(message = "Nome é obrigatório")
+    private String nome;
 
-/**
- * DTO (Java record) para pedido de registo de Funcionário.
- *
- * Características:
- * - Imutável por definição (record): ideal para transporte de dados entre
- * camadas.
- * - Integra Bean Validation nas componentes, permitindo validação automática em
- * controllers
- * com @Valid (ex.: mensagens de erro personalizadas em português).
- */
-public record FuncionarioRegisterRequest(
+    @NotBlank(message = "Email é obrigatório")
+    @Email(message = "Email deve ser válido")
+    private String email;
 
-        // Nome completo do funcionário (obrigatório).
-        @NotBlank(message = "Nome é obrigatório") String nome,
+    @NotBlank(message = "Password é obrigatória")
+    @Size(min = 6, message = "Password deve ter pelo menos 6 caracteres")
+    private String password;
 
-        // Email institucional/pessoal do funcionário (obrigatório e válido).
-        @NotBlank(message = "Email é obrigatório") @Email(message = "Email deve ser válido") String email,
+    @NotBlank(message = "NIF é obrigatório")
+    @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos")
+    private String nif;
 
-        /**
-         * Palavra-passe em claro recebida do frontend (obrigatória; mínimo 6).
-         * Será posteriormente cifrada (ex.: BCrypt) antes de persistência.
-         */
-        @NotBlank(message = "Password é obrigatória") @Size(min = 6, message = "Password deve ter pelo menos 6 caracteres") String password,
+    @Pattern(regexp = "\\d{9}", message = "Contacto deve ter 9 dígitos")
+    private String contacto;
 
-        // NIF com exatamente 9 dígitos (obrigatório).
-        @NotBlank(message = "NIF é obrigatório") @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos") String nif,
+    @NotBlank(message = "Função é obrigatória")
+    private String funcao;
 
-        // Contacto telefónico (opcional; se preenchido, deve ter 9 dígitos).
-        @Pattern(regexp = "\\d{9}", message = "Contacto deve ter 9 dígitos") String contacto,
+    @NotNull(message = "Data de nascimento é obrigatória")
+    private LocalDate dataNasc;
 
-        // Função/cargo do funcionário (obrigatório). Ex.: "SECRETARIA", "BALNEARIO".
-        @NotBlank(message = "Função é obrigatória") String funcao,
-
-        // Data de nascimento (obrigatória).
-        @NotNull(message = "Data de nascimento é obrigatória") LocalDate dataNasc,
-
-        /**
-         * Indicador de aceitação dos termos de uso (RGPD).
-         * Obrigatório ser true para completar o registo.
-         */
-        @NotNull(message = "Deve aceitar os termos de uso") @AssertTrue(message = "Deve aceitar os termos de uso para se registar") Boolean termsAccepted) {
+    @NotNull(message = "Deve aceitar os termos de uso")
+    @AssertTrue(message = "Deve aceitar os termos de uso para se registar")
+    private Boolean termsAccepted;
 }

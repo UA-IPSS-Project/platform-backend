@@ -1,11 +1,15 @@
 package pt.florinhas.marcacoes.dto;
 
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-/**
- * DTO para atualização parcial do estado de um assunto.
- */
-public record AtualizarEstadoAssuntoRequest(
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AtualizarEstadoAssuntoRequest {
+
     @NotNull(message = "O campo ativo é obrigatório")
-    Boolean ativo
-) {}
+    private Boolean ativo;
+}

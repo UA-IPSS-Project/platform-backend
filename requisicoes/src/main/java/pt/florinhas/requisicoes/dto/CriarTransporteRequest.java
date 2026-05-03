@@ -1,19 +1,26 @@
 package pt.florinhas.requisicoes.dto;
 
-import java.time.LocalDate;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-
+import java.time.LocalDate;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import pt.florinhas.requisicoes.domain.TransporteCategoria;
 
-public record CriarTransporteRequest(
-        String codigo,
-        @NotBlank String tipo,
-        @NotNull TransporteCategoria categoria,
-        @NotBlank String matricula,
-        String marca,
-        String modelo,
-        Integer lotacao,
-        LocalDate dataMatricula) {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class CriarTransporteRequest {
+    private String codigo;
+    @NotBlank
+    private String tipo;
+    @NotNull
+    private TransporteCategoria categoria;
+    @NotBlank
+    private String matricula;
+    private String marca;
+    private String modelo;
+    private Integer lotacao;
+    private LocalDate dataMatricula;
 }

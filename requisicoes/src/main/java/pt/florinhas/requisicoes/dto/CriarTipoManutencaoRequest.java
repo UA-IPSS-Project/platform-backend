@@ -1,8 +1,15 @@
 package pt.florinhas.requisicoes.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public record CriarTipoManutencaoRequest(
-        @NotBlank String nome,
-        String descricao) {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class CriarTipoManutencaoRequest {
+    @NotBlank
+    private String nome;
+    private String descricao;
 }

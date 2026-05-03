@@ -1,25 +1,21 @@
 package pt.florinhas.api_gateway.dto;
 
-/**
- * DTO imutável (Java record) devolvido após autenticação bem-sucedida.
- *
- * Inclui:
- * - token: credencial (tipicamente JWT) a ser enviada no cabeçalho
- * Authorization.
- * - type: esquema do token no header (por omissão, "Bearer").
- * - id/email/nome/role/nif/telefone: dados públicos do utilizador autenticado.
- * - expiresAt: epoch millis para expiração do token (útil ao frontend para
- * refresh/logout).
- * - active: estado da conta (true se aprovada/ativa).
- */
-public record AuthResponse(
-        Long id,
-        String email,
-        String nome,
-        String role,
-        String nif,
-        String telefone,
-        long expiresAt,
-        boolean active,
-        boolean requiresPasswordSetup) {
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthResponse {
+
+    private Long id;
+    private String email;
+    private String nome;
+    private String role;
+    private String nif;
+    private String telefone;
+    private long expiresAt;
+    private boolean active;
+    private boolean requiresPasswordSetup;
 }

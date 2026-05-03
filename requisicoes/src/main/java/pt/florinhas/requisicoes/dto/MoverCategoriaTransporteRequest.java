@@ -1,17 +1,17 @@
 package pt.florinhas.requisicoes.dto;
 
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import pt.florinhas.requisicoes.domain.TransporteCategoria;
 
-/**
- * DTO para mover todos os veículos de uma categoria para outra.
- * Utilizado quando uma categoria é eliminada - todos os veículos são movidos para ABATIDO_VENDIDO_DESCONTINUADO.
- */
-public record MoverCategoriaTransporteRequest(
-        @NotNull(message = "A categoria de origem é obrigatória.")
-        TransporteCategoria origem,
-        
-        @NotNull(message = "A categoria de destino é obrigatória.")
-        TransporteCategoria destino
-) {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class MoverCategoriaTransporteRequest {
+    @NotNull(message = "A categoria de origem é obrigatória.")
+    private TransporteCategoria origem;
+    @NotNull(message = "A categoria de destino é obrigatória.")
+    private TransporteCategoria destino;
 }
