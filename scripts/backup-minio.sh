@@ -24,7 +24,7 @@ echo "[$(date)] Iniciando backup MinIO..."
 
 # Backup diário
 BACKUP_FILE="$DAILY_DIR/minio_backup_$DATE.tar.gz"
-mc mirror --preserve "$MINIO_ALIAS" "$DAILY_DIR/temp_$DATE"
+mc mirror --preserve "${MINIO_ALIAS}/" "$DAILY_DIR/temp_$DATE/"
 tar -czf "$BACKUP_FILE" -C "$DAILY_DIR" "temp_$DATE"
 rm -rf "$DAILY_DIR/temp_$DATE"
 

@@ -564,7 +564,7 @@ public class UtilizadorService {
         utilizador.setNome("Utilizador Anónimo #" + id);
         utilizador.setEmail("anonimo." + timestamp + "@anonimizado.local");
         utilizador.setTelefone("000000000");
-        utilizador.setNif("999" + String.format("%06d", id % 1000000)); // NIF fictício mas único
+        utilizador.setNif(String.format("%09d", id)); // NIF fictício único baseado no ID
         utilizador.setMorada(null);
         utilizador.setCodigoPostal(null);
         utilizador.setFreguesia(null);
@@ -631,7 +631,7 @@ public class UtilizadorService {
     private Utilizador buscarUtilizadorAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
-        if (auth == null || !auth.isAuthenticated()) {
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
             throw new BadRequestException("Utilizador não autenticado");
         }
         

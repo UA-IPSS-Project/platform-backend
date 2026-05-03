@@ -25,6 +25,7 @@ import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
 import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.service.AuditLogService;
 import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.service.DocumentoService;
 
@@ -46,7 +47,7 @@ public class DocumentoController {
     private final DocumentoService documentoService;
     private final AuthorizationService authorizationService;
     private final MarcacaoRepository marcacaoRepository;
-    private final pt.florinhas.marcacoes.service.AuditLogService auditLogService;
+    private final AuditLogService auditLogService;
 
     /**
      * Upload de um documento para uma marcação.
