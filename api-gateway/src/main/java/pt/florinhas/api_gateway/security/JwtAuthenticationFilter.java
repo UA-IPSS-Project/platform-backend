@@ -89,42 +89,34 @@ public class JwtAuthenticationFilter implements WebFilter {
 
         log.debug("JWT válido para subject={} path={} method={}", subject, path, method);
 
+        // Build mutated request with trusted auth headers for downstream microservices
         ServerWebExchange mutatedExchange = exchange.mutate()
-                .request(builder -> {
-                    builder.headers(httpHeaders -> {
-                        // Remove any incoming spoofed auth headers
-                        httpHeaders.remove("X-Authenticated-User");
-                        httpHeaders.remove("X-Authenticated-User-Id");
-                        httpHeaders.remove("X-Authenticated-Roles");
-                        httpHeaders.remove("X-Gateway-Secret");
+                .request(builder -> builder.headers(headers -> {
+                    headers.remove("X-Authenticated-User");
+                    headers.remove("X-Authenticated-User-Id");
+                    headers.remove("X-Authenticated-Roles");
+                    headers.remove("X-Gateway-Secret");
 
-                        // Set trusted headers based on validated JWT claims
-                        httpHeaders.set("X-Authenticated-User", userDetails.getUsername());
+                    headers.set("X-Authenticated-User", userDetails.getUsername());
+                    headers.set("X-Gateway-Secret", gatewaySharedSecret);
 
-                        Number userId = claims.get("userId", Number.class);
-                        if (userId != null) {
-                            httpHeaders.set("X-Authenticated-User-Id", String.valueOf(userId.longValue()));
-                        } else if (userDetails instanceof Utilizador utilizador && utilizador.getId() != null) {
-                            httpHeaders.set("X-Authenticated-User-Id", String.valueOf(utilizador.getId()));
-                        }
+                    Number userId = claims.get("userId", Number.class);
+                    if (userId != null) {
+                        headers.set("X-Authenticated-User-Id", String.valueOf(userId.longValue()));
+                    } else if (userDetails instanceof Utilizador u && u.getId() != null) {
+                        headers.set("X-Authenticated-User-Id", String.valueOf(u.getId()));
+                    }
 
-                        List<String> roles = authorities.stream()
-                                .map(GrantedAuthority::getAuthority)
-                                .toList();
-                        if (roles != null && !roles.isEmpty()) {
-                            httpHeaders.set("X-Authenticated-Roles", String.join(",", roles));
-                        }
-
-                        // Forward the shared secret so downstream services can verify
-                        // that the request originated from the trusted gateway
-                        if (StringUtils.hasText(gatewaySharedSecret)) {
-                            httpHeaders.set("X-Gateway-Secret", gatewaySharedSecret);
-                        }
-                    });
-                })
+                    List<String> roles = authorities.stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .toList();
+                    if (!roles.isEmpty()) {
+                        headers.set("X-Authenticated-Roles", String.join(",", roles));
+                    }
+                }))
                 .build();
 
-            return chain.filter(mutatedExchange)
+        return chain.filter(mutatedExchange)
                 .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(
                     Mono.just(new SecurityContextImpl(authentication))));
     }
@@ -144,8 +136,8 @@ public class JwtAuthenticationFilter implements WebFilter {
             }
 
     private boolean isPublicPath(String path) {
-        return path.startsWith("/api/auth/login/")
-                || path.startsWith("/api/auth/register/")
+        return path.startsWith("/api/auth/login")
+                || path.startsWith("/api/auth/register")
                 || path.equals("/api/auth/logout")
                 || path.startsWith("/actuator/health");
     }

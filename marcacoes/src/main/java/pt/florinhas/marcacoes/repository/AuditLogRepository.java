@@ -21,8 +21,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
            "(:userId IS NULL OR a.userId = :userId) AND " +
            "(:action IS NULL OR a.action = :action) AND " +
            "(:entityType IS NULL OR a.entityType = :entityType) AND " +
-           "(:startDate IS NULL OR a.timestamp >= :startDate) AND " +
-           "(:endDate IS NULL OR a.timestamp <= :endDate) " +
+           "(CAST(:startDate AS java.time.LocalDateTime) IS NULL OR a.timestamp >= :startDate) AND " +
+           "(CAST(:endDate AS java.time.LocalDateTime) IS NULL OR a.timestamp <= :endDate) " +
            "ORDER BY a.timestamp DESC")
     Page<AuditLog> findWithFilters(
         @Param("userId") Long userId,
