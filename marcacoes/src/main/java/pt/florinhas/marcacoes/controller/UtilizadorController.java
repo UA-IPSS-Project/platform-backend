@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -9,14 +10,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pt.florinhas.marcacoes.service.AuthorizationService;
 
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
+import pt.florinhas.marcacoes.service.AuditLogService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
 import pt.florinhas.common_data.domain.Utilizador;
@@ -52,6 +56,12 @@ public class UtilizadorController {
     @Autowired
     private UtilizadorService utilizadorService;
 
+    @Autowired
+    private AuthorizationService authorizationService;
+
+    @Autowired
+    private AuditLogService auditLogService;
+
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
      * frontend.
@@ -62,6 +72,7 @@ public class UtilizadorController {
     // Buscar utilizador por ID
     @GetMapping("/{id}")
     public ResponseEntity<UtilizadorResponseDTO> obterUtilizadorPorId(@PathVariable Long id) {
+        authorizationService.checkPermission(id, "visualizar este perfil");
         Utilizador utilizador = utilizadorService.obterUtilizadorPorId(id);
         UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
         return ResponseEntity.ok(response);
@@ -78,6 +89,7 @@ public class UtilizadorController {
      */
     // Buscar utilizador por NIF
     @GetMapping("/nif/{nif}")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
                 .orElseThrow(() -> new NotFoundException(
@@ -196,5 +208,49 @@ public class UtilizadorController {
             @Valid @RequestBody RecoverAccountDTO request) {
         utilizadorService.recuperarConta(request);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Solicita eliminação de conta (RGPD Art.º 17 - Direito ao Esquecimento).
+     * Marca flag na BD e notifica secretaria para processar anonimização.
+     */
+    @PostMapping("/me/delete-request")
+    public ResponseEntity<Void> solicitarEliminacaoConta() {
+        utilizadorService.solicitarEliminacaoConta();
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Anonimiza dados de um utilizador (RGPD Art.º 17).
+     * Substitui dados pessoais por valores genéricos mantendo registos históricos.
+     * Apenas secretaria pode executar.
+     */
+    @PostMapping("/{id}/anonimizar")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> anonimizarUtilizador(@PathVariable Long id) {
+        utilizadorService.anonimizarUtilizador(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Anonimiza e desativa um utilizador (RGPD Art.º 17).
+     * O registo é mantido para preservar integridade referencial do histórico.
+     * Apenas secretaria pode executar.
+     */
+    @DeleteMapping("/{id}/anonimizar-eliminar")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> anonimizarEEliminarUtilizador(@PathVariable Long id) {
+        utilizadorService.anonimizarEEliminarUtilizador(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Exporta todos os dados pessoais do utilizador (RGPD Art.º 20 - Direito de Portabilidade).
+     * Retorna JSON com dados de utilizador, documentos, marcações e requisições.
+     */
+    @GetMapping("/me/export")
+    public ResponseEntity<Map<String, Object>> exportarDados() {
+        Map<String, Object> dados = utilizadorService.exportarDadosUtilizador();
+        return ResponseEntity.ok(dados);
     }
 }

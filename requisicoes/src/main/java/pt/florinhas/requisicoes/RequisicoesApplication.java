@@ -6,6 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
+import org.springframework.scheduling.annotation.EnableAsync;
+
 @SpringBootApplication
 @ComponentScan(basePackages = {
 		"pt.florinhas.requisicoes",
@@ -19,6 +21,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 		"pt.florinhas.requisicoes.repository",
 		"pt.florinhas.common_data.repository"
 })
+@EnableAsync
 public class RequisicoesApplication {
 
 	public static void main(String[] args) {

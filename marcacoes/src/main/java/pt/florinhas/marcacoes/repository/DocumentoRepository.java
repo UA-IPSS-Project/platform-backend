@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.common_data.domain.Utente;
 
 /**
  * Repositório Spring Data JPA para a entidade Documento.
@@ -31,6 +32,15 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
      */
     @Query("SELECT d FROM Documento d WHERE d.marcacao = :marcacao ORDER BY d.uploadedEm DESC")
     List<Documento> findByMarcacao(@Param("marcacao") Marcacao marcacao);
+
+    /**
+     * Encontra todos os documentos de um utente específico.
+     * 
+     * @param utente o utente alvo
+     * @return lista de documentos
+     */
+    @Query("SELECT d FROM Documento d WHERE d.marcacao.marcacaoSecretaria.utente = :utente ORDER BY d.uploadedEm DESC")
+    List<Documento> findByUtente(@Param("utente") Utente utente);
 
     /**
      * Encontra todos os documentos de uma marcação pelo ID da marcação.
@@ -94,4 +104,12 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
 
     @Query("SELECT d FROM Documento d WHERE d.marcacao.id = :marcacaoId AND d.marcacao.data >= :desde AND d.marcacao.data <= :ate ORDER BY d.uploadedEm DESC")
     List<Documento> findByMarcacaoIdAndMarcacaoDataBetween(@Param("marcacaoId") Long marcacaoId, @Param("desde") LocalDateTime desde, @Param("ate") LocalDateTime ate);
+
+    /**
+     * Encontra documentos expirados (data de expiração anterior à data fornecida).
+     * 
+     * @param dataLimite data limite para considerar expirado
+     * @return lista de documentos expirados ordenados por data de expiração
+     */
+    List<Documento> findByDataExpiracaoBeforeOrderByDataExpiracaoAsc(LocalDateTime dataLimite);
 }

@@ -25,6 +25,7 @@ import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
 import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.service.AuditLogService;
 import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.service.DocumentoService;
 
@@ -46,6 +47,7 @@ public class DocumentoController {
     private final DocumentoService documentoService;
     private final AuthorizationService authorizationService;
     private final MarcacaoRepository marcacaoRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * Upload de um documento para uma marcação.
@@ -60,14 +62,23 @@ public class DocumentoController {
     @PostMapping("/marcacao/{marcacaoId}/upload")
     public ResponseEntity<DocumentoDTO> uploadDocumento(
             @PathVariable Long marcacaoId,
-            @RequestParam("file") MultipartFile file) throws IOException {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "finalidade", required = false) String finalidade) throws IOException {
         
         log.info("Recebido pedido de upload de documento para marcação {}", marcacaoId);
 
         // Verificar permissões
         verificarPermissaoMarcacao(marcacaoId);
 
-        DocumentoDTO documento = documentoService.uploadDocumento(marcacaoId, file);
+        DocumentoDTO documento = documentoService.uploadDocumento(marcacaoId, file, finalidade);
+        
+        auditLogService.log(
+            "UPLOAD_DOCUMENTO",
+            "DOCUMENTO",
+            documento.id(),
+            String.format("Upload: %s (Marcação: %d, Finalidade: %s)", 
+                documento.nomeOriginal(), marcacaoId, finalidade != null ? finalidade : "N/A")
+        );
         
         return ResponseEntity.ok(documento);
     }
@@ -161,6 +172,13 @@ public class DocumentoController {
         // Verificar permissões para a marcação associada
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
 
+        auditLogService.log(
+            "DOWNLOAD_DOCUMENTO",
+            "DOCUMENTO",
+            id,
+            String.format("Download: %s (Marcação: %d)", documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
+        );
+
         Resource resource = documentoService.carregarFicheiro(id);
 
         return ResponseEntity.ok()
@@ -181,6 +199,13 @@ public class DocumentoController {
 
         DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        auditLogService.log(
+            "PREVIEW_DOCUMENTO",
+            "DOCUMENTO",
+            id,
+            String.format("Preview: %s (Marcação: %d)", documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
+        );
 
         Resource resource = documentoService.carregarFicheiro(id);
 
@@ -222,6 +247,14 @@ public class DocumentoController {
         
         // Verificar permissões para a marcação associada
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        auditLogService.log(
+            "DELETE_DOCUMENTO",
+            "DOCUMENTO",
+            id,
+            String.format("Documento removido: %s (Marcação: %d)", 
+                documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
+        );
 
         documentoService.removerDocumento(id);
         
