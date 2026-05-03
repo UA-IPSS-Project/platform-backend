@@ -229,8 +229,8 @@ public class UtilizadorController {
     }
 
     /**
-     * Anonimiza e elimina completamente um utilizador (RGPD Art.º 17).
-     * Primeiro anonimiza os dados, depois remove o registo.
+     * Anonimiza e desativa um utilizador (RGPD Art.º 17).
+     * O registo é mantido para preservar integridade referencial do histórico.
      * Apenas secretaria pode executar.
      */
     @DeleteMapping("/{id}/anonimizar-eliminar")

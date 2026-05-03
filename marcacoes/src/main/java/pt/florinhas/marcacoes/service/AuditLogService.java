@@ -39,15 +39,20 @@ public class AuditLogService {
             String userName = "Sistema";
             
             if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
-                String email = auth.getName();
-                try {
-                    Utilizador user = utilizadorRepository.findByEmail(email).stream().findFirst().orElse(null);
-                    if (user != null) {
-                        userId = user.getId();
-                        userName = user.getNome();
+                if (auth.getPrincipal() instanceof Utilizador user) {
+                    userId = user.getId();
+                    userName = user.getNome();
+                } else {
+                    String email = auth.getName();
+                    try {
+                        Utilizador user = utilizadorRepository.findByEmail(email).stream().findFirst().orElse(null);
+                        if (user != null) {
+                            userId = user.getId();
+                            userName = user.getNome();
+                        }
+                    } catch (Exception e) {
+                        log.warn("Erro ao obter utilizador para auditoria: {}", e.getMessage());
                     }
-                } catch (Exception e) {
-                    log.warn("Erro ao obter utilizador para auditoria: {}", e.getMessage());
                 }
             }
 

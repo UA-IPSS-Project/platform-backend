@@ -601,30 +601,28 @@ public class UtilizadorService {
     }
 
     /**
-     * Anonimiza e elimina completamente um utilizador (RGPD Art.º 17).
-     * Primeiro anonimiza os dados, depois remove o registo da base de dados.
+     * Anonimiza um utilizador e desativa a conta (RGPD Art.º 17).
+     * O registo é mantido para preservar integridade referencial do histórico
+     * (Marcacao, BloqueioAgenda, etc.). Os dados pessoais são substituídos por
+     * valores genéricos e a conta é desativada permanentemente.
      */
     @Transactional
     public void anonimizarEEliminarUtilizador(Long id) {
         Utilizador utilizador = obterUtilizadorPorId(id);
         String nifOriginal = utilizador.getNif();
         String nomeOriginal = utilizador.getNome();
-        
-        // Primeiro anonimizar
+
         anonimizarUtilizador(id);
-        
-        // Depois eliminar
-        utilizadorRepository.deleteById(id);
-        
+
         auditLogService.log(
             "ELIMINAR_UTILIZADOR",
             "UTILIZADOR",
             id,
-            String.format("Utilizador eliminado após anonimização (Nome: %s, NIF: %s) - RGPD Art.º 17", 
+            String.format("Utilizador anonimizado e desativado (Nome: %s, NIF: %s) - RGPD Art.º 17",
                 nomeOriginal, nifOriginal)
         );
-        
-        log.info("Utilizador ID {} (NIF original: {}) foi anonimizado e eliminado", id, nifOriginal);
+
+        log.info("Utilizador ID {} (NIF original: {}) foi anonimizado e desativado", id, nifOriginal);
     }
 
     /**
@@ -677,9 +675,11 @@ public class UtilizadorService {
         
         // Documentos
         try {
-            // Se for utente, buscar documentos das suas marcações
             if (utilizador instanceof Utente) {
-                dados.put("documentos", documentoRepository.findByUtente((Utente) utilizador));
+                dados.put("documentos", documentoRepository.findByUtente((Utente) utilizador)
+                        .stream()
+                        .map(pt.florinhas.marcacoes.dto.DocumentoDTO::fromDocumento)
+                        .collect(Collectors.toList()));
             } else {
                 dados.put("documentos", new ArrayList<>());
             }
@@ -687,11 +687,25 @@ public class UtilizadorService {
             log.error("Erro ao exportar documentos: {}", e.getMessage());
             dados.put("documentos", new ArrayList<>());
         }
-        
+
         // Marcações
         try {
             if (utilizador instanceof Utente) {
-                dados.put("marcacoes", marcacaoRepository.findByUtente((Utente) utilizador));
+                dados.put("marcacoes", marcacaoRepository.findByUtente((Utente) utilizador)
+                        .stream()
+                        .map(m -> {
+                            Map<String, Object> entry = new HashMap<>();
+                            entry.put("id", m.getId());
+                            entry.put("data", m.getData());
+                            entry.put("estado", m.getEstado());
+                            entry.put("motivoCancelamento", m.getMotivoCancelamento());
+                            if (m.getMarcacaoSecretaria() != null) {
+                                entry.put("assunto", m.getMarcacaoSecretaria().getAssunto());
+                                entry.put("descricao", m.getMarcacaoSecretaria().getDescricao());
+                            }
+                            return entry;
+                        })
+                        .collect(Collectors.toList()));
             } else {
                 dados.put("marcacoes", new ArrayList<>());
             }

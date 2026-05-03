@@ -1,6 +1,3 @@
-# Ignorar todos os backups
-backups/
-*.sql
-*.sql.gz
-*.tar.gz
-*.backup
+# Ignorar todos os ficheiros gerados
+*
+!.gitignore

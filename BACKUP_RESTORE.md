@@ -96,10 +96,10 @@ docker-compose start minio
 sleep 5
 
 # Configurar alias
-docker exec minio-backup mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+docker exec minio_backup mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
 
 # Restaurar buckets
-docker exec minio-backup mc mirror --overwrite /tmp/temp_20260502_030000/ local/
+docker exec minio_backup mc mirror --overwrite /tmp/temp_20260502_030000/ local/
 ```
 
 ### 4. Reiniciar serviços
@@ -126,8 +126,8 @@ docker-compose up -d minio
 sleep 5
 MINIO_BACKUP="backups/minio/daily/minio_backup_20260502_030000.tar.gz"
 tar -xzf $MINIO_BACKUP -C /tmp/
-docker exec minio-backup mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
-docker exec minio-backup mc mirror --overwrite /tmp/temp_20260502_030000/ local/
+docker exec minio_backup mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+docker exec minio_backup mc mirror --overwrite /tmp/temp_20260502_030000/ local/
 
 # 4. Iniciar todos os serviços
 docker-compose up -d
@@ -156,9 +156,9 @@ docker logs minio_backup
 ## Monitorização
 
 ### Healthcheck PostgreSQL Backup
-O serviço `postgres-backup` expõe um healthcheck na porta 8080:
+O serviço `postgres-backup` expõe um healthcheck interno na porta 8080 (não publicada no host):
 ```bash
-curl http://localhost:8080/health
+docker exec postgres_backup curl -s http://localhost:8080/health
 ```
 
 ### Logs de Backup MinIO
