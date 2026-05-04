@@ -1,210 +1,100 @@
 package pt.florinhas.marcacoes.service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import lombok.extern.slf4j.Slf4j;
-import pt.florinhas.common_data.domain.Funcionario;
-import pt.florinhas.common_data.domain.FuncionarioTipo;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import pt.florinhas.common_data.domain.Utilizador;
-import pt.florinhas.common_data.exception.BadRequestException;
-import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.dto.TermsStatusDTO;
+import pt.florinhas.marcacoes.event.TermsPublishedEvent;
 import pt.florinhas.marcacoes.service.email.EmailService;
 
-/**
- * Serviço de versionamento dos Termos de Uso.
- *
- * A versão atual é gerida via system_config (chave "terms.current.version").
- * Quando a versão é incrementada, todos os utilizadores com versão inferior
- * são notificados por email e forçados a re-aceitar no próximo login.
- */
+import java.util.List;
+
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class TermsService {
 
-    /** Chave na tabela system_config para a versão atual dos termos. */
-    static final String CONFIG_KEY = "terms.current.version";
-    static final int DEFAULT_VERSION = 1;
+    private static final String KEY_TERMS_VERSION = "terms.current.version";
+    private static final String KEY_TERMS_PT = "terms.content.pt";
+    private static final String KEY_TERMS_EN = "terms.content.en";
 
-    @Autowired
-    private SystemConfigService systemConfigService;
-
-    @Autowired
-    private UtilizadorRepository utilizadorRepository;
-
-    @Autowired
-    private FuncionarioRepository funcionarioRepository;
-
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private AuditLogService auditLogService;
-
-    // -------------------------------------------------------
-    // Consulta de estado
-    // -------------------------------------------------------
+    private final SystemConfigService systemConfigService;
+    private final UtilizadorRepository utilizadorRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final EmailService emailService;
+    private final AuditLogService auditLogService;
 
     public int getCurrentVersion() {
-        return systemConfigService.getConfigValueAsInt(CONFIG_KEY, DEFAULT_VERSION);
+        return systemConfigService.getConfigValueAsInt(KEY_TERMS_VERSION, 1);
     }
 
     public boolean needsAcceptance(Utilizador user) {
         return user.getTermsVersion() == null || user.getTermsVersion() < getCurrentVersion();
     }
 
-    public TermsStatusDTO getStatus(Utilizador user) {
-        int current = getCurrentVersion();
-        return new TermsStatusDTO(current, user.getTermsVersion(), needsAcceptance(user));
-    }
-
-    // -------------------------------------------------------
-    // Aceitação pelo utilizador
-    // -------------------------------------------------------
-
     @Transactional
-    public void acceptTerms(Utilizador user, int version) {
-        int current = getCurrentVersion();
-        if (version != current) {
-            throw new BadRequestException("Versão dos termos inválida. Versão atual: " + current);
-        }
-        user.setTermsVersion(version);
-        user.setTermsAcceptedAt(LocalDateTime.now());
+    public void acceptTerms(Utilizador user) {
+        user.setTermsVersion(getCurrentVersion());
         utilizadorRepository.save(user);
-
-        auditLogService.log(
-            "ACEITAR_TERMOS",
-            "UTILIZADOR",
-            user.getId(),
-            "Termos aceites — versão " + version
-        );
-        log.info("Utilizador ID {} aceitou os termos versão {}", user.getId(), version);
     }
-
-    // -------------------------------------------------------
-    // Atualização da versão (admin/secretaria)
-    // -------------------------------------------------------
-
-    @Transactional
-    public void updateTermsVersion(int newVersion, String changeDescription) {
-        int current = getCurrentVersion();
-        if (newVersion <= current) {
-            throw new BadRequestException(
-                "Nova versão (" + newVersion + ") deve ser superior à atual (" + current + ")");
-        }
-
-        systemConfigService.setConfigValue(
-            CONFIG_KEY,
-            String.valueOf(newVersion),
-            "Versão atual dos Termos de Uso"
-        );
-
-        auditLogService.log(
-            "ATUALIZAR_TERMOS",
-            "SYSTEM_CONFIG",
-            null,
-            String.format("Versão dos Termos de Uso atualizada: %d → %d. Alterações: %s",
-                current, newVersion,
-                changeDescription != null ? changeDescription : "sem descrição")
-        );
-
-        log.info("Versão dos termos atualizada: {} → {}", current, newVersion);
-
-        // Notificar todos os utilizadores com versão desatualizada
-        notifyOutdatedUsers(newVersion, changeDescription);
-    }
-
-    private void notifyOutdatedUsers(int newVersion, String changeDescription) {
-        List<Utilizador> outdated = utilizadorRepository.findAll().stream()
-            .filter(u -> u.getEmail() != null && !u.getEmail().contains("@anonimizado.local"))
-            .filter(u -> u.getTermsVersion() == null || u.getTermsVersion() < newVersion)
-            .toList();
-
-        log.info("Notificando {} utilizadores sobre atualização dos termos v{}", outdated.size(), newVersion);
-
-        String subject = "Atualização dos Termos de Uso — Florinhas do Vouga";
-        for (Utilizador u : outdated) {
-            try {
-                String body = buildNotificationEmail(u.getNome(), newVersion, changeDescription);
-                emailService.sendGenericEmail(u.getEmail(), subject, body);
-            } catch (Exception e) {
-                log.error("Erro ao notificar utilizador ID {} sobre termos v{}: {}", u.getId(), newVersion, e.getMessage());
-            }
-        }
-    }
-
-    private String buildNotificationEmail(String nome, int version, String changeDescription) {
-        return String.format(
-            "Olá %s,%n%n" +
-            "Os Termos de Uso da plataforma Florinhas do Vouga foram atualizados para a versão %d.%n%n" +
-            "%s%n%n" +
-            "Na próxima vez que aceder à plataforma, ser-lhe-á pedido que reveja e aceite os novos termos.%n%n" +
-            "Atenciosamente,%n" +
-            "Equipa Florinhas do Vouga",
-            nome, version,
-            changeDescription != null && !changeDescription.isBlank()
-                ? "Principais alterações:\n" + changeDescription
-                : "Por favor, reveja os termos atualizados."
-        );
-    }
-
-    // -------------------------------------------------------
-    // Gestão de Conteúdo (PT/EN)
-    // -------------------------------------------------------
 
     public String getTermsContent(String lang) {
-        String key = "system.terms.content." + (lang.equalsIgnoreCase("en") ? "en" : "pt");
+        String key = "en".equalsIgnoreCase(lang) ? KEY_TERMS_EN : KEY_TERMS_PT;
         return systemConfigService.getConfigValue(key, "");
     }
 
+    /**
+     * Publica uma nova versão dos termos de forma atómica:
+     * 1. Incrementa a versão e guarda o conteúdo PT/EN na mesma transação.
+     * 2. Publica TermsPublishedEvent — o email só é enviado AFTER_COMMIT,
+     *    garantindo que não há emails enviados em caso de rollback.
+     */
     @Transactional
-    public void updateTermsContent(String lang, String content) {
-        String key = "system.terms.content." + (lang.equalsIgnoreCase("en") ? "en" : "pt");
-        String desc = "Conteúdo dos Termos de Uso (" + lang.toUpperCase() + ")";
-        systemConfigService.setConfigValue(key, content, desc);
+    public int publishTerms(String contentPt, String contentEn, String changeDescription, Long publishedBy) {
+        int newVersion = getCurrentVersion() + 1;
 
-        auditLogService.log(
-            "ATUALIZAR_CONTEUDO_TERMOS",
-            "SYSTEM_CONFIG",
-            null,
-            "Conteúdo dos Termos de Uso atualizado para idioma: " + lang.toUpperCase()
-        );
+        systemConfigService.setConfigValue(KEY_TERMS_VERSION, String.valueOf(newVersion), "Versão atual dos termos");
+        systemConfigService.setConfigValue(KEY_TERMS_PT, contentPt, "Conteúdo dos termos em PT");
+        systemConfigService.setConfigValue(KEY_TERMS_EN, contentEn, "Conteúdo dos termos em EN");
+
+        auditLogService.log("PUBLICAR_TERMOS", "SYSTEM_CONFIG", null,
+                String.format("Termos v%d publicados por utilizador %d: %s", newVersion, publishedBy, changeDescription));
+
+        // Evento disparado após commit — email enviado fora da transação
+        eventPublisher.publishEvent(new TermsPublishedEvent(newVersion, changeDescription));
+
+        return newVersion;
     }
 
     /**
-     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
-     * Notifica todos os utilizadores por email.
+     * Listener executado AFTER_COMMIT: a transação já foi confirmada,
+     * por isso um rollback não pode desfazer emails já enviados.
      */
-    @Transactional
-    public int publishTerms(String contentPt, String contentEn, String changeDescription) {
-        int current = getCurrentVersion();
-        int newVersion = current + 1;
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void notifyOutdatedUsers(TermsPublishedEvent event) {
+        // Query na BD — só carrega utilizadores desatualizados, não toda a tabela
+        List<Utilizador> outdated = utilizadorRepository.findOutdatedTermsUsers(event.newVersion());
 
-        // Guardar conteúdo
-        systemConfigService.setConfigValue("system.terms.content.pt", contentPt, "Conteúdo dos Termos de Uso (PT)");
-        systemConfigService.setConfigValue("system.terms.content.en", contentEn, "Conteúdo dos Termos de Uso (EN)");
+        log.info("Notificando {} utilizadores sobre atualização dos termos v{}", outdated.size(), event.newVersion());
 
-        // Incrementar versão
-        systemConfigService.setConfigValue(CONFIG_KEY, String.valueOf(newVersion), "Versão atual dos Termos de Uso");
-
-        auditLogService.log(
-            "PUBLICAR_TERMOS",
-            "SYSTEM_CONFIG",
-            null,
-            String.format("Termos publicados: v%d → v%d. Alterações: %s",
-                current, newVersion,
-                changeDescription != null ? changeDescription : "sem descrição")
-        );
-
-        log.info("Termos publicados: v{} → v{}", current, newVersion);
-        notifyOutdatedUsers(newVersion, changeDescription);
-        return newVersion;
+        for (Utilizador user : outdated) {
+            try {
+                emailService.sendGenericEmail(
+                        user.getEmail(),
+                        "Atualização dos Termos de Uso — Florinhas do Vouga",
+                        String.format(
+                                "Olá %s,%n%nOs nossos Termos de Uso foram atualizados (versão %d).%n%s%n%n" +
+                                "Na próxima vez que aceder à plataforma ser-lhe-á pedido que aceite os novos termos.",
+                                user.getNome(), event.newVersion(), event.changeDescription()));
+            } catch (Exception e) {
+                log.error("Erro ao notificar utilizador ID {} sobre termos v{}: {}",
+                        user.getId(), event.newVersion(), e.getMessage());
+            }
+        }
     }
 }
