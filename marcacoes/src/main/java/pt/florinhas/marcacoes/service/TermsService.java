@@ -154,4 +154,27 @@ public class TermsService {
                 : "Por favor, reveja os termos atualizados."
         );
     }
+
+    // -------------------------------------------------------
+    // Gestão de Conteúdo (PT/EN)
+    // -------------------------------------------------------
+
+    public String getTermsContent(String lang) {
+        String key = "system.terms.content." + (lang.equalsIgnoreCase("en") ? "en" : "pt");
+        return systemConfigService.getConfigValue(key, "");
+    }
+
+    @Transactional
+    public void updateTermsContent(String lang, String content) {
+        String key = "system.terms.content." + (lang.equalsIgnoreCase("en") ? "en" : "pt");
+        String desc = "Conteúdo dos Termos de Uso (" + lang.toUpperCase() + ")";
+        systemConfigService.setConfigValue(key, content, desc);
+
+        auditLogService.log(
+            "ATUALIZAR_CONTEUDO_TERMOS",
+            "SYSTEM_CONFIG",
+            null,
+            "Conteúdo dos Termos de Uso atualizado para idioma: " + lang.toUpperCase()
+        );
+    }
 }

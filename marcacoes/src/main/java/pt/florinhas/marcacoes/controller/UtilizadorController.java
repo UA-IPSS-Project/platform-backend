@@ -295,4 +295,36 @@ public class UtilizadorController {
         termsService.updateTermsVersion(newVersion, changeDescription);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * Obtém o conteúdo dos termos para um idioma específico (Público/Autenticado).
+     */
+    @GetMapping("/terms-content")
+    public ResponseEntity<Map<String, String>> obterConteudoTermosPublico(@RequestParam String lang) {
+        String content = termsService.getTermsContent(lang);
+        return ResponseEntity.ok(Map.of("content", content));
+    }
+
+    /**
+     * Obtém o conteúdo dos termos para um idioma específico (Secretaria).
+     */
+    @GetMapping("/admin/terms-content")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Map<String, String>> obterConteudoTermos(@RequestParam String lang) {
+        String content = termsService.getTermsContent(lang);
+        return ResponseEntity.ok(Map.of("content", content));
+    }
+
+    /**
+     * Atualiza o conteúdo dos termos para um idioma específico.
+     */
+    @PutMapping("/admin/terms-content")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> atualizarConteudoTermos(
+            @RequestParam String lang,
+            @RequestBody Map<String, String> body) {
+        String content = body.get("content");
+        termsService.updateTermsContent(lang, content);
+        return ResponseEntity.ok().build();
+    }
 }
