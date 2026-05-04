@@ -54,7 +54,8 @@ public class SecurityConfig {
                         return exchange.getResponse().setComplete();
                     }))
                 .authorizeExchange(auth -> auth
-                    .pathMatchers("/api/auth/login/**", "/api/auth/register/**", "/api/auth/logout", "/actuator/health")
+                    .pathMatchers("/api/auth/login/**", "/api/auth/register/**", "/api/auth/logout", "/actuator/health",
+                                  "/api/utilizadores/terms-content")
                     .permitAll()
                     .anyExchange()
                     .authenticated())

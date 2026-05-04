@@ -310,7 +310,7 @@ public class UtilizadorController {
     }
 
     /**
-     * Obtém o conteúdo dos termos para um idioma específico (Público/Autenticado).
+     * Obtém o conteúdo dos termos para um idioma específico (Público — sem autenticação).
      */
     @GetMapping("/terms-content")
     public ResponseEntity<Map<String, String>> obterConteudoTermosPublico(@RequestParam String lang) {
