@@ -629,7 +629,7 @@ public class UtilizadorService {
     /**
      * Obtém o utilizador autenticado do contexto de segurança.
      */
-    public Utilizador buscarUtilizadorAutenticado() {
+    private Utilizador buscarUtilizadorAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
