@@ -13,14 +13,17 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 import pt.florinhas.marcacoes.service.AuthorizationService;
 
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
+import pt.florinhas.marcacoes.dto.TermsStatusDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.service.AuditLogService;
+import pt.florinhas.marcacoes.service.TermsService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
 import pt.florinhas.common_data.domain.Utilizador;
@@ -61,6 +64,9 @@ public class UtilizadorController {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private TermsService termsService;
 
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
@@ -252,5 +258,41 @@ public class UtilizadorController {
     public ResponseEntity<Map<String, Object>> exportarDados() {
         Map<String, Object> dados = utilizadorService.exportarDadosUtilizador();
         return ResponseEntity.ok(dados);
+    }
+
+    // =========================================================
+    // TERMOS DE USO — VERSIONAMENTO (RGPD)
+    // =========================================================
+
+    /**
+     * Verifica se o utilizador autenticado precisa de re-aceitar os termos.
+     */
+    @GetMapping("/me/terms-status")
+    public ResponseEntity<TermsStatusDTO> verificarTermos() {
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        return ResponseEntity.ok(termsService.getStatus(user));
+    }
+
+    /**
+     * Regista a aceitação dos termos pelo utilizador autenticado.
+     */
+    @PostMapping("/me/accept-terms")
+    public ResponseEntity<Void> aceitarTermos(@RequestParam int version) {
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        termsService.acceptTerms(user, version);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Atualiza a versão dos termos e notifica todos os utilizadores por email.
+     * Apenas secretaria.
+     */
+    @PostMapping("/admin/terms-version")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> atualizarVersaoTermos(
+            @RequestParam int newVersion,
+            @RequestParam(required = false) String changeDescription) {
+        termsService.updateTermsVersion(newVersion, changeDescription);
+        return ResponseEntity.ok().build();
     }
 }

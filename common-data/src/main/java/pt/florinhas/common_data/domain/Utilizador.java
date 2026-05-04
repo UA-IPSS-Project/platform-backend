@@ -104,6 +104,13 @@ public class Utilizador implements UserDetails {
     private LocalDateTime termsAcceptedAt;
 
     /**
+     * Versão dos termos aceite pelo utilizador.
+     * NULL ou inferior à versão atual = re-aceitação obrigatória.
+     */
+    @Column(name = "terms_version")
+    private Integer termsVersion;
+
+    /**
      * Timestamp de criação da conta.
      * Preenchido automaticamente na primeira persistência.
      */

@@ -629,7 +629,7 @@ public class UtilizadorService {
     /**
      * Obtém o utilizador autenticado do contexto de segurança.
      */
-    private Utilizador buscarUtilizadorAutenticado() {
+    public Utilizador buscarUtilizadorAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
@@ -638,6 +638,11 @@ public class UtilizadorService {
         
         String email = auth.getName();
         return buscarPorEmail(email);
+    }
+
+    /** Alias público para uso no controller. */
+    public Utilizador getUtilizadorAutenticado() {
+        return buscarUtilizadorAutenticado();
     }
 
     /*
