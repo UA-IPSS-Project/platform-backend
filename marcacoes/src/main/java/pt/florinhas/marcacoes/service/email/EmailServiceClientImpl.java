@@ -90,7 +90,16 @@ public class EmailServiceClientImpl implements EmailService {
 
     @Override
     public void sendGenericEmail(String to, String subject, String body) {
-        log.warn("sendGenericEmail via HTTP client not fully implemented yet");
+        try {
+            String url = notificacoesUrl + "/api/internal/notificacoes/email/generic";
+            Map<String, Object> req = new HashMap<>();
+            req.put("to", to);
+            req.put("subject", subject);
+            req.put("body", body);
+            postWithSecret(url, req);
+        } catch (Exception e) {
+            log.error("Erro ao solicitar envio de email genérico via notificacoes para {}", to, e);
+        }
     }
 
     @Override

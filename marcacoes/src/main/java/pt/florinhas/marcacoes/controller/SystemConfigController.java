@@ -11,7 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/config")
-@PreAuthorize("hasRole('SECRETARIA')")
+@PreAuthorize("hasRole('DPO')")
 @RequiredArgsConstructor
 public class SystemConfigController {
 

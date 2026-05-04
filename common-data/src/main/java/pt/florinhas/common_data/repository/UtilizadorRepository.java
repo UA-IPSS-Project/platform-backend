@@ -42,4 +42,13 @@ public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
 
     // Verificar se telefone existe
     boolean existsByTelefone(String telefone);
+
+    // Buscar utilizadores com termos desatualizados (query feita na BD, não em memória)
+    @Query("""
+        select u from Utilizador u
+        where u.email is not null
+        and u.email not like '%@anonimizado.local'
+        and (u.termsVersion is null or u.termsVersion < :newVersion)
+        """)
+    List<Utilizador> findOutdatedTermsUsers(@Param("newVersion") int newVersion);
 }

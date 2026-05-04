@@ -34,7 +34,7 @@ public class AuditLogController {
     private static final int MAX_PAGE_SIZE = 200;
 
     @GetMapping("/logs")
-    @PreAuthorize("hasRole('SECRETARIA')")
+    @PreAuthorize("hasRole('DPO')")
     public ResponseEntity<?> getLogs(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String action,

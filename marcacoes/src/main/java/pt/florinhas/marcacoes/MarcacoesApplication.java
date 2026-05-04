@@ -109,6 +109,14 @@ public class MarcacoesApplication {
 				    "999999996",
 				    "esc123",
 				    FuncionarioTipo.ESCOLA));
+
+			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
+				    "999999995",
+				    "Encarregado Proteção Dados",
+				    "dpo@florinhasdovouga.pt",
+				    "999999995",
+				    "dpo123",
+				    FuncionarioTipo.DPO));
 		};
 	}
 

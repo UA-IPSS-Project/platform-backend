@@ -13,14 +13,17 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 import pt.florinhas.marcacoes.service.AuthorizationService;
 
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
+import pt.florinhas.marcacoes.dto.TermsStatusDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.service.AuditLogService;
+import pt.florinhas.marcacoes.service.TermsService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
 import pt.florinhas.common_data.domain.Utilizador;
@@ -61,6 +64,9 @@ public class UtilizadorController {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private TermsService termsService;
 
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
@@ -252,5 +258,94 @@ public class UtilizadorController {
     public ResponseEntity<Map<String, Object>> exportarDados() {
         Map<String, Object> dados = utilizadorService.exportarDadosUtilizador();
         return ResponseEntity.ok(dados);
+    }
+
+    // =========================================================
+    // TERMOS DE USO — VERSIONAMENTO (RGPD)
+    // =========================================================
+
+    /**
+     * Verifica se o utilizador autenticado precisa de re-aceitar os termos.
+     */
+    @GetMapping("/me/terms-status")
+    public ResponseEntity<TermsStatusDTO> verificarTermos() {
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        return ResponseEntity.ok(termsService.getStatus(user));
+    }
+
+    /**
+     * Regista a aceitação dos termos pelo utilizador autenticado.
+     */
+    @PostMapping("/me/accept-terms")
+    public ResponseEntity<Void> aceitarTermos(@RequestParam int version) {
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        termsService.acceptTerms(user, version);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
+     */
+    @PostMapping("/admin/terms-publish")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Map<String, Object>> publicarTermos(@RequestBody Map<String, String> body) {
+        String contentPt = body.getOrDefault("contentPt", "");
+        String contentEn = body.getOrDefault("contentEn", "");
+        String changeDescription = body.get("changeDescription");
+        int newVersion = termsService.publishTerms(contentPt, contentEn, changeDescription);
+        return ResponseEntity.ok(Map.of("version", newVersion));
+    }
+
+    /**
+     * Atualiza a versão dos termos e notifica todos os utilizadores por email.
+     * Apenas DPO (Responsável pela Proteção de Dados).
+     */
+    @PostMapping("/admin/terms-version")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Void> atualizarVersaoTermos(
+            @RequestParam int newVersion,
+            @RequestParam(required = false) String changeDescription) {
+        termsService.updateTermsVersion(newVersion, changeDescription);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Obtém o conteúdo dos termos para um idioma específico (Público — sem autenticação).
+     */
+    @GetMapping("/terms-content")
+    public ResponseEntity<Map<String, String>> obterConteudoTermosPublico(@RequestParam String lang) {
+        String content = termsService.getTermsContent(lang);
+        return ResponseEntity.ok(Map.of("content", content));
+    }
+
+    /**
+     * Obtém o conteúdo dos termos para um idioma específico (DPO).
+     */
+    @GetMapping("/admin/terms-content")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Map<String, String>> obterConteudoTermos(@RequestParam String lang) {
+        String content = termsService.getTermsContent(lang);
+        return ResponseEntity.ok(Map.of("content", content));
+    }
+
+    /**
+     * Atualiza o conteúdo dos termos para um idioma específico.
+     */
+    @PutMapping("/admin/terms-content")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Void> atualizarConteudoTermos(
+            @RequestParam String lang,
+            @RequestBody Map<String, String> body) {
+        if (body == null || !body.containsKey("content")) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String content = body.get("content");
+        if (content == null || content.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        termsService.updateTermsContent(lang, content);
+        return ResponseEntity.ok().build();
     }
 }

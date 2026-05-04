@@ -640,6 +640,11 @@ public class UtilizadorService {
         return buscarPorEmail(email);
     }
 
+    /** Alias público para uso no controller. */
+    public Utilizador getUtilizadorAutenticado() {
+        return buscarUtilizadorAutenticado();
+    }
+
     /*
      * =========================================================
      * DIREITO DE PORTABILIDADE (RGPD Art.º 20)
