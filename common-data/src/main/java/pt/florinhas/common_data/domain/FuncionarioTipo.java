@@ -9,5 +9,7 @@ package pt.florinhas.common_data.domain;
  * - validar regras específicas por tipo (ex.: acesso a certas valências).
  */
 public enum FuncionarioTipo {
-    SECRETARIA, BALNEARIO, OUTRO, ESCOLA, INTERNO
+    SECRETARIA, BALNEARIO, OUTRO, ESCOLA, INTERNO,
+    /** Responsável pela Proteção de Dados — acesso exclusivo a termos, retenção e auditoria. */
+    DPO
 }

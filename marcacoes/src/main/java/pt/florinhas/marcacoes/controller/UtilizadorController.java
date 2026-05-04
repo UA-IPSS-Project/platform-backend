@@ -287,7 +287,7 @@ public class UtilizadorController {
      * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
      */
     @PostMapping("/admin/terms-publish")
-    @PreAuthorize("hasRole('SECRETARIA')")
+    @PreAuthorize("hasRole('DPO')")
     public ResponseEntity<Map<String, Object>> publicarTermos(@RequestBody Map<String, String> body) {
         String contentPt = body.getOrDefault("contentPt", "");
         String contentEn = body.getOrDefault("contentEn", "");
@@ -298,10 +298,10 @@ public class UtilizadorController {
 
     /**
      * Atualiza a versão dos termos e notifica todos os utilizadores por email.
-     * Apenas secretaria.
+     * Apenas DPO (Responsável pela Proteção de Dados).
      */
     @PostMapping("/admin/terms-version")
-    @PreAuthorize("hasRole('SECRETARIA')")
+    @PreAuthorize("hasRole('DPO')")
     public ResponseEntity<Void> atualizarVersaoTermos(
             @RequestParam int newVersion,
             @RequestParam(required = false) String changeDescription) {
@@ -319,10 +319,10 @@ public class UtilizadorController {
     }
 
     /**
-     * Obtém o conteúdo dos termos para um idioma específico (Secretaria).
+     * Obtém o conteúdo dos termos para um idioma específico (DPO).
      */
     @GetMapping("/admin/terms-content")
-    @PreAuthorize("hasRole('SECRETARIA')")
+    @PreAuthorize("hasRole('DPO')")
     public ResponseEntity<Map<String, String>> obterConteudoTermos(@RequestParam String lang) {
         String content = termsService.getTermsContent(lang);
         return ResponseEntity.ok(Map.of("content", content));
@@ -332,7 +332,7 @@ public class UtilizadorController {
      * Atualiza o conteúdo dos termos para um idioma específico.
      */
     @PutMapping("/admin/terms-content")
-    @PreAuthorize("hasRole('SECRETARIA')")
+    @PreAuthorize("hasRole('DPO')")
     public ResponseEntity<Void> atualizarConteudoTermos(
             @RequestParam String lang,
             @RequestBody Map<String, String> body) {
