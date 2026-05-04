@@ -177,4 +177,34 @@ public class TermsService {
             "Conteúdo dos Termos de Uso atualizado para idioma: " + lang.toUpperCase()
         );
     }
+
+    /**
+     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
+     * Notifica todos os utilizadores por email.
+     */
+    @Transactional
+    public int publishTerms(String contentPt, String contentEn, String changeDescription) {
+        int current = getCurrentVersion();
+        int newVersion = current + 1;
+
+        // Guardar conteúdo
+        systemConfigService.setConfigValue("system.terms.content.pt", contentPt, "Conteúdo dos Termos de Uso (PT)");
+        systemConfigService.setConfigValue("system.terms.content.en", contentEn, "Conteúdo dos Termos de Uso (EN)");
+
+        // Incrementar versão
+        systemConfigService.setConfigValue(CONFIG_KEY, String.valueOf(newVersion), "Versão atual dos Termos de Uso");
+
+        auditLogService.log(
+            "PUBLICAR_TERMOS",
+            "SYSTEM_CONFIG",
+            null,
+            String.format("Termos publicados: v%d → v%d. Alterações: %s",
+                current, newVersion,
+                changeDescription != null ? changeDescription : "sem descrição")
+        );
+
+        log.info("Termos publicados: v{} → v{}", current, newVersion);
+        notifyOutdatedUsers(newVersion, changeDescription);
+        return newVersion;
+    }
 }

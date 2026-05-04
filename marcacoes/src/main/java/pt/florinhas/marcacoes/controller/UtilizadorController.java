@@ -284,6 +284,19 @@ public class UtilizadorController {
     }
 
     /**
+     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
+     */
+    @PostMapping("/admin/terms-publish")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Map<String, Object>> publicarTermos(@RequestBody Map<String, String> body) {
+        String contentPt = body.getOrDefault("contentPt", "");
+        String contentEn = body.getOrDefault("contentEn", "");
+        String changeDescription = body.get("changeDescription");
+        int newVersion = termsService.publishTerms(contentPt, contentEn, changeDescription);
+        return ResponseEntity.ok(Map.of("version", newVersion));
+    }
+
+    /**
      * Atualiza a versão dos termos e notifica todos os utilizadores por email.
      * Apenas secretaria.
      */
