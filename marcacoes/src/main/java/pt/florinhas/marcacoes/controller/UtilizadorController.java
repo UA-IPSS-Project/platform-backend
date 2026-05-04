@@ -336,7 +336,15 @@ public class UtilizadorController {
     public ResponseEntity<Void> atualizarConteudoTermos(
             @RequestParam String lang,
             @RequestBody Map<String, String> body) {
+        if (body == null || !body.containsKey("content")) {
+            return ResponseEntity.badRequest().build();
+        }
+
         String content = body.get("content");
+        if (content == null || content.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
         termsService.updateTermsContent(lang, content);
         return ResponseEntity.ok().build();
     }
