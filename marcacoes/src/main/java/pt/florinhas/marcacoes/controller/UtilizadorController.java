@@ -292,7 +292,8 @@ public class UtilizadorController {
         String contentPt = body.getOrDefault("contentPt", "");
         String contentEn = body.getOrDefault("contentEn", "");
         String changeDescription = body.get("changeDescription");
-        int newVersion = termsService.publishTerms(contentPt, contentEn, changeDescription);
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        int newVersion = termsService.publishTerms(contentPt, contentEn, changeDescription, user.getId());
         return ResponseEntity.ok(Map.of("version", newVersion));
     }
 

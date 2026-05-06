@@ -10,6 +10,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.event.TermsPublishedEvent;
+import pt.florinhas.marcacoes.dto.TermsStatusDTO;
 import pt.florinhas.marcacoes.service.email.EmailService;
 
 import java.util.List;
@@ -37,10 +38,45 @@ public class TermsService {
         return user.getTermsVersion() == null || user.getTermsVersion() < getCurrentVersion();
     }
 
+    public TermsStatusDTO getStatus(Utilizador user) {
+        return new TermsStatusDTO(
+                getCurrentVersion(),
+                user.getTermsVersion() != null ? user.getTermsVersion() : 0,
+                needsAcceptance(user)
+        );
+    }
+
     @Transactional
     public void acceptTerms(Utilizador user) {
         user.setTermsVersion(getCurrentVersion());
         utilizadorRepository.save(user);
+    }
+
+    @Transactional
+    public void acceptTerms(Utilizador user, int version) {
+        if (version == getCurrentVersion()) {
+            user.setTermsVersion(version);
+            utilizadorRepository.save(user);
+            auditLogService.log("ACEITAR_TERMOS", "UTILIZADOR", user.getId(), 
+                "Termos de uso v" + version + " aceites.");
+        }
+    }
+
+    @Transactional
+    public void updateTermsVersion(int newVersion, String changeDescription) {
+        systemConfigService.setConfigValue(KEY_TERMS_VERSION, String.valueOf(newVersion), "Versão atual dos termos");
+        auditLogService.log("ATUALIZAR_VERSAO_TERMOS", "SYSTEM_CONFIG", null, 
+            "Versão dos termos atualizada para v" + newVersion + ": " + changeDescription);
+        
+        eventPublisher.publishEvent(new TermsPublishedEvent(newVersion, changeDescription));
+    }
+
+    @Transactional
+    public void updateTermsContent(String lang, String content) {
+        String key = "en".equalsIgnoreCase(lang) ? KEY_TERMS_EN : KEY_TERMS_PT;
+        systemConfigService.setConfigValue(key, content, "Conteúdo dos termos em " + lang.toUpperCase());
+        auditLogService.log("ATUALIZAR_CONTEUDO_TERMOS", "SYSTEM_CONFIG", null, 
+            "Conteúdo dos termos em " + lang.toUpperCase() + " atualizado.");
     }
 
     public String getTermsContent(String lang) {
