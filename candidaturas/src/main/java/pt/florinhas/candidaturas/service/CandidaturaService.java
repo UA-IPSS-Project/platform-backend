@@ -1,9 +1,9 @@
 package pt.florinhas.candidaturas.service;
 
 // Java
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.time.Instant;
 
 // Spring
@@ -13,13 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +29,6 @@ public class CandidaturaService {
     private final CandidaturaRepository candidaturaRepository;
     private final FormRepository formRepository;
     private final MongoTemplate mongoTemplate;
-    private final ObjectMapper objectMapper;
 
     public Candidatura createCandidatura(CandidaturaCreate dto, Long userId) {
         Form form = formRepository.findById(dto.getFormId()).orElse(null);
@@ -47,7 +39,7 @@ public class CandidaturaService {
 
         CandidaturaEstado estado = dto.getEstado() != null ? dto.getEstado() : CandidaturaEstado.PENDENTE;
         if (estado != CandidaturaEstado.RASCUNHO) {
-            validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
+            validateResponsesAgainstSchema(dto.getRespostas(), form.getPages());
         }
 
         Candidatura candidatura = new Candidatura();
@@ -78,7 +70,7 @@ public class CandidaturaService {
         }
 
         if (dto.getEstado() != CandidaturaEstado.RASCUNHO) {
-            validateResponsesAgainstSchema(dto.getRespostas(), form.getSchema());
+            validateResponsesAgainstSchema(dto.getRespostas(), form.getPages());
         }
 
         candidatura.setRespostas(dto.getRespostas());
@@ -167,36 +159,44 @@ public class CandidaturaService {
         return true;
     }
 
-    private void validateResponsesAgainstSchema(Map<String, Object> responses, Map<String, Object> schema) {
+    private void validateResponsesAgainstSchema(Map<String, Object> responses, List<FormPage> pages) {
         try {
-            // Verificar se não há campos extra (campos a mais que não estão no form)
-            if (schema.containsKey("properties") && schema.get("properties") instanceof Map) {
-                Map<?, ?> properties = (Map<?, ?>) schema.get("properties");
-                for (String key : responses.keySet()) {
-                    if (!properties.containsKey(key)) {
-                        throw new BadRequestException("O campo '" + key + "' não faz parte deste formulário.");
+            List<String> validKeys = new ArrayList<>();
+            if (pages != null) {
+                for (FormPage page : pages) {
+                    if (page.getFields() != null) {
+                        for (FieldDefinition field : page.getFields()) {
+                            validKeys.add(field.getKey());
+
+                            boolean isRequired = false;
+                            if (field.getConfig() != null && field.getConfig().containsKey("required")) {
+                                Object req = field.getConfig().get("required");
+                                if (req instanceof Boolean) {
+                                    isRequired = (Boolean) req;
+                                }
+                            }
+                            if (isRequired
+                                    && (!responses.containsKey(field.getKey()) || responses.get(field.getKey()) == null
+                                            || responses.get(field.getKey()).toString().trim().isEmpty())) {
+                                throw new BadRequestException(
+                                        "O campo obrigatório '" + field.getKey() + "' não foi preenchido.");
+                            }
+                        }
                     }
                 }
             }
 
-            JsonNode responsesNode = objectMapper.valueToTree(responses);
-            JsonNode schemaNode = objectMapper.valueToTree(schema);
-
-            JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
-            JsonSchema jsonSchema = factory.getSchema(schemaNode);
-
-            Set<ValidationMessage> errors = jsonSchema.validate(responsesNode);
-
-            if (!errors.isEmpty()) {
-                StringBuilder sb = new StringBuilder("Validation errors in responses: ");
-                errors.forEach(err -> sb.append(err.getMessage()).append("; "));
-                throw new BadRequestException(sb.toString());
+            for (String key : responses.keySet()) {
+                if (!validKeys.contains(key)) {
+                    throw new BadRequestException("O campo '" + key + "' não faz parte deste formulário.");
+                }
             }
+
         } catch (Exception e) {
             if (e instanceof BadRequestException)
                 throw (BadRequestException) e;
-            log.error("Error validating responses against schema", e);
-            throw new BadRequestException("Invalid response format or schema error");
+            log.error("Error validating responses against form pages", e);
+            throw new BadRequestException("Invalid response format or form configuration error");
         }
     }
 }

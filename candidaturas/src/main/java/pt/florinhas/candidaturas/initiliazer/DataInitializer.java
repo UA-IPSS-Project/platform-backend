@@ -2,7 +2,9 @@ package pt.florinhas.candidaturas.initiliazer;
 
 // Java
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import org.bson.Document;
 
 // Spring
 import org.springframework.boot.CommandLineRunner;
@@ -15,7 +17,11 @@ import org.slf4j.LoggerFactory;
 // From this project
 import pt.florinhas.candidaturas.domain.Candidatura;
 import pt.florinhas.candidaturas.domain.CandidaturaEstado;
+import pt.florinhas.candidaturas.domain.FieldAudience;
+import pt.florinhas.candidaturas.domain.FieldDefinition;
 import pt.florinhas.candidaturas.domain.Form;
+import pt.florinhas.candidaturas.domain.FormPage;
+import pt.florinhas.candidaturas.domain.FormStatus;
 import pt.florinhas.candidaturas.repository.CandidaturaRepository;
 import pt.florinhas.candidaturas.repository.FormRepository;
 
@@ -54,21 +60,22 @@ public class DataInitializer implements CommandLineRunner {
                 // ----------------------------------------------------------------
                 Form form1 = new Form();
                 form1.setName("Candidatura a Bolsa de Investigação");
-                form1.setSchema(Map.of(
-                                "type", "object",
-                                "title", "Bolsa de Investigação",
-                                "required", new String[] { "nome", "email", "motivacao", "areaInvestigacao" },
-                                "properties", Map.of(
-                                                "nome", Map.of("type", "string", "title", "Nome completo"),
-                                                "email", Map.of("type", "string", "title", "E-mail", "format", "email"),
-                                                "areaInvestigacao",
-                                                Map.of("type", "string", "title", "Área de Investigação"),
-                                                "motivacao", Map.of("type", "string", "title", "Motivação",
-                                                                "description",
-                                                                "Descreva a sua motivação para esta bolsa."))));
-                form1.setUiSchema(Map.of(
-                                "motivacao", Map.of("ui:widget", "textarea"),
-                                "email", Map.of("ui:placeholder", "exemplo@email.com")));
+                form1.setStatus(FormStatus.ATIVO);
+
+                FormPage page1 = new FormPage();
+                page1.setId("page-1");
+                page1.setTitle("Bolsa de Investigação");
+                page1.setDescription("Preencha os dados da candidatura");
+                page1.setOrder(1);
+
+                FieldDefinition fNome = new FieldDefinition("nome", "text", 1, new Document(Map.of("label", "Nome completo", "required", true)), FieldAudience.PUBLIC);
+                FieldDefinition fEmail = new FieldDefinition("email", "email", 2, new Document(Map.of("label", "E-mail", "required", true, "placeholder", "exemplo@email.com")), FieldAudience.PUBLIC);
+                FieldDefinition fArea = new FieldDefinition("areaInvestigacao", "text", 3, new Document(Map.of("label", "Área de Investigação", "required", true)), FieldAudience.PUBLIC);
+                FieldDefinition fMotivacao = new FieldDefinition("motivacao", "textarea", 4, new Document(Map.of("label", "Motivação", "required", true, "description", "Descreva a sua motivação para esta bolsa.")), FieldAudience.PUBLIC);
+
+                page1.setFields(List.of(fNome, fEmail, fArea, fMotivacao));
+                form1.setPages(List.of(page1));
+
                 form1.setCriadoPor(1L);
                 form1.setCriadoEm(Instant.parse("2025-01-10T09:00:00Z"));
                 form1 = formRepository.save(form1);
@@ -79,20 +86,22 @@ public class DataInitializer implements CommandLineRunner {
                 // ----------------------------------------------------------------
                 Form form2 = new Form();
                 form2.setName("Candidatura a Estágio Profissional");
-                form2.setSchema(Map.of(
-                                "type", "object",
-                                "title", "Estágio Profissional",
-                                "required", new String[] { "nome", "email", "curso", "disponibilidade" },
-                                "properties", Map.of(
-                                                "nome", Map.of("type", "string", "title", "Nome completo"),
-                                                "email", Map.of("type", "string", "title", "E-mail", "format", "email"),
-                                                "curso", Map.of("type", "string", "title", "Curso / Licenciatura"),
-                                                "disponibilidade",
-                                                Map.of("type", "string", "title", "Data de disponibilidade",
-                                                                "format", "date"))));
-                form2.setUiSchema(Map.of(
-                                "disponibilidade", Map.of("ui:widget", "date"),
-                                "email", Map.of("ui:placeholder", "exemplo@email.com")));
+                form2.setStatus(FormStatus.ATIVO);
+
+                FormPage page2 = new FormPage();
+                page2.setId("page-1");
+                page2.setTitle("Estágio Profissional");
+                page2.setDescription("Preencha os dados da candidatura ao estágio");
+                page2.setOrder(1);
+
+                FieldDefinition f2Nome = new FieldDefinition("nome", "text", 1, new Document(Map.of("label", "Nome completo", "required", true)), FieldAudience.PUBLIC);
+                FieldDefinition f2Email = new FieldDefinition("email", "email", 2, new Document(Map.of("label", "E-mail", "required", true, "placeholder", "exemplo@email.com")), FieldAudience.PUBLIC);
+                FieldDefinition f2Curso = new FieldDefinition("curso", "text", 3, new Document(Map.of("label", "Curso / Licenciatura", "required", true)), FieldAudience.PUBLIC);
+                FieldDefinition f2Disp = new FieldDefinition("disponibilidade", "date", 4, new Document(Map.of("label", "Data de disponibilidade", "required", true)), FieldAudience.PUBLIC);
+
+                page2.setFields(List.of(f2Nome, f2Email, f2Curso, f2Disp));
+                form2.setPages(List.of(page2));
+
                 form2.setCriadoPor(1L);
                 form2.setCriadoEm(Instant.parse("2025-02-05T10:30:00Z"));
                 form2 = formRepository.save(form2);

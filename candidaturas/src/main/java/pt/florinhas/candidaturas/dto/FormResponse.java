@@ -3,7 +3,6 @@ package pt.florinhas.candidaturas.dto;
 // Java
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 // Lombok
 import lombok.Data;
@@ -11,13 +10,13 @@ import lombok.Data;
 // Domain
 import pt.florinhas.candidaturas.domain.Form;
 import pt.florinhas.candidaturas.domain.FormPage;
+import pt.florinhas.candidaturas.domain.FormStatus;
 
 @Data
 public class FormResponse {
     private String id;
     private String name;
-    private Map<String, Object> schema;
-    private Map<String, Object> uiSchema;
+    private FormStatus status;
     private List<FormPage> pages;
     private Long criadoPor;
     private Instant criadoEm;
@@ -30,8 +29,7 @@ public class FormResponse {
         FormResponse dto = new FormResponse();
         dto.setId(form.getId());
         dto.setName(form.getName());
-        dto.setSchema(form.getSchema());
-        dto.setUiSchema(form.getUiSchema());
+        dto.setStatus(form.getStatus());
         dto.setPages(form.getPages());
         dto.setCriadoPor(form.getCriadoPor());
         dto.setCriadoEm(form.getCriadoEm());

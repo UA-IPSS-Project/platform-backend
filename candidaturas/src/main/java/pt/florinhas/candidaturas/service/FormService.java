@@ -31,8 +31,7 @@ public class FormService {
 
         Form form = new Form();
         form.setName(dto.getName());
-        form.setSchema(dto.getSchema());
-        form.setUiSchema(dto.getUiSchema());
+        form.setStatus(dto.getStatus() != null ? dto.getStatus() : pt.florinhas.candidaturas.domain.FormStatus.RASCUNHO);
         form.setPages(dto.getPages());
         form.setCriadoPor(userId);
         form.setCriadoEm(Instant.now());
@@ -53,8 +52,9 @@ public class FormService {
         }
 
         form.setName(dto.getName());
-        form.setSchema(dto.getSchema());
-        form.setUiSchema(dto.getUiSchema());
+        if (dto.getStatus() != null) {
+            form.setStatus(dto.getStatus());
+        }
         form.setPages(dto.getPages());
         form.setAtualizadoPor(userId);
         form.setAtualizadoEm(Instant.now());
