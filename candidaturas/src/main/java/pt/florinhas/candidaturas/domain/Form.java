@@ -3,11 +3,11 @@ package pt.florinhas.candidaturas.domain;
 // Java
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 // Mongo
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 
 // Lombok
 import lombok.Getter;
@@ -22,12 +22,14 @@ public class Form {
     @Setter(AccessLevel.NONE) // To not allow ID changes
     private String id;
 
+    @Indexed(unique = true)
     private String name;
 
-    private Map<String, Object> schema;
-    private Map<String, Object> uiSchema;
+    private FormStatus status;
+
     private List<FormPage> pages;
 
+    // Rastreamento
     private Long criadoPor;
     private Instant criadoEm;
     private Long atualizadoPor;

@@ -11,7 +11,9 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FormPage {
+    private String id;
     private String title;
     private String description;
-    private List<String> fields;
+    private int order;
+    private List<FieldDefinition> fields;
 }
