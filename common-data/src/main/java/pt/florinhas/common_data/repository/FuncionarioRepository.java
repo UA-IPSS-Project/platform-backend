@@ -3,6 +3,8 @@ package pt.florinhas.common_data.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -52,4 +54,13 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
 
     // Encontrar funcionários pendentes de aprovação
     List<Funcionario> findByActivoFalse();
+
+    // Pesquisa paginada com filtro opcional de nome e tipo
+    @Query("SELECT f FROM Funcionario f WHERE " +
+           "(:nome IS NULL OR LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))) AND " +
+           "(CAST(:tipo AS string) IS NULL OR f.tipo = :tipo)")
+    Page<Funcionario> findByNomeAndTipoFilter(
+            @Param("nome") String nome,
+            @Param("tipo") FuncionarioTipo tipo,
+            Pageable pageable);
 }

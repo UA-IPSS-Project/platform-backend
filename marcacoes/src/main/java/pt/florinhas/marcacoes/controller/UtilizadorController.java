@@ -13,7 +13,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.RequestParam;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 import pt.florinhas.marcacoes.service.AuthorizationService;
@@ -150,8 +154,10 @@ public class UtilizadorController {
      */
     @GetMapping("/utentes")
     @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosUtentes() {
-        return ResponseEntity.ok(utilizadorService.listarTodosUtentes());
+    public ResponseEntity<Page<UtilizadorResponseDTO>> listarTodosUtentes(
+            @RequestParam(required = false) String nome,
+            @PageableDefault(size = 20, sort = "nome") Pageable pageable) {
+        return ResponseEntity.ok(utilizadorService.pesquisarUtentes(nome, pageable));
     }
 
     /**

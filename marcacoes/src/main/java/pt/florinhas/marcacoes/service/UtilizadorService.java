@@ -19,6 +19,8 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.common_data.domain.Funcionario;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
@@ -300,6 +302,11 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
+    public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, Pageable pageable) {
+        return funcionarioRepository.findByNomeAndTipoFilter(nome, tipo, pageable)
+                .map(UtilizadorResponseDTO::fromUtilizador);
+    }
+
     public List<UtilizadorResponseDTO> listarFuncionariosPendentes() {
         return funcionarioRepository.findByActivoFalse().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
@@ -313,6 +320,11 @@ public class UtilizadorService {
         return utenteRepository.findAll().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
                 .collect(Collectors.toList());
+    }
+
+    public Page<UtilizadorResponseDTO> pesquisarUtentes(String nome, Pageable pageable) {
+        return utenteRepository.findByNomeFilter(nome, pageable)
+                .map(UtilizadorResponseDTO::fromUtilizador);
     }
 
     @Transactional
