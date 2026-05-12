@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
+import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
 
 import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
 
@@ -37,7 +39,9 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         return http
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .csrf(csrf -> csrf
+                    .csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
+                    .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler()))
                 .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
