@@ -16,6 +16,13 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 
 import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
 
@@ -41,7 +48,16 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf
                     .csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
-                    .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler()))
+                    .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler())
+                    // Auth endpoints don't need CSRF — no session exists before login
+                    .requireCsrfProtectionMatcher(new NegatedServerWebExchangeMatcher(
+                        new OrServerWebExchangeMatcher(
+                            new PathPatternParserServerWebExchangeMatcher("/api/auth/login/**"),
+                            new PathPatternParserServerWebExchangeMatcher("/api/auth/register/**"),
+                            new PathPatternParserServerWebExchangeMatcher("/api/auth/logout"),
+                            new PathPatternParserServerWebExchangeMatcher("/actuator/**")
+                        )
+                    )))
                 .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
