@@ -36,7 +36,8 @@ services:
       MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY}
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      # Use MinIO's built-in HTTP readiness endpoint (mc is not available in minio/minio image)
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -69,7 +70,8 @@ services:
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8083/actuator/health || exit 1"]
+      # wget is available in eclipse-temurin:21-jre-alpine; /actuator/health is public (no auth required)
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -111,7 +113,7 @@ services:
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
       - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -153,7 +155,7 @@ services:
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
       - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -197,10 +199,11 @@ services:
       - GATEWAY_NOTIFICACOES_WS_BASE_URL=${GATEWAY_NOTIFICACOES_WS_BASE_URL_DOCKER}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
-      - SECURE_COOKIES=${SECURE_COOKIES}
-      - COOKIE_SAMESITE=${COOKIE_SAMESITE}
+      # Defaults: false/Lax for dev; override in .env for production (true/Strict)
+      - SECURE_COOKIES=${SECURE_COOKIES:-false}
+      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
