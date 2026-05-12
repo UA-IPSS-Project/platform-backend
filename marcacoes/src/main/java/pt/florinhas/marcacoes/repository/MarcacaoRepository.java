@@ -130,32 +130,37 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         @Param("utenteId") Long utenteId,
                         @Param("estado") EventoEstado estado);
 
-        @Query(value = "SELECT m FROM Marcacao m " +
-                        "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
-                        "LEFT JOIN FETCH ms.utente u " +
-                        "LEFT JOIN FETCH m.criadoPor cp " +
-                        "WHERE " +
-                        "m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
-                        "m.data >= :dataInicio AND " +
-                        "m.data <= :dataFim AND " +
-                        "(:utenteId IS NULL OR ms.utente.id = :utenteId) AND " +
-                        "(:estado IS NULL OR m.estado = :estado) AND " +
-                        "(:assunto IS NULL OR ms.assunto LIKE CONCAT('%', :assunto, '%')) AND " +
-                        "(:nomeUtente IS NULL OR u.nome LIKE CONCAT('%', :nomeUtente, '%'))",
-                        countQuery = "SELECT COUNT(m) FROM Marcacao m " +
-                        "LEFT JOIN m.marcacaoSecretaria ms " +
-                        "LEFT JOIN ms.utente u " +
-                        "WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
-                        "m.data >= :dataInicio AND m.data <= :dataFim AND " +
-                        "(:utenteId IS NULL OR u.id = :utenteId) AND " +
-                        "(:estado IS NULL OR m.estado = :estado) AND " +
-                        "(:assunto IS NULL OR ms.assunto LIKE CONCAT('%', :assunto, '%')) AND " +
-                        "(:nomeUtente IS NULL OR u.nome LIKE CONCAT('%', :nomeUtente, '%'))")
-        Page<Marcacao> findMarcacoesPassadasPaginated(
+        @Query(value = """
+                        SELECT m.id FROM marcacao m
+                        LEFT JOIN marcacao_secretaria ms ON m.id = ms.marcacao_id
+                        LEFT JOIN utente u ON u.id = ms.utente_id
+                        LEFT JOIN utilizador ul ON ul.id = u.id
+                        WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO')
+                        AND m.data >= :dataInicio AND m.data <= :dataFim
+                        AND (:utenteId IS NULL OR u.id = :utenteId)
+                        AND (:estado IS NULL OR m.estado = CAST(:estado AS VARCHAR))
+                        AND (:assunto IS NULL OR ms.assunto ILIKE ('%' || CAST(:assunto AS TEXT) || '%'))
+                        AND (:nomeUtente IS NULL OR ul.nome ILIKE ('%' || CAST(:nomeUtente AS TEXT) || '%'))
+                        ORDER BY m.data ASC
+                        """,
+                        countQuery = """
+                        SELECT COUNT(m.id) FROM marcacao m
+                        LEFT JOIN marcacao_secretaria ms ON m.id = ms.marcacao_id
+                        LEFT JOIN utente u ON u.id = ms.utente_id
+                        LEFT JOIN utilizador ul ON ul.id = u.id
+                        WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO')
+                        AND m.data >= :dataInicio AND m.data <= :dataFim
+                        AND (:utenteId IS NULL OR u.id = :utenteId)
+                        AND (:estado IS NULL OR m.estado = CAST(:estado AS VARCHAR))
+                        AND (:assunto IS NULL OR ms.assunto ILIKE ('%' || CAST(:assunto AS TEXT) || '%'))
+                        AND (:nomeUtente IS NULL OR ul.nome ILIKE ('%' || CAST(:nomeUtente AS TEXT) || '%'))
+                        """,
+                        nativeQuery = true)
+        Page<Long> findMarcacoesPassadasPaginatedIds(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
                         @Param("utenteId") Long utenteId,
-                        @Param("estado") EventoEstado estado,
+                        @Param("estado") String estado,
                         @Param("assunto") String assunto,
                         @Param("nomeUtente") String nomeUtente,
                         Pageable pageable);

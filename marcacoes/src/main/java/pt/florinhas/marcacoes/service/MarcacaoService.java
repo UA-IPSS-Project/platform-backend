@@ -527,8 +527,17 @@ public class MarcacaoService {
         if (dataFim == null) {
             dataFim = LocalDateTime.now();
         }
-        return marcacaoRepository.findMarcacoesPassadasPaginated(dataInicio, dataFim, utenteId, estado, assunto, nomeUtente, pageable)
-                .map(this::toDTO);
+        String estadoStr = estado != null ? estado.name() : null;
+        Page<Long> idsPage = marcacaoRepository.findMarcacoesPassadasPaginatedIds(
+                dataInicio, dataFim, utenteId, estadoStr, assunto, nomeUtente, pageable);
+        List<Marcacao> marcacoes = marcacaoRepository.findAllById(idsPage.getContent());
+        // Preservar a ordem da query nativa
+        Map<Long, Marcacao> byId = marcacoes.stream().collect(Collectors.toMap(Marcacao::getId, m -> m));
+        List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
+                .filter(byId::containsKey)
+                .map(id -> toDTO(byId.get(id)))
+                .collect(Collectors.toList());
+        return new org.springframework.data.domain.PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 
     public MarcacaoResponseDTO notificarDocumentosInvalidos(Long id, NotificarDocumentosRequest request) {
