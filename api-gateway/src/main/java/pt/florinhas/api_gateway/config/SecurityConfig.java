@@ -16,7 +16,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.CsrfToken;
-import org.springframework.security.web.server.csrf.XorServerCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
@@ -47,9 +47,9 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         var csrfTokenRepository = CookieServerCsrfTokenRepository.withHttpOnlyFalse();
 
-        // XorServerCsrfTokenRequestAttributeHandler masks the token to prevent
-        // BREACH attacks and correctly handles the Mono<CsrfToken> subscription.
-        var csrfHandler = new XorServerCsrfTokenRequestAttributeHandler();
+        // ServerCsrfTokenRequestAttributeHandler: frontend reads XSRF-TOKEN cookie
+        // and sends raw value in X-XSRF-TOKEN header (no XOR masking needed).
+        var csrfHandler = new ServerCsrfTokenRequestAttributeHandler();
 
         return http
                 .csrf(csrf -> csrf
