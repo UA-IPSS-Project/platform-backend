@@ -139,19 +139,25 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "m.data >= :dataInicio AND " +
                         "m.data <= :dataFim AND " +
                         "(:utenteId IS NULL OR ms.utente.id = :utenteId) AND " +
-                        "(:estado IS NULL OR m.estado = :estado)",
+                        "(:estado IS NULL OR m.estado = :estado) AND " +
+                        "(:assunto IS NULL OR LOWER(ms.assunto) LIKE LOWER(CONCAT('%', :assunto, '%'))) AND " +
+                        "(:nomeUtente IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nomeUtente, '%')))",
                         countQuery = "SELECT COUNT(m) FROM Marcacao m " +
                         "LEFT JOIN m.marcacaoSecretaria ms " +
                         "LEFT JOIN ms.utente u " +
                         "WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
                         "m.data >= :dataInicio AND m.data <= :dataFim AND " +
                         "(:utenteId IS NULL OR u.id = :utenteId) AND " +
-                        "(:estado IS NULL OR m.estado = :estado)")
+                        "(:estado IS NULL OR m.estado = :estado) AND " +
+                        "(:assunto IS NULL OR LOWER(ms.assunto) LIKE LOWER(CONCAT('%', :assunto, '%'))) AND " +
+                        "(:nomeUtente IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nomeUtente, '%')))")
         Page<Marcacao> findMarcacoesPassadasPaginated(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
                         @Param("utenteId") Long utenteId,
                         @Param("estado") EventoEstado estado,
+                        @Param("assunto") String assunto,
+                        @Param("nomeUtente") String nomeUtente,
                         Pageable pageable);
 
         // Estatísticas - contar marcações por estado

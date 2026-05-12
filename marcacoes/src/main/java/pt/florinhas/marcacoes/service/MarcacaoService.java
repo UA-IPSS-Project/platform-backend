@@ -520,14 +520,14 @@ public class MarcacaoService {
     }
 
     public Page<MarcacaoResponseDTO> consultarMarcacoesPassadasPaginated(LocalDateTime dataInicio, LocalDateTime dataFim,
-            Long utenteId, EventoEstado estado, Pageable pageable) {
+            Long utenteId, EventoEstado estado, String assunto, String nomeUtente, Pageable pageable) {
         if (dataInicio == null) {
             dataInicio = LocalDateTime.of(2000, 1, 1, 0, 0);
         }
         if (dataFim == null) {
             dataFim = LocalDateTime.now();
         }
-        return marcacaoRepository.findMarcacoesPassadasPaginated(dataInicio, dataFim, utenteId, estado, pageable)
+        return marcacaoRepository.findMarcacoesPassadasPaginated(dataInicio, dataFim, utenteId, estado, assunto, nomeUtente, pageable)
                 .map(this::toDTO);
     }
 
