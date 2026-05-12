@@ -15,14 +15,12 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
-import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.server.csrf.CsrfToken;
+import org.springframework.security.web.server.csrf.XorServerCsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
+import org.springframework.web.server.WebFilter;
 
 import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
 
@@ -35,6 +33,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
 
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
@@ -45,13 +44,27 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        var csrfTokenRepository = CookieServerCsrfTokenRepository.withHttpOnlyFalse();
+
+        // XorServerCsrfTokenRequestAttributeHandler masks the token to prevent
+        // BREACH attacks and correctly handles the Mono<CsrfToken> subscription.
+        var csrfHandler = new XorServerCsrfTokenRequestAttributeHandler();
+
         return http
-                // CSRF: disabled intentionally.
-                // Protection is provided by httpOnly JWT cookie + SameSite=Lax.
-                // CookieServerCsrfTokenRepository blocks GETs in WebFlux when XSRF-TOKEN
-                // cookie is absent, breaking /api/auth/me on page reload.
-                // TODO: revisit with XorServerCsrfTokenRequestAttributeHandler before production.
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .csrf(csrf -> csrf
+                    .csrfTokenRepository(csrfTokenRepository)
+                    .csrfTokenRequestHandler(csrfHandler)
+                    // Exclude endpoints that don't need CSRF (no session before login)
+                    .requireCsrfProtectionMatcher(new NegatedServerWebExchangeMatcher(
+                        new OrServerWebExchangeMatcher(
+                            new PathPatternParserServerWebExchangeMatcher("/api/auth/login/**"),
+                            new PathPatternParserServerWebExchangeMatcher("/api/auth/register/**"),
+                            new PathPatternParserServerWebExchangeMatcher("/api/auth/logout"),
+                            new PathPatternParserServerWebExchangeMatcher("/actuator/**"),
+                            new PathPatternParserServerWebExchangeMatcher("/v3/api-docs/**"),
+                            new PathPatternParserServerWebExchangeMatcher("/swagger-ui/**")
+                        )
+                    )))
                 .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
@@ -68,13 +81,32 @@ public class SecurityConfig {
                         return exchange.getResponse().setComplete();
                     }))
                 .authorizeExchange(auth -> auth
-                    .pathMatchers("/api/auth/login/**", "/api/auth/register/**", "/api/auth/logout", "/actuator/health",
-                                  "/api/utilizadores/terms-content")
+                    .pathMatchers("/api/auth/login/**", "/api/auth/register/**", "/api/auth/logout",
+                                  "/actuator/health", "/api/utilizadores/terms-content",
+                                  "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**")
                     .permitAll()
                     .anyExchange()
                     .authenticated())
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
+    }
+
+    /**
+     * Required in WebFlux: subscribes the CsrfToken Mono on every request so the
+     * XSRF-TOKEN cookie is written to the response. Without this, the cookie is
+     * never set and subsequent requests fail CSRF validation.
+     *
+     * See: https://docs.spring.io/spring-security/reference/reactive/exploits/csrf.html
+     */
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
+    public WebFilter csrfTokenSubscribingFilter() {
+        return (exchange, chain) -> chain.filter(exchange).doOnSuccess(v -> {
+            Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
+            if (csrfToken != null) {
+                csrfToken.subscribe();
+            }
+        });
     }
 
     @Bean
@@ -85,10 +117,7 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
-
-        // Encoder usado para comparar passwords
         authProvider.setPasswordEncoder(passwordEncoder());
-
         return authProvider;
     }
 
@@ -97,10 +126,6 @@ public class SecurityConfig {
         return new ProviderManager(authenticationProvider);
     }
 
-    /**
-     * Global filter to propagate Authorization header for WebSocket handshake requests.
-     * This ensures the backend can extract the JWT for WebSocket authentication.
-     */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public GlobalFilter websocketAuthHeaderPropagator() {
@@ -108,7 +133,6 @@ public class SecurityConfig {
             ServerHttpRequest request = exchange.getRequest();
             String upgrade = request.getHeaders().getUpgrade();
             if (upgrade != null && "websocket".equalsIgnoreCase(upgrade)) {
-                // Forward Authorization header if present
                 String authHeader = request.getHeaders().getFirst("Authorization");
                 if (authHeader != null) {
                     ServerWebExchange mutated = exchange.mutate()
