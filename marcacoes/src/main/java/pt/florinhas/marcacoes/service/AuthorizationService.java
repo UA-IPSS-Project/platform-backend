@@ -42,7 +42,7 @@ public class AuthorizationService {
     }
 
     public boolean isAdmin() {
-        return hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO");
+        return hasAnyRole("ROLE_SECRETARIA");
     }
 
     public boolean hasAnyRole(String... roles) {

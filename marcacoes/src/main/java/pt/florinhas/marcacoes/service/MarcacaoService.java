@@ -389,14 +389,7 @@ public class MarcacaoService {
 
     public List<MarcacaoResponseDTO> procurarAgenda(LocalDateTime inicio, LocalDateTime fim, Long criadoPorId,
             Long utenteId, EventoEstado estado) {
-        List<Marcacao> list = marcacaoRepository.findWithFilters(inicio, fim, criadoPorId, estado);
-        // Note: Repository signature might not match exactly with utenteId in
-        // findWithFilters based on my cat earlier.
-        // The repo has findWithFilters(dataInicio, dataFim, criadoPorId, estado). It
-        // assumes utenteId is handled differently or I missed it.
-        // I will trust the repository signature I saw: findWithFilters(dataInicio,
-        // dataFim, criadoPorId, estado).
-        // If utenteId is needed, I might need to update repository or filter in memory.
+        List<Marcacao> list = marcacaoRepository.findWithFilters(inicio, fim, criadoPorId, utenteId, estado);
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
@@ -581,7 +574,10 @@ public class MarcacaoService {
     }
 
     public List<MarcacaoResponseDTO> consultarMarcacoesFuncionario(Long funcionarioId) {
-        return Collections.emptyList();
+        Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
+                .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado: " + funcionarioId));
+        return marcacaoRepository.findByCriadoPor(funcionario)
+                .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public MarcacaoResponseDTO obterMarcacaoDTO(Long id) {
@@ -749,7 +745,7 @@ public class MarcacaoService {
                 uDTO.setId(u.getId());
                 uDTO.setNome(u.getNome());
                 uDTO.setEmail(u.getEmail());
-                uDTO.setNif(u.getNif());
+                uDTO.setNif(maskNif(u.getNif()));
                 uDTO.setTelefone(u.getTelefone());
                 secDTO.setUtente(uDTO);
             }
@@ -883,6 +879,11 @@ public class MarcacaoService {
                 log.error("Falha ao notificar sobre marcação", e);
             }
         }
+    }
+
+    private String maskNif(String nif) {
+        if (nif == null || nif.length() < 5) return nif;
+        return nif.substring(0, 3) + "****" + nif.substring(nif.length() - 2);
     }
 
     private String normalizarTipoAgenda(String tipoAgenda) {
