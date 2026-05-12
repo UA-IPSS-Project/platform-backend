@@ -42,7 +42,7 @@ public class AuthorizationService {
     }
 
     public boolean isAdmin() {
-        return hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO");
+        return hasAnyRole("ROLE_SECRETARIA");
     }
 
     public boolean hasAnyRole(String... roles) {
@@ -57,7 +57,7 @@ public class AuthorizationService {
 
     /**
      * Verifica se o utilizador atual tem permissão para aceder a um recurso.
-     * Administradores (SECRETARIA/BALNEARIO) têm sempre acesso.
+     * Administradores (SECRETARIA) têm sempre acesso.
      * Utentes normais só têm acesso se forem o proprietário do recurso.
      *
      * @param ownerId ID do proprietário do recurso
