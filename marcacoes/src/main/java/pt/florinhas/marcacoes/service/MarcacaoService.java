@@ -526,6 +526,18 @@ public class MarcacaoService {
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    public Page<MarcacaoResponseDTO> consultarMarcacoesPassadasPaginated(LocalDateTime dataInicio, LocalDateTime dataFim,
+            Long utenteId, EventoEstado estado, Pageable pageable) {
+        if (dataInicio == null) {
+            dataInicio = LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+        if (dataFim == null) {
+            dataFim = LocalDateTime.now();
+        }
+        return marcacaoRepository.findMarcacoesPassadasPaginated(dataInicio, dataFim, utenteId, estado, pageable)
+                .map(this::toDTO);
+    }
+
     public MarcacaoResponseDTO notificarDocumentosInvalidos(Long id, NotificarDocumentosRequest request) {
         Marcacao marcacao = marcacaoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));

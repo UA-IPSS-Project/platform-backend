@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -109,7 +112,7 @@ public class DocumentoController {
      * - sem marcacaoId: apenas secretaria
      */
     @GetMapping("/pesquisar")
-    public ResponseEntity<List<DocumentoDTO>> pesquisarDocumentosPorMetadados(
+    public ResponseEntity<Page<DocumentoDTO>> pesquisarDocumentosPorMetadados(
             @RequestParam(required = false) Long marcacaoId,
             @RequestParam(required = false) String nomeOriginal,
             @RequestParam(required = false) String nomeArmazenado,
@@ -117,7 +120,8 @@ public class DocumentoController {
             @RequestParam(required = false) String utenteNome,
             @RequestParam(required = false) String utenteNif,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoAte) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoAte,
+            @PageableDefault(size = 20) Pageable pageable) {
 
         if (marcacaoId != null) {
             verificarPermissaoMarcacao(marcacaoId);
@@ -126,17 +130,12 @@ public class DocumentoController {
         }
 
         List<DocumentoDTO> resultados = documentoService.pesquisarDocumentosPorMetadados(
-            marcacaoId,
-            nomeOriginal,
-            nomeArmazenado,
-            tipo,
-            utenteNome,
-            utenteNif,
-            marcacaoDesde,
-            marcacaoAte
-        );
+            marcacaoId, nomeOriginal, nomeArmazenado, tipo, utenteNome, utenteNif, marcacaoDesde, marcacaoAte);
 
-        return ResponseEntity.ok(resultados);
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), resultados.size());
+        List<DocumentoDTO> pageContent = start >= resultados.size() ? List.of() : resultados.subList(start, end);
+        return ResponseEntity.ok(new org.springframework.data.domain.PageImpl<>(pageContent, pageable, resultados.size()));
     }
 
     /**
