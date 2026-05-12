@@ -130,6 +130,30 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         @Param("utenteId") Long utenteId,
                         @Param("estado") EventoEstado estado);
 
+        @Query(value = "SELECT m FROM Marcacao m " +
+                        "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
+                        "LEFT JOIN FETCH ms.utente u " +
+                        "LEFT JOIN FETCH m.criadoPor cp " +
+                        "WHERE " +
+                        "m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
+                        "m.data >= :dataInicio AND " +
+                        "m.data <= :dataFim AND " +
+                        "(:utenteId IS NULL OR ms.utente.id = :utenteId) AND " +
+                        "(:estado IS NULL OR m.estado = :estado)",
+                        countQuery = "SELECT COUNT(m) FROM Marcacao m " +
+                        "LEFT JOIN m.marcacaoSecretaria ms " +
+                        "LEFT JOIN ms.utente u " +
+                        "WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
+                        "m.data >= :dataInicio AND m.data <= :dataFim AND " +
+                        "(:utenteId IS NULL OR u.id = :utenteId) AND " +
+                        "(:estado IS NULL OR m.estado = :estado)")
+        Page<Marcacao> findMarcacoesPassadasPaginated(
+                        @Param("dataInicio") LocalDateTime dataInicio,
+                        @Param("dataFim") LocalDateTime dataFim,
+                        @Param("utenteId") Long utenteId,
+                        @Param("estado") EventoEstado estado,
+                        Pageable pageable);
+
         // Estatísticas - contar marcações por estado
         @Query("SELECT m.estado, COUNT(m) FROM Marcacao m GROUP BY m.estado")
         List<Object[]> countMarcacoesByEstado();

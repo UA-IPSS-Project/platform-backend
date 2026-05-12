@@ -293,18 +293,16 @@ public class MarcacaoController {
      * - estado
      */
     @GetMapping("/passadas")
-    public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesPassadas(
+    public ResponseEntity<Page<MarcacaoResponseDTO>> consultarMarcacoesPassadas(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
-
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
-
             @RequestParam(required = false) Long utenteId,
-            @RequestParam(required = false) EventoEstado estado) {
+            @RequestParam(required = false) EventoEstado estado,
+            @PageableDefault(size = 20, sort = "data") Pageable pageable) {
 
         Long utenteIdFiltrado = verificarPermissaoUtente(utenteId);
-
-        List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadas(
-                dataInicio, dataFim, utenteIdFiltrado, estado);
+        Page<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadasPaginated(
+                dataInicio, dataFim, utenteIdFiltrado, estado, pageable);
         return ResponseEntity.ok(response);
     }
 

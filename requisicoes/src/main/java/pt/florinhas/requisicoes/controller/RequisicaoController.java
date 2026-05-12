@@ -2,6 +2,9 @@ package pt.florinhas.requisicoes.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -51,22 +54,22 @@ public class RequisicaoController {
     }
 
     @GetMapping
-    public List<Requisicao> listar(@RequestParam(required = false) RequisicaoEstado estado) {
-        if (estado == null) {
-            return requisicaoService.listarTodas();
-        }
-        return requisicaoService.listarPorEstado(estado);
+    public Page<Requisicao> listar(
+            @RequestParam(required = false) RequisicaoEstado estado,
+            @PageableDefault(size = 20, sort = "criadoEm") Pageable pageable) {
+        return requisicaoService.procurarPaginated(estado, null, null, null, null, null, pageable);
     }
 
     @GetMapping("/procurar")
-    public List<Requisicao> procurar(
+    public Page<Requisicao> procurar(
             @RequestParam(required = false) RequisicaoEstado estado,
             @RequestParam(required = false) RequisicaoTipo tipo,
             @RequestParam(required = false) RequisicaoPrioridade prioridade,
             @RequestParam(required = false) String criadoPorNome,
             @RequestParam(required = false) String dataInicio,
-            @RequestParam(required = false) String dataFim) {
-        return requisicaoService.procurar(estado, tipo, prioridade, criadoPorNome, dataInicio, dataFim);
+            @RequestParam(required = false) String dataFim,
+            @PageableDefault(size = 20, sort = "criadoEm") Pageable pageable) {
+        return requisicaoService.procurarPaginated(estado, tipo, prioridade, criadoPorNome, dataInicio, dataFim, pageable);
     }
 
     @GetMapping("/{id}")

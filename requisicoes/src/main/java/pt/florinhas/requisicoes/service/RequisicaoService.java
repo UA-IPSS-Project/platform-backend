@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -128,6 +130,30 @@ public class RequisicaoService {
             dataInicio,
             dataFim
         );
+    }
+
+    public Page<Requisicao> procurarPaginated(
+            RequisicaoEstado estado,
+            RequisicaoTipo tipo,
+            RequisicaoPrioridade prioridade,
+            String criadoPorNome,
+            String dataInicioStr,
+            String dataFimStr,
+            Pageable pageable) {
+        String criadoPorPattern = prepararPadraoLike(criadoPorNome);
+
+        LocalDateTime dataInicio = null;
+        if (dataInicioStr != null && !dataInicioStr.isBlank()) {
+            dataInicio = LocalDate.parse(dataInicioStr).atStartOfDay();
+        }
+
+        LocalDateTime dataFim = null;
+        if (dataFimStr != null && !dataFimStr.isBlank()) {
+            dataFim = LocalDate.parse(dataFimStr).atTime(LocalTime.MAX);
+        }
+
+        return requisicaoRepository.findWithFiltersPaginated(
+            estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim, pageable);
     }
 
     private String prepararPadraoLike(String filtro) {
