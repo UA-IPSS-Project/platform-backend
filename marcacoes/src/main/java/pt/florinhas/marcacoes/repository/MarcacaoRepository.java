@@ -136,13 +136,14 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
                         "m.data >= :dataInicio AND " +
                         "m.data <= :dataFim AND " +
-                        "(:utenteId IS NULL OR m.marcacaoSecretaria.utente.id = :utenteId) AND " +
-                        "(:estado IS NULL OR m.estado = :estado) " +
-                        "ORDER BY m.data DESC",
+                        "(:utenteId IS NULL OR ms.utente.id = :utenteId) AND " +
+                        "(:estado IS NULL OR m.estado = :estado)",
                         countQuery = "SELECT COUNT(m) FROM Marcacao m " +
+                        "LEFT JOIN m.marcacaoSecretaria ms " +
+                        "LEFT JOIN ms.utente u " +
                         "WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
                         "m.data >= :dataInicio AND m.data <= :dataFim AND " +
-                        "(:utenteId IS NULL OR m.marcacaoSecretaria.utente.id = :utenteId) AND " +
+                        "(:utenteId IS NULL OR u.id = :utenteId) AND " +
                         "(:estado IS NULL OR m.estado = :estado)")
         Page<Marcacao> findMarcacoesPassadasPaginated(
                         @Param("dataInicio") LocalDateTime dataInicio,

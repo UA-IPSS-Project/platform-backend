@@ -49,8 +49,7 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             "(CAST(:prioridade AS string) IS NULL OR r.prioridade = :prioridade) AND " +
             "(:criadoPorNome IS NULL OR LOWER(c.nome) LIKE :criadoPorNome) AND " +
             "(CAST(:dataInicio AS timestamp) IS NULL OR r.criadoEm >= :dataInicio) AND " +
-            "(CAST(:dataFim AS timestamp) IS NULL OR r.criadoEm <= :dataFim) " +
-            "ORDER BY r.criadoEm DESC",
+            "(CAST(:dataFim AS timestamp) IS NULL OR r.criadoEm <= :dataFim)",
             countQuery = "SELECT COUNT(r) FROM Requisicao r LEFT JOIN r.criadoPor c " +
             "WHERE (CAST(:estado AS string) IS NULL OR r.estado = :estado) AND " +
             "(CAST(:tipo AS string) IS NULL OR r.tipo = :tipo) AND " +

@@ -132,7 +132,12 @@ public class DocumentoController {
         List<DocumentoDTO> resultados = documentoService.pesquisarDocumentosPorMetadados(
             marcacaoId, nomeOriginal, nomeArmazenado, tipo, utenteNome, utenteNif, marcacaoDesde, marcacaoAte);
 
-        int start = (int) pageable.getOffset();
+        int start;
+        try {
+            start = Math.toIntExact(pageable.getOffset());
+        } catch (ArithmeticException ex) {
+            return ResponseEntity.badRequest().build();
+        }
         int end = Math.min(start + pageable.getPageSize(), resultados.size());
         List<DocumentoDTO> pageContent = start >= resultados.size() ? List.of() : resultados.subList(start, end);
         return ResponseEntity.ok(new org.springframework.data.domain.PageImpl<>(pageContent, pageable, resultados.size()));
