@@ -57,7 +57,7 @@ public class AuthorizationService {
 
     /**
      * Verifica se o utilizador atual tem permissão para aceder a um recurso.
-     * Administradores (SECRETARIA/BALNEARIO) têm sempre acesso.
+     * Administradores (SECRETARIA) têm sempre acesso.
      * Utentes normais só têm acesso se forem o proprietário do recurso.
      *
      * @param ownerId ID do proprietário do recurso

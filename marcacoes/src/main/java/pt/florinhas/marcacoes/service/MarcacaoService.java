@@ -882,8 +882,10 @@ public class MarcacaoService {
     }
 
     private String maskNif(String nif) {
-        if (nif == null || nif.length() < 5) return nif;
-        return nif.substring(0, 3) + "****" + nif.substring(nif.length() - 2);
+        if (nif == null) return null;
+        String n = nif.trim();
+        if (n.length() < 5) return "*".repeat(n.length());
+        return n.substring(0, 3) + "****" + n.substring(n.length() - 2);
     }
 
     private String normalizarTipoAgenda(String tipoAgenda) {
