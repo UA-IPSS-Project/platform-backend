@@ -17,9 +17,11 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.CsrfToken;
 import org.springframework.security.web.server.csrf.XorServerCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.server.WebFilter;
 
 import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
@@ -54,15 +56,21 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                     .csrfTokenRepository(csrfTokenRepository)
                     .csrfTokenRequestHandler(csrfHandler)
-                    // Exclude endpoints that don't need CSRF (no session before login)
-                    .requireCsrfProtectionMatcher(new NegatedServerWebExchangeMatcher(
+                    // Apply CSRF only to state-changing methods AND exclude auth endpoints
+                    .requireCsrfProtectionMatcher(new AndServerWebExchangeMatcher(
                         new OrServerWebExchangeMatcher(
-                            new PathPatternParserServerWebExchangeMatcher("/api/auth/login/**"),
-                            new PathPatternParserServerWebExchangeMatcher("/api/auth/register/**"),
-                            new PathPatternParserServerWebExchangeMatcher("/api/auth/logout"),
-                            new PathPatternParserServerWebExchangeMatcher("/actuator/**"),
-                            new PathPatternParserServerWebExchangeMatcher("/v3/api-docs/**"),
-                            new PathPatternParserServerWebExchangeMatcher("/swagger-ui/**")
+                            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.POST),
+                            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.PUT),
+                            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.DELETE),
+                            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.PATCH)
+                        ),
+                        new NegatedServerWebExchangeMatcher(
+                            new OrServerWebExchangeMatcher(
+                                new PathPatternParserServerWebExchangeMatcher("/api/auth/login/**"),
+                                new PathPatternParserServerWebExchangeMatcher("/api/auth/register/**"),
+                                new PathPatternParserServerWebExchangeMatcher("/api/auth/logout"),
+                                new PathPatternParserServerWebExchangeMatcher("/actuator/**")
+                            )
                         )
                     )))
                 .cors(Customizer.withDefaults())
