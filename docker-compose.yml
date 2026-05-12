@@ -36,8 +36,7 @@ services:
       MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY}
     command: server /data --console-address ":9001"
     healthcheck:
-      # MinIO doesn't ship curl/wget/mc — check if the process is running via /proc
-      test: ["CMD-SHELL", "ls /proc/1/exe > /dev/null 2>&1 && cat /proc/1/status | grep -q 'minio' || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
