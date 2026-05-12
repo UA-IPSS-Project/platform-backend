@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/internal/**").authenticated()
                         .requestMatchers("/ws", "/ws/**", "/ws-notificacoes", "/ws-notificacoes/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
 
                 // Define que a aplicação não mantém estado de sessão (JWT-based auth)
