@@ -22,7 +22,6 @@ import org.springframework.security.web.server.util.matcher.NegatedServerWebExch
 import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.http.HttpMethod;
-import org.springframework.web.server.WebFilter;
 
 import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
 
@@ -96,23 +95,15 @@ public class SecurityConfig {
                     .anyExchange()
                     .authenticated())
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                // Subscribe the deferred CsrfToken so XSRF-TOKEN cookie is written to response
+                .addFilterAfter((exchange, chain) -> {
+                    Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
+                    if (csrfToken != null) {
+                        return csrfToken.flatMap(token -> chain.filter(exchange));
+                    }
+                    return chain.filter(exchange);
+                }, SecurityWebFiltersOrder.CSRF)
                 .build();
-    }
-
-    /**
-     * Subscribes the deferred CsrfToken so the XSRF-TOKEN cookie is written.
-     * Must run after the SecurityWebFilterChain sets the CsrfToken attribute.
-     * Uses Ordered.LOWEST_PRECEDENCE so it runs last in the filter chain.
-     */
-    @Bean
-    @Order(Ordered.LOWEST_PRECEDENCE)
-    public WebFilter csrfTokenSubscribingFilter() {
-        return (exchange, chain) -> chain.filter(exchange).then(
-            Mono.defer(() -> {
-                Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
-                return csrfToken != null ? csrfToken.then() : Mono.empty();
-            })
-        );
     }
 
     @Bean
