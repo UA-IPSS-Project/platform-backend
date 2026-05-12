@@ -101,20 +101,20 @@ public class SecurityConfig {
 
     /**
      * Required in WebFlux: subscribes the CsrfToken Mono on every request so the
-     * XSRF-TOKEN cookie is written to the response. Without this, the cookie is
-     * never set and subsequent requests fail CSRF validation.
+     * XSRF-TOKEN cookie is written to the response before it is committed.
      *
      * See: https://docs.spring.io/spring-security/reference/reactive/exploits/csrf.html
      */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 1)
     public WebFilter csrfTokenSubscribingFilter() {
-        return (exchange, chain) -> chain.filter(exchange).doOnSuccess(v -> {
+        return (exchange, chain) -> {
             Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
             if (csrfToken != null) {
-                csrfToken.subscribe();
+                return csrfToken.flatMap(token -> chain.filter(exchange));
             }
-        });
+            return chain.filter(exchange);
+        };
     }
 
     @Bean
