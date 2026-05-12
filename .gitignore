@@ -117,3 +117,4 @@ data/*
 
 
 extra
+*.pem
