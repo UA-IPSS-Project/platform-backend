@@ -76,6 +76,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+      - SECURE_COOKIES=${SECURE_COOKIES:-true}
+      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
     restart: unless-stopped
     develop:
       watch:
