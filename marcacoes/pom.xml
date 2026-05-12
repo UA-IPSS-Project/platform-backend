@@ -15,6 +15,10 @@
 	<description>Serviço de marcações da plataforma Florinhas Digital.</description>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+		</dependency>
 		<!-- Shared domain entities and enums -->
 		<dependency>
 			<groupId>pt.florinhas</groupId>
