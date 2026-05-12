@@ -140,7 +140,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "m.data <= :dataFim AND " +
                         "(:utenteId IS NULL OR ms.utente.id = :utenteId) AND " +
                         "(:estado IS NULL OR m.estado = :estado) AND " +
-                        "(:assunto IS NULL OR LOWER(ms.assunto) LIKE LOWER(CONCAT('%', :assunto, '%'))) AND " +
+                        "(:assunto IS NULL OR ms.assunto LIKE CONCAT('%', :assunto, '%')) AND " +
                         "(:nomeUtente IS NULL OR u.nome LIKE CONCAT('%', :nomeUtente, '%'))",
                         countQuery = "SELECT COUNT(m) FROM Marcacao m " +
                         "LEFT JOIN m.marcacaoSecretaria ms " +
@@ -149,7 +149,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "m.data >= :dataInicio AND m.data <= :dataFim AND " +
                         "(:utenteId IS NULL OR u.id = :utenteId) AND " +
                         "(:estado IS NULL OR m.estado = :estado) AND " +
-                        "(:assunto IS NULL OR LOWER(ms.assunto) LIKE LOWER(CONCAT('%', :assunto, '%'))) AND " +
+                        "(:assunto IS NULL OR ms.assunto LIKE CONCAT('%', :assunto, '%')) AND " +
                         "(:nomeUtente IS NULL OR u.nome LIKE CONCAT('%', :nomeUtente, '%'))")
         Page<Marcacao> findMarcacoesPassadasPaginated(
                         @Param("dataInicio") LocalDateTime dataInicio,
