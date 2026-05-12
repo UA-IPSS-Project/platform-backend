@@ -528,8 +528,12 @@ public class MarcacaoService {
             dataFim = LocalDateTime.now();
         }
         String estadoStr = estado != null ? estado.name() : null;
+        // Native query has ORDER BY m.data DESC — pass unsorted Pageable to avoid
+        // Spring Data injecting a conflicting ORDER BY clause on a non-SELECT field
+        org.springframework.data.domain.Pageable nativePageable =
+                org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         Page<Long> idsPage = marcacaoRepository.findMarcacoesPassadasPaginatedIds(
-                dataInicio, dataFim, utenteId, estadoStr, assunto, nomeUtente, pageable);
+                dataInicio, dataFim, utenteId, estadoStr, assunto, nomeUtente, nativePageable);
         List<Marcacao> marcacoes = marcacaoRepository.findAllById(idsPage.getContent());
         // Preservar a ordem da query nativa
         Map<Long, Marcacao> byId = marcacoes.stream().collect(Collectors.toMap(Marcacao::getId, m -> m));

@@ -141,7 +141,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         AND (:estado IS NULL OR m.estado = CAST(:estado AS VARCHAR))
                         AND (:assunto IS NULL OR ms.assunto ILIKE ('%' || CAST(:assunto AS TEXT) || '%'))
                         AND (:nomeUtente IS NULL OR ul.nome ILIKE ('%' || CAST(:nomeUtente AS TEXT) || '%'))
-                        ORDER BY m.data ASC
+                        ORDER BY m.data DESC
                         """,
                         countQuery = """
                         SELECT COUNT(m.id) FROM marcacao m
