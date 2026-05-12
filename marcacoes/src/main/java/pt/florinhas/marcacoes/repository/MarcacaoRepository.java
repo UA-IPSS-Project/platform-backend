@@ -102,12 +102,14 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "(:dataInicio IS NULL OR m.data >= :dataInicio) AND " +
                         "(:dataFim IS NULL OR m.data <= :dataFim) AND " +
                         "(:criadoPorId IS NULL OR m.criadoPor.id = :criadoPorId) AND " +
+                        "(:utenteId IS NULL OR ms.utente.id = :utenteId) AND " +
                         "(:estado IS NULL OR m.estado = :estado) " +
                         "ORDER BY m.data")
         List<Marcacao> findWithFilters(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
                         @Param("criadoPorId") Long criadoPorId,
+                        @Param("utenteId") Long utenteId,
                         @Param("estado") EventoEstado estado);
 
         // Consultar marcações passadas com filtros (Optimized)
