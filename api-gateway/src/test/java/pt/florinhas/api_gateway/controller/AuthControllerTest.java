@@ -99,4 +99,23 @@ class AuthControllerTest {
                         .contains("jwt=")
         );
     }
+    @Test
+        void getCurrentUser_DeveRetornar401QuandoVazio() {
+
+        Utente utente =
+                new Utente();
+
+        when(authService.getCurrentUserResponse(utente))
+                .thenReturn(Optional.empty());
+
+        ResponseEntity<AuthResponse> result =
+                controller.getCurrentUser(utente);
+
+        assertEquals(
+                401,
+                result.getStatusCode().value()
+        );
+
+        assertNull(result.getBody());
+        }
 }

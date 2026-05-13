@@ -7,6 +7,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import org.mockito.Mockito;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -58,4 +62,43 @@ class RateLimitFilterTest {
                         .getFirst("X-RateLimit-Remaining")
         );
     }
+    @Test
+        void filter_DeveBloquearQuandoLimiteExcedido() {
+
+        WebFilterChain chain =
+                mock(WebFilterChain.class);
+
+        when(chain.filter(any()))
+                .thenReturn(Mono.empty());
+
+        for (int i = 0; i < 121; i++) {
+
+                MockServerWebExchange exchange =
+                        MockServerWebExchange.from(
+                                MockServerHttpRequest
+                                        .get("/api/test")
+                                        .header(
+                                                "X-Forwarded-For",
+                                                "127.0.0.1"
+                                        )
+                                        .build()
+                        );
+
+                filter.filter(exchange, chain)
+                        .block();
+
+                if (i == 120) {
+
+                assertEquals(
+                        HttpStatus.TOO_MANY_REQUESTS,
+                        exchange.getResponse()
+                                .getStatusCode()
+                );
+                }
+        }
+
+        verify(chain, times(120))
+                .filter(any());
+        }
+    
 }

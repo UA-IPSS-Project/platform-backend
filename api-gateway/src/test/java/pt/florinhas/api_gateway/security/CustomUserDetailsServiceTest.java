@@ -89,4 +89,40 @@ class CustomUserDetailsServiceTest {
                 () -> service.loadUserByUsername("teste")
         );
     }
+    @Test
+        void loadUserByUsername_DeveRetornarPrimeiroUserQuandoExistemMultiplos() {
+
+        Utente utente1 =
+                new Utente();
+
+        utente1.setEmail(
+                "teste@teste.com"
+        );
+
+        Utente utente2 =
+                new Utente();
+
+        utente2.setEmail(
+                "teste2@teste.com"
+        );
+
+        when(utilizadorRepository.findByEmail(
+                "teste@teste.com"))
+                .thenReturn(List.of(
+                        utente1,
+                        utente2
+                ));
+
+        UserDetails result =
+                service.loadUserByUsername(
+                        "teste@teste.com"
+                );
+
+        assertNotNull(result);
+
+        assertEquals(
+                utente1,
+                result
+        );
+        }
 }

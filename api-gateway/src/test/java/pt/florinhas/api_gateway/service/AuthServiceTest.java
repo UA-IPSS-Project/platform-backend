@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import pt.florinhas.api_gateway.dto.LoginFuncionarioRequest;
 import pt.florinhas.api_gateway.dto.UtenteRegisterRequest;
 import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.exception.BadRequestException;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
@@ -140,4 +142,99 @@ class AuthServiceTest {
 
         assertTrue(result);
     }
+    @Test
+        void registerUtente_DeveLancarErroQuandoEmailExiste() {
+
+        UtenteRegisterRequest request =
+                new UtenteRegisterRequest(
+                        "Teste",
+                        "teste@teste.com",
+                        "password",
+                        "123456789",
+                        "912345678",
+                        LocalDate.now(),
+                        true
+                );
+
+        when(utilizadorRepository.existsByEmail(any()))
+                .thenReturn(true);
+
+        assertThrows(
+                BadRequestException.class,
+                () -> authService.registerUtente(request)
+        );
+
+        verify(utenteRepository, never())
+                .save(any());
+        }
+
+        @Test
+        void registerUtente_DeveLancarErroQuandoNifExiste() {
+
+        UtenteRegisterRequest request =
+                new UtenteRegisterRequest(
+                        "Teste",
+                        "teste@teste.com",
+                        "password",
+                        "123456789",
+                        "912345678",
+                        LocalDate.now(),
+                        true
+                );
+
+        when(utilizadorRepository.existsByEmail(any()))
+                .thenReturn(false);
+
+        when(cryptoUtils.generateBlindIndex(any()))
+                .thenReturn("hash");
+
+        when(utilizadorRepository.existsByNifHash(any()))
+                .thenReturn(true);
+
+        assertThrows(
+                BadRequestException.class,
+                () -> authService.registerUtente(request)
+        );
+
+        verify(utenteRepository, never())
+                .save(any());
+        }
+
+        @Test
+        void requiresPasswordSetup_DeveRetornarFalse() {
+
+        Utente utente =
+                new Utente();
+
+        utente.setTermsAcceptedAt(
+                LocalDateTime.now()
+        );
+
+        boolean result =
+                authService.requiresPasswordSetup(
+                        utente,
+                        false
+                );
+
+        assertFalse(result);
+        }
+
+        @Test
+        void requiresPasswordSetup_DeveRetornarTrueMesmoComTermsAceites() {
+
+        Utente utente =
+                new Utente();
+
+        utente.setTermsAcceptedAt(
+                LocalDateTime.now()
+        );
+
+        boolean result =
+                authService.requiresPasswordSetup(
+                        utente,
+                        true
+                );
+
+        assertFalse(result);
+        }
 }
