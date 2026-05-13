@@ -6,22 +6,22 @@ import static org.mockito.Mockito.mock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class MarcacaoRepositoryTest {
+class MarcacaoSecretariaRepositoryTest {
 
     @Test
-    @DisplayName("MarcacaoRepository deve existir")
+    @DisplayName("MarcacaoSecretariaRepository deve existir")
     void repositoryDeveExistir() {
 
-        MarcacaoRepository repository =
-                mock(MarcacaoRepository.class);
+        MarcacaoSecretariaRepository repository =
+                mock(MarcacaoSecretariaRepository.class);
 
         assertNotNull(repository);
     }
 
     @Test
-    @DisplayName("Classe MarcacaoRepository deve carregar")
+    @DisplayName("Classe MarcacaoSecretariaRepository deve carregar")
     void classeDeveCarregar() {
 
-        assertNotNull(MarcacaoRepository.class);
+        assertNotNull(MarcacaoSecretariaRepository.class);
     }
 }
