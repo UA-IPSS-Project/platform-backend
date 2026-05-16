@@ -85,7 +85,7 @@ public class UtilizadorServiceTest {
                 cryptoUtils,
                 selfProvider);
         
-        when(selfProvider.getIfAvailable()).thenReturn(utilizadorService);
+        lenient().when(selfProvider.getIfAvailable()).thenReturn(utilizadorService);
     }
 
     @Test
