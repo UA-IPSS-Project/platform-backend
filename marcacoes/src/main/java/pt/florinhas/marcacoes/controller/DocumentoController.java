@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +28,7 @@ import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
 import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.service.AuditLogService;
 import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.service.DocumentoService;
 
@@ -46,6 +50,7 @@ public class DocumentoController {
     private final DocumentoService documentoService;
     private final AuthorizationService authorizationService;
     private final MarcacaoRepository marcacaoRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * Upload de um documento para uma marcação.
@@ -60,14 +65,23 @@ public class DocumentoController {
     @PostMapping("/marcacao/{marcacaoId}/upload")
     public ResponseEntity<DocumentoDTO> uploadDocumento(
             @PathVariable Long marcacaoId,
-            @RequestParam("file") MultipartFile file) throws IOException {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "finalidade", required = false) String finalidade) throws IOException {
         
         log.info("Recebido pedido de upload de documento para marcação {}", marcacaoId);
 
         // Verificar permissões
         verificarPermissaoMarcacao(marcacaoId);
 
-        DocumentoDTO documento = documentoService.uploadDocumento(marcacaoId, file);
+        DocumentoDTO documento = documentoService.uploadDocumento(marcacaoId, file, finalidade);
+        
+        auditLogService.log(
+            "UPLOAD_DOCUMENTO",
+            "DOCUMENTO",
+            documento.id(),
+            String.format("Upload: %s (Marcação: %d, Finalidade: %s)", 
+                documento.nomeOriginal(), marcacaoId, finalidade != null ? finalidade : "N/A")
+        );
         
         return ResponseEntity.ok(documento);
     }
@@ -98,7 +112,7 @@ public class DocumentoController {
      * - sem marcacaoId: apenas secretaria
      */
     @GetMapping("/pesquisar")
-    public ResponseEntity<List<DocumentoDTO>> pesquisarDocumentosPorMetadados(
+    public ResponseEntity<Page<DocumentoDTO>> pesquisarDocumentosPorMetadados(
             @RequestParam(required = false) Long marcacaoId,
             @RequestParam(required = false) String nomeOriginal,
             @RequestParam(required = false) String nomeArmazenado,
@@ -106,7 +120,8 @@ public class DocumentoController {
             @RequestParam(required = false) String utenteNome,
             @RequestParam(required = false) String utenteNif,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoDesde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoAte) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime marcacaoAte,
+            @PageableDefault(size = 20) Pageable pageable) {
 
         if (marcacaoId != null) {
             verificarPermissaoMarcacao(marcacaoId);
@@ -115,17 +130,17 @@ public class DocumentoController {
         }
 
         List<DocumentoDTO> resultados = documentoService.pesquisarDocumentosPorMetadados(
-            marcacaoId,
-            nomeOriginal,
-            nomeArmazenado,
-            tipo,
-            utenteNome,
-            utenteNif,
-            marcacaoDesde,
-            marcacaoAte
-        );
+            marcacaoId, nomeOriginal, nomeArmazenado, tipo, utenteNome, utenteNif, marcacaoDesde, marcacaoAte);
 
-        return ResponseEntity.ok(resultados);
+        int start;
+        try {
+            start = Math.toIntExact(pageable.getOffset());
+        } catch (ArithmeticException ex) {
+            return ResponseEntity.badRequest().build();
+        }
+        int end = Math.min(start + pageable.getPageSize(), resultados.size());
+        List<DocumentoDTO> pageContent = start >= resultados.size() ? List.of() : resultados.subList(start, end);
+        return ResponseEntity.ok(new org.springframework.data.domain.PageImpl<>(pageContent, pageable, resultados.size()));
     }
 
     /**
@@ -161,6 +176,13 @@ public class DocumentoController {
         // Verificar permissões para a marcação associada
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
 
+        auditLogService.log(
+            "DOWNLOAD_DOCUMENTO",
+            "DOCUMENTO",
+            id,
+            String.format("Download: %s (Marcação: %d)", documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
+        );
+
         Resource resource = documentoService.carregarFicheiro(id);
 
         return ResponseEntity.ok()
@@ -181,6 +203,13 @@ public class DocumentoController {
 
         DocumentoDTO documentoDTO = documentoService.obterDocumento(id);
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        auditLogService.log(
+            "PREVIEW_DOCUMENTO",
+            "DOCUMENTO",
+            id,
+            String.format("Preview: %s (Marcação: %d)", documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
+        );
 
         Resource resource = documentoService.carregarFicheiro(id);
 
@@ -222,6 +251,14 @@ public class DocumentoController {
         
         // Verificar permissões para a marcação associada
         verificarPermissaoMarcacao(documentoDTO.marcacaoId());
+
+        auditLogService.log(
+            "DELETE_DOCUMENTO",
+            "DOCUMENTO",
+            id,
+            String.format("Documento removido: %s (Marcação: %d)", 
+                documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
+        );
 
         documentoService.removerDocumento(id);
         

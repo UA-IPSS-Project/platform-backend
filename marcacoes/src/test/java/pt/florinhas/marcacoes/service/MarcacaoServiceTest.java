@@ -49,8 +49,7 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 
 import pt.florinhas.common_data.validation.NifValidator;
-
-
+import pt.florinhas.common_data.security.CryptoUtils;
 
 @ExtendWith(MockitoExtension.class)
 class MarcacaoServiceTest {
@@ -75,6 +74,16 @@ class MarcacaoServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private NifValidator nifValidator;
+    @Mock
+    private AuditLogService auditLogService;
+    @Mock
+    private ArmazemService armazemService;
+    @Mock
+    private AuthorizationService authorizationService;
+    @Mock
+    private CalendarioService calendarioService;
+    @Mock
+    private CryptoUtils cryptoUtils;
 
     @InjectMocks
     private MarcacaoService marcacaoService;
@@ -142,7 +151,7 @@ class MarcacaoServiceTest {
 
         // Mock validator para não lançar exceção (validação passa)
         doNothing().when(marcacaoValidator).validarCriacao(request);
-        
+
         when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente));
         when(funcionarioRepository.findById(2L)).thenReturn(Optional.of(funcionario));
         when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));

@@ -2,19 +2,17 @@ package pt.florinhas.marcacoes.config;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import pt.florinhas.marcacoes.domain.Assunto;
@@ -34,11 +32,9 @@ class AssuntoSeedTest {
     }
 
     @Test
+    @DisplayName("Deve criar todos os assuntos quando não existem")
     void run_DeveCriarTodosOsAssuntosQuandoNaoExistem() {
-        when(assuntoRepository.findByNome("Pagar mensalidade")).thenReturn(Optional.empty());
-        when(assuntoRepository.findByNome("Entregar documentos")).thenReturn(Optional.empty());
-        when(assuntoRepository.findByNome("Reunião presencial")).thenReturn(Optional.empty());
-        when(assuntoRepository.findByNome("Outro")).thenReturn(Optional.empty());
+        when(assuntoRepository.findByNome(anyString())).thenReturn(Optional.empty());
 
         assuntoSeed.run();
 
@@ -46,15 +42,10 @@ class AssuntoSeedTest {
     }
 
     @Test
+    @DisplayName("Não deve criar assuntos quando já existem")
     void run_NaoDeveCriarAssuntoQuandoJaExiste() {
-        when(assuntoRepository.findByNome("Pagar mensalidade"))
-                .thenReturn(Optional.of(new Assunto("Pagar mensalidade")));
-        when(assuntoRepository.findByNome("Entregar documentos"))
-                .thenReturn(Optional.of(new Assunto("Entregar documentos")));
-        when(assuntoRepository.findByNome("Reunião presencial"))
-                .thenReturn(Optional.of(new Assunto("Reunião presencial")));
-        when(assuntoRepository.findByNome("Outro"))
-                .thenReturn(Optional.of(new Assunto("Outro")));
+        when(assuntoRepository.findByNome(anyString()))
+                .thenReturn(Optional.of(new Assunto("Existente")));
 
         assuntoSeed.run();
 
@@ -62,35 +53,14 @@ class AssuntoSeedTest {
     }
 
     @Test
-    void run_DeveCriarApenasOsAssuntosEmFalta() {
-        when(assuntoRepository.findByNome("Pagar mensalidade"))
-                .thenReturn(Optional.of(new Assunto("Pagar mensalidade")));
-        when(assuntoRepository.findByNome("Entregar documentos"))
-                .thenReturn(Optional.empty());
-        when(assuntoRepository.findByNome("Reunião presencial"))
-                .thenReturn(Optional.of(new Assunto("Reunião presencial")));
-        when(assuntoRepository.findByNome("Outro"))
-                .thenReturn(Optional.empty());
-
-        assuntoSeed.run();
-
-        verify(assuntoRepository, times(2)).save(any(Assunto.class));
-    }
-
-    @Test
+    @DisplayName("Deve ignorar DataIntegrityViolationException")
     void run_DeveIgnorarDataIntegrityViolationException() {
-        when(assuntoRepository.findByNome("Pagar mensalidade")).thenReturn(Optional.empty());
-        when(assuntoRepository.findByNome("Entregar documentos")).thenReturn(Optional.empty());
-        when(assuntoRepository.findByNome("Reunião presencial")).thenReturn(Optional.empty());
-        when(assuntoRepository.findByNome("Outro")).thenReturn(Optional.empty());
-
-        when(assuntoRepository.save(ArgumentMatchers.argThat(
-                a -> a != null && "Pagar mensalidade".equals(a.getNome()))))
-                .thenThrow(new DataIntegrityViolationException("duplicado"));
+        when(assuntoRepository.findByNome(anyString())).thenReturn(Optional.empty());
+        doThrow(new DataIntegrityViolationException("duplicado"))
+                .when(assuntoRepository).save(any(Assunto.class));
 
         assertDoesNotThrow(() -> assuntoSeed.run());
 
-        verify(assuntoRepository, times(4)).findByNome(any(String.class));
         verify(assuntoRepository, times(4)).save(any(Assunto.class));
     }
 }

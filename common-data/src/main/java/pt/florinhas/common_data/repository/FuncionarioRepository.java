@@ -3,6 +3,8 @@ package pt.florinhas.common_data.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,11 +25,11 @@ import pt.florinhas.common_data.domain.Valencia;
 @Repository
 public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> {
 
-    // Encontrar funcionário por NIF
-    Optional<Funcionario> findByNif(String nif);
+    // Encontrar funcionário por blind index do NIF
+    Optional<Funcionario> findByNifHash(String nifHash);
 
-    // Verificar se NIF existe
-    boolean existsByNif(String nif);
+    // Verificar se NIF existe (via blind index)
+    boolean existsByNifHash(String nifHash);
 
     // Encontrar funcionários por tipo (SECRETARIA, BALNEARIO)
     List<Funcionario> findByTipo(FuncionarioTipo tipo);
@@ -52,4 +54,15 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
 
     // Encontrar funcionários pendentes de aprovação
     List<Funcionario> findByActivoFalse();
+
+    // Pesquisa paginada com filtro opcional de nome e tipo
+    // Pesquisa paginada com filtro opcional de nome, tipo e nifHash exato
+    @Query("SELECT f FROM Funcionario f WHERE " +
+           "(:nifHash IS NOT NULL AND f.nifHash = :nifHash) OR " +
+           "(:nifHash IS NULL AND (:nome IS NULL OR LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))) AND (:tipo IS NULL OR f.tipo = :tipo))")
+    Page<Funcionario> findByNomeAndTipoFilter(
+            @Param("nome") String nome,
+            @Param("tipo") FuncionarioTipo tipo,
+            @Param("nifHash") String nifHash,
+            Pageable pageable);
 }

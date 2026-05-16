@@ -34,6 +34,7 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 
 import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 import org.springframework.context.annotation.Profile;
 
@@ -52,6 +53,7 @@ public class TestRequisicaoSeed implements CommandLineRunner {
     private final TransporteRepository transporteRepository;
     private final ManutencaoItemRepository manutencaoItemRepository;
     private final RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository;
+    private final CryptoUtils cryptoUtils;
 
     public TestRequisicaoSeed(
             RequisicaoRepository requisicaoRepository,
@@ -62,7 +64,8 @@ public class TestRequisicaoSeed implements CommandLineRunner {
             MaterialRepository materialRepository,
             TransporteRepository transporteRepository,
             ManutencaoItemRepository manutencaoItemRepository,
-            RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository) {
+            RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository,
+            CryptoUtils cryptoUtils) {
         this.requisicaoRepository = requisicaoRepository;
         this.requisicaoMaterialRepository = requisicaoMaterialRepository;
         this.requisicaoTransporteRepository = requisicaoTransporteRepository;
@@ -72,6 +75,7 @@ public class TestRequisicaoSeed implements CommandLineRunner {
         this.transporteRepository = transporteRepository;
         this.manutencaoItemRepository = manutencaoItemRepository;
         this.requisicaoManutencaoItemRepository = requisicaoManutencaoItemRepository;
+        this.cryptoUtils = cryptoUtils;
     }
 
     @Override
@@ -85,7 +89,7 @@ public class TestRequisicaoSeed implements CommandLineRunner {
         }
 
         // 1. Ensure employee for seeding exists
-        Funcionario ana = funcionarioRepository.findByNif("123456789")
+        Funcionario ana = funcionarioRepository.findByNifHash(cryptoUtils.generateBlindIndex("123456789"))
                 .orElseGet(() -> {
                     Funcionario f = new Funcionario();
                     f.setNome("Ana Silva");

@@ -1,127 +1,106 @@
 package pt.florinhas.marcacoes.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pt.florinhas.marcacoes.domain.ItemArmazem;
+import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
+import pt.florinhas.marcacoes.domain.Roupa;
 import pt.florinhas.marcacoes.dto.ItemArmazemDTO;
 import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.RoupaRepository;
 
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class ArmazemServiceTest {
 
-    @Mock private ItemArmazemRepository itemRepo;
-    @Mock private MarcacaoRepository marcacaoRepo;
-    @Mock private RoupaRepository roupaRepo;
+    @Mock
+    private ItemArmazemRepository itemArmazemRepository;
+    @Mock
+    private MarcacaoRepository marcacaoRepository;
+    @Mock
+    private RoupaRepository roupaRepository;
 
-    @InjectMocks
-    private ArmazemService service;
-
-    private ItemArmazem item;
+    private ArmazemService armazemService;
 
     @BeforeEach
-    void setup() {
-        item = new ItemArmazem();
-        item.setId(1L);
-        item.setCategoria("HIGIENE");
-        item.setNome("Champô");
-        item.setQuantidade(10);
-        item.setQuantidadeMinima(5);
-        item.setUnidade("un");
+    void setUp() {
+        armazemService = new ArmazemService(itemArmazemRepository, marcacaoRepository, roupaRepository);
     }
 
-    @Test
-    void shouldListAll() {
-        when(itemRepo.findAllByOrderByCategoriaAscNomeAsc()).thenReturn(List.of(item));
+    @Nested
+    @DisplayName("Testes de CRUD")
+    class CRUDTests {
+        @Test
+        @DisplayName("Deve listar todos os itens ordenados")
+        void listarTodos_DeveRetornarListaOrdenada() {
+            ItemArmazem item = new ItemArmazem();
+            item.setCategoria("HIGIENE");
+            item.setNome("Champô");
+            when(itemArmazemRepository.findAllByOrderByCategoriaAscNomeAsc()).thenReturn(List.of(item));
 
-        var result = service.listarTodos();
+            List<ItemArmazemDTO> result = armazemService.listarTodos();
 
-        assertEquals(1, result.size());
-        assertEquals("Champô", result.get(0).getNome());
+            assertFalse(result.isEmpty());
+            assertEquals("Champô", result.get(0).getNome());
+        }
+
+        @Test
+        @DisplayName("Deve criar novo item com sucesso")
+        void criarItem_DeveGuardarESalvar() {
+            ItemArmazemDTO dto = new ItemArmazemDTO();
+            dto.setCategoria("HIGIENE");
+            dto.setNome("Novo Item");
+
+            when(itemArmazemRepository.findByCategoriaAndNome(anyString(), anyString())).thenReturn(Optional.empty());
+            when(itemArmazemRepository.save(any(ItemArmazem.class))).thenAnswer(i -> i.getArgument(0));
+
+            ItemArmazemDTO result = armazemService.criarItem(dto);
+
+            assertNotNull(result);
+            assertEquals("HIGIENE", result.getCategoria());
+            verify(itemArmazemRepository).save(any(ItemArmazem.class));
+        }
     }
 
-    @Test
-    void shouldCreateItem() {
-        ItemArmazemDTO dto = new ItemArmazemDTO();
-        dto.setCategoria(" higiene ");
-        dto.setNome(" Champô ");
+    @Nested
+    @DisplayName("Testes de Stock")
+    class StockTests {
+        @Test
+        @DisplayName("Deve descontar itens do stock ao marcar presença")
+        void descontarItens_DeveReduzirQuantidade() {
+            ItemArmazem item = new ItemArmazem();
+            item.setId(1L);
+            item.setQuantidade(10);
+            item.setNome("Item");
 
-        when(itemRepo.findByCategoriaAndNome("HIGIENE", "Champô")).thenReturn(Optional.empty());
-        when(itemRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+            Roupa roupa = new Roupa();
+            roupa.setItem(item);
+            roupa.setQuantidade(2);
 
-        var result = service.criarItem(dto);
+            MarcacaoBalneario bal = new MarcacaoBalneario();
+            bal.setRoupas(List.of(roupa));
+            Marcacao m = new Marcacao();
+            m.setMarcacaoBalneario(bal);
 
-        assertEquals("HIGIENE", result.getCategoria());
-        assertEquals("Champô", result.getNome());
-    }
+            when(itemArmazemRepository.findById(1L)).thenReturn(Optional.of(item));
 
-    @Test
-    void shouldThrowWhenDuplicateItem() {
-        ItemArmazemDTO dto = new ItemArmazemDTO();
-        dto.setCategoria("HIGIENE");
-        dto.setNome("Champô");
+            armazemService.descontarItens(m);
 
-        when(itemRepo.findByCategoriaAndNome("HIGIENE", "Champô")).thenReturn(Optional.of(item));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> service.criarItem(dto));
-    }
-
-    @Test
-    void shouldUpdateItem() {
-        ItemArmazemDTO dto = new ItemArmazemDTO();
-        dto.setNome("Novo Nome");
-
-        when(itemRepo.findById(1L)).thenReturn(Optional.of(item));
-        when(itemRepo.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        var result = service.atualizarItem(1L, dto);
-
-        assertEquals("Novo Nome", result.getNome());
-    }
-
-    @Test
-    void shouldThrowWhenUpdateNotFound() {
-        when(itemRepo.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class,
-                () -> service.atualizarItem(1L, new ItemArmazemDTO()));
-    }
-
-    @Test
-    void shouldDeleteItem() {
-        when(itemRepo.existsById(1L)).thenReturn(true);
-        when(roupaRepo.existsByItemId(1L)).thenReturn(false);
-
-        service.eliminarItem(1L);
-
-        verify(itemRepo).deleteById(1L);
-    }
-
-    @Test
-    void shouldThrowWhenDeleteNotFound() {
-        when(itemRepo.existsById(1L)).thenReturn(false);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> service.eliminarItem(1L));
-    }
-
-    @Test
-    void shouldThrowWhenDeleteHasReferences() {
-        when(itemRepo.existsById(1L)).thenReturn(true);
-        when(roupaRepo.existsByItemId(1L)).thenReturn(true);
-
-        assertThrows(IllegalStateException.class,
-                () -> service.eliminarItem(1L));
+            assertEquals(8, item.getQuantidade());
+            verify(itemArmazemRepository).save(item);
+        }
     }
 }

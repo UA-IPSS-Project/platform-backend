@@ -69,6 +69,7 @@ build/
 .env
 .env.*
 !.env.example
+env
 
 # MinIO
 data/
@@ -116,3 +117,4 @@ data/*
 
 
 extra
+*.pem

@@ -3,6 +3,7 @@ package pt.florinhas.marcacoes.security;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -76,7 +77,7 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
     private Collection<? extends GrantedAuthority> parseAuthorities(String rolesHeader) {
         if (!StringUtils.hasText(rolesHeader)) {
-            return java.util.List.of();
+            return List.of();
         }
 
         return Arrays.stream(rolesHeader.split(","))

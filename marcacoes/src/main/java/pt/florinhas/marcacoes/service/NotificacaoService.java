@@ -1,261 +1,154 @@
 package pt.florinhas.marcacoes.service;
 
-import java.util.List;
-import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import lombok.RequiredArgsConstructor;
-import pt.florinhas.common_data.domain.Notificacao;
-import pt.florinhas.common_data.domain.NotificacaoTipo;
-import pt.florinhas.common_data.repository.NotificacaoRepository;
-import pt.florinhas.common_data.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.domain.EventoEstado;
-import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.exception.NotFoundException;
-import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.marcacoes.service.email.EmailService;
-
-import pt.florinhas.common_data.domain.Utilizador;
-import pt.florinhas.common_data.dto.NotificacaoResponseDTO;
-
+import java.util.Map;
+import java.util.HashMap;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.util.StringUtils;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class NotificacaoService {
 
-    private static final Logger logger = LoggerFactory.getLogger(NotificacaoService.class);
-    private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'as' HH:mm");
+    @Value("${notificacoes.url:http://notificacoes:8083}")
+    private String notificacoesUrl;
+
+    @Value("${gateway.shared-secret:}")
+    private String gatewaySecret;
+
+    private final RestTemplate restTemplate;
+
+    public NotificacaoService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    // Setters for tests
+    public void setNotificacoesUrl(String url) { this.notificacoesUrl = url; }
+    public void setGatewaySecret(String secret) { this.gatewaySecret = secret; }
+
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final String ONE_DAY_REMINDER_TITLE = "Lembrete de Marcacao";
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
 
-    private final NotificacaoRepository notificacaoRepository;
-    private final UtilizadorRepository utilizadorRepository;
-    private final MarcacaoRepository marcacaoRepository;
-    private final EmailService emailService;
-    private final SimpMessagingTemplate messagingTemplate;
-
-    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo) {
-        return criarNotificacao(utilizadorId, titulo, mensagem, tipo, null);
+    public void criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo) {
+        enviarParaMicrosservico(utilizadorId, titulo, mensagem, tipo, null);
     }
 
-    public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, NotificacaoTipo tipo,
-            Map<String, Object> metadata) {
-        Utilizador user = utilizadorRepository.findById(utilizadorId)
-                .orElseThrow(() -> new NotFoundException("Utilizador não encontrado"));
-        return criarNotificacao(user, titulo, mensagem, tipo, metadata);
+    public void notificarNovaMarcacaoParaSecretaria(Long secretariaId, String nomeUtente, Long marcacaoId, LocalDateTime data, String assunto) {
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "O utente " + nomeUtente + " criou uma marcação para " + dataFormatada + " — " + assunto;
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("appointmentId", marcacaoId.toString());
+        metadata.put("createdDate", data.format(DATE_FORMATTER));
+        metadata.put("createdTime", data.format(TIME_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "CREATED_BY_UTENTE");
+
+        enviarParaMicrosservico(secretariaId, "Nova Marcação", mensagem, "SISTEMA", metadata);
     }
 
-    public Notificacao criarNotificacao(Utilizador user, String titulo, String mensagem, NotificacaoTipo tipo,
-            Map<String, Object> metadata) {
-
-        Notificacao notificacao = new Notificacao();
-        notificacao.setUtilizador(user);
-        notificacao.setTitulo(titulo);
-        notificacao.setMensagem(mensagem);
-        notificacao.setTipo(tipo);
-        notificacao.setLida(false);
-        notificacao.setMetadata(metadata);
-
-        Notificacao saved = notificacaoRepository.save(notificacao);
-
-        // Send real-time notification
-        try {
-            NotificacaoResponseDTO dto = converterParaDTO(saved);
-                logger.info(
-                    "Sending WebSocket notification to user: {} (email: {}), title: {}",
-                    user.getId(), user.getEmail(), titulo);
-            String destination = (user.getEmail() != null && !user.getEmail().trim().isEmpty()) 
-                    ? user.getEmail() 
-                    : user.getNif();
-            
-            messagingTemplate.convertAndSendToUser(
-                    destination,
-                    "/queue/notifications",
-                    dto);
-                logger.info(
-                    "WebSocket notification sent successfully to: {}", user.getEmail());
-        } catch (Exception e) {
-            // Log but don't fail transaction
-                logger.error("Failed to send websocket notification", e);
-        }
-
-        return saved;
-    }
-
-    public List<NotificacaoResponseDTO> listarPorUtilizador(Long utilizadorId) {
-        return notificacaoRepository.findByUtilizadorIdOrderByDataCriacaoDesc(utilizadorId).stream()
-                .map(this::converterParaDTO)
-                .toList();
-    }
-
-    private NotificacaoResponseDTO converterParaDTO(Notificacao n) {
-        NotificacaoResponseDTO dto = new NotificacaoResponseDTO();
-        dto.setId(n.getId());
-        dto.setTitulo(n.getTitulo());
-        dto.setMensagem(n.getMensagem());
-        dto.setTipo(n.getTipo());
-        dto.setLida(n.isLida());
-        dto.setDataCriacao(n.getDataCriacao());
-        dto.setUtilizadorId(n.getUtilizador().getId());
-        dto.setMetadata(n.getMetadata());
-        return dto;
-    }
-
-    public long contarNaoLidas(Long utilizadorId) {
-        return notificacaoRepository.countByUtilizadorIdAndLidaFalse(utilizadorId);
-    }
-
-    @Transactional
-    public void marcarComoLida(Long id, Long utilizadorId) {
-        Notificacao notificacao = notificacaoRepository.findByIdAndUtilizadorId(id, utilizadorId)
-                .orElseThrow(() -> new NotFoundException("Notificação não encontrada"));
-
-        notificacao.setLida(true);
-        notificacaoRepository.save(notificacao);
-    }
-
-    @Transactional
-    public void marcarTodasComoLidas(Long utilizadorId) {
-        List<Notificacao> notificacoes = notificacaoRepository.findByUtilizadorIdOrderByDataCriacaoDesc(utilizadorId);
-        notificacoes.forEach(n -> n.setLida(true));
-        notificacaoRepository.saveAll(notificacoes);
-    }
-
-    @Transactional
-    public void eliminarNotificacao(Long id, Long utilizadorId) {
-        Notificacao notificacao = notificacaoRepository.findByIdAndUtilizadorId(id, utilizadorId)
-                .orElseThrow(() -> new NotFoundException("Notificação não encontrada"));
-        notificacaoRepository.delete(notificacao);
-    }
-
-    @Transactional
-    public void eliminarTodas(Long utilizadorId) {
-        notificacaoRepository.deleteByUtilizadorId(utilizadorId);
-    }
-
-    // --- Métodos de Negócio (Side-effects, não devem falhar a transação principal) ---
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, int durationMinutes, String summary) {
-        String dataFormatada = data.format(DISPLAY_DATE_FORMATTER);
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'as' HH:mm"));
         String mensagem = "Marcacao criada para " + dataFormatada + ".";
         String assunto = "Marcacao Criada";
 
-        Map<String, Object> metadata = Map.of(
-            "appointmentId", marcacaoId.toString(),
-            "createdDate", data.format(DATE_FORMATTER),
-            "createdTime", data.format(TIME_FORMATTER),
-            METADATA_SUBTYPE_KEY, "CREATED");
-        
-        criarNotificacao(utilizadorId, assunto, mensagem, NotificacaoTipo.LEMBRETE, metadata);
-        
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
-            sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCreated(user.getEmail(), data, marcacaoId, summary, durationMinutes));
-        });
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("appointmentId", marcacaoId.toString());
+        metadata.put("createdDate", data.format(DATE_FORMATTER));
+        metadata.put("createdTime", data.format(TIME_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "CREATED");
+
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notificarLembreteUmDia(Long utilizadorId, Long marcacaoId, LocalDateTime data) {
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "Relembramos que tem uma marcação amanhã, " + dataFormatada + ".";
+        String assunto = "Lembrete de Marcação";
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("appointmentId", marcacaoId.toString());
+        metadata.put("appointmentDate", data.format(DATE_FORMATTER));
+        metadata.put("appointmentTime", data.format(TIME_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
+
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
+    }
+
     public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
         String assunto = "Marcacao Cancelada";
         String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;
         String mensagem = "Marcacao cancelada por " + motivoTexto + ".";
 
-        Map<String, Object> metadata = Map.of(
-                "cancelledDate", data.format(DATE_FORMATTER),
-            "cancelledTime", data.format(TIME_FORMATTER),
-            METADATA_SUBTYPE_KEY, "CANCELLED");
-        
-        criarNotificacao(utilizadorId, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
-        
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
-            sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCancelled(user.getEmail(), motivoTexto));
-        });
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("cancelledDate", data.format(DATE_FORMATTER));
+        metadata.put("cancelledTime", data.format(TIME_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "CANCELLED");
+
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notificarCancelamentoPeloUtente(Long destinatarioId, String nomeUtente,
-            LocalDateTime data) {
-        DateTimeFormatter formatter = DateTimeFormatter
-                .ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String dataFormatada = data.format(formatter);
-
+    public void notificarCancelamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime data) {
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
         String mensagem = "O utente " + nomeUtente + " cancelou a marcação de " + dataFormatada;
         String assunto = "Marcação Cancelada pelo Utente";
 
-        // Adicionar metadata com data e hora do slot cancelado
-        Map<String, Object> metadata = Map.of(
-            "cancelledDate", data.format(DATE_FORMATTER),
-            "cancelledTime", data.format(TIME_FORMATTER));
-        
-        criarNotificacao(destinatarioId, assunto, mensagem, NotificacaoTipo.CANCELAMENTO, metadata);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("cancelledDate", data.format(DATE_FORMATTER));
+        metadata.put("cancelledTime", data.format(TIME_FORMATTER));
+
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notificarDocumentosInvalidos(Long utilizadorId, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
-        
-        criarNotificacao(utilizadorId, assunto, mensagem, NotificacaoTipo.LEMBRETE, null);
+
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", null);
     }
 
-    @Scheduled(cron = "0 0 8 * * *") // Every day at 08:00
-    @Transactional
-    public void notificarMarcacoesEmUmDia() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime start = now.toLocalDate().plusDays(1).atStartOfDay();
-        LocalDateTime end = start.plusDays(1).minusNanos(1);
+    public void notificarReagendamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime dataAntiga, LocalDateTime dataNova) {
+        String dataAntigaFmt = dataAntiga.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String dataNovaFmt = dataNova.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "O utente " + nomeUtente + " reagendou a marcação de " + dataAntigaFmt + " para " + dataNovaFmt;
+        String assunto = "Marcação Reagendada pelo Utente";
 
-        List<Marcacao> marcacoes = marcacaoRepository.findMarcacoesBetweenDates(start, end, "SECRETARIA");
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("oldDate", dataAntiga.format(DATE_FORMATTER));
+        metadata.put("newDate", dataNova.format(DATE_FORMATTER));
+        metadata.put(METADATA_SUBTYPE_KEY, "RESCHEDULED");
 
-        for (Marcacao marcacao : marcacoes) {
-            if (marcacao.getEstado() == EventoEstado.AGENDADO
-                && marcacao.getMarcacaoSecretaria() != null
-                && marcacao.getMarcacaoSecretaria().getUtente() != null) {
-            Utilizador utente = marcacao.getMarcacaoSecretaria().getUtente();
-            String dataFormatada = marcacao.getData().format(DISPLAY_DATE_FORMATTER);
-            String mensagem = "Marcacao em 1 dia (" + dataFormatada + ").";
-
-            boolean jaNotificado = notificacaoRepository.existsByUtilizadorIdAndTituloAndMensagemAndTipo(
-                utente.getId(),
-                ONE_DAY_REMINDER_TITLE,
-                mensagem,
-                NotificacaoTipo.LEMBRETE);
-
-            if (!jaNotificado) {
-                Map<String, Object> metadata = Map.of(
-                    "appointmentId", String.valueOf(marcacao.getId()),
-                    METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
-
-                criarNotificacao(utente, ONE_DAY_REMINDER_TITLE, mensagem, NotificacaoTipo.LEMBRETE,
-                    metadata);
-
-                sendEmailIfAvailable(utente.getEmail(),
-                    () -> emailService.sendAppointmentReminderOneDay(utente.getEmail(), marcacao.getData()));
-            }
-            }
-        }
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
-    private void sendEmailIfAvailable(String email, Runnable sender) {
-        if (email == null || email.isBlank()) {
-            return;
-        }
+    private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, String tipo, Map<String, Object> metadata) {
         try {
-            sender.run();
+            String url = notificacoesUrl + "/api/internal/notificacoes/criar";
+            Map<String, Object> request = new HashMap<>();
+            request.put("utilizadorId", utilizadorId);
+            request.put("titulo", titulo);
+            request.put("mensagem", mensagem);
+            request.put("tipo", tipo);
+            request.put("metadata", metadata);
+
+            HttpHeaders headers = new HttpHeaders();
+            if (StringUtils.hasText(gatewaySecret)) {
+                headers.set("X-Gateway-Secret", gatewaySecret);
+            }
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request, headers);
+
+            restTemplate.postForObject(url, requestEntity, Void.class);
+            log.info("Notificação enviada para o microsserviço de notificações: {}", titulo);
         } catch (Exception e) {
-            logger.error("Falha ao enviar email para {}", email, e);
+            log.error("Erro ao enviar notificação para o microsserviço", e);
         }
     }
 }

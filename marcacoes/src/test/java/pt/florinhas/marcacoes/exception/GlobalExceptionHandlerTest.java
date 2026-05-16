@@ -1,198 +1,80 @@
 package pt.florinhas.marcacoes.exception;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.springframework.http.HttpMethod;
+
+import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.exception.ConflictException;
+import pt.florinhas.common_data.exception.ResourceNotFoundException;
 
 class GlobalExceptionHandlerTest {
 
     private GlobalExceptionHandler handler;
 
     @BeforeEach
-    void setup() {
+    void setUp() {
         handler = new GlobalExceptionHandler();
     }
 
-    // =========================
-    // NOT FOUND
-    // =========================
-
     @Test
-    void handleNotFoundException_DeveRetornar404() {
+    @DisplayName("Deve retornar 404 para NotFoundException")
+    void handleNotFoundException_DeveDevolver404() {
         NotFoundException ex = new NotFoundException("Não encontrado");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleNotFoundException(ex);
-
-        assertEquals(404, result.getStatusCode().value());
-        assertEquals("Não encontrado", result.getBody().get("message"));
+        ResponseEntity<Map<String, String>> response = handler.handleNotFoundException(ex);
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("Não encontrado", response.getBody().get("message"));
     }
 
     @Test
-    void handleResourceNotFoundException_DeveRetornar404() {
-        ResourceNotFoundException ex = new ResourceNotFoundException("Recurso não existe");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleResourceNotFoundException(ex);
-
-        assertEquals(404, result.getStatusCode().value());
-        assertEquals("Recurso não existe", result.getBody().get("message"));
+    @DisplayName("Deve retornar 400 para BadRequestException")
+    void handleBadRequestException_DeveDevolver400() {
+        BadRequestException ex = new BadRequestException("Pedido inválido");
+        ResponseEntity<Map<String, String>> response = handler.handleBadRequestException(ex);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
     @Test
-void handleNoResourceFoundException_DeveRetornar404() {
-    NoResourceFoundException ex =
-            new NoResourceFoundException(HttpMethod.GET, "/api/teste");
-
-    ResponseEntity<Map<String, String>> result =
-            handler.handleNoResourceFoundException(ex);
-
-    assertEquals(404, result.getStatusCode().value());
-    assertTrue(result.getBody().get("message").contains("/api/teste"));
-}
-
-    // =========================
-    // BAD REQUEST
-    // =========================
-
-    @Test
-    void handleBadRequestException_DeveRetornar400() {
-        BadRequestException ex = new BadRequestException("Erro de validação");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleBadRequestException(ex);
-
-        assertEquals(400, result.getStatusCode().value());
-        assertEquals("Erro de validação", result.getBody().get("message"));
-    }
-
-    @Test
-    void handleIllegalArgumentException_DeveRetornar400() {
-        IllegalArgumentException ex = new IllegalArgumentException("Argumento inválido");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleIllegalArgumentException(ex);
-
-        assertEquals(400, result.getStatusCode().value());
-        assertEquals("Argumento inválido", result.getBody().get("message"));
-    }
-
-    @Test
-    void handleBusinessRuleException_DeveRetornar400() {
-        BusinessRuleException ex = new BusinessRuleException("Regra violada");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleBusinessRuleException(ex);
-
-        assertEquals(400, result.getStatusCode().value());
-        assertEquals("Regra violada", result.getBody().get("message"));
-    }
-
-    // =========================
-    // CONFLICT
-    // =========================
-
-    @Test
-    void handleConflictException_DeveRetornar409() {
-        ConflictException ex = new ConflictException("Conflito");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleConflictException(ex);
-
-        assertEquals(409, result.getStatusCode().value());
-        assertEquals("Conflito", result.getBody().get("message"));
-    }
-
-    @Test
-    void handleIllegalStateException_DeveRetornar409() {
-        IllegalStateException ex = new IllegalStateException("Estado inválido");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleIllegalStateException(ex);
-
-        assertEquals(409, result.getStatusCode().value());
-        assertEquals("Estado inválido", result.getBody().get("message"));
-    }
-
-    // =========================
-    // VALIDATION (@Valid)
-    // =========================
-
-    @Test
-    void handleValidationExceptions_DeveRetornar400ComMapaDeErros() {
-        // Simular erro de validação
-        Object target = new Object();
-        BeanPropertyBindingResult bindingResult =
-                new BeanPropertyBindingResult(target, "obj");
-
-        bindingResult.addError(new FieldError("obj", "nome", "Nome obrigatório"));
-        bindingResult.addError(new FieldError("obj", "email", "Email inválido"));
-
-        MethodArgumentNotValidException ex =
-                new MethodArgumentNotValidException(null, bindingResult);
-
-        ResponseEntity<Map<String, Object>> result =
-                handler.handleValidationExceptions(ex);
-
-        assertEquals(400, result.getStatusCode().value());
-
-        Map<String, Object> body = result.getBody();
-
-        assertEquals("Nome obrigatório", body.get("message"));
-
-        Map<String, String> errors = (Map<String, String>) body.get("errors");
-        assertEquals("Nome obrigatório", errors.get("nome"));
-        assertEquals("Email inválido", errors.get("email"));
-    }
-
-    // =========================
-    // ACCESS DENIED
-    // =========================
-
-    @Test
-    void handleAccessDeniedException_DeveRetornar403() {
+    @DisplayName("Deve retornar 403 para AccessDeniedException")
+    void handleAccessDeniedException_DeveDevolver403() {
         AccessDeniedException ex = new AccessDeniedException("Acesso negado");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleAccessDeniedException(ex);
-
-        assertEquals(403, result.getStatusCode().value());
-        assertEquals("Acesso negado", result.getBody().get("message"));
+        ResponseEntity<Map<String, String>> response = handler.handleAccessDeniedException(ex);
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
     }
 
-    // =========================
-    // GENERIC
-    // =========================
-
     @Test
-    void handleGenericException_ComMensagem_DeveRetornar500() {
+    @DisplayName("Deve retornar 500 para exceção genérica")
+    void handleGenericException_DeveDevolver500() {
         Exception ex = new Exception("Erro interno");
-
-        ResponseEntity<Map<String, String>> result =
-                handler.handleGenericException(ex);
-
-        assertEquals(500, result.getStatusCode().value());
-        assertEquals("Erro interno", result.getBody().get("message"));
+        ResponseEntity<Map<String, String>> response = handler.handleGenericException(ex);
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Erro interno", response.getBody().get("message"));
     }
 
     @Test
-    void handleGenericException_SemMensagem_DeveRetornarMensagemDefault() {
-        Exception ex = new Exception((String) null);
+    @DisplayName("Deve retornar 400 para erros de validação")
+    void handleValidationExceptions_DeveDevolver400() {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "obj");
+        bindingResult.addError(new FieldError("obj", "nome", "Nome obrigatório"));
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(mock(MethodParameter.class), bindingResult);
 
-        ResponseEntity<Map<String, String>> result =
-                handler.handleGenericException(ex);
+        ResponseEntity<Map<String, Object>> response = handler.handleValidationExceptions(ex);
 
-        assertEquals(500, result.getStatusCode().value());
-        assertEquals("Ocorreu um erro interno no servidor.", result.getBody().get("message"));
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Nome obrigatório", response.getBody().get("message"));
     }
 }

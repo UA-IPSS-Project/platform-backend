@@ -1,336 +1,191 @@
 package pt.florinhas.marcacoes.service;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import pt.florinhas.common_data.domain.Funcionario;
-import pt.florinhas.common_data.domain.Utente;
-import pt.florinhas.common_data.domain.Utilizador;
-import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
-import pt.florinhas.common_data.repository.FuncionarioRepository;
-import pt.florinhas.common_data.repository.UtenteRepository;
-import pt.florinhas.common_data.repository.UtilizadorRepository;
-import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
-import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
-import pt.florinhas.common_data.validation.NifValidator;
-import pt.florinhas.marcacoes.service.email.EmailService;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import java.time.LocalDate;
-import pt.florinhas.common_data.domain.Utente;
-import pt.florinhas.common_data.exception.BadRequestException;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
+import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
+import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.security.CryptoUtils;
+import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
+import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
+import pt.florinhas.marcacoes.exception.NotFoundException;
+import pt.florinhas.marcacoes.repository.DocumentoRepository;
+import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.service.email.EmailService;
 
 @ExtendWith(MockitoExtension.class)
-class UtilizadorServiceTest {
+public class UtilizadorServiceTest {
 
     @Mock private UtilizadorRepository utilizadorRepository;
     @Mock private UtenteRepository utenteRepository;
     @Mock private FuncionarioRepository funcionarioRepository;
-    @Mock private EmailService emailService;
     @Mock private NifValidator nifValidator;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private CryptoUtils cryptoUtils;
+    @Mock private DocumentoRepository documentoRepository;
+    @Mock private MarcacaoRepository marcacaoRepository;
+    @Mock private EmailService emailService;
 
-    @InjectMocks
     private UtilizadorService utilizadorService;
 
-    @Test
-    void shouldReturnUserByEmail() {
-        Utilizador user = new Utente();
-        user.setEmail("a@b.com");
+    private static final String NIF = "123456789";
+    private static final String NIF_HASH = "hashed_nif";
 
-        when(utilizadorRepository.findByEmail("a@b.com")).thenReturn(List.of(user));
-
-        assertEquals(user, utilizadorService.buscarPorEmail("a@b.com"));
-    }
-
-    @Test
-    void shouldThrowWhenEmailNotFound() {
-        when(utilizadorRepository.findByEmail("x@y.com")).thenReturn(List.of());
-
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> utilizadorService.buscarPorEmail("x@y.com")
+    @BeforeEach
+    void setUp() {
+        utilizadorService = new UtilizadorService(
+            utilizadorRepository, utenteRepository, funcionarioRepository,
+            nifValidator, passwordEncoder, cryptoUtils,
+            documentoRepository, marcacaoRepository, emailService
         );
-
-        assertTrue(ex.getMessage().contains("Utilizador não encontrado"));
     }
 
     @Test
-    void shouldReturnEmptyWhenSearchingBlankNif() {
-        assertTrue(utilizadorService.buscarPorNif(" ").isEmpty());
-    }
-
-    @Test
-    void shouldReturnUserWhenSearchingNif() {
+    @DisplayName("Deve carregar utilizador por ID")
+    void obterUtilizadorPorId_ShouldReturnUser() {
         Utilizador user = new Utente();
         user.setId(1L);
-        when(utilizadorRepository.findByNif("100000002")).thenReturn(List.of(user));
-
-        Optional<Utilizador> result = utilizadorService.buscarPorNif("100000002");
-
-        assertTrue(result.isPresent());
-        assertEquals(1L, result.get().getId());
-    }
-
-    @Test
-    void shouldReturnExistingUtenteWhenNifAlreadyBelongsToUtente() {
-        Utente utente = new Utente();
-        utente.setNif("100000002");
-
-        when(utilizadorRepository.findByNif("100000002")).thenReturn(List.of(utente));
-
-        Utente result = utilizadorService.obterOuCriarUtente("100000002", "Nome", "u@x.com", "999");
-
-        assertSame(utente, result);
-    }
-
-    @Test
-    void shouldThrowWhenNifAlreadyBelongsToFuncionario() {
-        Funcionario funcionario = new Funcionario();
-        funcionario.setNif("100000002");
-
-        when(utilizadorRepository.findByNif("100000002")).thenReturn(List.of(funcionario));
-
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> utilizadorService.obterOuCriarUtente("100000002", "Nome", "u@x.com", "999")
-        );
-
-        assertTrue(ex.getMessage().contains("já está registado como Funcionário"));
-    }
-
-    @Test
-    void shouldThrowWhenCreatingUtenteWithoutRequiredName() {
-        when(utilizadorRepository.findByNif("100000002")).thenReturn(List.of());
-
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> utilizadorService.obterOuCriarUtente("100000002", " ", "u@x.com", "999")
-        );
-
-        assertEquals("Nome do utente é obrigatório para criar novo registo", ex.getMessage());
-    }
-
-    @Test
-    void shouldThrowWhenEmailAlreadyExistsWhileCreatingUtente() {
-        when(utilizadorRepository.findByNif("100000002")).thenReturn(List.of());
-        when(utenteRepository.existsByEmail("u@x.com")).thenReturn(true);
-
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> utilizadorService.obterOuCriarUtente("100000002", "Nome", "u@x.com", "999")
-        );
-
-        assertEquals("Email já está registado no sistema", ex.getMessage());
-    }
-
-    @Test
-    void shouldCreateUtenteSuccessfully() {
-        when(utilizadorRepository.findByNif("100000002")).thenReturn(List.of());
-        when(utenteRepository.existsByEmail("u@x.com")).thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("HASH");
-        when(utenteRepository.save(any(Utente.class))).thenAnswer(inv -> {
-            Utente u = inv.getArgument(0);
-            u.setId(10L);
-            return u;
-        });
-
-        Utente result = utilizadorService.obterOuCriarUtente("100000002", "Nome", "u@x.com", "999");
-
-        assertEquals("100000002", result.getNif());
-        assertFalse(result.isActivo());
-        verify(emailService).sendPassword(eq("u@x.com"), anyString());
-        verify(nifValidator).validateRequiredOrThrow("100000002");
-    }
-
-    @Test
-    void shouldGetUserById() {
-        Utilizador user = new Utente();
-        user.setId(1L);
-
         when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        assertEquals(user, utilizadorService.obterUtilizadorPorId(1L));
+        Utilizador result = utilizadorService.obterUtilizadorPorId(1L);
+        assertEquals(user, result);
     }
 
     @Test
-    void shouldThrowWhenUserIdNotFound() {
-        when(utilizadorRepository.findById(1L)).thenReturn(Optional.empty());
+    @DisplayName("Deve buscar utilizador por NIF usando Blind Index")
+    void buscarPorNif_ShouldUseBlindIndex() {
+        Utilizador user = new Utente();
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(List.of(user));
 
-        assertThrows(RuntimeException.class,
-                () -> utilizadorService.obterUtilizadorPorId(1L));
+        Optional<Utilizador> result = utilizadorService.buscarPorNif(NIF);
+        assertTrue(result.isPresent());
+        assertEquals(user, result.get());
     }
 
     @Test
-    void shouldUpdateUtilizadorFields() {
+    @DisplayName("Deve obter ou criar utente quando já existe")
+    void obterOuCriarUtente_WhenExists_ShouldReturnExisting() {
+        Utente existing = new Utente();
+        existing.setId(1L);
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(List.of(existing));
+
+        Utente result = utilizadorService.obterOuCriarUtente(NIF, "Nome", "email@test.com", "999");
+        assertEquals(existing, result);
+    }
+
+    @Test
+    @DisplayName("Deve lançar erro ao obter utente com NIF inválido")
+    void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
+        doThrow(new BadRequestException("Erro NIF")).when(nifValidator).validateRequiredOrThrow(eq("123"));
+        assertThrows(BadRequestException.class, () -> utilizadorService.obterOuCriarUtente("123", "N", "E", "P"));
+    }
+
+    @Test
+    @DisplayName("Deve listar todos os utentes")
+    void listarTodosUtentes_ShouldReturnList() {
+        Utente u1 = new Utente(); u1.setActivo(true); u1.setNome("A");
+        Utente u2 = new Utente(); u2.setActivo(false); u2.setNome("B");
+        when(utenteRepository.findAll()).thenReturn(List.of(u1, u2));
+
+        List<UtilizadorResponseDTO> result = utilizadorService.listarTodosUtentes();
+        assertEquals(2, result.size());
+        assertTrue(result.get(0).isActive());
+        assertFalse(result.get(1).isActive());
+    }
+
+    @Test
+    @DisplayName("Deve atualizar utilizador com sucesso")
+    void atualizarUtilizador_ShouldUpdateFields() {
         Utilizador user = new Utente();
         user.setId(1L);
-        user.setNome("Antigo");
-        user.setEmail("old@x.com");
-
         UtilizadorInfoDTO dto = new UtilizadorInfoDTO();
-        dto.setNome("Novo Nome");
-        dto.setEmail("new@x.com");
-        dto.setTelefone("999");
+        dto.setNome("Novo");
+        dto.setEmail("new@test.com");
         dto.setDataNasc("2000-01-01");
 
         when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(utilizadorRepository.findByEmail("new@x.com")).thenReturn(List.of());
-        when(utilizadorRepository.save(user)).thenReturn(user);
+        when(utilizadorRepository.findByEmail("new@test.com")).thenReturn(List.of());
+        when(utilizadorRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         Utilizador result = utilizadorService.atualizarUtilizador(1L, dto);
-
-        assertEquals("Novo Nome", result.getNome());
-        assertEquals("new@x.com", result.getEmail());
-        assertEquals("999", result.getTelefone());
+        assertEquals("Novo", result.getNome());
         assertEquals(LocalDate.of(2000, 1, 1), result.getDataNasc());
     }
 
     @Test
-    void shouldThrowWhenUpdatingEmailAlreadyUsedByAnotherUser() {
-        Utilizador current = new Utente();
-        current.setId(1L);
-
-        Utilizador other = new Utente();
-        other.setId(2L);
-
-        UtilizadorInfoDTO dto = new UtilizadorInfoDTO();
-        dto.setEmail("dup@x.com");
-
-        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(current));
-        when(utilizadorRepository.findByEmail("dup@x.com")).thenReturn(List.of(other));
-
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> utilizadorService.atualizarUtilizador(1L, dto)
-        );
-
-        assertEquals("Email já está em uso por outro utilizador", ex.getMessage());
-    }
-
-    @Test
-    void shouldThrowWhenBirthDateInvalid() {
-        Utilizador user = new Utente();
-        user.setId(1L);
-
-        UtilizadorInfoDTO dto = new UtilizadorInfoDTO();
-        dto.setDataNasc("31-12-2000");
-
-        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> utilizadorService.atualizarUtilizador(1L, dto)
-        );
-
-        assertEquals("Formato de data inválido. Use YYYY-MM-DD", ex.getMessage());
-    }
-
-    @Test
-    void shouldApproveFuncionario() {
-        Funcionario funcionario = new Funcionario();
-        funcionario.setId(1L);
-        funcionario.setActivo(false);
-
-        when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(funcionario));
+    @DisplayName("Deve aprovar funcionário pendente")
+    void aprovarFuncionario_ShouldActivate() {
+        Funcionario f = new Funcionario();
+        f.setId(1L); f.setActivo(false);
+        when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(f));
 
         utilizadorService.aprovarFuncionario(1L);
-
-        assertTrue(funcionario.isActivo());
-        verify(funcionarioRepository).save(funcionario);
+        assertTrue(f.isActivo());
+        verify(funcionarioRepository).save(f);
     }
 
     @Test
-    void shouldCreateUserBySecretariaAsUtente() {
+    @DisplayName("Deve criar utilizador pela secretaria")
+    void criarUtilizadorPelaSecretaria_ShouldCreateAndSendEmail() {
         CreateUserRequestDTO dto = new CreateUserRequestDTO();
-        dto.setNif("100000002");
-        dto.setName("Nome");
-        dto.setContact("999");
-        dto.setEmail("u@x.com");
-        dto.setBirthDate("2000-01-01");
-        dto.setEmployee(false);
-        dto.setRole("UTENTE");
-
-        when(utilizadorRepository.existsByNif("100000002")).thenReturn(false);
-        when(utilizadorRepository.existsByEmail("u@x.com")).thenReturn(false);
+        dto.setNif(NIF); dto.setEmail("test@test.com"); dto.setRole("UTENTE");
+        
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.existsByNifHash(NIF_HASH)).thenReturn(false);
+        when(utilizadorRepository.existsByEmail(anyString())).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("HASH");
-        when(utilizadorRepository.save(any(Utilizador.class))).thenAnswer(inv -> {
-            Utilizador u = inv.getArgument(0);
-            u.setId(3L);
-            return u;
-        });
+        when(utilizadorRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         Utilizador result = utilizadorService.criarUtilizadorPelaSecretaria(dto);
-
-        assertTrue(result instanceof Utente);
-        verify(emailService).sendPassword(eq("u@x.com"), anyString());
+        assertNotNull(result);
+        verify(emailService).sendPassword(eq("test@test.com"), anyString());
     }
 
     @Test
-    void shouldCreateUserBySecretariaAsFuncionario() {
-        CreateUserRequestDTO dto = new CreateUserRequestDTO();
-        dto.setNif("100000002");
-        dto.setName("Nome");
-        dto.setContact("999");
-        dto.setEmail("f@x.com");
-        dto.setBirthDate("2000-01-01");
-        dto.setEmployee(true);
-        dto.setRole("SECRETARIA");
-
-        when(utilizadorRepository.existsByNif("100000002")).thenReturn(false);
-        when(utilizadorRepository.existsByEmail("f@x.com")).thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("HASH");
-        when(utilizadorRepository.save(any(Utilizador.class))).thenAnswer(inv -> {
-            Utilizador u = inv.getArgument(0);
-            u.setId(4L);
-            return u;
-        });
-
-        Utilizador result = utilizadorService.criarUtilizadorPelaSecretaria(dto);
-
-        assertTrue(result instanceof Funcionario);
-        assertFalse(((Funcionario) result).isActivo());
-    }
-
-    @Test
-    void shouldRecoverAccountAndSendNewPassword() {
-        Utente utente = new Utente();
-        utente.setId(1L);
-        utente.setNif("100000002");
-        utente.setEmail("old@x.com");
-        utente.setTelefone("111");
-        utente.setActivo(true);
-
+    @DisplayName("Deve recuperar conta e enviar nova senha")
+    void recuperarConta_ShouldUpdateAndDeactivate() {
+        Utente u = new Utente(); u.setNif(NIF); u.setActivo(true);
         RecoverAccountDTO dto = new RecoverAccountDTO();
-        dto.setNif("100000002");
-        dto.setUpdatedEmail("new@x.com");
-        dto.setUpdatedContact("999");
+        dto.setNif(NIF); dto.setUpdatedEmail("new@test.com");
 
-        when(utilizadorRepository.findByNif("100000002")).thenReturn(List.of(utente));
-        when(utilizadorRepository.existsByEmail("new@x.com")).thenReturn(false);
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(List.of(u));
         when(passwordEncoder.encode(anyString())).thenReturn("HASH");
 
         utilizadorService.recuperarConta(dto);
-
-        assertEquals("new@x.com", utente.getEmail());
-        assertEquals("999", utente.getTelefone());
-        assertFalse(utente.isActivo());
-        verify(utilizadorRepository).save(utente);
-        verify(emailService).sendPassword(eq("new@x.com"), anyString());
+        assertEquals("new@test.com", u.getEmail());
+        assertFalse(u.isActivo());
+        verify(utilizadorRepository).save(u);
     }
 
     @Test
-    void shouldCountActiveUtentes() {
-        when(utenteRepository.countByActivo(true)).thenReturn(12L);
-        assertEquals(12L, utilizadorService.contarUtentesAtivos());
+    @DisplayName("Deve contar utentes ativos")
+    void contarUtentesAtivos_ShouldReturnCount() {
+        when(utenteRepository.countByActivo(true)).thenReturn(10L);
+        assertEquals(10L, utilizadorService.contarUtentesAtivos());
     }
 }

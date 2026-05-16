@@ -91,24 +91,8 @@ public class MarcacaoController {
         return targetUtenteId; // Admin pode usar qualquer ID
     }
 
-    /**
-     * Verifica se o utilizador atual (não-admin) tem permissão de aceder a um
-     * recurso
-     * baseado no ID do proprietário.
-     *
-     * @param ownerId      ID do proprietário do recurso
-     * @param resourceType tipo de recurso para a mensagem de erro
-     * @throws AccessDeniedException se não tiver permissão
-     */
-    private void verificarPermissaoProprietario(Long ownerId, String resourceType) {
-        Long currentUserId = authorizationService.getCurrentUserId();
-        boolean isAdmin = authorizationService.isAdmin();
-
-        if (!isAdmin && (currentUserId == null || !currentUserId.equals(ownerId))) {
-            throw new AccessDeniedException(
-                    String.format("Não tem permissão para %s.", resourceType));
-        }
-    }
+    // Removido verificarPermissaoProprietario pois agora usamos
+    // authorizationService.checkPermission
 
     /**
      * Endpoint para contar o número de marcações do dia atual.
@@ -175,7 +159,7 @@ public class MarcacaoController {
      * return dados básicos da marcação criada
      */
     @PostMapping("/balneario")
-        public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
+    public ResponseEntity<Map<String, String>> criarMarcacaoBalneario(
             @Valid @RequestBody CriarMarcacaoBalnearioRequest request) {
 
         Marcacao marcacao = marcacaoService.criarMarcacaoBalneario(request);
@@ -183,14 +167,14 @@ public class MarcacaoController {
         String durationLabel = "Duração da marcação";
         String durationBalneario = String.format("Duração padrão para balneário: %d minutos", marcacao.getDuration());
         return ResponseEntity.ok().body(Map.of(
-            "id", marcacao.getId().toString(),
-            "data", marcacao.getData().toString(),
-            "estado", marcacao.getEstado().toString(),
-            "duration", String.valueOf(marcacao.getDuration()),
-            "durationLabel", durationLabel,
-            "durationBalneario", durationBalneario,
-            "message", "Marcação de balneário registada com sucesso"));
-        }
+                "id", marcacao.getId().toString(),
+                "data", marcacao.getData().toString(),
+                "estado", marcacao.getEstado().toString(),
+                "duration", String.valueOf(marcacao.getDuration()),
+                "durationLabel", durationLabel,
+                "durationBalneario", durationBalneario,
+                "message", "Marcação de balneário registada com sucesso"));
+    }
 
     /**
      * Atualiza os detalhes de serviços de uma marcação de balneário.
@@ -279,7 +263,6 @@ public class MarcacaoController {
             @Valid @RequestBody AtualizarEstadoRequest request) {
 
         // Validar permissões
-        Long currentUserId = authorizationService.getCurrentUserId();
         boolean isAdmin = authorizationService.isAdmin();
 
         if (!isAdmin) {
@@ -289,15 +272,12 @@ public class MarcacaoController {
                     && existing.getMarcacaoSecretaria().getUtente() != null) {
 
                 Long ownerId = existing.getMarcacaoSecretaria().getUtente().getId();
-                if (!ownerId.equals(currentUserId)) {
-                    throw new AccessDeniedException("Não tem permissão para alterar esta marcação.");
-                }
+                authorizationService.checkPermission(ownerId, "alterar esta marcação");
             } else if (existing != null) {
                 // Se não tem dados de utente (estranho), por segurança bloqueamos se não for
                 // admin
                 throw new AccessDeniedException("Não tem permissão para alterar esta marcação.");
             }
-            // Se existing == null, deixamos o serviço lidar com o 404 normal
         }
 
         MarcacaoResponseDTO response = marcacaoService.atualizarEstadoMarcacao(id, request);
@@ -313,18 +293,18 @@ public class MarcacaoController {
      * - estado
      */
     @GetMapping("/passadas")
-    public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesPassadas(
+    public ResponseEntity<Page<MarcacaoResponseDTO>> consultarMarcacoesPassadas(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataInicio,
-
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
-
             @RequestParam(required = false) Long utenteId,
-            @RequestParam(required = false) EventoEstado estado) {
+            @RequestParam(required = false) EventoEstado estado,
+            @RequestParam(required = false) String assunto,
+            @RequestParam(required = false) String nomeUtente,
+            @PageableDefault(size = 20, sort = "data") Pageable pageable) {
 
         Long utenteIdFiltrado = verificarPermissaoUtente(utenteId);
-
-        List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadas(
-                dataInicio, dataFim, utenteIdFiltrado, estado);
+        Page<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadasPaginated(
+                dataInicio, dataFim, utenteIdFiltrado, estado, assunto, nomeUtente, pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -357,7 +337,7 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesUtente(
             @PathVariable Long utenteId) {
 
-        verificarPermissaoProprietario(utenteId, "consultar dados de outro utente");
+        authorizationService.checkPermission(utenteId, "consultar dados de outro utente");
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesUtente(utenteId);
         return ResponseEntity.ok(response);
@@ -376,7 +356,7 @@ public class MarcacaoController {
     public ResponseEntity<List<Map<String, Object>>> consultarMarcacoesBloqueadas(
             @PathVariable Long utenteId) {
 
-        verificarPermissaoProprietario(utenteId, "consultar dados de outro utente");
+        authorizationService.checkPermission(utenteId, "consultar dados de outro utente");
 
         List<Map<String, Object>> marcacoesBloqueadas = marcacaoService.consultarMarcacoesBloqueadas(utenteId);
         return ResponseEntity.ok(marcacoesBloqueadas);
@@ -392,7 +372,7 @@ public class MarcacaoController {
     public ResponseEntity<List<MarcacaoResponseDTO>> consultarMarcacoesFuncionario(
             @PathVariable Long funcionarioId) {
 
-        verificarPermissaoProprietario(funcionarioId, "consultar marcações deste funcionário");
+        authorizationService.checkPermission(funcionarioId, "consultar marcações deste funcionário");
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesFuncionario(funcionarioId);
         return ResponseEntity.ok(response);
@@ -408,7 +388,6 @@ public class MarcacaoController {
     public ResponseEntity<MarcacaoResponseDTO> obterMarcacao(
             @PathVariable Long id) {
 
-        Long currentUserId = authorizationService.getCurrentUserId();
         boolean isAdmin = authorizationService.isAdmin();
 
         // Obter marcação primeiro para verificar ownership
@@ -426,9 +405,9 @@ public class MarcacaoController {
                 ownerId = response.getMarcacaoSecretaria().getUtente().getId();
             }
 
-            boolean isOwner = ownerId != null && ownerId.equals(currentUserId);
-
-            if (!isOwner) {
+            if (ownerId != null) {
+                authorizationService.checkPermission(ownerId, "visualizar esta marcação");
+            } else {
                 throw new AccessDeniedException("Não tem permissão para visualizar esta marcação.");
             }
         }
@@ -501,6 +480,7 @@ public class MarcacaoController {
         MarcacaoResponseDTO response = marcacaoService.reagendarMarcacao(id, request);
         return ResponseEntity.ok(response);
     }
+
     /**
      * Endpoint para obter estatísticas de frequência do Balneário.
      *
@@ -511,7 +491,8 @@ public class MarcacaoController {
     public ResponseEntity<BalnearioAttendanceStatsDTO> getBalnearioFrequenciaEstatisticas(
             @RequestParam(defaultValue = "MES") String periodo) {
 
-        // Apenas funcionários/admin (que têm ROLE_SECRETARIA ou ROLE_BALNEARIO) podem ver estatísticas
+        // Apenas funcionários/admin (que têm ROLE_SECRETARIA ou ROLE_BALNEARIO) podem
+        // ver estatísticas
         if (!authorizationService.isAdmin()) {
             throw new AccessDeniedException("Não tem permissão para consultar estatísticas de frequência.");
         }

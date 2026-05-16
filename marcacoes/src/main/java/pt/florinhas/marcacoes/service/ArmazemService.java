@@ -461,14 +461,29 @@ public class ArmazemService {
             String dataStr = m.getData().toLocalDate().toString();
 
             for (Roupa roupa : bal.getRoupas()) {
-                String armazemCategoria = FORM_TO_CATEGORIA.getOrDefault(roupa.getCategoria(), "OUTRO");
-                String armazemNome = FORM_TO_ARMAZEM.getOrDefault(roupa.getCategoria(), roupa.getCategoria());
+                String armazemCategoria;
+                String armazemNome;
+
+                // Modo novo: item ligado diretamente ao armazém (inclui calçado com itemId)
+                if (roupa.getItem() != null) {
+                    ItemArmazem itemRef = roupa.getItem();
+                    armazemCategoria = itemRef.getCategoria(); // ex: "CALCADO", "HIGIENE", etc.
+                    armazemNome = itemRef.getNome();           // ex: "38", "Champô", etc.
+                } else {
+                    // Modo legado: usar campos de texto
+                    String formCategoria = roupa.getCategoria();
+                    if ("Sapatos/Sapatilhas".equalsIgnoreCase(formCategoria)) {
+                        armazemCategoria = "CALCADO";
+                        armazemNome = roupa.getTamanho() != null ? roupa.getTamanho() : formCategoria;
+                    } else {
+                        armazemCategoria = FORM_TO_CATEGORIA.getOrDefault(formCategoria, "OUTRO");
+                        armazemNome = FORM_TO_ARMAZEM.getOrDefault(formCategoria, formCategoria);
+                    }
+                }
 
                 ConsumoEstatisticaDTO.ConsumoItemDTO item = new ConsumoEstatisticaDTO.ConsumoItemDTO();
                 item.setCategoria(armazemCategoria);
-                item.setNome(roupa.getCategoria().equalsIgnoreCase("Sapatos/Sapatilhas") && roupa.getTamanho() != null
-                        ? roupa.getTamanho()
-                        : armazemNome);
+                item.setNome(armazemNome);
                 item.setQuantidade(roupa.getQuantidade());
                 item.setData(dataStr);
                 itensConsumo.add(item);

@@ -1,0 +1,3 @@
+# Ignorar todos os ficheiros gerados
+*
+!.gitignore

@@ -1,6 +1,8 @@
 package pt.florinhas.marcacoes.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.florinhas.marcacoes.domain.Assunto;
@@ -15,15 +17,18 @@ public class AssuntoService {
 
     private final AssuntoRepository assuntoRepository;
 
+    @Cacheable(value = "assuntos", key = "'ativos'")
     public List<Assunto> listarAtivos() {
         return assuntoRepository.findByAtivoTrue();
     }
 
+    @Cacheable(value = "assuntos", key = "'todos'")
     public List<Assunto> listarTodos() {
         return assuntoRepository.findAll();
     }
 
     @Transactional
+    @CacheEvict(value = "assuntos", allEntries = true)
     public Assunto criar(String nome) {
         String normalized = nome.trim().toLowerCase();
         if (assuntoRepository.findByNome(normalized).isPresent()) {
@@ -37,6 +42,7 @@ public class AssuntoService {
     }
 
     @Transactional
+    @CacheEvict(value = "assuntos", allEntries = true)
     public Assunto atualizar(Long id, String novoNome) {
         Assunto existindo = assuntoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));
@@ -55,6 +61,7 @@ public class AssuntoService {
     }
 
     @Transactional
+    @CacheEvict(value = "assuntos", allEntries = true)
     public void apagar(Long id) {
         Assunto existindo = assuntoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));
@@ -65,6 +72,7 @@ public class AssuntoService {
     }
 
     @Transactional
+    @CacheEvict(value = "assuntos", allEntries = true)
     public Assunto setAtivo(Long id, boolean ativo) {
         Assunto existindo = assuntoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Assunto não encontrado"));

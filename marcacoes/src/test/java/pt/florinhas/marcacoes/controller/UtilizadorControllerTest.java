@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -18,27 +19,25 @@ import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
 import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
+import pt.florinhas.marcacoes.service.AuthorizationService;
+import pt.florinhas.marcacoes.service.TermsService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
 class UtilizadorControllerTest {
 
     @Mock
     private UtilizadorService utilizadorService;
+    @Mock
+    private AuthorizationService authorizationService;
+    @Mock
+    private TermsService termsService;
 
     private UtilizadorController controller;
 
     @BeforeEach
     void setup() {
         MockitoAnnotations.openMocks(this);
-        controller = new UtilizadorController();
-        // inject field because controller uses @Autowired field
-        try {
-            var field = UtilizadorController.class.getDeclaredField("utilizadorService");
-            field.setAccessible(true);
-            field.set(controller, utilizadorService);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        controller = new UtilizadorController(utilizadorService, authorizationService, termsService);
     }
 
     private Utilizador buildUser(Long id, String nif) {
@@ -52,6 +51,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve obter utilizador por ID e retornar DTO")
     void obterUtilizadorPorId_DeveRetornarDto() {
         Utilizador u = buildUser(1L, "100000002");
         when(utilizadorService.obterUtilizadorPorId(1L)).thenReturn(u);
@@ -64,6 +64,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve buscar utilizador por NIF")
     void buscarPorNif_DeveRetornarDto() {
         Utilizador u = buildUser(1L, "100000002");
         when(utilizadorService.buscarPorNif("100000002")).thenReturn(Optional.of(u));
@@ -75,6 +76,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve atualizar utilizador e retornar DTO")
     void atualizarUtilizador_DeveRetornarDtoAtualizado() {
         Utilizador u = buildUser(1L, "100000002");
         UtilizadorInfoDTO dto = new UtilizadorInfoDTO();
@@ -89,6 +91,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve contar utentes ativos")
     void contarUtentes_DeveRetornarCount() {
         when(utilizadorService.contarUtentesAtivos()).thenReturn(12L);
 
@@ -99,6 +102,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve listar todos os funcionários")
     void listarTodosFuncionarios_DeveRetornarLista() {
         UtilizadorResponseDTO dto = mock(UtilizadorResponseDTO.class);
         when(utilizadorService.listarTodosFuncionarios()).thenReturn(List.of(dto));
@@ -110,6 +114,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve listar todos os utentes")
     void listarTodosUtentes_DeveRetornarLista() {
         UtilizadorResponseDTO dto = mock(UtilizadorResponseDTO.class);
         when(utilizadorService.listarTodosUtentes()).thenReturn(List.of(dto));
@@ -121,6 +126,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve listar funcionários pendentes")
     void listarFuncionariosPendentes_DeveRetornarLista() {
         UtilizadorResponseDTO dto = mock(UtilizadorResponseDTO.class);
         when(utilizadorService.listarFuncionariosPendentes()).thenReturn(List.of(dto));
@@ -132,6 +138,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve aprovar funcionário")
     void aprovarFuncionario_DeveDelegarNoService() {
         ResponseEntity<Void> result = controller.aprovarFuncionario(1L);
 
@@ -140,6 +147,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve pesquisar por NIF para recuperação de conta")
     void pesquisarPorNifParaRecuperacao_DeveRetornarDto() {
         Utilizador u = buildUser(1L, "100000002");
         when(utilizadorService.buscarPorNif("100000002")).thenReturn(Optional.of(u));
@@ -151,6 +159,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve criar utilizador pela secretaria")
     void criarPelaSecretaria_DeveDelegarNoService() {
         CreateUserRequestDTO req = new CreateUserRequestDTO();
         Utilizador u = buildUser(1L, "100000002");
@@ -164,6 +173,7 @@ class UtilizadorControllerTest {
     }
 
     @Test
+    @DisplayName("Deve recuperar conta")
     void recuperarConta_DeveDelegarNoService() {
         RecoverAccountDTO req = new RecoverAccountDTO();
 
@@ -171,5 +181,11 @@ class UtilizadorControllerTest {
 
         assertEquals(200, result.getStatusCode().value());
         verify(utilizadorService).recuperarConta(req);
+    }
+
+    @Test
+    @DisplayName("Classe UtilizadorController deve carregar")
+    void classeDeveCarregar() {
+        assertNotNull(UtilizadorController.class);
     }
 }

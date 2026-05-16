@@ -10,6 +10,8 @@ public interface EmailService {
     void sendAppointmentCancelled(String to, String motivo);
 
     void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime);
+
     void sendGenericEmail(String to, String subject, String body);
+
     void sendEmailWithAttachment(String to, String subject, String body, byte[] attachment, String fileName);
 }

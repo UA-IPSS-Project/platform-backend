@@ -24,8 +24,8 @@ public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
     // Encontrar utilizador por email (List para tolerar duplicados)
     List<Utilizador> findByEmail(String email);
 
-    // Encontrar utilizador por NIF (mudado para List para tolerar duplicados)
-    List<Utilizador> findByNif(String nif);
+    // Encontrar utilizador por blind index do NIF
+    List<Utilizador> findByNifHash(String nifHash);
 
     // Encontrar utilizadores por nome
     @Query("SELECT u FROM Utilizador u WHERE LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")
@@ -34,12 +34,21 @@ public interface UtilizadorRepository extends JpaRepository<Utilizador, Long> {
     // Verificar se email existe
     boolean existsByEmail(String email);
 
-    // Verificar se NIF existe
-    boolean existsByNif(String nif);
+    // Verificar se NIF existe (via blind index)
+    boolean existsByNifHash(String nifHash);
 
     // Encontrar utilizador por telefone
     Optional<Utilizador> findByTelefone(String telefone);
 
     // Verificar se telefone existe
     boolean existsByTelefone(String telefone);
+
+    // Buscar utilizadores com termos desatualizados (query feita na BD, não em memória)
+    @Query("""
+        select u from Utilizador u
+        where u.email is not null
+        and u.email not like '%@anonimizado.local'
+        and (u.termsVersion is null or u.termsVersion < :newVersion)
+        """)
+    List<Utilizador> findOutdatedTermsUsers(@Param("newVersion") int newVersion);
 }
