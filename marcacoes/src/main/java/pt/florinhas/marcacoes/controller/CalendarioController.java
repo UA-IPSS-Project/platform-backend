@@ -20,7 +20,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Controller responsável pela gestão do calendário e dos bloqueios de agenda.
@@ -104,7 +103,7 @@ public class CalendarioController {
 
                 List<String> dates = calendarioService.getFeriadosDoAno(ano).stream()
                                 .map(LocalDate::toString)
-                                .collect(Collectors.toList());
+                                .toList();
                 return ResponseEntity.ok(dates);
         }
 

@@ -55,6 +55,8 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/utilizadores")
 public class UtilizadorController {
 
+    private static final String KEY_CONTENT = "content";
+
     /**
      * Serviço de domínio responsável por ler/atualizar utilizadores.
      */
@@ -328,7 +330,7 @@ public class UtilizadorController {
     @GetMapping("/terms-content")
     public ResponseEntity<Map<String, String>> obterConteudoTermosPublico(@RequestParam String lang) {
         String content = termsService.getTermsContent(lang);
-        return ResponseEntity.ok(Map.of("content", content));
+        return ResponseEntity.ok(Map.of(KEY_CONTENT, content));
     }
 
     /**
@@ -338,7 +340,7 @@ public class UtilizadorController {
     @PreAuthorize("hasRole('DPO')")
     public ResponseEntity<Map<String, String>> obterConteudoTermos(@RequestParam String lang) {
         String content = termsService.getTermsContent(lang);
-        return ResponseEntity.ok(Map.of("content", content));
+        return ResponseEntity.ok(Map.of(KEY_CONTENT, content));
     }
 
     /**
@@ -349,11 +351,11 @@ public class UtilizadorController {
     public ResponseEntity<Void> atualizarConteudoTermos(
             @RequestParam String lang,
             @RequestBody Map<String, String> body) {
-        if (body == null || !body.containsKey("content")) {
+        if (body == null || !body.containsKey(KEY_CONTENT)) {
             return ResponseEntity.badRequest().build();
         }
 
-        String content = body.get("content");
+        String content = body.get(KEY_CONTENT);
         if (content == null || content.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
