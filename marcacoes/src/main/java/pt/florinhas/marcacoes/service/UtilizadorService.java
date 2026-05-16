@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -301,7 +300,7 @@ public class UtilizadorService {
     public List<UtilizadorResponseDTO> listarTodosFuncionarios() {
         return funcionarioRepository.findAll().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, String nif,
@@ -314,7 +313,7 @@ public class UtilizadorService {
     public List<UtilizadorResponseDTO> listarFuncionariosPendentes() {
         return funcionarioRepository.findByActivoFalse().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -323,7 +322,7 @@ public class UtilizadorService {
     public List<UtilizadorResponseDTO> listarTodosUtentes() {
         return utenteRepository.findAll().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public Page<UtilizadorResponseDTO> pesquisarUtentes(String nome, String nif, Pageable pageable) {
@@ -694,7 +693,7 @@ public class UtilizadorService {
                 dados.put("documentos", documentoRepository.findByUtente((Utente) utilizador)
                         .stream()
                         .map(pt.florinhas.marcacoes.dto.DocumentoDTO::fromDocumento)
-                        .collect(Collectors.toList()));
+                        .toList());
             } else {
                 dados.put("documentos", new ArrayList<>());
             }
@@ -720,7 +719,7 @@ public class UtilizadorService {
                             }
                             return entry;
                         })
-                        .collect(Collectors.toList()));
+                        .toList());
             } else {
                 dados.put("marcacoes", new ArrayList<>());
             }
