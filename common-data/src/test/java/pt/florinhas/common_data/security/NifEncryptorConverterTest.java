@@ -34,7 +34,7 @@ class NifEncryptorConverterTest {
         converter =
                 new NifEncryptorConverter();
 
-        converter.setCryptoUtils(
+        NifEncryptorConverter.setStaticCryptoUtils(
                 cryptoUtils);
     }
 
