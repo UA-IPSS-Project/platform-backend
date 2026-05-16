@@ -14,31 +14,11 @@ class NotificacaoServiceTest {
     private NotificacaoService service;
 
     @BeforeEach
-    void setup() throws Exception {
-
-        service = new NotificacaoService();
-
-        setField(
-                service,
-                "notificacoesUrl",
-                "http://localhost:8083"
-        );
-
-        setField(
-                service,
-                "gatewaySecret",
-                "secret"
-        );
-
-        RestTemplate restTemplate =
-                org.mockito.Mockito.mock(RestTemplate.class);
-
-        Field field =
-                NotificacaoService.class
-                        .getDeclaredField("restTemplate");
-
-        field.setAccessible(true);
-        field.set(service, restTemplate);
+    void setup() {
+        RestTemplate restTemplate = org.mockito.Mockito.mock(RestTemplate.class);
+        service = new NotificacaoService(restTemplate);
+        service.setNotificacoesUrl("http://localhost:8083");
+        service.setGatewaySecret("secret");
     }
 
     @Test
@@ -152,19 +132,5 @@ class NotificacaoServiceTest {
                         LocalDateTime.now().plusDays(1)
                 )
         );
-    }
-
-    private void setField(
-            Object target,
-            String fieldName,
-            Object value
-    ) throws Exception {
-
-        Field field =
-                target.getClass()
-                        .getDeclaredField(fieldName);
-
-        field.setAccessible(true);
-        field.set(target, value);
     }
 }

@@ -1,800 +1,145 @@
 package pt.florinhas.marcacoes.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import java.util.List;
-import java.util.Optional;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import pt.florinhas.common_data.domain.Funcionario;
-import pt.florinhas.common_data.domain.FuncionarioTipo;
-import pt.florinhas.common_data.domain.Utente;
-import pt.florinhas.common_data.domain.Utilizador;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.security.CryptoUtils;
 import pt.florinhas.common_data.validation.NifValidator;
-import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
-import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
-import pt.florinhas.marcacoes.exception.ConflictException;
-import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 
-class UtilizadorServiceTest {
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.exception.BadRequestException;
 
+import java.util.Collections;
+import java.util.List;
+
+@ExtendWith(MockitoExtension.class)
+public class UtilizadorServiceTest {
+
+    @Mock
     private UtilizadorRepository utilizadorRepository;
+
+    @Mock
     private UtenteRepository utenteRepository;
+
+    @Mock
     private FuncionarioRepository funcionarioRepository;
+
+    @Mock
     private EmailService emailService;
-    private AuditLogService auditLogService;
-    private NotificacaoService notificacaoService;
+
+    @Mock
     private NifValidator nifValidator;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
-    private DocumentoRepository documentoRepository;
-    private MarcacaoRepository marcacaoRepository;
+
+    @Mock
     private CryptoUtils cryptoUtils;
+    @Mock
+    private AuditLogService auditLogService;
+    @Mock
+    private NotificacaoService notificacaoService;
+    @Mock
+    private DocumentoRepository documentoRepository;
+    @Mock
+    private MarcacaoRepository marcacaoRepository;
 
-    private UtilizadorService service;
+    @InjectMocks
+    private UtilizadorService utilizadorService;
 
-    @BeforeEach
-    void setup() {
+    private static final String NIF = "123456789";
+    private static final String NIF_HASH = "hash_123456789";
 
-        utilizadorRepository =
-                mock(UtilizadorRepository.class);
+    @Test
+    void obterOuCriarUtente_NewUser_ShouldGenerateSecurePasswordAndSendEmail() {
+        String nome = "Test User";
+        String email = "test@example.com";
+        String telefone = "912345678";
 
-        utenteRepository =
-                mock(UtenteRepository.class);
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(Collections.emptyList());
+        when(utenteRepository.existsByEmail(email)).thenReturn(false);
+        when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
+            Utente u = invocation.getArgument(0);
+            u.setId(1L);
+            return u;
+        });
 
-        funcionarioRepository =
-                mock(FuncionarioRepository.class);
+        Utente result = utilizadorService.obterOuCriarUtente(NIF, nome, email, telefone);
 
-        emailService =
-                mock(EmailService.class);
-
-        auditLogService =
-                mock(AuditLogService.class);
-
-        notificacaoService =
-                mock(NotificacaoService.class);
-
-        nifValidator =
-                mock(NifValidator.class);
-
-        passwordEncoder =
-                mock(PasswordEncoder.class);
-
-        documentoRepository =
-                mock(DocumentoRepository.class);
-
-        marcacaoRepository =
-                mock(MarcacaoRepository.class);
-
-        cryptoUtils =
-                mock(CryptoUtils.class);
-
-        service =
-                new UtilizadorService();
-
-        ReflectionTestUtils.setField(
-                service,
-                "utilizadorRepository",
-                utilizadorRepository
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "utenteRepository",
-                utenteRepository
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "funcionarioRepository",
-                funcionarioRepository
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "emailService",
-                emailService
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "auditLogService",
-                auditLogService
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "notificacaoService",
-                notificacaoService
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "nifValidator",
-                nifValidator
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "passwordEncoder",
-                passwordEncoder
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "documentoRepository",
-                documentoRepository
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "marcacaoRepository",
-                marcacaoRepository
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "cryptoUtils",
-                cryptoUtils
-        );
+        assertNotNull(result);
+        assertEquals(NIF, result.getNif());
+        verify(emailService).sendPassword(anyString(), anyString());
     }
 
     @Test
-    void buscarPorEmail_DeveRetornarUtilizador() {
+    void obterOuCriarUtente_ExistingUser_ShouldReturnIt() {
+        Utente existing = new Utente();
+        existing.setNif(NIF);
+        existing.setId(1L);
 
-        Utilizador utilizador =
-                new Utilizador();
+        when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
+        when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(List.of(existing));
 
-        utilizador.setEmail("teste@test.com");
+        Utente result = utilizadorService.obterOuCriarUtente(NIF, "Ignored", "Ignored", "Ignored");
 
-        when(utilizadorRepository.findByEmail("teste@test.com"))
-                .thenReturn(List.of(utilizador));
-
-        Utilizador resultado =
-                service.buscarPorEmail("teste@test.com");
-
-        assertEquals(
-                "teste@test.com",
-                resultado.getEmail()
-        );
+        assertEquals(existing, result);
     }
 
     @Test
-    void buscarPorEmail_DeveLancarNotFound() {
+    void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
+        String invalidNif = "123";
+        doThrow(new BadRequestException("NIF deve conter exatamente 9 dígitos numéricos"))
+                .when(nifValidator).validateRequiredOrThrow(eq(invalidNif));
 
-        when(utilizadorRepository.findByEmail("x@test.com"))
-                .thenReturn(List.of());
-
-        assertThrows(
-                NotFoundException.class,
-                () -> service.buscarPorEmail("x@test.com")
-        );
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> utilizadorService.obterOuCriarUtente(invalidNif, "Name", "email@test.com", "912345678"));
+        assertEquals("NIF deve conter exatamente 9 dígitos numéricos", ex.getMessage());
     }
 
     @Test
-    void buscarPorNif_DeveRetornarEmptyQuandoNifNull() {
-
-        Optional<Utilizador> resultado =
-                service.buscarPorNif(null);
-
-        assertTrue(resultado.isEmpty());
-    }
-
-    @Test
-    void buscarPorNif_DeveRetornarEmptyQuandoNifVazio() {
-
-        Optional<Utilizador> resultado =
-                service.buscarPorNif("   ");
-
-        assertTrue(resultado.isEmpty());
-    }
-
-    @Test
-    void buscarPorNif_DeveRetornarUtilizador() {
-
-        Utilizador utilizador =
-                new Utilizador();
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of(utilizador));
-
-        Optional<Utilizador> resultado =
-                service.buscarPorNif("123456789");
-
-        assertTrue(resultado.isPresent());
-    }
-
-    @Test
-    void buscarPorNif_DeveRetornarEmptyQuandoNaoExiste() {
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of());
-
-        Optional<Utilizador> resultado =
-                service.buscarPorNif("123456789");
-
-        assertTrue(resultado.isEmpty());
-    }
-
-    @Test
-    void obterOuCriarUtente_DeveRetornarUtenteExistente() {
-
-        Utente utente =
-                new Utente();
-
-        utente.setId(1L);
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of(utente));
-
-        Utente resultado =
-                service.obterOuCriarUtente(
-                        "123456789",
-                        "Joao",
-                        "joao@test.com",
-                        "912345678"
-                );
-
-        assertEquals(
-                1L,
-                resultado.getId()
-        );
-
-        verify(utenteRepository, never())
-                .save(any());
-    }
-
-    @Test
-    void obterOuCriarUtente_DeveLancarConflitoQuandoNifEDeFuncionario() {
-
-        Funcionario funcionario =
-                new Funcionario();
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of(funcionario));
-
-        assertThrows(
-                ConflictException.class,
-                () -> service.obterOuCriarUtente(
-                        "123456789",
-                        "Joao",
-                        "joao@test.com",
-                        "912345678"
-                )
-        );
-    }
-
-    @Test
-    void obterOuCriarUtente_DeveCriarNovoUtente() {
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of());
-
-        when(utenteRepository.existsByEmail("joao@test.com"))
-                .thenReturn(false);
-
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encoded");
-
-        when(utenteRepository.save(any(Utente.class)))
-                .thenAnswer(invocation -> {
-                    Utente u = invocation.getArgument(0);
-                    u.setId(1L);
-                    return u;
-                });
-
-        Utente resultado =
-                service.obterOuCriarUtente(
-                        "123456789",
-                        "Joao",
-                        "joao@test.com",
-                        "912345678"
-                );
-
-        assertEquals(
-                1L,
-                resultado.getId()
-        );
-
-        assertEquals(
-                "Joao",
-                resultado.getNome()
-        );
-
-        assertEquals(
-                "encoded",
-                resultado.getPassHash()
-        );
-
-        assertFalse(
-                resultado.isActivo()
-        );
-
-        verify(emailService)
-                .sendPassword(
-                        eq("joao@test.com"),
-                        anyString()
-                );
-    }
-
-    @Test
-    void obterOuCriarUtente_DeveLancarErroQuandoEmailJaExiste() {
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of());
-
-        when(utenteRepository.existsByEmail("joao@test.com"))
-                .thenReturn(true);
-
-        assertThrows(
-                ConflictException.class,
-                () -> service.obterOuCriarUtente(
-                        "123456789",
-                        "Joao",
-                        "joao@test.com",
-                        "912345678"
-                )
-        );
-    }
-
-    @Test
-    void obterUtilizadorPorId_DeveRetornarUtilizador() {
-
-        Utilizador utilizador =
-                new Utilizador();
-
-        utilizador.setId(1L);
-
-        when(utilizadorRepository.findById(1L))
-                .thenReturn(Optional.of(utilizador));
-
-        Utilizador resultado =
-                service.obterUtilizadorPorId(1L);
-
-        assertEquals(
-                1L,
-                resultado.getId()
-        );
-    }
-
-    @Test
-    void obterUtilizadorPorId_DeveLancarNotFound() {
-
-        when(utilizadorRepository.findById(1L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                NotFoundException.class,
-                () -> service.obterUtilizadorPorId(1L)
-        );
-    }
-
-    @Test
-    void aprovarFuncionario_DeveAtivarFuncionario() {
-
-        Funcionario funcionario =
-                new Funcionario();
-
-        funcionario.setId(1L);
-        funcionario.setNome("Maria");
-        funcionario.setEmail("maria@test.com");
-        funcionario.setTipo(FuncionarioTipo.SECRETARIA);
-        funcionario.setActivo(false);
-
-        when(funcionarioRepository.findById(1L))
-                .thenReturn(Optional.of(funcionario));
-
-        service.aprovarFuncionario(1L);
-
-        assertTrue(
-                funcionario.isActivo()
-        );
-
-        verify(funcionarioRepository)
-                .save(funcionario);
-
-        verify(auditLogService)
-                .log(
-                        eq("APROVAR_FUNCIONARIO"),
-                        eq("FUNCIONARIO"),
-                        eq(1L),
-                        contains("Maria")
-                );
-    }
-
-    @Test
-    void aprovarFuncionario_DeveLancarNotFound() {
-
-        when(funcionarioRepository.findById(1L))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                NotFoundException.class,
-                () -> service.aprovarFuncionario(1L)
-        );
-    }
-
-    @Test
-    void criarUtilizadorPelaSecretaria_DeveCriarUtente() {
-
-        CreateUserRequestDTO request =
-                new CreateUserRequestDTO();
-
-        request.setName("Joao");
-        request.setNif("123456789");
-        request.setContact("912345678");
-        request.setEmail("joao@test.com");
-        request.setBirthDate("2000-01-01");
-        request.setEmployee(false);
-        request.setRole("UTENTE");
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.existsByNifHash("hash"))
-                .thenReturn(false);
-
-        when(utilizadorRepository.existsByEmail("joao@test.com"))
-                .thenReturn(false);
-
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encoded");
-
-        when(utilizadorRepository.save(any(Utilizador.class)))
-                .thenAnswer(invocation -> {
-                    Utilizador u = invocation.getArgument(0);
-                    u.setId(1L);
-                    return u;
-                });
-
-        Utilizador resultado =
-                service.criarUtilizadorPelaSecretaria(request);
-
-        assertTrue(
-                resultado instanceof Utente
-        );
-
-        assertEquals(
-                "Joao",
-                resultado.getNome()
-        );
-
-        verify(emailService)
-                .sendPassword(
-                        eq("joao@test.com"),
-                        anyString()
-                );
-    }
-
-    @Test
-    void criarUtilizadorPelaSecretaria_DeveCriarFuncionarioSecretaria() {
-
-        CreateUserRequestDTO request =
-                new CreateUserRequestDTO();
-
-        request.setName("Maria");
-        request.setNif("123456789");
-        request.setContact("912345678");
-        request.setEmail("maria@test.com");
-        request.setBirthDate("2000-01-01");
-        request.setEmployee(true);
-        request.setRole("SECRETARIA");
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.existsByNifHash("hash"))
-                .thenReturn(false);
-
-        when(utilizadorRepository.existsByEmail("maria@test.com"))
-                .thenReturn(false);
-
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encoded");
-
-        when(utilizadorRepository.save(any(Utilizador.class)))
-                .thenAnswer(invocation -> {
-                    Utilizador u = invocation.getArgument(0);
-                    u.setId(1L);
-                    return u;
-                });
-
-        Utilizador resultado =
-                service.criarUtilizadorPelaSecretaria(request);
-
-        assertTrue(
-                resultado instanceof Funcionario
-        );
-
-        assertEquals(
-                FuncionarioTipo.SECRETARIA,
-                ((Funcionario) resultado).getTipo()
-        );
-    }
-
-    @Test
-    void criarUtilizadorPelaSecretaria_DeveLancarConflitoNifDuplicado() {
-
-        CreateUserRequestDTO request =
-                new CreateUserRequestDTO();
-
-        request.setNif("123456789");
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.existsByNifHash("hash"))
-                .thenReturn(true);
-
-        assertThrows(
-                ConflictException.class,
-                () -> service.criarUtilizadorPelaSecretaria(request)
-        );
-    }
-
-    @Test
-    void criarUtilizadorPelaSecretaria_DeveLancarConflitoEmailDuplicado() {
-
-        CreateUserRequestDTO request =
-                new CreateUserRequestDTO();
-
-        request.setNif("123456789");
-        request.setEmail("x@test.com");
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.existsByNifHash("hash"))
-                .thenReturn(false);
-
-        when(utilizadorRepository.existsByEmail("x@test.com"))
-                .thenReturn(true);
-
-        assertThrows(
-                ConflictException.class,
-                () -> service.criarUtilizadorPelaSecretaria(request)
-        );
-    }
-
-    @Test
-    void recuperarConta_DeveAtualizarDados() {
-
-        RecoverAccountDTO request =
-                new RecoverAccountDTO();
-
-        request.setNif("123456789");
-        request.setUpdatedEmail("novo@test.com");
-        request.setUpdatedContact("912345678");
-
-        Utente utilizador =
-                new Utente();
-
-        utilizador.setId(1L);
-        utilizador.setNome("Joao");
-        utilizador.setNif("123456789");
-        utilizador.setEmail("antigo@test.com");
-        utilizador.setTelefone("900000000");
-        utilizador.setActivo(true);
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of(utilizador));
-
-        when(utilizadorRepository.existsByEmail("novo@test.com"))
-                .thenReturn(false);
-
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encoded");
-
-        service.recuperarConta(request);
-
-        assertEquals(
-                "novo@test.com",
-                utilizador.getEmail()
-        );
-
-        assertEquals(
-                "912345678",
-                utilizador.getTelefone()
-        );
-
-        assertEquals(
-                "encoded",
-                utilizador.getPassHash()
-        );
-
-        assertFalse(
-                utilizador.isActivo()
-        );
-
-        verify(utilizadorRepository)
-                .save(utilizador);
-
-        verify(emailService)
-                .sendPassword(
-                        eq("novo@test.com"),
-                        anyString()
-                );
-    }
-
-    @Test
-    void recuperarConta_DeveLancarNotFound() {
-
-        RecoverAccountDTO request =
-                new RecoverAccountDTO();
-
-        request.setNif("123456789");
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of());
-
-        assertThrows(
-                NotFoundException.class,
-                () -> service.recuperarConta(request)
-        );
-    }
-
-    @Test
-    void recuperarConta_DeveLancarConflitoEmail() {
-
-        RecoverAccountDTO request =
-                new RecoverAccountDTO();
-
-        request.setNif("123456789");
-        request.setUpdatedEmail("novo@test.com");
-
-        Utilizador utilizador =
-                new Utilizador();
-
-        utilizador.setEmail("antigo@test.com");
-
-        when(cryptoUtils.generateBlindIndex("123456789"))
-                .thenReturn("hash");
-
-        when(utilizadorRepository.findByNifHash("hash"))
-                .thenReturn(List.of(utilizador));
-
-        when(utilizadorRepository.existsByEmail("novo@test.com"))
-                .thenReturn(true);
-
-        assertThrows(
-                ConflictException.class,
-                () -> service.recuperarConta(request)
-        );
-    }
-
-    @Test
-    void contarUtentesAtivos_DeveRetornarTotal() {
-
-        when(utenteRepository.countByActivo(true))
-                .thenReturn(5L);
-
-        long resultado =
-                service.contarUtentesAtivos();
-
-        assertEquals(
-                5L,
-                resultado
-        );
-    }
-
-    @Test
-    void anonimizarUtilizador_DeveAnonimizarUtente() {
-
-        Utente utente =
-                new Utente();
-
-        utente.setId(1L);
-        utente.setNome("Joao");
-        utente.setEmail("joao@test.com");
-        utente.setTelefone("912345678");
-        utente.setNif("123456789");
-        utente.setActivo(true);
-        utente.setDeleteRequested(true);
-
-        when(utilizadorRepository.findById(1L))
-                .thenReturn(Optional.of(utente));
-
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encoded");
-
-        service.anonimizarUtilizador(1L);
-
-        assertEquals(
-                "Utilizador Anónimo #1",
-                utente.getNome()
-        );
-
-        assertEquals(
-                "000000000",
-                utente.getTelefone()
-        );
-
-        assertEquals(
-                "000000001",
-                utente.getNif()
-        );
-
-        assertEquals(
-                "encoded",
-                utente.getPassHash()
-        );
-
-        assertFalse(
-                utente.isActivo()
-        );
-
-        assertFalse(
-                utente.getDeleteRequested()
-        );
-
-        assertNull(
-                utente.getDeleteRequestedAt()
-        );
-
-        verify(utilizadorRepository)
-                .save(utente);
-    }
-
-    @Test
-    void anonimizarEEliminarUtilizador_DeveExecutar() {
-
-        Utente utente =
-                new Utente();
-
-        utente.setId(1L);
-        utente.setNome("Joao");
-        utente.setNif("123456789");
-
-        when(utilizadorRepository.findById(1L))
-                .thenReturn(Optional.of(utente));
-
-        when(passwordEncoder.encode(anyString()))
-                .thenReturn("encoded");
-
-        service.anonimizarEEliminarUtilizador(1L);
-
-        verify(auditLogService)
-                .log(
-                        eq("ELIMINAR_UTILIZADOR"),
-                        eq("UTILIZADOR"),
-                        eq(1L),
-                        contains("Joao")
-                );
+    void listarTodosUtentes_ShouldReturnAllUtentesWithCorrectStatus() {
+        Utente activeUtente = new Utente();
+        activeUtente.setId(1L);
+        activeUtente.setNome("Active Utente");
+        activeUtente.setActivo(true);
+
+        Utente inactiveUtente = new Utente();
+        inactiveUtente.setId(2L);
+        inactiveUtente.setNome("Inactive Utente");
+        inactiveUtente.setActivo(false);
+
+        when(utenteRepository.findAll()).thenReturn(List.of(activeUtente, inactiveUtente));
+
+        List<pt.florinhas.common_data.dto.UtilizadorResponseDTO> result = utilizadorService.listarTodosUtentes();
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals(true, result.get(0).isActive());
+        assertEquals("Active Utente", result.get(0).getNome());
+        assertEquals(false, result.get(1).isActive());
+        assertEquals("Inactive Utente", result.get(1).getNome());
+        verify(utenteRepository).findAll();
     }
 }

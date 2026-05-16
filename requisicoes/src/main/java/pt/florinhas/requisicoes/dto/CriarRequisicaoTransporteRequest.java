@@ -19,6 +19,5 @@ public record CriarRequisicaoTransporteRequest(
         @NotNull @PositiveOrZero Integer numeroPassageiros,
         @NotBlank String condutor,
         @NotEmpty List<Long> transporteIds,
-        @Deprecated
-        Long transporteId) {
+        @jakarta.validation.Valid RequisicaoPeriodicaConfigRequest periodica) {
 }

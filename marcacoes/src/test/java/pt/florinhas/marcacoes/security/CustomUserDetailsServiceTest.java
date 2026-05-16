@@ -20,9 +20,7 @@ import pt.florinhas.common_data.security.CryptoUtils;
 class CustomUserDetailsServiceTest {
 
     private UtilizadorRepository utilizadorRepository;
-
     private CryptoUtils cryptoUtils;
-
     private CustomUserDetailsService service;
 
     @BeforeEach

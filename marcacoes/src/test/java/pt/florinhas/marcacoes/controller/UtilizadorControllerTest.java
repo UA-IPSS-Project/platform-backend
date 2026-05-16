@@ -10,10 +10,10 @@ class UtilizadorControllerTest {
     @Test
     @DisplayName("UtilizadorController deve ser criado")
     void deveCriarController() {
-
-        UtilizadorController controller =
-                new UtilizadorController();
-
+        pt.florinhas.marcacoes.service.UtilizadorService uService = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.UtilizadorService.class);
+        pt.florinhas.marcacoes.service.AuthorizationService aService = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.AuthorizationService.class);
+        pt.florinhas.marcacoes.service.TermsService tService = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.TermsService.class);
+        UtilizadorController controller = new UtilizadorController(uService, aService, tService);
         assertNotNull(controller);
     }
 

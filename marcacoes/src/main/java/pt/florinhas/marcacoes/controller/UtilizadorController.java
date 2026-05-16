@@ -3,7 +3,6 @@ package pt.florinhas.marcacoes.controller;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +25,6 @@ import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.dto.TermsStatusDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
-import pt.florinhas.marcacoes.service.AuditLogService;
 import pt.florinhas.marcacoes.service.TermsService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
@@ -60,17 +58,17 @@ public class UtilizadorController {
     /**
      * Serviço de domínio responsável por ler/atualizar utilizadores.
      */
-    @Autowired
-    private UtilizadorService utilizadorService;
+    private final UtilizadorService utilizadorService;
+    private final AuthorizationService authorizationService;
+    private final TermsService termsService;
 
-    @Autowired
-    private AuthorizationService authorizationService;
-
-    @Autowired
-    private AuditLogService auditLogService;
-
-    @Autowired
-    private TermsService termsService;
+    public UtilizadorController(UtilizadorService utilizadorService,
+            AuthorizationService authorizationService,
+            TermsService termsService) {
+        this.utilizadorService = utilizadorService;
+        this.authorizationService = authorizationService;
+        this.termsService = termsService;
+    }
 
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
@@ -262,7 +260,8 @@ public class UtilizadorController {
     }
 
     /**
-     * Exporta todos os dados pessoais do utilizador (RGPD Art.º 20 - Direito de Portabilidade).
+     * Exporta todos os dados pessoais do utilizador (RGPD Art.º 20 - Direito de
+     * Portabilidade).
      * Retorna JSON com dados de utilizador, documentos, marcações e requisições.
      */
     @GetMapping("/me/export")
@@ -295,7 +294,8 @@ public class UtilizadorController {
     }
 
     /**
-     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
+     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão
+     * atomicamente.
      */
     @PostMapping("/admin/terms-publish")
     @PreAuthorize("hasRole('DPO')")
@@ -322,7 +322,8 @@ public class UtilizadorController {
     }
 
     /**
-     * Obtém o conteúdo dos termos para um idioma específico (Público — sem autenticação).
+     * Obtém o conteúdo dos termos para um idioma específico (Público — sem
+     * autenticação).
      */
     @GetMapping("/terms-content")
     public ResponseEntity<Map<String, String>> obterConteudoTermosPublico(@RequestParam String lang) {

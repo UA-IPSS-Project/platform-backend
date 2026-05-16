@@ -37,36 +37,14 @@ class AuditLogServiceTest {
 
     @BeforeEach
     void setup() {
+        auditLogRepository = mock(AuditLogRepository.class);
+        utilizadorRepository = mock(UtilizadorRepository.class);
+        request = mock(HttpServletRequest.class);
 
-        auditLogRepository =
-                mock(AuditLogRepository.class);
+        org.springframework.beans.factory.ObjectProvider<HttpServletRequest> requestProvider = mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(requestProvider.getIfAvailable()).thenReturn(request);
 
-        utilizadorRepository =
-                mock(UtilizadorRepository.class);
-
-        request =
-                mock(HttpServletRequest.class);
-
-        service =
-                new AuditLogService();
-
-        ReflectionTestUtils.setField(
-                service,
-                "auditLogRepository",
-                auditLogRepository
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "utilizadorRepository",
-                utilizadorRepository
-        );
-
-        ReflectionTestUtils.setField(
-                service,
-                "request",
-                request
-        );
+        service = new AuditLogService(auditLogRepository, utilizadorRepository, requestProvider);
     }
 
     @AfterEach
@@ -347,20 +325,13 @@ class AuditLogServiceTest {
 
     @Test
     void getClientIp_DeveRetornarUnknownQuandoRequestNull() throws Exception {
+        org.springframework.beans.factory.ObjectProvider<HttpServletRequest> emptyProvider = mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(emptyProvider.getIfAvailable()).thenReturn(null);
 
-        ReflectionTestUtils.setField(
-                service,
-                "request",
-                null
-        );
+        ReflectionTestUtils.setField(service, "requestProvider", emptyProvider);
 
-        String resultado =
-                invokeGetClientIp();
-
-        assertEquals(
-                "unknown",
-                resultado
-        );
+        String resultado = invokeGetClientIp();
+        assertEquals("unknown", resultado);
     }
 
     private String invokeGetClientIp() throws Exception {

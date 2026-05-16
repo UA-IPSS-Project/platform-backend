@@ -3,7 +3,6 @@ package pt.florinhas.marcacoes.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
-import java.lang.reflect.Field;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,25 +18,9 @@ class SystemConfigServiceTest {
     private SystemConfigService service;
 
     @BeforeEach
-    void setup() throws Exception {
-
-        systemConfigRepository =
-                mock(SystemConfigRepository.class);
-
-        service =
-                new SystemConfigService();
-
-        Field field =
-                SystemConfigService.class
-                        .getDeclaredField(
-                                "systemConfigRepository"
-                        );
-
-        field.setAccessible(true);
-        field.set(
-                service,
-                systemConfigRepository
-        );
+    void setup() {
+        systemConfigRepository = mock(SystemConfigRepository.class);
+        service = new SystemConfigService(systemConfigRepository);
     }
 
     @Test

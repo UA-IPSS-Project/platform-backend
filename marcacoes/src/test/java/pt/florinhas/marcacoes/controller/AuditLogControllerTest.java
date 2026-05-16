@@ -10,10 +10,9 @@ class AuditLogControllerTest {
     @Test
     @DisplayName("AuditLogController deve ser criado")
     void deveCriarController() {
-
-        AuditLogController controller =
-                new AuditLogController();
-
+        pt.florinhas.marcacoes.service.AuditLogService service = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.AuditLogService.class);
+        pt.florinhas.marcacoes.repository.AuditLogRepository repository = org.mockito.Mockito.mock(pt.florinhas.marcacoes.repository.AuditLogRepository.class);
+        AuditLogController controller = new AuditLogController(service, repository, "secret");
         assertNotNull(controller);
     }
 

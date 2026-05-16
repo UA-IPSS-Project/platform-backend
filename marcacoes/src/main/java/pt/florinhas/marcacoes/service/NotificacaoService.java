@@ -16,7 +16,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.util.StringUtils;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class NotificacaoService {
 
@@ -26,7 +25,16 @@ public class NotificacaoService {
     @Value("${gateway.shared-secret:}")
     private String gatewaySecret;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public NotificacaoService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    // Setters for tests
+    public void setNotificacoesUrl(String url) { this.notificacoesUrl = url; }
+    public void setGatewaySecret(String secret) { this.gatewaySecret = secret; }
+
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";

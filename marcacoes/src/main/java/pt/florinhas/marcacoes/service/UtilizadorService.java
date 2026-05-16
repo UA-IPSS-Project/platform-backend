@@ -6,8 +6,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,38 +56,41 @@ import pt.florinhas.marcacoes.service.email.EmailService;
 @Slf4j
 public class UtilizadorService {
 
-    @Autowired
-    private UtilizadorRepository utilizadorRepository;
+    private final UtilizadorRepository utilizadorRepository;
+    private final UtenteRepository utenteRepository;
+    private final FuncionarioRepository funcionarioRepository;
+    private final EmailService emailService;
+    private final AuditLogService auditLogService;
+    private final NotificacaoService notificacaoService;
+    private final NifValidator nifValidator;
+    private final PasswordEncoder passwordEncoder;
+    private final DocumentoRepository documentoRepository;
+    private final MarcacaoRepository marcacaoRepository;
+    private final CryptoUtils cryptoUtils;
 
-    @Autowired
-    private UtenteRepository utenteRepository;
-
-    @Autowired
-    private FuncionarioRepository funcionarioRepository;
-
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private AuditLogService auditLogService;
-
-    @Autowired
-    private NotificacaoService notificacaoService;
-
-    @Autowired
-    private NifValidator nifValidator;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    
-    @Autowired
-    private DocumentoRepository documentoRepository;
-    
-    @Autowired
-    private MarcacaoRepository marcacaoRepository;
-
-    @Autowired
-    private CryptoUtils cryptoUtils;
+    public UtilizadorService(UtilizadorRepository utilizadorRepository,
+            UtenteRepository utenteRepository,
+            FuncionarioRepository funcionarioRepository,
+            EmailService emailService,
+            AuditLogService auditLogService,
+            NotificacaoService notificacaoService,
+            NifValidator nifValidator,
+            PasswordEncoder passwordEncoder,
+            DocumentoRepository documentoRepository,
+            MarcacaoRepository marcacaoRepository,
+            CryptoUtils cryptoUtils) {
+        this.utilizadorRepository = utilizadorRepository;
+        this.utenteRepository = utenteRepository;
+        this.funcionarioRepository = funcionarioRepository;
+        this.emailService = emailService;
+        this.auditLogService = auditLogService;
+        this.notificacaoService = notificacaoService;
+        this.nifValidator = nifValidator;
+        this.passwordEncoder = passwordEncoder;
+        this.documentoRepository = documentoRepository;
+        this.marcacaoRepository = marcacaoRepository;
+        this.cryptoUtils = cryptoUtils;
+    }
 
     /*
      * =========================================================
@@ -282,11 +283,10 @@ public class UtilizadorService {
         Utilizador atualizado = utilizadorRepository.save(utilizador);
 
         auditLogService.log(
-            "ATUALIZAR_PERFIL",
-            "UTILIZADOR",
-            utilizadorId,
-            String.format("Perfil atualizado: %s", utilizador.getNome())
-        );
+                "ATUALIZAR_PERFIL",
+                "UTILIZADOR",
+                utilizadorId,
+                String.format("Perfil atualizado: %s", utilizador.getNome()));
 
         return atualizado;
     }
@@ -339,12 +339,11 @@ public class UtilizadorService {
         funcionarioRepository.save(funcionario);
 
         auditLogService.log(
-            "APROVAR_FUNCIONARIO",
-            "FUNCIONARIO",
-            id,
-            String.format("Funcionário aprovado: %s (%s) - Tipo: %s", 
-                funcionario.getNome(), funcionario.getEmail(), funcionario.getTipo())
-        );
+                "APROVAR_FUNCIONARIO",
+                "FUNCIONARIO",
+                id,
+                String.format("Funcionário aprovado: %s (%s) - Tipo: %s",
+                        funcionario.getNome(), funcionario.getEmail(), funcionario.getTipo()));
     }
 
     /*
@@ -421,13 +420,12 @@ public class UtilizadorService {
         Utilizador salvo = utilizadorRepository.save(novoUtilizador);
 
         auditLogService.log(
-            "CRIAR_CONTA",
-            "UTILIZADOR",
-            salvo.getId(),
-            String.format("Conta criada pela secretaria: %s (%s) - Tipo: %s", 
-                salvo.getNome(), salvo.getEmail(), 
-                salvo instanceof Funcionario ? ((Funcionario)salvo).getTipo() : "UTENTE")
-        );
+                "CRIAR_CONTA",
+                "UTILIZADOR",
+                salvo.getId(),
+                String.format("Conta criada pela secretaria: %s (%s) - Tipo: %s",
+                        salvo.getNome(), salvo.getEmail(),
+                        salvo instanceof Funcionario ? ((Funcionario) salvo).getTipo() : "UTENTE"));
 
         try {
             emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
@@ -472,14 +470,13 @@ public class UtilizadorService {
         utilizador.setPassHash(passwordEncoder.encode(novaPassword));
 
         utilizadorRepository.save(utilizador);
-        
+
         auditLogService.log(
-            "RECUPERAR_CONTA",
-            "UTILIZADOR",
-            utilizador.getId(),
-            String.format("Conta recuperada pela secretaria: %s (%s)", 
-                utilizador.getNome(), utilizador.getNif())
-        );
+                "RECUPERAR_CONTA",
+                "UTILIZADOR",
+                utilizador.getId(),
+                String.format("Conta recuperada pela secretaria: %s (%s)",
+                        utilizador.getNome(), utilizador.getNif()));
 
         try {
             emailService.sendPassword(utilizador.getEmail(), novaPassword);
@@ -511,7 +508,7 @@ public class UtilizadorService {
     @Transactional
     public void solicitarEliminacaoConta() {
         Utilizador utilizador = buscarUtilizadorAutenticado();
-        
+
         if (Boolean.TRUE.equals(utilizador.getDeleteRequested())) {
             throw new BadRequestException("Já existe um pedido de eliminação pendente para esta conta.");
         }
@@ -523,43 +520,40 @@ public class UtilizadorService {
         log.info("Pedido de eliminação registado para utilizador ID: {}", utilizador.getId());
 
         auditLogService.log(
-            "SOLICITAR_ELIMINACAO",
-            "UTILIZADOR",
-            utilizador.getId(),
-            String.format("Pedido de eliminação registado para utilizador: %s (%s)", 
-                utilizador.getNome(), utilizador.getNif())
-        );
+                "SOLICITAR_ELIMINACAO",
+                "UTILIZADOR",
+                utilizador.getId(),
+                String.format("Pedido de eliminação registado para utilizador: %s (%s)",
+                        utilizador.getNome(), utilizador.getNif()));
 
         // Notificar secretaria
         try {
             List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
             String titulo = "Pedido de Eliminação de Conta (RGPD)";
             String mensagem = String.format(
-                "O utilizador %s (NIF: %s) solicitou a eliminação da sua conta. " +
-                "Por favor, processe a anonimização dos dados no prazo de 1 mês conforme RGPD Art.º 17.",
-                utilizador.getNome(), utilizador.getNif()
-            );
-            
+                    "O utilizador %s (NIF: %s) solicitou a eliminação da sua conta. " +
+                            "Por favor, processe a anonimização dos dados no prazo de 1 mês conforme RGPD Art.º 17.",
+                    utilizador.getNome(), utilizador.getNif());
+
             // Criar notificação para cada secretária
             for (Funcionario secretaria : secretarias) {
                 try {
                     notificacaoService.criarNotificacao(
-                        secretaria.getId(),
-                        titulo,
-                        mensagem,
-                        "ALERTA"
-                    );
+                            secretaria.getId(),
+                            titulo,
+                            mensagem,
+                            "ALERTA");
                 } catch (Exception e) {
-                    log.error("Erro ao criar notificação para secretaria ID {}: {}", secretaria.getId(), e.getMessage());
+                    log.error("Erro ao criar notificação para secretaria ID {}: {}", secretaria.getId(),
+                            e.getMessage());
                 }
             }
 
             // Enviar email à secretaria
             emailService.sendGenericEmail(
-                "secretaria@florinhasdovouga.pt",
-                titulo,
-                mensagem
-            );
+                    "secretaria@florinhasdovouga.pt",
+                    titulo,
+                    mensagem);
         } catch (Exception e) {
             log.error("Erro ao notificar secretaria sobre pedido de eliminação: {}", e.getMessage());
         }
@@ -572,10 +566,10 @@ public class UtilizadorService {
     @Transactional
     public void anonimizarUtilizador(Long id) {
         Utilizador utilizador = obterUtilizadorPorId(id);
-        
+
         String nifOriginal = utilizador.getNif();
         String timestamp = String.valueOf(System.currentTimeMillis());
-        
+
         // Anonimizar dados pessoais
         utilizador.setNome("Utilizador Anónimo #" + id);
         utilizador.setEmail("anonimo." + timestamp + "@anonimizado.local");
@@ -589,30 +583,29 @@ public class UtilizadorService {
         utilizador.setMoradaEmprego(null);
         utilizador.setProfissao(null);
         utilizador.setDataNasc(null);
-        
+
         // Invalidar password
         utilizador.setPassHash(passwordEncoder.encode("ANONIMIZADO_" + timestamp));
-        
+
         // Marcar como processado
         utilizador.setDeleteRequested(false);
         utilizador.setDeleteRequestedAt(null);
-        
+
         // Desativar conta
         if (utilizador instanceof Utente) {
             ((Utente) utilizador).setActivo(false);
         } else if (utilizador instanceof Funcionario) {
             ((Funcionario) utilizador).setActivo(false);
         }
-        
+
         utilizadorRepository.save(utilizador);
-        
+
         auditLogService.log(
-            "ANONIMIZAR_UTILIZADOR",
-            "UTILIZADOR",
-            id,
-            String.format("Utilizador anonimizado (NIF original: %s) - RGPD Art.º 17", nifOriginal)
-        );
-        
+                "ANONIMIZAR_UTILIZADOR",
+                "UTILIZADOR",
+                id,
+                String.format("Utilizador anonimizado (NIF original: %s) - RGPD Art.º 17", nifOriginal));
+
         log.info("Utilizador ID {} (NIF original: {}) foi anonimizado com sucesso", id, nifOriginal);
     }
 
@@ -631,12 +624,11 @@ public class UtilizadorService {
         anonimizarUtilizador(id);
 
         auditLogService.log(
-            "ELIMINAR_UTILIZADOR",
-            "UTILIZADOR",
-            id,
-            String.format("Utilizador anonimizado e desativado (Nome: %s, NIF: %s) - RGPD Art.º 17",
-                nomeOriginal, nifOriginal)
-        );
+                "ELIMINAR_UTILIZADOR",
+                "UTILIZADOR",
+                id,
+                String.format("Utilizador anonimizado e desativado (Nome: %s, NIF: %s) - RGPD Art.º 17",
+                        nomeOriginal, nifOriginal));
 
         log.info("Utilizador ID {} (NIF original: {}) foi anonimizado e desativado", id, nifOriginal);
     }
@@ -646,11 +638,11 @@ public class UtilizadorService {
      */
     private Utilizador buscarUtilizadorAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        
+
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
             throw new BadRequestException("Utilizador não autenticado");
         }
-        
+
         String email = auth.getName();
         return buscarPorEmail(email);
     }
@@ -673,9 +665,9 @@ public class UtilizadorService {
     @Transactional(readOnly = true)
     public Map<String, Object> exportarDadosUtilizador() {
         Utilizador utilizador = buscarUtilizadorAutenticado();
-        
+
         Map<String, Object> dados = new HashMap<>();
-        
+
         // Dados pessoais
         Map<String, Object> dadosPessoais = new HashMap<>();
         dadosPessoais.put("id", utilizador.getId());
@@ -693,7 +685,7 @@ public class UtilizadorService {
         dadosPessoais.put("telefoneEmprego", utilizador.getTelefoneEmprego());
         dadosPessoais.put("dataCriacao", utilizador.getCreatedAt());
         dados.put("dadosPessoais", dadosPessoais);
-        
+
         // Documentos
         try {
             if (utilizador instanceof Utente) {
@@ -734,15 +726,15 @@ public class UtilizadorService {
             log.error("Erro ao exportar marcações: {}", e.getMessage());
             dados.put("marcacoes", new ArrayList<>());
         }
-        
+
         // Requisições
         dados.put("requisicoes", new ArrayList<>());
-        
+
         dados.put("dataExportacao", LocalDateTime.now());
         dados.put("formatoRGPD", "Art.º 20 - Direito de Portabilidade");
-        
+
         log.info("Dados exportados para utilizador ID: {}", utilizador.getId());
-        
+
         return dados;
     }
 
