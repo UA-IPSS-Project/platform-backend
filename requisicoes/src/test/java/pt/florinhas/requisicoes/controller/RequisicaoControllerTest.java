@@ -12,6 +12,9 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
 import pt.florinhas.common_data.domain.Utilizador;
@@ -37,25 +40,27 @@ class RequisicaoControllerTest {
     private RequisicaoController requisicaoController;
 
     @Test
-    void listar_semEstado_deveUsarListarTodas() {
-        List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.listarTodas()).thenReturn(esperado);
+    void listar_semEstado_deveRetornarPaginaVazia() {
+        Page<Requisicao> esperado = new PageImpl<>(List.of());
+        when(requisicaoService.procurarPaginated(null, null, null, null, null, null, Pageable.unpaged()))
+                .thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.listar(null);
+        Page<Requisicao> resultado = requisicaoController.listar(null, Pageable.unpaged());
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).listarTodas();
+        verify(requisicaoService).procurarPaginated(null, null, null, null, null, null, Pageable.unpaged());
     }
 
     @Test
-    void listar_comEstado_deveUsarListarPorEstado() {
-        List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.listarPorEstado(RequisicaoEstado.EM_PROGRESSO)).thenReturn(esperado);
+    void listar_comEstado_deveRetornarPaginaFiltrada() {
+        Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
+        when(requisicaoService.procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, Pageable.unpaged()))
+                .thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO);
+        Page<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO, Pageable.unpaged());
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).listarPorEstado(RequisicaoEstado.EM_PROGRESSO);
+        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, Pageable.unpaged());
     }
 
     @Test
@@ -71,31 +76,20 @@ class RequisicaoControllerTest {
 
     @Test
     void procurar_deveDelegarNoServiceComTodosOsParametros() {
-        List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.procurar(
-                RequisicaoEstado.ABERTO,
-                RequisicaoTipo.MANUTENCAO,
-                RequisicaoPrioridade.ALTA,
-                "Maria",
-                null,
-                null)).thenReturn(esperado);
+        Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
+        when(requisicaoService.procurarPaginated(
+                RequisicaoEstado.ABERTO, RequisicaoTipo.MANUTENCAO, RequisicaoPrioridade.ALTA,
+                "Maria", null, null, Pageable.unpaged()))
+                .thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.procurar(
-                RequisicaoEstado.ABERTO,
-                RequisicaoTipo.MANUTENCAO,
-                RequisicaoPrioridade.ALTA,
-                "Maria",
-                null,
-                null);
+        Page<Requisicao> resultado = requisicaoController.procurar(
+                RequisicaoEstado.ABERTO, RequisicaoTipo.MANUTENCAO, RequisicaoPrioridade.ALTA,
+                "Maria", null, null, Pageable.unpaged());
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).procurar(
-                RequisicaoEstado.ABERTO,
-                RequisicaoTipo.MANUTENCAO,
-                RequisicaoPrioridade.ALTA,
-                "Maria",
-                null,
-                null);
+        verify(requisicaoService).procurarPaginated(
+                RequisicaoEstado.ABERTO, RequisicaoTipo.MANUTENCAO, RequisicaoPrioridade.ALTA,
+                "Maria", null, null, Pageable.unpaged());
     }
 
     @Test

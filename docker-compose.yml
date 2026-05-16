@@ -36,8 +36,7 @@ services:
       MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY}
     command: server /data --console-address ":9001"
     healthcheck:
-      # Use MinIO's built-in HTTP readiness endpoint (mc is not available in minio/minio image)
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/ready || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -76,8 +75,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
-      - SECURE_COOKIES=${SECURE_COOKIES:-true}
-      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
     restart: unless-stopped
     develop:
       watch:
