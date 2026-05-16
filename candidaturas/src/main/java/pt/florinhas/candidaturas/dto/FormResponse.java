@@ -16,6 +16,7 @@ import pt.florinhas.candidaturas.domain.FormStatus;
 public class FormResponse {
     private String id;
     private String name;
+    private Long version;
     private FormStatus status;
     private List<FormPage> pages;
     private Long criadoPor;
@@ -29,6 +30,7 @@ public class FormResponse {
         FormResponse dto = new FormResponse();
         dto.setId(form.getId());
         dto.setName(form.getName());
+        dto.setVersion(form.getVersion());
         dto.setStatus(form.getStatus());
         dto.setPages(form.getPages());
         dto.setCriadoPor(form.getCriadoPor());
