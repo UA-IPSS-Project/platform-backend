@@ -873,15 +873,15 @@ public class MarcacaoService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    executarLgicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
+                    executarLogicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
                 }
             });
         } else {
-            executarLgicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
+            executarLogicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
         }
     }
 
-    private void executarLgicaNotificacao(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, 
+    private void executarLogicaNotificacao(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, 
                                           String summary, String nomeUtente, boolean criadoPeloUtente) {
         try {
             if (!criadoPeloUtente) {
