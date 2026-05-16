@@ -1,9 +1,11 @@
 package pt.florinhas.marcacoes.security;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -60,8 +62,8 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve ignorar quando Gateway Secret está incorreto")
-    void doFilterInternal_DeveIgnorarQuandoSecretIncorreto() throws Exception {
+    @DisplayName("Deve retornar 401 quando Gateway Secret está incorreto")
+    void doFilterInternal_DeveRetornar401QuandoSecretIncorreto() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Authenticated-User", "user@test.com");
         request.addHeader("X-Gateway-Secret", "wrong");
@@ -71,7 +73,8 @@ class GatewayHeaderAuthenticationFilterTest {
         filter.doFilter(request, response, filterChain);
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
-        verify(filterChain).doFilter(request, response);
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, response.getStatus());
+        verify(filterChain, never()).doFilter(any(), any());
     }
 
     @Test
