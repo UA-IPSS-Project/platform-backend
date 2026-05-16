@@ -18,7 +18,6 @@ import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
-import pt.florinhas.requisicoes.domain.PeriodicidadeFrequencia;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
@@ -124,13 +123,12 @@ public class RequisicaoService {
         }
 
         return requisicaoRepository.findWithFilters(
-            estado,
-            tipo,
-            prioridade,
-            criadoPorPattern,
-            dataInicio,
-            dataFim
-        );
+                estado,
+                tipo,
+                prioridade,
+                criadoPorPattern,
+                dataInicio,
+                dataFim);
     }
 
     public Page<Requisicao> procurarPaginated(
@@ -154,7 +152,7 @@ public class RequisicaoService {
         }
 
         return requisicaoRepository.findWithFiltersPaginated(
-            estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim, pageable);
+                estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim, pageable);
     }
 
     private String prepararPadraoLike(String filtro) {
@@ -207,12 +205,16 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request, Long authenticatedUtilizadorId) {
-        List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
+    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request,
+            Long authenticatedUtilizadorId) {
+        if (request.transporteIds() == null || request.transporteIds().isEmpty()) {
+            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
+        }
+
         validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
         Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
-        List<Transporte> transportesSelecionados = transporteIds.stream()
+        List<Transporte> transportesSelecionados = request.transporteIds().stream()
                 .distinct()
                 .map(id -> transporteRepository.findById(id)
                         .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id)))
@@ -245,21 +247,6 @@ public class RequisicaoService {
         return saved;
     }
 
-    private List<Long> resolverIdsTransporte(List<Long> transporteIds, Long transporteId) {
-        boolean temLista = transporteIds != null && !transporteIds.isEmpty();
-        boolean temSingular = transporteId != null;
-
-        if (temLista && temSingular) {
-            throw new IllegalArgumentException("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.");
-        }
-
-        if (!temLista && !temSingular) {
-            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
-        }
-
-        return temLista ? transporteIds : List.of(transporteId);
-    }
-
     private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
         LocalDateTime agora = LocalDateTime.now();
 
@@ -277,7 +264,8 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request, Long authenticatedUtilizadorId) {
+    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request,
+            Long authenticatedUtilizadorId) {
         Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
@@ -291,8 +279,9 @@ public class RequisicaoService {
         if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
             for (var itemRequest : request.manutencaoItens()) {
                 ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + itemRequest.itemId()));
-                
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Item de manutenção não encontrado: " + itemRequest.itemId()));
+
                 RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
                 requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
                 requisicaoItem.setManutencaoItem(item);
@@ -300,7 +289,8 @@ public class RequisicaoService {
 
                 if (itemRequest.transporteId() != null) {
                     Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + itemRequest.transporteId()));
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Transporte não encontrado: " + itemRequest.transporteId()));
                     requisicaoItem.setTransporte(transporte);
                 }
 
@@ -326,8 +316,8 @@ public class RequisicaoService {
         requisicao.setUltimaAlteracaoEstadoEm(LocalDateTime.now());
 
         Requisicao saved = requisicaoRepository.save(requisicao);
-        
-        // Notificar o criador da requisição sobre a mudança de estado, 
+
+        // Notificar o criador da requisição sobre a mudança de estado,
         // a menos que tenha sido o próprio criador a fazer a alteração
         if (saved.getCriadoPor() != null && !saved.getCriadoPor().getId().equals(alteradoPorId)) {
             notificacaoService.notificarMudancaEstado(saved.getCriadoPor().getId(), saved);
@@ -338,7 +328,8 @@ public class RequisicaoService {
 
     private void notificarSecretarias(Requisicao requisicao, Long autorId) {
         try {
-            List<Funcionario> secretarias = funcionarioRepository.findByTipo(pt.florinhas.common_data.domain.FuncionarioTipo.SECRETARIA);
+            List<Funcionario> secretarias = funcionarioRepository
+                    .findByTipo(pt.florinhas.common_data.domain.FuncionarioTipo.SECRETARIA);
             for (Funcionario sec : secretarias) {
                 // Não notificar a própria pessoa que criou a requisição
                 if (!sec.getId().equals(autorId)) {
@@ -466,7 +457,8 @@ public class RequisicaoService {
         Transporte transporte = transporteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
 
-        // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há requisições ativas
+        // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há
+        // requisições ativas
         if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO) {
             if (requisicaoTransporteRepository.existsByTransporteId(id)
                     || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
@@ -484,19 +476,19 @@ public class RequisicaoService {
         if (origem == null || destino == null) {
             throw new IllegalArgumentException("As categorias de origem e destino são obrigatórias.");
         }
-        
+
         if (origem.equals(destino)) {
             throw new IllegalArgumentException("As categorias de origem e destino não podem ser iguais.");
         }
-        
+
         // Encontrar todos os veículos na categoria de origem
         List<Transporte> veiculos = transporteRepository.findByCategoria(origem);
-        
+
         // Mover cada veículo para a categoria de destino
         for (Transporte veiculo : veiculos) {
             veiculo.setCategoria(destino);
         }
-        
+
         transporteRepository.saveAll(veiculos);
     }
 
@@ -540,7 +532,6 @@ public class RequisicaoService {
         TipoManutencao tipo = tipoManutencaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de manutenção não encontrado: " + id));
 
-
         tipoManutencaoRepository.delete(tipo);
     }
 
@@ -578,21 +569,24 @@ public class RequisicaoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
 
         if (requisicaoManutencaoItemRepository.existsByManutencaoItemId(id)) {
-            throw new IllegalArgumentException("Não é possível apagar: item de manutenção está associado a requisições.");
+            throw new IllegalArgumentException(
+                    "Não é possível apagar: item de manutenção está associado a requisições.");
         }
 
         manutencaoItemRepository.delete(item);
     }
 
     private void validarTransicaoEstado(RequisicaoEstado estadoAtual, RequisicaoEstado novoEstado) {
-        if (estadoAtual == novoEstado) return;
+        if (estadoAtual == novoEstado)
+            return;
 
         if (estadoAtual == RequisicaoEstado.FECHADO || estadoAtual == RequisicaoEstado.RECUSADO) {
             throw new IllegalArgumentException("Não é possível alterar o estado de uma requisição finalizada.");
         }
 
         if (estadoAtual == RequisicaoEstado.ABERTO) {
-            if (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
+            if (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO
+                    || novoEstado == RequisicaoEstado.RECUSADO) {
                 return;
             }
         }
@@ -603,7 +597,8 @@ public class RequisicaoService {
             }
         }
 
-        throw new IllegalArgumentException("Transição de estado inválida do estado " + estadoAtual + " para " + novoEstado);
+        throw new IllegalArgumentException(
+                "Transição de estado inválida do estado " + estadoAtual + " para " + novoEstado);
     }
 
     private Funcionario obterFuncionario(Long id) {
@@ -647,7 +642,8 @@ public class RequisicaoService {
             throw new IllegalArgumentException("A data de início da requisição periódica é obrigatória.");
         }
         if (config.dataFim() != null && config.dataFim().isBefore(config.dataInicio())) {
-            throw new IllegalArgumentException("A data de fim da requisição periódica não pode ser anterior à data de início.");
+            throw new IllegalArgumentException(
+                    "A data de fim da requisição periódica não pode ser anterior à data de início.");
         }
     }
 

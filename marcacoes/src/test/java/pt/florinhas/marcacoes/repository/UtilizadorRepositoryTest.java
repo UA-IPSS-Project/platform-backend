@@ -6,7 +6,6 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
@@ -20,11 +19,13 @@ import pt.florinhas.common_data.domain.Utilizador;
 @DataJpaTest
 class UtilizadorRepositoryTest {
 
-    @Autowired
-    private TestEntityManager entityManager;
+    private final TestEntityManager entityManager;
+    private final UtilizadorRepository utilizadorRepository;
 
-    @Autowired
-    private UtilizadorRepository utilizadorRepository;
+    public UtilizadorRepositoryTest(TestEntityManager entityManager, UtilizadorRepository utilizadorRepository) {
+        this.entityManager = entityManager;
+        this.utilizadorRepository = utilizadorRepository;
+    }
 
     // Fixed hashes used in tests — value doesn't matter, just needs to be consistent
     private static final String UTENTE_NIF_HASH = "hash_utente_123456789";

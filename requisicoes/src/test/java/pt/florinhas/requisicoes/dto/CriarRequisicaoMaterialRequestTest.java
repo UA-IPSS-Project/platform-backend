@@ -27,7 +27,7 @@ class CriarRequisicaoMaterialRequestTest
                         "Teste",
                         RequisicaoPrioridade.ALTA,
                         1L,
-                        List.of(item));
+                        List.of(item), null);
 
         Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
                 validator.validate(request);
@@ -43,7 +43,7 @@ class CriarRequisicaoMaterialRequestTest
                         "Teste",
                         null,
                         1L,
-                        List.of());
+                        List.of(), null);
 
         Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
                 validator.validate(request);
@@ -59,7 +59,7 @@ class CriarRequisicaoMaterialRequestTest
                         "Teste",
                         RequisicaoPrioridade.MEDIA,
                         1L,
-                        List.of());
+                        List.of(), null);
 
         Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
                 validator.validate(request);
@@ -81,7 +81,7 @@ class CriarRequisicaoMaterialRequestTest
                         "Teste",
                         RequisicaoPrioridade.ALTA,
                         1L,
-                        List.of(item));
+                        List.of(item), null);
 
         Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
                 validator.validate(request);
