@@ -28,6 +28,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
+import pt.florinhas.requisicoes.service.AuditService;
 import pt.florinhas.requisicoes.service.RequisicaoService;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,32 +36,36 @@ class RequisicaoControllerTest {
 
     @Mock
     private RequisicaoService requisicaoService;
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private RequisicaoController requisicaoController;
 
     @Test
-    void listar_semEstado_deveRetornarPaginaVazia() {
-        Page<Requisicao> esperado = new PageImpl<>(List.of());
-        when(requisicaoService.procurarPaginated(null, null, null, null, null, null, Pageable.unpaged()))
-                .thenReturn(esperado);
+    void listar_semEstado_deveUsarProcurarPaginated() {
+        Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
+        Pageable pageable = Pageable.unpaged();
+        when(requisicaoService.procurarPaginated(null, null, null, null, null, null, pageable)).thenReturn(esperado);
 
-        Page<Requisicao> resultado = requisicaoController.listar(null, Pageable.unpaged());
+        Page<Requisicao> resultado = requisicaoController.listar(null, pageable);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).procurarPaginated(null, null, null, null, null, null, Pageable.unpaged());
+        verify(requisicaoService).procurarPaginated(null, null, null, null, null, null, pageable);
     }
 
     @Test
-    void listar_comEstado_deveRetornarPaginaFiltrada() {
+    void listar_comEstado_deveUsarProcurarPaginated() {
         Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
-        when(requisicaoService.procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, Pageable.unpaged()))
+        Pageable pageable = Pageable.unpaged();
+        when(requisicaoService.procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, pageable))
                 .thenReturn(esperado);
 
-        Page<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO, Pageable.unpaged());
+        Page<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO, pageable);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, Pageable.unpaged());
+        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null,
+                pageable);
     }
 
     @Test
@@ -77,19 +82,34 @@ class RequisicaoControllerTest {
     @Test
     void procurar_deveDelegarNoServiceComTodosOsParametros() {
         Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
+        Pageable pageable = Pageable.unpaged();
         when(requisicaoService.procurarPaginated(
-                RequisicaoEstado.ABERTO, RequisicaoTipo.MANUTENCAO, RequisicaoPrioridade.ALTA,
-                "Maria", null, null, Pageable.unpaged()))
-                .thenReturn(esperado);
+                RequisicaoEstado.ABERTO,
+                RequisicaoTipo.MANUTENCAO,
+                RequisicaoPrioridade.ALTA,
+                "Maria",
+                null,
+                null,
+                pageable)).thenReturn(esperado);
 
         Page<Requisicao> resultado = requisicaoController.procurar(
-                RequisicaoEstado.ABERTO, RequisicaoTipo.MANUTENCAO, RequisicaoPrioridade.ALTA,
-                "Maria", null, null, Pageable.unpaged());
+                RequisicaoEstado.ABERTO,
+                RequisicaoTipo.MANUTENCAO,
+                RequisicaoPrioridade.ALTA,
+                "Maria",
+                null,
+                null,
+                pageable);
 
         assertSame(esperado, resultado);
         verify(requisicaoService).procurarPaginated(
-                RequisicaoEstado.ABERTO, RequisicaoTipo.MANUTENCAO, RequisicaoPrioridade.ALTA,
-                "Maria", null, null, Pageable.unpaged());
+                RequisicaoEstado.ABERTO,
+                RequisicaoTipo.MANUTENCAO,
+                RequisicaoPrioridade.ALTA,
+                "Maria",
+                null,
+                null,
+                pageable);
     }
 
     @Test
@@ -98,7 +118,7 @@ class RequisicaoControllerTest {
                 "material",
                 RequisicaoPrioridade.MEDIA,
                 null,
-            List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)), null);
+                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)), null);
         Requisicao resposta = new RequisicaoMaterial();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
@@ -116,13 +136,13 @@ class RequisicaoControllerTest {
                 "transporte",
                 RequisicaoPrioridade.BAIXA,
                 null,
-            "Porto",
-            LocalDateTime.of(2026, 3, 21, 9, 0),
-            LocalDateTime.of(2026, 3, 21, 12, 0),
-            4,
-            "Motorista",
-            List.of(2L),
-            null, null);
+                "Porto",
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(1).plusHours(3),
+                4,
+                "Motorista",
+                List.of(2L),
+                null, null);
         Requisicao resposta = new RequisicaoTransporte();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);

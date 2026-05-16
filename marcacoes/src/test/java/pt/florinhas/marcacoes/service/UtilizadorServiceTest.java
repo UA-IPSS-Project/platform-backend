@@ -23,6 +23,8 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.security.CryptoUtils;
 import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.marcacoes.repository.DocumentoRepository;
+import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 
 import pt.florinhas.common_data.domain.Utente;
@@ -54,6 +56,14 @@ public class UtilizadorServiceTest {
 
     @Mock
     private CryptoUtils cryptoUtils;
+    @Mock
+    private AuditLogService auditLogService;
+    @Mock
+    private NotificacaoService notificacaoService;
+    @Mock
+    private DocumentoRepository documentoRepository;
+    @Mock
+    private MarcacaoRepository marcacaoRepository;
 
     @InjectMocks
     private UtilizadorService utilizadorService;

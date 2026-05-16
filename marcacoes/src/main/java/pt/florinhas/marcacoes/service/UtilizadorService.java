@@ -165,6 +165,7 @@ public class UtilizadorService {
         // Se não existir, criar novo utente
 
         log.info("Utente com NIF {} não encontrado. Criando novo utente...", nif);
+        nifValidator.validateRequiredOrThrow(nif);
 
         validarCampoObrigatorio(nome, "Nome do utente é obrigatório para criar novo registo");
         validarCampoObrigatorio(email, "Email do utente é obrigatório para criar novo registo");

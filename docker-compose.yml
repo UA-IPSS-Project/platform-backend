@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,7 +36,7 @@ services:
       MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY}
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/ready || exit 1"]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:9000/minio/health/ready || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,9 +68,14 @@ services:
       - SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
+      - SECURE_COOKIES=${SECURE_COOKIES:-true}
+      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     healthcheck:
       # wget is available in eclipse-temurin:21-jre-alpine; /actuator/health is public (no auth required)
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -111,8 +116,11 @@ services:
       - MINIO_BUCKET=${MINIO_BUCKET_MARCACOES}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
       - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -153,8 +161,11 @@ services:
       - MINIO_BUCKET=${MINIO_BUCKET_REQUISICOES}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
       - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -202,7 +213,7 @@ services:
       - SECURE_COOKIES=${SECURE_COOKIES:-false}
       - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -222,6 +233,11 @@ services:
       - "3443:443"
     volumes:
       - ../platform-frontend/ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
     develop:
       watch:
@@ -254,6 +270,11 @@ services:
       HEALTHCHECK_PORT: 8080
     volumes:
       - ./backups/postgres:/backups
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/ || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   # Backup automático MinIO
@@ -274,6 +295,11 @@ services:
       - ./scripts/crontab:/etc/crontabs/root
     entrypoint: /bin/sh
     command: -c "chmod +x /backup-minio.sh && crond -f -l 2"
+    healthcheck:
+      test: [ "CMD-SHELL", "pgrep crond || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
 volumes:
