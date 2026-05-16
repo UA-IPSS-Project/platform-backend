@@ -426,7 +426,7 @@ public class UtilizadorService {
                 salvo.getId(),
                 String.format("Conta criada pela secretaria: %s (%s) - Tipo: %s",
                         salvo.getNome(), salvo.getEmail(),
-                        salvo instanceof Funcionario ? ((Funcionario) salvo).getTipo() : "UTENTE"));
+                        salvo instanceof Funcionario funcionario ? funcionario.getTipo() : "UTENTE"));
 
         try {
             emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
