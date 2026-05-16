@@ -17,12 +17,12 @@ public class AssuntoService {
 
     private final AssuntoRepository assuntoRepository;
 
-    @Cacheable("assuntos")
+    @Cacheable(value = "assuntos", key = "'ativos'")
     public List<Assunto> listarAtivos() {
         return assuntoRepository.findByAtivoTrue();
     }
 
-    @Cacheable("assuntos")
+    @Cacheable(value = "assuntos", key = "'todos'")
     public List<Assunto> listarTodos() {
         return assuntoRepository.findAll();
     }

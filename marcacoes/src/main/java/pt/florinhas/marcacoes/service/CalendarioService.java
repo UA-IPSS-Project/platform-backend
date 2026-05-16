@@ -96,6 +96,7 @@ public class CalendarioService {
         }).start();
     }
 
+    @Cacheable(value = "feriados", key = "#ano")
     public List<LocalDate> getFeriadosDoAno(int ano) {
         return feriadosCache.computeIfAbsent(ano, this::fetchFeriados);
     }

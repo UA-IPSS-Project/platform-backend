@@ -145,8 +145,12 @@ public class UtilizadorController {
      */
     @GetMapping("/funcionarios")
     @PreAuthorize("hasAnyRole('SECRETARIA', 'FUNCIONARIO')")
-    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosFuncionarios() {
-        return ResponseEntity.ok(utilizadorService.listarTodosFuncionarios());
+    public ResponseEntity<Page<UtilizadorResponseDTO>> listarTodosFuncionarios(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String nif,
+            @RequestParam(required = false) FuncionarioTipo tipo,
+            @PageableDefault(size = 20, sort = "nome") Pageable pageable) {
+        return ResponseEntity.ok(utilizadorService.pesquisarFuncionarios(nome, tipo, nif, pageable));
     }
 
     /**
@@ -156,8 +160,9 @@ public class UtilizadorController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Page<UtilizadorResponseDTO>> listarTodosUtentes(
             @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String nif,
             @PageableDefault(size = 20, sort = "nome") Pageable pageable) {
-        return ResponseEntity.ok(utilizadorService.pesquisarUtentes(nome, pageable));
+        return ResponseEntity.ok(utilizadorService.pesquisarUtentes(nome, nif, pageable));
     }
 
     /**

@@ -56,11 +56,13 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     List<Funcionario> findByActivoFalse();
 
     // Pesquisa paginada com filtro opcional de nome e tipo
+    // Pesquisa paginada com filtro opcional de nome, tipo e nifHash exato
     @Query("SELECT f FROM Funcionario f WHERE " +
-           "(:nome IS NULL OR LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))) AND " +
-           "(CAST(:tipo AS string) IS NULL OR f.tipo = :tipo)")
+           "(:nifHash IS NOT NULL AND f.nifHash = :nifHash) OR " +
+           "(:nifHash IS NULL AND (:nome IS NULL OR LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))) AND (:tipo IS NULL OR f.tipo = :tipo))")
     Page<Funcionario> findByNomeAndTipoFilter(
             @Param("nome") String nome,
             @Param("tipo") FuncionarioTipo tipo,
+            @Param("nifHash") String nifHash,
             Pageable pageable);
 }

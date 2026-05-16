@@ -302,8 +302,9 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
-    public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, Pageable pageable) {
-        return funcionarioRepository.findByNomeAndTipoFilter(nome, tipo, pageable)
+    public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, String nif, Pageable pageable) {
+        String nifHash = (nif != null && !nif.isBlank()) ? cryptoUtils.generateBlindIndex(nif) : null;
+        return funcionarioRepository.findByNomeAndTipoFilter(nome, tipo, nifHash, pageable)
                 .map(UtilizadorResponseDTO::fromUtilizador);
     }
 
@@ -322,8 +323,9 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
-    public Page<UtilizadorResponseDTO> pesquisarUtentes(String nome, Pageable pageable) {
-        return utenteRepository.findByNomeFilter(nome, pageable)
+    public Page<UtilizadorResponseDTO> pesquisarUtentes(String nome, String nif, Pageable pageable) {
+        String nifHash = (nif != null && !nif.isBlank()) ? cryptoUtils.generateBlindIndex(nif) : null;
+        return utenteRepository.findByNomeFilter(nome, nifHash, pageable)
                 .map(UtilizadorResponseDTO::fromUtilizador);
     }
 
