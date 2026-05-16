@@ -112,6 +112,9 @@ services:
       - SPRING_DATA_MONGODB_HOST=${SPRING_DATA_MONGODB_HOST}
       - SPRING_DATA_MONGODB_PORT=${SPRING_DATA_MONGODB_PORT}
       - SPRING_DATA_MONGODB_DATABASE=${SPRING_DATA_MONGODB_DATABASE}
+      - SPRING_DATA_MONGODB_USERNAME=${MONGO_ROOT_USER}
+      - SPRING_DATA_MONGODB_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE=admin
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
@@ -132,10 +135,16 @@ services:
   mongo-candidaturas:
     image: mongo:latest
     container_name: mongo-candidaturas
-    expose:
-      - "27017"
+    ports:
+      - "27017:27017"
     volumes:
       - mongo-candidaturas-data:/data/db
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${SPRING_DATA_MONGODB_DATABASE}
     restart: unless-stopped
 
   notificacoes:
