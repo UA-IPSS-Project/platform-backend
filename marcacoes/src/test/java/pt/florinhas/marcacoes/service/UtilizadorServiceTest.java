@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import pt.florinhas.common_data.domain.Funcionario;
@@ -59,6 +60,8 @@ public class UtilizadorServiceTest {
     private MarcacaoRepository marcacaoRepository;
     @Mock
     private CryptoUtils cryptoUtils;
+    @Mock
+    private ObjectProvider<UtilizadorService> selfProvider;
 
     private UtilizadorService utilizadorService;
 
@@ -79,7 +82,10 @@ public class UtilizadorServiceTest {
                 passwordEncoder,
                 documentoRepository,
                 marcacaoRepository,
-                cryptoUtils);
+                cryptoUtils,
+                selfProvider);
+        
+        when(selfProvider.getIfAvailable()).thenReturn(utilizadorService);
     }
 
     @Test

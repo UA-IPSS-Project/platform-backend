@@ -17,6 +17,7 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.common_data.domain.Funcionario;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
@@ -67,6 +68,7 @@ public class UtilizadorService {
     private final DocumentoRepository documentoRepository;
     private final MarcacaoRepository marcacaoRepository;
     private final CryptoUtils cryptoUtils;
+    private final ObjectProvider<UtilizadorService> selfProvider;
 
     public UtilizadorService(UtilizadorRepository utilizadorRepository,
             UtenteRepository utenteRepository,
@@ -78,7 +80,8 @@ public class UtilizadorService {
             PasswordEncoder passwordEncoder,
             DocumentoRepository documentoRepository,
             MarcacaoRepository marcacaoRepository,
-            CryptoUtils cryptoUtils) {
+            CryptoUtils cryptoUtils,
+            ObjectProvider<UtilizadorService> selfProvider) {
         this.utilizadorRepository = utilizadorRepository;
         this.utenteRepository = utenteRepository;
         this.funcionarioRepository = funcionarioRepository;
@@ -90,6 +93,11 @@ public class UtilizadorService {
         this.documentoRepository = documentoRepository;
         this.marcacaoRepository = marcacaoRepository;
         this.cryptoUtils = cryptoUtils;
+        this.selfProvider = selfProvider;
+    }
+
+    private UtilizadorService self() {
+        return selfProvider.getIfAvailable();
     }
 
     /*
@@ -622,7 +630,7 @@ public class UtilizadorService {
         String nifOriginal = utilizador.getNif();
         String nomeOriginal = utilizador.getNome();
 
-        anonimizarUtilizador(id);
+        self().anonimizarUtilizador(id);
 
         auditLogService.log(
                 "ELIMINAR_UTILIZADOR",
