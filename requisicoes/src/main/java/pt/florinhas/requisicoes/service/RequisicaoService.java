@@ -53,6 +53,8 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 @Service
 public class RequisicaoService {
 
+    private static final String MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO = "Item de manutenção não encontrado: ";
+
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
     private final RequisicaoTransporteRepository requisicaoTransporteRepository;
@@ -280,7 +282,7 @@ public class RequisicaoService {
             for (var itemRequest : request.manutencaoItens()) {
                 ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                "Item de manutenção não encontrado: " + itemRequest.itemId()));
+                                MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + itemRequest.itemId()));
 
                 RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
                 requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
@@ -555,7 +557,7 @@ public class RequisicaoService {
     @Transactional
     public ManutencaoItem atualizarManutencaoItem(Long id, CriarManutencaoItemRequest request) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + id));
 
         item.setCategoria(request.categoria().trim());
         item.setEspaco(request.espaco().trim());
@@ -566,7 +568,7 @@ public class RequisicaoService {
     @Transactional
     public void apagarManutencaoItem(Long id) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + id));
 
         if (requisicaoManutencaoItemRepository.existsByManutencaoItemId(id)) {
             throw new IllegalArgumentException(
