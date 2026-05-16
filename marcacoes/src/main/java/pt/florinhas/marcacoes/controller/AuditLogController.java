@@ -21,9 +21,9 @@ import pt.florinhas.marcacoes.service.AuditLogService;
 @RequestMapping("/api/audit")
 public class AuditLogController {
 
+    private final String gatewaySharedSecret;
     private final AuditLogService auditLogService;
     private final AuditLogRepository auditLogRepository;
-    private final String gatewaySharedSecret;
 
     public AuditLogController(AuditLogService auditLogService,
             AuditLogRepository auditLogRepository,
@@ -37,7 +37,7 @@ public class AuditLogController {
 
     @GetMapping("/logs")
     @PreAuthorize("hasRole('DPO')")
-    public ResponseEntity<?> getLogs(
+    public ResponseEntity<Object> getLogs(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String entityType,
@@ -45,10 +45,14 @@ public class AuditLogController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        if (page < 0)
-            return ResponseEntity.badRequest().body("O parâmetro 'page' deve ser >= 0.");
-        if (size < 1 || size > MAX_PAGE_SIZE)
-            return ResponseEntity.badRequest().body("O parâmetro 'size' deve estar entre 1 e " + MAX_PAGE_SIZE + ".");
+        if (page < 0) {
+            return ResponseEntity.badRequest()
+                    .body("Invalid 'page' parameter: must be greater than or equal to 0.");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            return ResponseEntity.badRequest()
+                    .body("Invalid 'size' parameter: must be between 1 and " + MAX_PAGE_SIZE + ".");
+        }
 
         Pageable pageable = PageRequest.of(page, size);
         Page<AuditLogDTO> logs = auditLogService

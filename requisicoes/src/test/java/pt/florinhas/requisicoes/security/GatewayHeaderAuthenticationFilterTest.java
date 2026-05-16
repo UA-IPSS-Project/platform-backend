@@ -1,4 +1,4 @@
-package pt.florinhas.marcacoes.security;
+package pt.florinhas.requisicoes.security;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -12,7 +12,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -23,7 +22,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
 
 class GatewayHeaderAuthenticationFilterTest {
@@ -40,7 +38,6 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve ignorar o filtro se o contexto já estiver autenticado")
     void doFilterInternal_DeveFazerNadaSeJaAutenticado() throws ServletException, IOException {
         UsernamePasswordAuthenticationToken existingAuth = new UsernamePasswordAuthenticationToken(
                 "existingUser", null, Collections.emptyList());
@@ -57,9 +54,9 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve ignorar o filtro se o cabeçalho do usuário estiver ausente")
     void doFilterInternal_DeveFazerNadaSeUsuarioNaoInformado() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
+        // X-Authenticated-User ausente
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
@@ -70,10 +67,10 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve rejeitar com 401 se o gateway secret estiver ausente")
     void doFilterInternal_DeveRejeitarSeSecretAusente() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Authenticated-User", "teste@teste.com");
+        // X-Gateway-Secret ausente
 
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -86,7 +83,6 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve rejeitar com 401 se o gateway secret for incorreto")
     void doFilterInternal_DeveRejeitarSeSecretInvalido() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Authenticated-User", "teste@teste.com");
@@ -103,9 +99,9 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve rejeitar com 401 se o gateway secret esperado no servidor for vazio")
     void doFilterInternal_DeveRejeitarSeSecretEsperadoForVazio() throws ServletException, IOException {
-        GatewayHeaderAuthenticationFilter filterEmptySecret = new GatewayHeaderAuthenticationFilter(userDetailsService, "");
+        GatewayHeaderAuthenticationFilter filterEmptySecret = new GatewayHeaderAuthenticationFilter(userDetailsService,
+                "");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Authenticated-User", "teste@teste.com");
         request.addHeader("X-Gateway-Secret", SHARED_SECRET);
@@ -121,7 +117,6 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve autenticar com sucesso e mapear as roles do cabeçalho")
     void doFilterInternal_DeveAutenticarComRolesDoHeader() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Authenticated-User", "teste@teste.com");
@@ -131,7 +126,7 @@ class GatewayHeaderAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
-        Utilizador user = new Utente();
+        Utilizador user = new Utilizador();
         user.setEmail("teste@teste.com");
         when(userDetailsService.loadUserByUsername("teste@teste.com")).thenReturn(user);
 
@@ -146,12 +141,12 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve recorrer às authorities do usuário se o cabeçalho de roles for nulo ou vazio")
     void doFilterInternal_DeveUsarAuthoritiesDoUsuarioSeRolesDoHeaderEstivereVazio()
             throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Authenticated-User", "teste@teste.com");
         request.addHeader("X-Gateway-Secret", SHARED_SECRET);
+        // X-Authenticated-Roles vazio
 
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
@@ -170,7 +165,6 @@ class GatewayHeaderAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("Deve rejeitar com 401 se o userDetailsService lançar uma exceção ao carregar usuário")
     void doFilterInternal_DeveRejeitarSeUsuarioNaoExistirNoService() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Authenticated-User", "inexistente@teste.com");

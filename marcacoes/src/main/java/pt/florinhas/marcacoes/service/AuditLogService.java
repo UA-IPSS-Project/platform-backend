@@ -21,6 +21,8 @@ import pt.florinhas.marcacoes.repository.AuditLogRepository;
 @Slf4j
 public class AuditLogService {
 
+    private static final String IP_UNKNOWN = "unknown";
+
     private final AuditLogRepository auditLogRepository;
     private final UtilizadorRepository utilizadorRepository;
     private final ObjectProvider<HttpServletRequest> requestProvider;
@@ -92,15 +94,15 @@ public class AuditLogService {
     private String getClientIp() {
         HttpServletRequest request = requestProvider.getIfAvailable();
         if (request == null)
-            return "unknown";
+            return IP_UNKNOWN;
 
         String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || IP_UNKNOWN.equalsIgnoreCase(ip)) {
             ip = request.getHeader("X-Real-IP");
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || IP_UNKNOWN.equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
-        return ip != null ? ip.split(",")[0].trim() : "unknown";
+        return ip != null ? ip.split(",")[0].trim() : IP_UNKNOWN;
     }
 }

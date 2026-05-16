@@ -112,7 +112,7 @@ public class ManutencaoItemSeed implements CommandLineRunner {
         List<ManutencaoItem> itemsToFix = manutencaoItemRepository.findAll().stream()
                 .filter(i -> "Daycare".equalsIgnoreCase(i.getCategoria())
                         || "Preschool".equalsIgnoreCase(i.getCategoria()))
-                .collect(Collectors.toList());
+                .toList();
 
         if (!itemsToFix.isEmpty()) {
             log.info("--- CLEANING UP {} LEGACY MAINTENANCE ITEMS ---", itemsToFix.size());

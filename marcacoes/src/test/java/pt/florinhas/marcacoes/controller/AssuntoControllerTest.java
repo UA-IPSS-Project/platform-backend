@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,7 +82,7 @@ class AssuntoControllerTest {
 
     @Test
     void apagar_DeveRetornarMensagem() {
-        ResponseEntity<?> result = controller.apagar(1L);
+        ResponseEntity<Map<String, String>> result = controller.apagar(1L);
 
         assertEquals(200, result.getStatusCode().value());
         verify(assuntoService).apagar(1L);

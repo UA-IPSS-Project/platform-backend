@@ -17,6 +17,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import pt.florinhas.common_data.exception.BadRequestException;
 import pt.florinhas.common_data.exception.ResourceNotFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -91,5 +93,56 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Nome obrigatório", response.getBody().get("message"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 para NoResourceFoundException")
+    void handleNoResourceFoundException_DeveDevolver404() {
+        NoResourceFoundException ex = mock(NoResourceFoundException.class);
+        when(ex.getResourcePath()).thenReturn("api/v1/invalid");
+
+        ResponseEntity<Map<String, String>> response = handler.handleNoResourceFoundException(ex);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("O recurso solicitado não foi encontrado: api/v1/invalid", response.getBody().get("message"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 400 para IllegalArgumentException")
+    void handleIllegalArgumentException_DeveDevolver400() {
+        IllegalArgumentException ex = new IllegalArgumentException("Argumento inválido");
+        ResponseEntity<Map<String, String>> response = handler.handleIllegalArgumentException(ex);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Argumento inválido", response.getBody().get("message"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 400 para BusinessRuleException")
+    void handleBusinessRuleException_DeveDevolver400() {
+        BusinessRuleException ex = new BusinessRuleException("Regra de negócio violada");
+        ResponseEntity<Map<String, String>> response = handler.handleBusinessRuleException(ex);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Regra de negócio violada", response.getBody().get("message"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 409 para IllegalStateException")
+    void handleIllegalStateException_DeveDevolver409() {
+        IllegalStateException ex = new IllegalStateException("Estado inválido");
+        ResponseEntity<Map<String, String>> response = handler.handleIllegalStateException(ex);
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Estado inválido", response.getBody().get("message"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 500 com mensagem padrão quando mensagem da exceção genérica for nula")
+    void handleGenericException_ComMensagemNula_DeveDevolver500ComMensagemPadrao() {
+        Exception ex = mock(Exception.class);
+        when(ex.getMessage()).thenReturn(null);
+
+        ResponseEntity<Map<String, String>> response = handler.handleGenericException(ex);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Ocorreu um erro interno no servidor.", response.getBody().get("message"));
     }
 }

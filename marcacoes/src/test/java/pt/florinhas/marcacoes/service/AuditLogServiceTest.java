@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -54,6 +55,7 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("Deve guardar auditoria sem autenticacao")
         void log_DeveGuardarAuditoriaSemAutenticacao() {
 
                 when(request.getHeader("X-Forwarded-For"))
@@ -70,6 +72,7 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("Deve guardar auditoria com utilizador autenticado")
         void log_DeveGuardarAuditoriaComUtilizadorAutenticado() {
 
                 Utilizador utilizador = new Utilizador();
@@ -102,6 +105,7 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("Deve buscar utilizador por email quando autenticado via principal String")
         void log_DeveBuscarUtilizadorPorEmail() {
 
                 Utilizador utilizador = new Utilizador();
@@ -137,6 +141,50 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("Deve manter userId nulo se o utilizador autenticado por email nao for encontrado na base de dados")
+        void log_DeveManterUserIdNulo_QuandoUtilizadorPorEmailNaoEncontrado() {
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                "unknown@test.com",
+                                null,
+                                List.of());
+
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                when(utilizadorRepository.findByEmail("unknown@test.com")).thenReturn(List.of());
+                when(request.getHeader("X-Forwarded-For")).thenReturn("10.0.0.1");
+
+                service.log("DELETE", "UTENTE", 7L, "Removido");
+
+                verify(auditLogRepository).save(argThat(log -> log.getUserId() == null && "Sistema".equals(log.getUserName())));
+        }
+
+        @Test
+        @DisplayName("Deve ignorar autenticacao anonima")
+        void log_DeveIgnorarAutenticacaoAnonima() {
+                UsernamePasswordAuthenticationToken anonAuth = new UsernamePasswordAuthenticationToken(
+                                "anonymousUser",
+                                null,
+                                List.of());
+                SecurityContextHolder.getContext().setAuthentication(anonAuth);
+                when(request.getHeader("X-Forwarded-For")).thenReturn("127.0.0.1");
+
+                service.log("CREATE", "UTENTE", 1L, "Anon");
+                verify(auditLogRepository).save(argThat(log -> log.getUserId() == null && "Sistema".equals(log.getUserName())));
+        }
+
+        @Test
+        @DisplayName("Deve ignorar autenticacao nao autenticada")
+        void log_DeveIgnorarAutenticacaoNaoAutenticada() {
+                UsernamePasswordAuthenticationToken unauth = new UsernamePasswordAuthenticationToken("user", null);
+                unauth.setAuthenticated(false);
+                SecurityContextHolder.getContext().setAuthentication(unauth);
+                when(request.getHeader("X-Forwarded-For")).thenReturn("127.0.0.1");
+
+                service.log("CREATE", "UTENTE", 2L, "Unauth");
+                verify(auditLogRepository).save(argThat(log -> log.getUserId() == null && "Sistema".equals(log.getUserName())));
+        }
+
+        @Test
+        @DisplayName("Deve continuar mesmo com erro ao buscar utilizador")
         void log_DeveContinuarMesmoComErroAoBuscarUtilizador() {
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
@@ -165,6 +213,7 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("Deve ignorar erro ao guardar audit log")
         void log_DeveIgnorarErroAoGuardar() {
 
                 when(request.getHeader("X-Forwarded-For"))
@@ -182,6 +231,7 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("findAll deve retornar pagina ordenada")
         void findAll_DeveRetornarPagina() {
 
                 Pageable pageable = PageRequest.of(0, 10);
@@ -201,6 +251,7 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("findWithFilters deve retornar pagina com filtros")
         void findWithFilters_DeveRetornarPagina() {
 
                 Pageable pageable = PageRequest.of(0, 10);
@@ -234,10 +285,11 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("getClientIp deve usar o primeiro IP do cabecalho X-Forwarded-For")
         void getClientIp_DeveUsarXForwardedFor() throws Exception {
 
                 when(request.getHeader("X-Forwarded-For"))
-                                .thenReturn("192.168.1.100");
+                                .thenReturn("192.168.1.100, 10.0.0.1");
 
                 String resultado = invokeGetClientIp();
 
@@ -247,10 +299,11 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("getClientIp deve usar X-Real-Ip se X-Forwarded-For for unknown ou nulo")
         void getClientIp_DeveUsarXRealIp() throws Exception {
 
                 when(request.getHeader("X-Forwarded-For"))
-                                .thenReturn(null);
+                                .thenReturn("unknown");
 
                 when(request.getHeader("X-Real-IP"))
                                 .thenReturn("10.0.0.1");
@@ -263,13 +316,14 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("getClientIp deve usar RemoteAddr se os outros cabecalhos forem unknown")
         void getClientIp_DeveUsarRemoteAddr() throws Exception {
 
                 when(request.getHeader("X-Forwarded-For"))
                                 .thenReturn(null);
 
                 when(request.getHeader("X-Real-IP"))
-                                .thenReturn(null);
+                                .thenReturn("unknown");
 
                 when(request.getRemoteAddr())
                                 .thenReturn("127.0.0.1");
@@ -282,6 +336,7 @@ class AuditLogServiceTest {
         }
 
         @Test
+        @DisplayName("getClientIp deve retornar unknown quando requestProvider retornar nulo")
         void getClientIp_DeveRetornarUnknownQuandoRequestNull() throws Exception {
 
                 @SuppressWarnings("unchecked")

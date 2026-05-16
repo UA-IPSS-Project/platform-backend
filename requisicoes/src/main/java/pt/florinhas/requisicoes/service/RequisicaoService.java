@@ -53,6 +53,8 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 @Service
 public class RequisicaoService {
 
+    private static final String MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO = "Item de manutenção não encontrado: ";
+
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
     private final RequisicaoTransporteRepository requisicaoTransporteRepository;
@@ -280,7 +282,7 @@ public class RequisicaoService {
             for (var itemRequest : request.manutencaoItens()) {
                 ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                "Item de manutenção não encontrado: " + itemRequest.itemId()));
+                                MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + itemRequest.itemId()));
 
                 RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
                 requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
@@ -555,7 +557,7 @@ public class RequisicaoService {
     @Transactional
     public ManutencaoItem atualizarManutencaoItem(Long id, CriarManutencaoItemRequest request) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + id));
 
         item.setCategoria(request.categoria().trim());
         item.setEspaco(request.espaco().trim());
@@ -566,7 +568,7 @@ public class RequisicaoService {
     @Transactional
     public void apagarManutencaoItem(Long id) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + id));
 
         if (requisicaoManutencaoItemRepository.existsByManutencaoItemId(id)) {
             throw new IllegalArgumentException(
@@ -584,17 +586,14 @@ public class RequisicaoService {
             throw new IllegalArgumentException("Não é possível alterar o estado de uma requisição finalizada.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ABERTO) {
-            if (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO
-                    || novoEstado == RequisicaoEstado.RECUSADO) {
-                return;
-            }
+        if (estadoAtual == RequisicaoEstado.ABERTO && (novoEstado == RequisicaoEstado.EM_PROGRESSO
+                || novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO)) {
+            return;
         }
 
-        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO) {
-            if (novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
-                return;
-            }
+        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO && (novoEstado == RequisicaoEstado.FECHADO
+                || novoEstado == RequisicaoEstado.RECUSADO)) {
+            return;
         }
 
         throw new IllegalArgumentException(
@@ -635,12 +634,6 @@ public class RequisicaoService {
     }
 
     private void validarConfiguracaoPeriodica(RequisicaoPeriodicaConfigRequest config) {
-        if (config.frequencia() == null) {
-            throw new IllegalArgumentException("A frequência da requisição periódica é obrigatória.");
-        }
-        if (config.dataInicio() == null) {
-            throw new IllegalArgumentException("A data de início da requisição periódica é obrigatória.");
-        }
         if (config.dataFim() != null && config.dataFim().isBefore(config.dataInicio())) {
             throw new IllegalArgumentException(
                     "A data de fim da requisição periódica não pode ser anterior à data de início.");
