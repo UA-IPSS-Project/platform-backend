@@ -584,17 +584,14 @@ public class RequisicaoService {
             throw new IllegalArgumentException("Não é possível alterar o estado de uma requisição finalizada.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ABERTO) {
-            if (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO
-                    || novoEstado == RequisicaoEstado.RECUSADO) {
-                return;
-            }
+        if (estadoAtual == RequisicaoEstado.ABERTO && (novoEstado == RequisicaoEstado.EM_PROGRESSO
+                || novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO)) {
+            return;
         }
 
-        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO) {
-            if (novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
-                return;
-            }
+        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO && (novoEstado == RequisicaoEstado.FECHADO
+                || novoEstado == RequisicaoEstado.RECUSADO)) {
+            return;
         }
 
         throw new IllegalArgumentException(
