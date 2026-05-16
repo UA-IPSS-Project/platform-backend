@@ -1,153 +1,47 @@
+import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { doLogin, BASE, randomUser } from './utils/auth.js';
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
-import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.1/index.js";
-import {
-  USERS,
-  checkHealth,
-  seedUsers,
-  loginUtente,
-  listMarcacoesUtente,
-  getCurrentUser,
-  createMarcacaoRemota,
-} from './common.js';
-
-function metricCount(data, metricName) {
-  return data.metrics?.[metricName]?.values?.count ?? 0;
-}
-
-function metricRate(data, metricName) {
-  return data.metrics?.[metricName]?.values?.rate ?? 0;
-}
-
-function metricP95(data, metricName) {
-  return data.metrics?.[metricName]?.values?.['p(95)'] ?? 0;
-}
-
-function buildCompactSummary(data) {
-  const httpReqs = metricCount(data, 'http_reqs');
-  const iterations = metricCount(data, 'iterations');
-  const p95 = metricP95(data, 'http_req_duration');
-  const httpReqFailedRate = (metricRate(data, 'http_req_failed') * 100).toFixed(2);
-
-  return [
-    '=== Smoke Test (Resumo) ===',
-    `requests: ${httpReqs} | iterations: ${iterations}`,
-    `latencia p95: ${p95.toFixed(2)}ms | http_req_failed: ${httpReqFailedRate}%`,
-    'create marcacao: ver checks no relatorio (status 200 + id)',
-  ].join('\n');
-}
 
 export const options = {
-  vus: 1,
-  iterations: 1,
-  thresholds: {
-    http_req_duration: ['p(95)<3000'],
-    http_req_failed: ['rate<0.05'],
-  },
+    insecureSkipTLSVerify: true,
+    vus: 1,
+    duration: '1m',
+    thresholds: {
+        http_req_failed: ['rate<0.01'],
+        http_req_duration: ['p(95)<500'],
+    },
 };
 
-export function setup() {
-  checkHealth();
-  seedUsers(USERS);
-  return { users: USERS };
-}
+let auth = null;
 
-export default function smokeTest(data) {
-  const user = data.users[0];
-  const session = loginUtente(user);
-
-  if (!session) {
-    console.error('Login falhou no smoke test');
-    return;
-  }
-
-  const meRes = getCurrentUser(session);
-  check(meRes, {
-    'auth me status 200': (r) => r.status === 200,
-    'auth me id matches': (r) => {
-      try {
-        return r.json('id') === session.userId;
-      } catch {
-        return false;
-      }
-    },
-  });
-
-  const beforeListRes = listMarcacoesUtente(session);
-  check(beforeListRes, {
-    'list before status 200': (r) => r.status === 200,
-    'list before is array': (r) => {
-      try {
-        return Array.isArray(r.json());
-      } catch {
-        return false;
-      }
-    },
-  });
-
-  const maxCreateAttempts = 64;
-  let createRes = null;
-  let createSucceeded = false;
-  const seedBase = Date.now() % 11456;
-
-  for (let attempt = 0; attempt < maxCreateAttempts; attempt += 1) {
-    const seed = seedBase + (attempt * 97);
-    createRes = createMarcacaoRemota(session, seed);
-
-    if (createRes.status === 200) {
-      createSucceeded = true;
-      break;
+export default function () {
+    if (!auth) {
+        const u = randomUser();
+        auth = doLogin(u.email, u.password);
     }
-  }
+    if (!auth) { sleep(2); return; }
 
-  check(createRes || { status: 0 }, {
-    'create marcacao status 200': () => createSucceeded,
-    'create marcacao has id': (r) => {
-      if (!createSucceeded) {
-        return false;
-      }
-      try {
-        return !!r.json('id');
-      } catch {
-        return false;
-      }
-    },
-  });
+    // Fluxo real: utilizador abre o dashboard
+    check(http.get(BASE, { insecureSkipTLSVerify: true }), {
+        'frontend carrega': (r) => r.status === 200,
+    });
+    check(http.get(`${BASE}/api/marcacoes`, auth), {
+        'lista marcações ok': (r) => r.status === 200,
+    });
+    check(http.get(`${BASE}/api/requisicoes`, auth), {
+        'lista requisições ok': (r) => r.status === 200,
+    });
+    check(http.get(`${BASE}/api/calendario/bloqueios?tipo=SECRETARIA`, auth), {
+        'calendario ok': (r) => r.status === 200,
+    });
 
-  const afterListRes = listMarcacoesUtente(session);
-  check(afterListRes, {
-    'list after status 200': (r) => r.status === 200,
-    'list after is array': (r) => {
-      try {
-        return Array.isArray(r.json());
-      } catch {
-        return false;
-      }
-    },
-  });
-
-  sleep(1);
+    sleep(1);
 }
 
 export function handleSummary(data) {
-  const testName = 'smoke_test';
-  const reportName = __ENV.REPORT_NAME || testName;
-  const reportDir = (__ENV.REPORT_DIR || `./results/${testName}`).replace(/\/$/, '');
-  const fullSummary = String(__ENV.FULL_SUMMARY || 'false').toLowerCase() === 'true';
-  const saveSummaryFile = String(__ENV.SAVE_SUMMARY_FILE || 'false').toLowerCase() === 'true';
-  const compactSummary = buildCompactSummary(data);
-
-  const summary = {
-    'stdout': fullSummary
-      ? `${compactSummary}\n\n${textSummary(data, { indent: ' ', enableColors: true })}`
-      : `${compactSummary}\n`,
-    [`${reportDir}/${reportName}.html`]: htmlReport(data, { title: `${reportName} Results` }),
-    [`${reportDir}/${reportName}.json`]: JSON.stringify(data),
-  };
-
-  if (saveSummaryFile) {
-    summary[`${reportDir}/${reportName}_resumo.txt`] = `${compactSummary}\n`;
-  }
-
-  return summary;
+    return {
+        'resultados/smoke/smoke-report.html': htmlReport(data),
+        'resultados/smoke/smoke-result.json': JSON.stringify(data, null, 2),
+    };
 }
