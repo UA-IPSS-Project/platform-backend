@@ -49,6 +49,7 @@ class RequisicaoControllerTest {
         Page<Requisicao> resultado = requisicaoController.listar(null, Pageable.unpaged());
 
         assertSame(esperado, resultado);
+        verify(requisicaoService).procurarPaginated(null, null, null, null, null, null, Pageable.unpaged());
     }
 
     @Test
@@ -60,6 +61,7 @@ class RequisicaoControllerTest {
         Page<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO, Pageable.unpaged());
 
         assertSame(esperado, resultado);
+        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, Pageable.unpaged());
     }
 
     @Test
