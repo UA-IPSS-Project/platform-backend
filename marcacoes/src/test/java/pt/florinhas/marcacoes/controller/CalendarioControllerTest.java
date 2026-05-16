@@ -87,7 +87,7 @@ class CalendarioControllerTest {
         assertNotNull(response.getBody());
         assertEquals("Bloqueio registado com sucesso", response.getBody().get("message"));
 
-        verify(calendarioService).bloquearHorario(eq(date), eq(start), eq(end), eq("Reuniao"), eq(funcionario), eq("SECRETARIA"));
+        verify(calendarioService).bloquearHorario(date, start, end, "Reuniao", funcionario, "SECRETARIA");
     }
 
     @Test
@@ -113,7 +113,7 @@ class CalendarioControllerTest {
         ResponseEntity<Map<String, String>> response = controller.bloquearHorario(request);
 
         assertEquals(200, response.getStatusCode().value());
-        verify(calendarioService).bloquearHorario(eq(date), eq(start), eq(end), eq("Manutencao"), eq(funcionario), eq("BALNEARIO"));
+        verify(calendarioService).bloquearHorario(date, start, end, "Manutencao", funcionario, "BALNEARIO");
     }
 
     @Test

@@ -153,14 +153,14 @@ public class AuthService {
                 }
                 var user = users.get(0);
 
-                log.debug("User found: {}, Active: {}", user.getEmail(), ((Utente) user).isActivo());
-
                 // Garantir que é efetivamente um Utente
-                if (!(user instanceof Utente)) {
+                if (!(user instanceof Utente utente)) {
                         throw new BadRequestException("Credenciais inválidas para utente");
                 }
 
-                return generateAuthResponse(user, ROLE_UTENTE, ((Utente) user).isActivo());
+                log.debug("User found: {}, Active: {}", user.getEmail(), utente.isActivo());
+
+                return generateAuthResponse(user, ROLE_UTENTE, utente.isActivo());
         }
 
         /**

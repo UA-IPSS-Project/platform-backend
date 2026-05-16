@@ -37,7 +37,7 @@ public class AuditLogController {
 
     @GetMapping("/logs")
     @PreAuthorize("hasRole('DPO')")
-    public ResponseEntity<?> getLogs(
+    public ResponseEntity<Object> getLogs(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String entityType,

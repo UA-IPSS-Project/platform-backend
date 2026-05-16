@@ -210,7 +210,7 @@ class AuthControllerTest {
                 ResponseEntity<Void> result = controller.updatePassword(requestDto, utilizador);
 
                 assertEquals(200, result.getStatusCode().value());
-                verify(authService).updatePassword(eq(10L), eq("newSecurePassword"), eq(true));
+                verify(authService).updatePassword(10L, "newSecurePassword", true);
         }
 
         @Test

@@ -1,6 +1,7 @@
 package pt.florinhas.api_gateway.security;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -84,7 +85,7 @@ public class JwtAuthenticationFilter implements WebFilter {
             return writeUnauthorized(exchange, MSG_TOKEN_INVALIDO);
         }
 
-        Collection<? extends GrantedAuthority> authorities = extractAuthorities(claims, userDetails);
+        Collection<GrantedAuthority> authorities = extractAuthorities(claims, userDetails);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userDetails,
                 null,
@@ -124,18 +125,18 @@ public class JwtAuthenticationFilter implements WebFilter {
                     Mono.just(new SecurityContextImpl(authentication))));
     }
 
-            private Collection<? extends GrantedAuthority> extractAuthorities(Claims claims, UserDetails userDetails) {
             @SuppressWarnings("unchecked")
+            private Collection<GrantedAuthority> extractAuthorities(Claims claims, UserDetails userDetails) {
             List<String> tokenRoles = claims.get("roles", List.class);
 
             if (tokenRoles != null && !tokenRoles.isEmpty()) {
                 return tokenRoles.stream()
                     .filter(StringUtils::hasText)
-                    .map(SimpleGrantedAuthority::new)
+                    .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
                     .toList();
             }
 
-            return userDetails.getAuthorities();
+            return new ArrayList<>(userDetails.getAuthorities());
             }
 
     private boolean isPublicPath(String path) {

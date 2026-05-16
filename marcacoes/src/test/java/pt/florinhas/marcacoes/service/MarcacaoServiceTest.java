@@ -590,7 +590,7 @@ class MarcacaoServiceTest {
         assertEquals("Motivo teste", marcacao.getMotivoCancelamento());
         assertEquals(funcionario, marcacao.getAtendente());
 
-        verify(notificacaoService).notificarCancelamento(eq(20L), eq(marcacao.getData()), eq("Motivo teste"));
+        verify(notificacaoService).notificarCancelamento(20L, marcacao.getData(), "Motivo teste");
     }
 
     @Test
@@ -888,7 +888,7 @@ class MarcacaoServiceTest {
         m.setData(LocalDateTime.now());
         m.setEstado(EventoEstado.AGENDADO);
 
-        when(marcacaoRepository.findMarcacoesBetweenDates(eq(inicio), eq(fim), eq("BALNEARIO"))).thenReturn(List.of(m));
+        when(marcacaoRepository.findMarcacoesBetweenDates(inicio, fim, "BALNEARIO")).thenReturn(List.of(m));
 
         List<MarcacaoResponseDTO> result = marcacaoService.consultarAgenda(inicio, fim, "BALNEARIO");
 
@@ -907,7 +907,7 @@ class MarcacaoServiceTest {
         m.setData(LocalDateTime.now());
         m.setEstado(EventoEstado.AGENDADO);
 
-        when(marcacaoRepository.findWithFilters(eq(inicio), eq(fim), eq(10L), eq(20L), eq(EventoEstado.AGENDADO)))
+        when(marcacaoRepository.findWithFilters(inicio, fim, 10L, 20L, EventoEstado.AGENDADO))
                 .thenReturn(List.of(m));
 
         List<MarcacaoResponseDTO> result = marcacaoService.procurarAgenda(inicio, fim, 10L, 20L, EventoEstado.AGENDADO);

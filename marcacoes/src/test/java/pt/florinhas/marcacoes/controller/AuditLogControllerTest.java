@@ -37,7 +37,7 @@ class AuditLogControllerTest {
         AuditLogRepository repository = mock(AuditLogRepository.class);
         AuditLogController controller = new AuditLogController(service, repository, "secret");
 
-        ResponseEntity<?> response = controller.getLogs(null, null, null, null, null, -1, 50);
+        ResponseEntity<Object> response = controller.getLogs(null, null, null, null, null, -1, 50);
 
         assertEquals(400, response.getStatusCode().value());
         assertEquals("Invalid 'page' parameter: must be greater than or equal to 0.", response.getBody());
@@ -50,11 +50,11 @@ class AuditLogControllerTest {
         AuditLogRepository repository = mock(AuditLogRepository.class);
         AuditLogController controller = new AuditLogController(service, repository, "secret");
 
-        ResponseEntity<?> responseLow = controller.getLogs(null, null, null, null, null, 0, 0);
+        ResponseEntity<Object> responseLow = controller.getLogs(null, null, null, null, null, 0, 0);
         assertEquals(400, responseLow.getStatusCode().value());
         assertEquals("Invalid 'size' parameter: must be between 1 and 200.", responseLow.getBody());
 
-        ResponseEntity<?> responseHigh = controller.getLogs(null, null, null, null, null, 0, 201);
+        ResponseEntity<Object> responseHigh = controller.getLogs(null, null, null, null, null, 0, 201);
         assertEquals(400, responseHigh.getStatusCode().value());
         assertEquals("Invalid 'size' parameter: must be between 1 and 200.", responseHigh.getBody());
     }
@@ -69,7 +69,7 @@ class AuditLogControllerTest {
         Page<AuditLog> pageMock = Page.empty();
         when(service.findWithFilters(any(), any(), any(), any(), any(), any())).thenReturn(pageMock);
 
-        ResponseEntity<?> response = controller.getLogs(1L, "LOGIN", "UTILIZADOR", null, null, 0, 50);
+        ResponseEntity<Object> response = controller.getLogs(1L, "LOGIN", "UTILIZADOR", null, null, 0, 50);
 
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());

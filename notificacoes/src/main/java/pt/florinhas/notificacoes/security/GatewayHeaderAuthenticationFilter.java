@@ -1,8 +1,10 @@
 package pt.florinhas.notificacoes.security;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -77,9 +79,9 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
         }
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
+            Collection<GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
             if (authorities.isEmpty()) {
-                authorities = userDetails.getAuthorities();
+                authorities = new ArrayList<>(userDetails.getAuthorities());
             }
 
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -96,15 +98,15 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private Collection<? extends GrantedAuthority> parseAuthorities(String rolesHeader) {
+    private Collection<GrantedAuthority> parseAuthorities(String rolesHeader) {
         if (!StringUtils.hasText(rolesHeader)) {
-            return java.util.List.of();
+            return List.of();
         }
 
         return Arrays.stream(rolesHeader.split(","))
                 .map(String::trim)
                 .filter(StringUtils::hasText)
-                .map(SimpleGrantedAuthority::new)
+                .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
                 .toList();
     }
 }
