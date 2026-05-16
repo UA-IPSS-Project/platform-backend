@@ -11,5 +11,6 @@ public record CriarRequisicaoManutencaoRequest(
         String descricao,
         @NotNull RequisicaoPrioridade prioridade,
         Long geridoPorId,
-        @NotNull @NotEmpty List<@Valid ManutencaoItemRequest> manutencaoItens) {
+        @NotNull @NotEmpty List<@Valid ManutencaoItemRequest> manutencaoItens,
+        @Valid RequisicaoPeriodicaConfigRequest periodica) {
 }
