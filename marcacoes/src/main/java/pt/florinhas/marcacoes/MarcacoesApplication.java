@@ -83,10 +83,14 @@ public class MarcacoesApplication {
 	@ConditionalOnBean(PasswordEncoder.class)
 
 	@Bean
-	CommandLineRunner initDefaultFuncionarios(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder, CryptoUtils cryptoUtils) {
+	CommandLineRunner initDefaultFuncionarios(
+			FuncionarioRepository funcionarioRepository, 
+			PasswordEncoder encoder, 
+			CryptoUtils cryptoUtils,
+			pt.florinhas.marcacoes.service.KeycloakAdminClient keycloakAdminClient) {
 		return args -> {
 
-			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
+			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, keycloakAdminClient, new SeedAccount(
 				    "999999998",
 				    "Funcionário Secretaria",
 				    "secretaria@florinhasdovouga.pt",
@@ -94,7 +98,7 @@ public class MarcacoesApplication {
 				    "sec123",
 				    FuncionarioTipo.SECRETARIA));
 
-			    upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
+			    upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, keycloakAdminClient, new SeedAccount(
 				    "999999997",
 				    "Funcionário Balneário",
 				    "balneario@florinhasdovouga.pt",
@@ -102,7 +106,7 @@ public class MarcacoesApplication {
 				    "bal123",
 				    FuncionarioTipo.BALNEARIO));
 
-				upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
+				upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, keycloakAdminClient, new SeedAccount(
 				    "999999996",
 				    "Funcionário Escola",
 				    "escola@florinhasdovouga.pt",
@@ -110,7 +114,7 @@ public class MarcacoesApplication {
 				    "esc123",
 				    FuncionarioTipo.ESCOLA));
 
-			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
+			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, keycloakAdminClient, new SeedAccount(
 				    "999999995",
 				    "Encarregado Proteção Dados",
 				    "dpo@florinhasdovouga.pt",
@@ -124,6 +128,7 @@ public class MarcacoesApplication {
 			FuncionarioRepository funcionarioRepository,
 			PasswordEncoder encoder,
 			CryptoUtils cryptoUtils,
+			pt.florinhas.marcacoes.service.KeycloakAdminClient keycloakAdminClient,
 			SeedAccount account) {
 		String nif = account.nif();
 		var byEmail = funcionarioRepository.findByEmail(account.email());
@@ -146,6 +151,15 @@ public class MarcacoesApplication {
 		}
 
 		funcionarioRepository.save(funcionario);
+		
+		// Sync with Keycloak
+		keycloakAdminClient.criarUtilizador(
+				account.email(), 
+				account.nome(), 
+				account.tipo().name(), 
+				account.defaultPassword()
+		);
+
 		LOGGER.info(">>> Conta base {} ({}) {}.", account.email(), account.tipo().name(), isNew ? "criada" : "atualizada");
 	}
 

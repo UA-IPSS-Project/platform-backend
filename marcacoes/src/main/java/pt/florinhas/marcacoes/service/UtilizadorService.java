@@ -31,6 +31,8 @@ import pt.florinhas.common_data.security.CryptoUtils;
 
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
+import pt.florinhas.marcacoes.dto.UtenteRegisterRequestDTO;
+import pt.florinhas.marcacoes.dto.FuncionarioRegisterRequestDTO;
 import pt.florinhas.marcacoes.exception.ConflictException;
 import pt.florinhas.marcacoes.exception.NotFoundException;
 import java.util.ArrayList;
@@ -87,6 +89,9 @@ public class UtilizadorService {
     
     @Autowired
     private MarcacaoRepository marcacaoRepository;
+
+    @Autowired
+    private KeycloakAdminClient keycloakAdminClient;
 
     @Autowired
     private CryptoUtils cryptoUtils;
@@ -429,6 +434,10 @@ public class UtilizadorService {
                 salvo instanceof Funcionario ? ((Funcionario)salvo).getTipo() : "UTENTE")
         );
 
+        // Create user in Keycloak (non-fatal: local DB is source of truth)
+        String keycloakRole = salvo instanceof Funcionario f ? f.getTipo().name() : "UTENTE";
+        keycloakAdminClient.criarUtilizador(salvo.getEmail(), salvo.getNome(), keycloakRole, passwordInicial);
+
         try {
             emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
         } catch (Exception e) {
@@ -486,6 +495,110 @@ public class UtilizadorService {
         } catch (Exception e) {
             throw new IllegalStateException("Erro ao enviar email de recuperação: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Regista um novo utente (auto-registo via React).
+     */
+    @Transactional
+    public Utilizador registrarUtente(UtenteRegisterRequestDTO request) {
+        if (utilizadorRepository.existsByNifHash(cryptoUtils.generateBlindIndex(request.getNif()))) {
+            throw new ConflictException("Já existe um utilizador com este NIF.");
+        }
+        if (utilizadorRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Já existe um utilizador com este Email.");
+        }
+
+        Utente u = new Utente();
+        u.setActivo(true);
+        u.setNif(request.getNif());
+        u.setNome(request.getNome());
+        u.setTelefone(request.getTelefone());
+        u.setEmail(request.getEmail());
+        
+        try {
+            LocalDate dataNasc = LocalDate.parse(request.getDataNasc(), DateTimeFormatter.ISO_LOCAL_DATE);
+            u.setDataNasc(dataNasc);
+        } catch (Exception e) {
+            u.setDataNasc(LocalDate.now());
+        }
+
+        u.setPassHash(passwordEncoder.encode(request.getPassword()));
+        if (request.isTermsAccepted()) {
+            u.setTermsAcceptedAt(LocalDateTime.now());
+            u.setTermsVersion(1);
+        }
+
+        Utente salvo = utenteRepository.save(u);
+
+        auditLogService.log(
+            "REGISTRAR_UTENTE",
+            "UTILIZADOR",
+            salvo.getId(),
+            String.format("Auto-registo de utente: %s (%s)", salvo.getNome(), salvo.getEmail())
+        );
+
+        // Sync with Keycloak
+        keycloakAdminClient.criarUtilizador(salvo.getEmail(), salvo.getNome(), "UTENTE", request.getPassword());
+
+        return salvo;
+    }
+
+    /**
+     * Regista um novo funcionário (auto-registo via React).
+     */
+    @Transactional
+    public Utilizador registrarFuncionario(FuncionarioRegisterRequestDTO request) {
+        if (utilizadorRepository.existsByNifHash(cryptoUtils.generateBlindIndex(request.getNif()))) {
+            throw new ConflictException("Já existe um utilizador com este NIF.");
+        }
+        if (utilizadorRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Já existe um utilizador com este Email.");
+        }
+
+        Funcionario f = new Funcionario();
+        f.setActivo(false); // Pendente de aprovação
+        f.setNif(request.getNif());
+        f.setNome(request.getNome());
+        f.setTelefone(request.getContacto());
+        f.setEmail(request.getEmail());
+        
+        try {
+            LocalDate dataNasc = LocalDate.parse(request.getDataNasc(), DateTimeFormatter.ISO_LOCAL_DATE);
+            f.setDataNasc(dataNasc);
+        } catch (Exception e) {
+            f.setDataNasc(LocalDate.now());
+        }
+
+        f.setPassHash(passwordEncoder.encode(request.getPassword()));
+        if (request.isTermsAccepted()) {
+            f.setTermsAcceptedAt(LocalDateTime.now());
+            f.setTermsVersion(1);
+        }
+
+        // Map function to type
+        FuncionarioTipo tipo = FuncionarioTipo.OUTRO;
+        String normalizedRole = request.getFuncao().trim().toUpperCase();
+        if (normalizedRole.equals("SECRETARIA")) tipo = FuncionarioTipo.SECRETARIA;
+        else if (normalizedRole.contains("BALNE")) tipo = FuncionarioTipo.BALNEARIO;
+        else if (normalizedRole.equals("ESCOLA")) tipo = FuncionarioTipo.ESCOLA;
+        else if (normalizedRole.contains("INTERNO")) tipo = FuncionarioTipo.INTERNO;
+        f.setTipo(tipo);
+
+        Funcionario salvo = funcionarioRepository.save(f);
+
+        auditLogService.log(
+            "REGISTRAR_FUNCIONARIO",
+            "UTILIZADOR",
+            salvo.getId(),
+            String.format("Auto-registo de funcionário: %s (%s) - Tipo: %s", 
+                salvo.getNome(), salvo.getEmail(), tipo)
+        );
+
+        // Sync with Keycloak
+        keycloakAdminClient.criarUtilizador(salvo.getEmail(), salvo.getNome(), tipo.name(), request.getPassword());
+
+        return salvo;
     }
 
     /*
