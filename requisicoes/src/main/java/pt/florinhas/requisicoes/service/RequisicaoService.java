@@ -638,14 +638,15 @@ public class RequisicaoService {
             throw new IllegalArgumentException("A frequência da requisição periódica é obrigatória.");
         }
 
-        var dataInicio = config.dataInicio();
-        if (dataInicio == null) {
+        if (config.dataInicio() == null) {
             throw new IllegalArgumentException("A data de início da requisição periódica é obrigatória.");
         }
 
-        var dataFim = config.dataFim();
-        if (dataFim != null && dataFim.isBefore(dataInicio)) {
-            throw new IllegalArgumentException("A data de fim da requisição periódica não pode ser anterior à data de início.");
+        if (config.dataFim() != null) {
+            if (config.dataFim().isBefore(config.dataInicio())) {
+                throw new IllegalArgumentException(
+                        "A data de fim da requisição periódica não pode ser anterior à data de início.");
+            }
         }
     }
 
