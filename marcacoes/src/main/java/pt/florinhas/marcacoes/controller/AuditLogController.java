@@ -37,7 +37,7 @@ public class AuditLogController {
 
     @GetMapping("/logs")
     @PreAuthorize("hasRole('DPO')")
-    public ResponseEntity<?> getLogs(
+    public ResponseEntity<Page<AuditLogDTO>> getLogs(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String entityType,
@@ -46,9 +46,9 @@ public class AuditLogController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         if (page < 0)
-            return ResponseEntity.badRequest().body("O parâmetro 'page' deve ser >= 0.");
+            return ResponseEntity.badRequest().build();
         if (size < 1 || size > MAX_PAGE_SIZE)
-            return ResponseEntity.badRequest().body("O parâmetro 'size' deve estar entre 1 e " + MAX_PAGE_SIZE + ".");
+            return ResponseEntity.badRequest().build();
 
         Pageable pageable = PageRequest.of(page, size);
         Page<AuditLogDTO> logs = auditLogService
