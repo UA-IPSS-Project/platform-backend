@@ -13,6 +13,7 @@ import pt.florinhas.candidaturas.repository.FormDraftRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.candidaturas.domain.Form;
 import pt.florinhas.candidaturas.domain.FormDraft;
+import pt.florinhas.candidaturas.domain.FormStatus;
 import pt.florinhas.candidaturas.dto.FormCreate;
 import pt.florinhas.candidaturas.dto.FormUpdate;
 import pt.florinhas.candidaturas.dto.FormDraftSave;
@@ -89,6 +90,10 @@ public class FormService {
 
     public List<Form> getForms() {
         return formRepository.findAll();
+    }
+
+    public List<Form> getFormsByStatus(FormStatus status) {
+        return formRepository.findByStatus(status);
     }
 
     public FormDraft saveOrUpdateDraft(String formId, FormDraftSave dto, Long userId) {
