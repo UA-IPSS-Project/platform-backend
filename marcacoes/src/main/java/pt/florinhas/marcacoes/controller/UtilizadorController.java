@@ -13,7 +13,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.RequestParam;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
 import pt.florinhas.marcacoes.service.AuthorizationService;
@@ -141,8 +145,12 @@ public class UtilizadorController {
      */
     @GetMapping("/funcionarios")
     @PreAuthorize("hasAnyRole('SECRETARIA', 'FUNCIONARIO')")
-    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosFuncionarios() {
-        return ResponseEntity.ok(utilizadorService.listarTodosFuncionarios());
+    public ResponseEntity<Page<UtilizadorResponseDTO>> listarTodosFuncionarios(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String nif,
+            @RequestParam(required = false) FuncionarioTipo tipo,
+            @PageableDefault(size = 20, sort = "nome") Pageable pageable) {
+        return ResponseEntity.ok(utilizadorService.pesquisarFuncionarios(nome, tipo, nif, pageable));
     }
 
     /**
@@ -150,8 +158,11 @@ public class UtilizadorController {
      */
     @GetMapping("/utentes")
     @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosUtentes() {
-        return ResponseEntity.ok(utilizadorService.listarTodosUtentes());
+    public ResponseEntity<Page<UtilizadorResponseDTO>> listarTodosUtentes(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String nif,
+            @PageableDefault(size = 20, sort = "nome") Pageable pageable) {
+        return ResponseEntity.ok(utilizadorService.pesquisarUtentes(nome, nif, pageable));
     }
 
     /**
