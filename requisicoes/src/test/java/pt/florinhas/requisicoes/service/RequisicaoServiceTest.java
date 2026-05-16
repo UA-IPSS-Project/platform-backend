@@ -235,6 +235,7 @@ class RequisicaoServiceTest {
 
         when(requisicaoRepository.findById(10L)).thenReturn(Optional.of(req));
         when(requisicaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(new Funcionario()));
 
         service.atualizarEstado(10L, RequisicaoEstado.EM_PROGRESSO, 1L);
 
