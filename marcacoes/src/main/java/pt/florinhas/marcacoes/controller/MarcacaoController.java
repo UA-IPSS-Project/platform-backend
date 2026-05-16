@@ -298,11 +298,13 @@ public class MarcacaoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
             @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) EventoEstado estado,
+            @RequestParam(required = false) String assunto,
+            @RequestParam(required = false) String nomeUtente,
             @PageableDefault(size = 20, sort = "data") Pageable pageable) {
 
         Long utenteIdFiltrado = verificarPermissaoUtente(utenteId);
         Page<MarcacaoResponseDTO> response = marcacaoService.consultarMarcacoesPassadasPaginated(
-                dataInicio, dataFim, utenteIdFiltrado, estado, pageable);
+                dataInicio, dataFim, utenteIdFiltrado, estado, assunto, nomeUtente, pageable);
         return ResponseEntity.ok(response);
     }
 
