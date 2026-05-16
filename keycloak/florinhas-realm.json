@@ -1,0 +1,85 @@
+{
+  "realm": "florinhas",
+  "enabled": true,
+  "displayName": "Florinhas do Vouga",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      { "name": "SECRETARIA", "description": "Funcionário administrativo" },
+      { "name": "BALNEARIO", "description": "Funcionário do balneário social" },
+      { "name": "ESCOLA", "description": "Funcionário da escola" },
+      { "name": "INTERNO", "description": "Funcionário de serviços internos" },
+      { "name": "UTENTE", "description": "Utente/cliente da IPSS" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "florinhas-frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://localhost:3443/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "https://localhost:3443",
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": ["openid", "profile", "email", "roles"]
+    },
+    {
+      "clientId": "florinhas-gateway",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${KEYCLOAK_GATEWAY_SECRET}",
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin-secretaria",
+      "enabled": true,
+      "email": "admin@florinhasdovouga.pt",
+      "firstName": "Admin",
+      "lastName": "Secretaria",
+      "credentials": [{ "type": "password", "value": "admin123", "temporary": true }],
+      "realmRoles": ["SECRETARIA"]
+    }
+  ]
+}
