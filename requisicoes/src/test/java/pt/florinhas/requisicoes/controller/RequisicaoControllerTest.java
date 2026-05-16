@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
+import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
@@ -29,8 +30,6 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.service.AuditService;
 import pt.florinhas.requisicoes.service.RequisicaoService;
-
-import pt.florinhas.common_data.domain.Utilizador;
 
 @ExtendWith(MockitoExtension.class)
 class RequisicaoControllerTest {
@@ -118,7 +117,7 @@ class RequisicaoControllerTest {
                 "material",
                 RequisicaoPrioridade.MEDIA,
                 null,
-            List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)));
+            List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)), null);
         Requisicao resposta = new RequisicaoMaterial();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
@@ -142,7 +141,7 @@ class RequisicaoControllerTest {
             4,
             "Motorista",
             List.of(2L),
-            null);
+            null, null);
         Requisicao resposta = new RequisicaoTransporte();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
@@ -160,7 +159,7 @@ class RequisicaoControllerTest {
                 "manutencao",
                 RequisicaoPrioridade.URGENTE,
                 2L,
-                List.of());
+                List.of(), null);
         Requisicao resposta = new RequisicaoManutencao();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
