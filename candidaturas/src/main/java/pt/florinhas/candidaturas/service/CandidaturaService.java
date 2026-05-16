@@ -21,6 +21,8 @@ import pt.florinhas.candidaturas.repository.*;
 import pt.florinhas.candidaturas.domain.*;
 import pt.florinhas.candidaturas.dto.*;
 import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 @Service
 @AllArgsConstructor
@@ -29,6 +31,8 @@ public class CandidaturaService {
     private final CandidaturaRepository candidaturaRepository;
     private final FormRepository formRepository;
     private final MongoTemplate mongoTemplate;
+    private final UtenteRepository utenteRepository;
+    private final CryptoUtils cryptoUtils;
 
     public Candidatura createCandidatura(CandidaturaCreate dto, Long userId) {
         Form form = formRepository.findById(dto.getFormId()).orElse(null);
@@ -42,6 +46,21 @@ public class CandidaturaService {
             validateResponsesAgainstSchema(dto.getRespostas(), form.getPages());
         }
 
+        // Resolve utenteId via blind index do NIF
+        Long utenteId = null;
+        try {
+            String nifHash = cryptoUtils.generateBlindIndex(dto.getNif());
+            utenteId = utenteRepository.findByNifHash(nifHash).stream()
+                    .findFirst()
+                    .map(u -> u.getId())
+                    .orElse(null);
+            if (utenteId == null) {
+                log.warn("No utente found for NIF hash — candidatura created without utenteId link.");
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve utenteId from NIF: {}", e.getMessage());
+        }
+
         Candidatura candidatura = new Candidatura();
         candidatura.setFormId(dto.getFormId());
         candidatura.setNif(dto.getNif());
@@ -51,8 +70,9 @@ public class CandidaturaService {
         candidatura.setCriadoPor(userId);
         candidatura.setCriadoEm(Instant.now());
         candidatura.setAssinado(false);
+        candidatura.setUtenteId(utenteId);
 
-        log.info("Creating application for NIF: {}", candidatura.getNif());
+        log.info("Creating application for NIF hash, utenteId={}", utenteId);
         return candidaturaRepository.save(candidatura);
     }
 
@@ -105,10 +125,16 @@ public class CandidaturaService {
         return candidaturaRepository.save(candidatura);
     }
 
-    public List<Candidatura> getCandidaturas(String nif, String nome, CandidaturaEstado estado, Boolean assinado,
-            Integer idade) {
+    public List<Candidatura> getCandidaturas(String formId, Long utenteId, String nif, String nome,
+            CandidaturaEstado estado, Boolean assinado, Integer idade) {
         Query query = new Query();
 
+        if (formId != null) {
+            query.addCriteria(Criteria.where("formId").is(formId));
+        }
+        if (utenteId != null) {
+            query.addCriteria(Criteria.where("utenteId").is(utenteId));
+        }
         if (nif != null) {
             query.addCriteria(Criteria.where("nif").is(nif));
         }

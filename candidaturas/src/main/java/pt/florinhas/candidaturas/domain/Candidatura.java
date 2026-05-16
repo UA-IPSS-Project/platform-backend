@@ -47,6 +47,9 @@ public class Candidatura {
 
     private Integer ranking;
 
+    // Ligação ao utente (preenchido automaticamente pelo backend via blind index do NIF)
+    private Long utenteId;
+
     // Resubmissions
     private Long atualizadoPor;
     private Instant atualizadoEm;

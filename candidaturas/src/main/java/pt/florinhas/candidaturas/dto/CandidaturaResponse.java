@@ -18,6 +18,7 @@ public class CandidaturaResponse {
     private Instant criadoEm;
     private Boolean assinado;
     private Integer ranking;
+    private Long utenteId;
     private Long atualizadoPor;
     private Instant atualizadoEm;
 
@@ -34,6 +35,7 @@ public class CandidaturaResponse {
         dto.setCriadoEm(candidatura.getCriadoEm());
         dto.setAssinado(candidatura.getAssinado());
         dto.setRanking(candidatura.getRanking());
+        dto.setUtenteId(candidatura.getUtenteId());
         dto.setAtualizadoPor(candidatura.getAtualizadoPor());
         dto.setAtualizadoEm(candidatura.getAtualizadoEm());
         return dto;

@@ -121,13 +121,15 @@ public class CandidaturaController {
     // Candidaturas
     @GetMapping("/candidaturas")
     public ResponseEntity<List<CandidaturaResponse>> getCandidaturas(
+            @RequestParam(required = false) String formId,
+            @RequestParam(required = false) Long utenteId,
             @RequestParam(required = false) String nif,
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) CandidaturaEstado estado,
             @RequestParam(required = false) Boolean assinado,
             @RequestParam(required = false) Integer idade) {
         List<CandidaturaResponse> candidaturas = candidaturaService.getCandidaturas(
-                nif, nome, estado, assinado, idade).stream()
+                formId, utenteId, nif, nome, estado, assinado, idade).stream()
                 .map(CandidaturaResponse::fromEntity)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(candidaturas);
