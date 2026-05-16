@@ -52,6 +52,12 @@ public class InternalCommunicationController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/email/generic")
+    public ResponseEntity<Void> enviarEmailGenerico(@RequestBody EmailGenericoRequest req) {
+        emailService.sendGenericEmail(req.getTo(), req.getSubject(), req.getBody());
+        return ResponseEntity.ok().build();
+    }
+
     @Data
     public static class CriarNotificacaoRequest {
         private Long utilizadorId;
@@ -86,5 +92,12 @@ public class InternalCommunicationController {
     public static class EmailMarcacaoLembreteRequest {
         private String to;
         private LocalDateTime appointmentDateTime;
+    }
+
+    @Data
+    public static class EmailGenericoRequest {
+        private String to;
+        private String subject;
+        private String body;
     }
 }

@@ -420,7 +420,6 @@ public class AuthService {
                 }
 
                 return authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_SECRETARIA") ||
-                                                a.getAuthority().equals("ROLE_BALNEARIO"));
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_SECRETARIA"));
         }
 }

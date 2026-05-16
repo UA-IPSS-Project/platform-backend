@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import pt.florinhas.marcacoes.dto.ConsumoEstatisticaDTO;
 import pt.florinhas.marcacoes.dto.ItemArmazemDTO;
 import pt.florinhas.marcacoes.service.ArmazemService;
+import pt.florinhas.marcacoes.service.AuditLogService;
 
 /**
  * Controller REST para gestão do armazém do Balneário.
@@ -39,6 +40,7 @@ import pt.florinhas.marcacoes.service.ArmazemService;
 public class ArmazemController {
 
     private final ArmazemService armazemService;
+    private final AuditLogService auditLogService;
 
     /**
      * Lista todos os itens do armazém ordenados por categoria e nome.
@@ -65,6 +67,8 @@ public class ArmazemController {
     @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<ItemArmazemDTO> criarItem(@RequestBody ItemArmazemDTO dto) {
         ItemArmazemDTO created = armazemService.criarItem(dto);
+        auditLogService.log("CRIAR_ITEM_ARMAZEM", "ITEM_ARMAZEM", created.getId(), 
+            "Criado item no armazém: " + created.getNome() + " (Qtd: " + created.getQuantidade() + ")");
         return ResponseEntity.ok(created);
     }
 
@@ -78,6 +82,8 @@ public class ArmazemController {
             @RequestBody ItemArmazemDTO dto) {
 
         ItemArmazemDTO updated = armazemService.atualizarItem(id, dto);
+        auditLogService.log("ATUALIZAR_ITEM_ARMAZEM", "ITEM_ARMAZEM", id, 
+            "Atualizado item no armazém: " + updated.getNome() + " (Nova Qtd: " + updated.getQuantidade() + ")");
         return ResponseEntity.ok(updated);
     }
 
@@ -88,6 +94,7 @@ public class ArmazemController {
     @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<Void> eliminarItem(@PathVariable Long id) {
         armazemService.eliminarItem(id);
+        auditLogService.log("ELIMINAR_ITEM_ARMAZEM", "ITEM_ARMAZEM", id, "Item eliminado do armazém");
         return ResponseEntity.noContent().build();
     }
 

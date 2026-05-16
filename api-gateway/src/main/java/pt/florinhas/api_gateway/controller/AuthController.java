@@ -22,12 +22,15 @@ import pt.florinhas.api_gateway.service.AuthService.AuthResult;
 
 import pt.florinhas.common_data.domain.Utilizador;
 
+import pt.florinhas.api_gateway.service.AuditClient;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
     private final JwtService jwtService;
+    private final AuditClient auditClient;
 
     @Value("${app.secure-cookies:false}")
     private boolean secureCookies;
@@ -38,9 +41,10 @@ public class AuthController {
     @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
 
-    public AuthController(AuthService authService, JwtService jwtService) {
+    public AuthController(AuthService authService, JwtService jwtService, AuditClient auditClient) {
         this.authService = authService;
         this.jwtService = jwtService;
+        this.auditClient = auditClient;
     }
 
     @PostMapping("/login/funcionario")
@@ -48,6 +52,10 @@ public class AuthController {
             @RequestBody LoginFuncionarioRequest request,
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.loginFuncionario(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "LOGIN_FUNCIONARIO", "UTILIZADOR", result.response().id(),
+                "Login de funcionario (" + result.response().role() + "): " + result.response().email(),
+                getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
     }
 
@@ -56,6 +64,10 @@ public class AuthController {
             @RequestBody LoginUtenteRequest request,
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.loginUtente(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "LOGIN_UTENTE", "UTILIZADOR", result.response().id(),
+                "Login de utente: " + result.response().email(),
+                getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
     }
 
@@ -64,6 +76,10 @@ public class AuthController {
             @Valid @RequestBody UtenteRegisterRequest request,
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.registerUtente(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "REGISTO_UTENTE", "UTILIZADOR", result.response().id(),
+                "Novo registo de utente: " + result.response().email(),
+                getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
     }
 
@@ -72,6 +88,10 @@ public class AuthController {
             @Valid @RequestBody FuncionarioRegisterRequest request,
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.registerFuncionario(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "REGISTO_FUNCIONARIO", "UTILIZADOR", result.response().id(),
+                "Novo registo de funcionario " + result.response().role() + ": " + result.response().email(),
+                getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
     }
 
@@ -92,7 +112,15 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(ServerHttpRequest httpRequest) {
+    public ResponseEntity<Void> logout(
+            @AuthenticationPrincipal Utilizador utilizador,
+            ServerHttpRequest httpRequest) {
+        if (utilizador != null) {
+            auditClient.logAsync(utilizador.getId(), utilizador.getNome(),
+                    "LOGOUT", "UTILIZADOR", utilizador.getId(),
+                    "Logout: " + utilizador.getEmail(),
+                    getClientIp(httpRequest));
+        }
         boolean cookieSecure = shouldUseSecureCookie(httpRequest);
         ResponseCookie jwtCookie = ResponseCookie.from("jwt", "")
             .httpOnly(true)
@@ -104,7 +132,16 @@ public class AuthController {
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
             .build();
-        }
+    }
+
+    private String getClientIp(ServerHttpRequest request) {
+        String forwarded = request.getHeaders().getFirst("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) return forwarded.split(",")[0].trim();
+        String realIp = request.getHeaders().getFirst("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) return realIp;
+        var addr = request.getRemoteAddress();
+        return addr != null ? addr.getAddress().getHostAddress() : "unknown";
+    }
 
     private ResponseEntity<AuthResponse> withJwtCookie(AuthResponse response, ServerHttpRequest httpRequest) {
         boolean cookieSecure = shouldUseSecureCookie(httpRequest);

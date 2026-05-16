@@ -61,6 +61,7 @@ public class DocumentoService {
     private final MinioClient minioClient;
     private final FuncionarioRepository funcionarioRepository;
     private final NotificacaoService notificacaoService;
+    private final SystemConfigService systemConfigService;
 
     /**
      * Bucket MinIO onde os documentos são armazenados.
@@ -86,6 +87,19 @@ public class DocumentoService {
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
+    private static final int MAX_FINALIDADE_LENGTH = 255;
+
+    private String normalizeFinalidade(String finalidade) {
+        if (finalidade == null) return null;
+        String normalized = finalidade.trim();
+        if (normalized.isEmpty()) return null;
+        if (normalized.length() > MAX_FINALIDADE_LENGTH) {
+            log.warn("Valor de finalidade excede {} caracteres. Será truncado.", MAX_FINALIDADE_LENGTH);
+            normalized = normalized.substring(0, MAX_FINALIDADE_LENGTH);
+        }
+        return normalized;
+    }
+
     /**
      * Faz upload de um documento para uma marcação específica.
      * 
@@ -98,7 +112,7 @@ public class DocumentoService {
      */
     @Transactional
 
-    public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file) throws IOException {
+    public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file, String finalidade) throws IOException {
 
         log.info("Iniciando upload de documento para marcação {}", marcacaoId);
 
@@ -184,6 +198,11 @@ public class DocumentoService {
         documento.setTamanho(file.getSize());
         documento.setMarcacao(marcacao);
         documento.setSequencia(proximaSequencia);
+        documento.setFinalidade(normalizeFinalidade(finalidade));
+
+        // Calcular data de expiração (default: 5 anos)
+        int anosRetencao = systemConfigService.getConfigValueAsInt("documento.retencao.anos", 5);
+        documento.setDataExpiracao(LocalDateTime.now().plusYears(anosRetencao));
 
         // Salvar no banco de dados
         Documento documentoSalvo = documentoRepository.save(documento);

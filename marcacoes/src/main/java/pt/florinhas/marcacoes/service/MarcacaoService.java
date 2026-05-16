@@ -3,7 +3,6 @@ package pt.florinhas.marcacoes.service;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -12,6 +11,8 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -75,6 +76,7 @@ public class MarcacaoService {
     private final PasswordEncoder passwordEncoder;
     private final ArmazemService armazemService;
     private final AuthorizationService authorizationService;
+    private final AuditLogService auditLogService;
 
     @Lazy
     private final CalendarioService calendarioService;
@@ -151,7 +153,7 @@ public class MarcacaoService {
                 // Enviar email com a password (Side-effect isolado para evitar rollback)
                 final String finalEmail = request.getUtenteEmail();
                 final String finalPassword = rawPassword;
-                
+
                 if (TransactionSynchronizationManager.isActualTransactionActive()) {
                     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                         @Override
@@ -188,9 +190,17 @@ public class MarcacaoService {
 
         Marcacao saved = marcacaoRepository.save(marcacao);
 
+        auditLogService.log(
+                "CRIAR_MARCACAO_PRESENCIAL",
+                "MARCACAO",
+                saved.getId(),
+                String.format("Marcação presencial criada para %s - Data: %s, Assunto: %s",
+                        utente.getNome(), saved.getData(), saved.getMarcacaoSecretaria().getAssunto()));
+
         // Notify utente about new appointment
         if (utente != null) {
-            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto(), authorizationService.getCurrentUserId());
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(),
+                    saved.getMarcacaoSecretaria().getAssunto(), authorizationService.getCurrentUserId());
         }
 
         return saved;
@@ -211,12 +221,13 @@ public class MarcacaoService {
 
         Marcacao marcacao = criarMarcacaoBase(request, AtendimentoTipo.REMOTO, utente);
         marcacao.setDuration(SECRETARIA_DEFAULT_DURATION_MINUTES);
-        
+
         Marcacao saved = marcacaoRepository.save(marcacao);
 
         // Notify utente about new remote appointment (async)
         // Notify utente about new remote appointment (async)
-        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(), saved.getMarcacaoSecretaria().getAssunto(), utente.getId());
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(),
+                saved.getMarcacaoSecretaria().getAssunto(), utente.getId());
 
         return saved;
     }
@@ -292,13 +303,14 @@ public class MarcacaoService {
                 r.setCategoria(rDTO.getCategoria());
                 r.setTamanho(rDTO.getTamanho());
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
-                
+
                 if (rDTO.getItemId() != null) {
                     ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
-                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                            .orElseThrow(() -> new IllegalArgumentException(
+                                    "Item de armazém não encontrado com ID: " + rDTO.getItemId()));
                     r.setItem(item);
                 }
-                
+
                 detalhes.addRoupa(r);
             }
         }
@@ -307,9 +319,14 @@ public class MarcacaoService {
         marcacao.setMarcacaoBalneario(detalhes);
 
         Marcacao saved = marcacaoRepository.save(marcacao);
-        
-        // No specific utente notification here for now, but we could add if needed
-        
+
+        auditLogService.log(
+                "CRIAR_MARCACAO_BALNEARIO",
+                "MARCACAO",
+                saved.getId(),
+                String.format("Marcação de balneário registada para: %s - Data: %s",
+                        detalhes.getNomeUtente(), saved.getData()));
+
         return saved;
     }
 
@@ -341,18 +358,24 @@ public class MarcacaoService {
                 r.setCategoria(rDTO.getCategoria());
                 r.setTamanho(rDTO.getTamanho());
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
-                
+
                 if (rDTO.getItemId() != null) {
                     ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
-                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                            .orElseThrow(() -> new IllegalArgumentException(
+                                    "Item de armazém não encontrado com ID: " + rDTO.getItemId()));
                     r.setItem(item);
                 }
-                
+
                 detalhes.addRoupa(r);
             }
         }
 
         marcacaoRepository.save(marcacao);
+        auditLogService.log(
+                "ATUALIZAR_DETALHES_BALNEARIO",
+                "MARCACAO",
+                marcacaoId,
+                "Atualizados detalhes (serviços/roupa) da marcação de balneário");
         return toDTO(marcacao);
     }
 
@@ -368,14 +391,7 @@ public class MarcacaoService {
 
     public List<MarcacaoResponseDTO> procurarAgenda(LocalDateTime inicio, LocalDateTime fim, Long criadoPorId,
             Long utenteId, EventoEstado estado) {
-        List<Marcacao> list = marcacaoRepository.findWithFilters(inicio, fim, criadoPorId, estado);
-        // Note: Repository signature might not match exactly with utenteId in
-        // findWithFilters based on my cat earlier.
-        // The repo has findWithFilters(dataInicio, dataFim, criadoPorId, estado). It
-        // assumes utenteId is handled differently or I missed it.
-        // I will trust the repository signature I saw: findWithFilters(dataInicio,
-        // dataFim, criadoPorId, estado).
-        // If utenteId is needed, I might need to update repository or filter in memory.
+        List<Marcacao> list = marcacaoRepository.findWithFilters(inicio, fim, criadoPorId, utenteId, estado);
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
@@ -444,10 +460,14 @@ public class MarcacaoService {
             }
         }
 
-        log.debug("Updating Marcacao {} to state {}. Reason: {}", id, request.getNovoEstadoEnum(),
-                request.getMotivoCancelamento());
-
         marcacao = marcacaoRepository.save(marcacao);
+
+        auditLogService.log(
+                "ATUALIZAR_ESTADO_MARCACAO",
+                "MARCACAO",
+                id,
+                String.format("Estado alterado de %s para %s. Motivo: %s",
+                        estadoAnterior, request.getNovoEstadoEnum(), request.getMotivoCancelamento()));
 
         // Notificar intervenientes se cancelado
         if (request.getNovoEstadoEnum() == EventoEstado.CANCELADO) {
@@ -498,6 +518,31 @@ public class MarcacaoService {
 
         List<Marcacao> list = marcacaoRepository.findMarcacoesPassadas(dataInicio, dataFim, utenteId, estado);
         return list.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    public Page<MarcacaoResponseDTO> consultarMarcacoesPassadasPaginated(LocalDateTime dataInicio,
+            LocalDateTime dataFim,
+            Long utenteId, EventoEstado estado, String assunto, String nomeUtente, Pageable pageable) {
+        if (dataInicio == null) {
+            dataInicio = LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+        if (dataFim == null) {
+            dataFim = LocalDateTime.now();
+        }
+        String estadoStr = estado != null ? estado.name() : null;
+        // Native query has ORDER BY m.data DESC — pass unsorted Pageable to avoid
+        // Spring Data injecting a conflicting ORDER BY clause on a non-SELECT field
+        Pageable nativePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        Page<Long> idsPage = marcacaoRepository.findMarcacoesPassadasPaginatedIds(
+                dataInicio, dataFim, utenteId, estadoStr, assunto, nomeUtente, nativePageable);
+        List<Marcacao> marcacoes = marcacaoRepository.findAllById(idsPage.getContent());
+        // Preservar a ordem da query nativa
+        Map<Long, Marcacao> byId = marcacoes.stream().collect(Collectors.toMap(Marcacao::getId, m -> m));
+        List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
+                .filter(byId::containsKey)
+                .map(id -> toDTO(byId.get(id)))
+                .collect(Collectors.toList());
+        return new PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 
     public MarcacaoResponseDTO notificarDocumentosInvalidos(Long id, NotificarDocumentosRequest request) {
@@ -555,7 +600,10 @@ public class MarcacaoService {
     }
 
     public List<MarcacaoResponseDTO> consultarMarcacoesFuncionario(Long funcionarioId) {
-        return Collections.emptyList();
+        Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
+                .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado: " + funcionarioId));
+        return marcacaoRepository.findByCriadoPor(funcionario)
+                .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
     public MarcacaoResponseDTO obterMarcacaoDTO(Long id) {
@@ -667,19 +715,27 @@ public class MarcacaoService {
         // Persistir alteração
         Marcacao saved = marcacaoRepository.save(marcacao);
 
+        auditLogService.log(
+                "REAGENDAR_MARCACAO",
+                "MARCACAO",
+                id,
+                String.format("Marcação reagendada de %s para %s", dataAntiga, saved.getData()));
+
         // Notificar secretaria se for o utente a reagendar
         try {
             Long actorId = authorizationService.getCurrentUserId();
             boolean actorIsAdmin = authorizationService.isAdmin();
-            
+
             MarcacaoSecretaria secDetails = saved.getMarcacaoSecretaria();
-            if (!actorIsAdmin && secDetails != null && secDetails.getUtente() != null && actorId.equals(secDetails.getUtente().getId())) {
+            if (!actorIsAdmin && secDetails != null && secDetails.getUtente() != null
+                    && actorId.equals(secDetails.getUtente().getId())) {
                 // Notificar todas as secretarias
                 List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
                 for (Funcionario sec : secretarias) {
                     // Não notificar a própria pessoa que reagendou (se for o caso)
                     if (!sec.getId().equals(actorId)) {
-                        notificacaoService.notificarReagendamentoPeloUtente(sec.getId(), secDetails.getUtente().getNome(), dataAntiga, saved.getData());
+                        notificacaoService.notificarReagendamentoPeloUtente(sec.getId(),
+                                secDetails.getUtente().getNome(), dataAntiga, saved.getData());
                     }
                 }
             }
@@ -716,7 +772,7 @@ public class MarcacaoService {
                 uDTO.setId(u.getId());
                 uDTO.setNome(u.getNome());
                 uDTO.setEmail(u.getEmail());
-                uDTO.setNif(u.getNif());
+                uDTO.setNif(maskNif(u.getNif()));
                 uDTO.setTelefone(u.getTelefone());
                 secDTO.setUtente(uDTO);
             }
@@ -807,7 +863,8 @@ public class MarcacaoService {
         }
     }
 
-    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, String summary, Long actorId) {
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration,
+            String summary, Long actorId) {
         String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
         boolean criadoPeloUtente = utenteId.equals(actorId);
 
@@ -822,7 +879,8 @@ public class MarcacaoService {
                             // Utente criou a marcação — notificar todas as secretarias
                             funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
                                 try {
-                                    notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+                                    notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente,
+                                            marcacaoId, data, summary);
                                 } catch (Exception e) {
                                     log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
                                 }
@@ -840,7 +898,8 @@ public class MarcacaoService {
                 } else {
                     funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
                         try {
-                            notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+                            notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId,
+                                    data, summary);
                         } catch (Exception e) {
                             log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
                         }
@@ -852,6 +911,15 @@ public class MarcacaoService {
         }
     }
 
+    private String maskNif(String nif) {
+        if (nif == null)
+            return null;
+        String n = nif.trim();
+        if (n.length() < 5)
+            return "*".repeat(n.length());
+        return n.substring(0, 3) + "****" + n.substring(n.length() - 2);
+    }
+
     private String normalizarTipoAgenda(String tipoAgenda) {
         if (tipoAgenda == null || tipoAgenda.isBlank()) {
             return "SECRETARIA";
@@ -859,6 +927,7 @@ public class MarcacaoService {
         String tipo = tipoAgenda.trim().toUpperCase();
         return "BALNEARIO".equals(tipo) ? "BALNEARIO" : "SECRETARIA";
     }
+
     /**
      * Obtém estatísticas de frequência do balneário (presenças confirmadas).
      */
@@ -895,6 +964,7 @@ public class MarcacaoService {
         Map<Integer, Long> presencasPorHora = queryPresencasPorHora.stream()
                 .collect(Collectors.toMap(obj -> (Integer) obj[0], obj -> (Long) obj[1]));
 
-        return new BalnearioAttendanceStatsDTO(periodo, totalPresencas, totalMarcacoes, totalFaltas, totalAgendadas, presencasPorDia, presencasPorHora);
+        return new BalnearioAttendanceStatsDTO(periodo, totalPresencas, totalMarcacoes, totalFaltas, totalAgendadas,
+                presencasPorDia, presencasPorHora);
     }
 }
