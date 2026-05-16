@@ -33,6 +33,8 @@ public class CandidaturaService {
     private final MongoTemplate mongoTemplate;
     private final UtenteRepository utenteRepository;
     private final CryptoUtils cryptoUtils;
+    private final CandidaturaSecretaryDraftRepository secretaryDraftRepository;
+    private final pt.florinhas.common_data.repository.UtilizadorRepository utilizadorRepository;
 
     public Candidatura createCandidatura(CandidaturaCreate dto, Long userId) {
         Form form = formRepository.findById(dto.getFormId()).orElse(null);
@@ -183,6 +185,48 @@ public class CandidaturaService {
         }
         candidaturaRepository.deleteById(id);
         return true;
+    }
+
+    public CandidaturaSecretaryDraft saveSecretaryDraft(String candidaturaId, SecretaryDraftSave dto, Long userId) {
+        CandidaturaSecretaryDraft draft = secretaryDraftRepository.findByCandidaturaId(candidaturaId)
+                .orElseGet(CandidaturaSecretaryDraft::new);
+        draft.setCandidaturaId(candidaturaId);
+        draft.setRespostas(dto.getRespostas());
+        draft.setAtualizadoPor(userId);
+        draft.setAtualizadoPorNome(utilizadorRepository.findById(userId).map(u -> u.getNome()).orElse(null));
+        draft.setAtualizadoEm(Instant.now());
+        return secretaryDraftRepository.save(draft);
+    }
+
+    public CandidaturaSecretaryDraft getSecretaryDraft(String candidaturaId) {
+        return secretaryDraftRepository.findByCandidaturaId(candidaturaId).orElse(null);
+    }
+
+    public boolean deleteSecretaryDraft(String candidaturaId) {
+        if (secretaryDraftRepository.findByCandidaturaId(candidaturaId).isEmpty()) {
+            return false;
+        }
+        secretaryDraftRepository.deleteByCandidaturaId(candidaturaId);
+        return true;
+    }
+
+    public Candidatura publishSecretaryDraft(String candidaturaId, Long userId) {
+        CandidaturaSecretaryDraft draft = secretaryDraftRepository.findByCandidaturaId(candidaturaId).orElse(null);
+        if (draft == null) {
+            log.warn("No secretary draft found for candidatura {}", candidaturaId);
+            return null;
+        }
+        Candidatura candidatura = candidaturaRepository.findById(candidaturaId).orElse(null);
+        if (candidatura == null) {
+            log.warn("Candidatura {} not found for publishing secretary draft", candidaturaId);
+            return null;
+        }
+        candidatura.setRespostas(draft.getRespostas());
+        candidatura.setAtualizadoPor(userId);
+        candidatura.setAtualizadoEm(Instant.now());
+        candidaturaRepository.save(candidatura);
+        secretaryDraftRepository.deleteByCandidaturaId(candidaturaId);
+        return candidatura;
     }
 
     private void validateResponsesAgainstSchema(Map<String, Object> responses, List<FormPage> pages) {
