@@ -5,10 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.beans.factory.ObjectProvider;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.junit.jupiter.api.AfterEach;
@@ -29,319 +29,279 @@ import pt.florinhas.marcacoes.repository.AuditLogRepository;
 
 class AuditLogServiceTest {
 
-    private AuditLogRepository auditLogRepository;
-    private UtilizadorRepository utilizadorRepository;
-    private HttpServletRequest request;
+        private AuditLogRepository auditLogRepository;
+        private UtilizadorRepository utilizadorRepository;
+        private HttpServletRequest request;
 
-    private AuditLogService service;
+        private AuditLogService service;
 
-    @BeforeEach
-    void setup() {
-        auditLogRepository = mock(AuditLogRepository.class);
-        utilizadorRepository = mock(UtilizadorRepository.class);
-        request = mock(HttpServletRequest.class);
+        @BeforeEach
+        void setup() {
+                auditLogRepository = mock(AuditLogRepository.class);
+                utilizadorRepository = mock(UtilizadorRepository.class);
+                request = mock(HttpServletRequest.class);
 
-        org.springframework.beans.factory.ObjectProvider<HttpServletRequest> requestProvider = mock(org.springframework.beans.factory.ObjectProvider.class);
-        when(requestProvider.getIfAvailable()).thenReturn(request);
+                @SuppressWarnings("unchecked")
+                ObjectProvider<HttpServletRequest> requestProvider = mock(ObjectProvider.class);
+                when(requestProvider.getIfAvailable()).thenReturn(request);
 
-        service = new AuditLogService(auditLogRepository, utilizadorRepository, requestProvider);
-    }
+                service = new AuditLogService(auditLogRepository, utilizadorRepository, requestProvider);
+        }
 
-    @AfterEach
-    void cleanup() {
-        SecurityContextHolder.clearContext();
-    }
+        @AfterEach
+        void cleanup() {
+                SecurityContextHolder.clearContext();
+        }
 
-    @Test
-    void log_DeveGuardarAuditoriaSemAutenticacao() {
+        @Test
+        void log_DeveGuardarAuditoriaSemAutenticacao() {
 
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn("127.0.0.1");
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn("127.0.0.1");
 
-        assertDoesNotThrow(() ->
+                assertDoesNotThrow(() -> service.log(
+                                "CREATE",
+                                "UTILIZADOR",
+                                1L,
+                                "Detalhes"));
+
+                verify(auditLogRepository)
+                                .save(any(AuditLog.class));
+        }
+
+        @Test
+        void log_DeveGuardarAuditoriaComUtilizadorAutenticado() {
+
+                Utilizador utilizador = new Utilizador();
+
+                utilizador.setId(10L);
+                utilizador.setNome("Joao");
+
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                utilizador,
+                                null,
+                                List.of());
+
+                SecurityContextHolder
+                                .getContext()
+                                .setAuthentication(auth);
+
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn("192.168.1.1");
+
                 service.log(
-                        "CREATE",
-                        "UTILIZADOR",
-                        1L,
-                        "Detalhes"
-                )
-        );
+                                "UPDATE",
+                                "DOCUMENTO",
+                                5L,
+                                "Documento atualizado");
 
-        verify(auditLogRepository)
-                .save(any(AuditLog.class));
-    }
+                verify(auditLogRepository)
+                                .save(argThat(log -> log.getUserId().equals(10L)
+                                                && log.getUserName().equals("Joao")
+                                                && log.getAction().equals("UPDATE")));
+        }
 
-    @Test
-    void log_DeveGuardarAuditoriaComUtilizadorAutenticado() {
+        @Test
+        void log_DeveBuscarUtilizadorPorEmail() {
 
-        Utilizador utilizador =
-                new Utilizador();
+                Utilizador utilizador = new Utilizador();
 
-        utilizador.setId(10L);
-        utilizador.setNome("Joao");
+                utilizador.setId(20L);
+                utilizador.setNome("Maria");
+                utilizador.setEmail("maria@test.com");
 
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(
-                        utilizador,
-                        null,
-                        List.of()
-                );
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                "maria@test.com",
+                                null,
+                                List.of());
 
-        SecurityContextHolder
-                .getContext()
-                .setAuthentication(auth);
+                SecurityContextHolder
+                                .getContext()
+                                .setAuthentication(auth);
 
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn("192.168.1.1");
+                when(utilizadorRepository.findByEmail("maria@test.com"))
+                                .thenReturn(List.of(utilizador));
 
-        service.log(
-                "UPDATE",
-                "DOCUMENTO",
-                5L,
-                "Documento atualizado"
-        );
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn("10.0.0.1");
 
-        verify(auditLogRepository)
-                .save(argThat(log ->
-                        log.getUserId().equals(10L)
-                                && log.getUserName().equals("Joao")
-                                && log.getAction().equals("UPDATE")
-                ));
-    }
-
-    @Test
-    void log_DeveBuscarUtilizadorPorEmail() {
-
-        Utilizador utilizador =
-                new Utilizador();
-
-        utilizador.setId(20L);
-        utilizador.setNome("Maria");
-        utilizador.setEmail("maria@test.com");
-
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(
-                        "maria@test.com",
-                        null,
-                        List.of()
-                );
-
-        SecurityContextHolder
-                .getContext()
-                .setAuthentication(auth);
-
-        when(utilizadorRepository.findByEmail("maria@test.com"))
-                .thenReturn(List.of(utilizador));
-
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn("10.0.0.1");
-
-        service.log(
-                "DELETE",
-                "UTENTE",
-                7L,
-                "Removido"
-        );
-
-        verify(auditLogRepository)
-                .save(argThat(log ->
-                        log.getUserId().equals(20L)
-                                && log.getUserName().equals("Maria")
-                ));
-    }
-
-    @Test
-    void log_DeveContinuarMesmoComErroAoBuscarUtilizador() {
-
-        UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(
-                        "erro@test.com",
-                        null,
-                        List.of()
-                );
-
-        SecurityContextHolder
-                .getContext()
-                .setAuthentication(auth);
-
-        when(utilizadorRepository.findByEmail("erro@test.com"))
-                .thenThrow(new RuntimeException("Erro"));
-
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn("127.0.0.1");
-
-        assertDoesNotThrow(() ->
                 service.log(
-                        "TEST",
-                        "ENTITY",
-                        1L,
-                        "Teste"
-                )
-        );
+                                "DELETE",
+                                "UTENTE",
+                                7L,
+                                "Removido");
 
-        verify(auditLogRepository)
-                .save(any(AuditLog.class));
-    }
+                verify(auditLogRepository)
+                                .save(argThat(log -> log.getUserId().equals(20L)
+                                                && log.getUserName().equals("Maria")));
+        }
 
-    @Test
-    void log_DeveIgnorarErroAoGuardar() {
+        @Test
+        void log_DeveContinuarMesmoComErroAoBuscarUtilizador() {
 
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn("127.0.0.1");
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                "erro@test.com",
+                                null,
+                                List.of());
 
-        doThrow(new RuntimeException("DB Error"))
-                .when(auditLogRepository)
-                .save(any(AuditLog.class));
+                SecurityContextHolder
+                                .getContext()
+                                .setAuthentication(auth);
 
-        assertDoesNotThrow(() ->
-                service.log(
-                        "CREATE",
-                        "UTILIZADOR",
-                        1L,
-                        "Teste"
-                )
-        );
-    }
+                when(utilizadorRepository.findByEmail("erro@test.com"))
+                                .thenThrow(new RuntimeException("Erro"));
 
-    @Test
-    void findAll_DeveRetornarPagina() {
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn("127.0.0.1");
 
-        Pageable pageable =
-                PageRequest.of(0, 10);
+                assertDoesNotThrow(() -> service.log(
+                                "TEST",
+                                "ENTITY",
+                                1L,
+                                "Teste"));
 
-        Page<AuditLog> pagina =
-                new PageImpl<>(List.of(
-                        new AuditLog()
-                ));
+                verify(auditLogRepository)
+                                .save(any(AuditLog.class));
+        }
 
-        when(auditLogRepository
-                .findAllByOrderByTimestampDesc(pageable))
-                .thenReturn(pagina);
+        @Test
+        void log_DeveIgnorarErroAoGuardar() {
 
-        Page<AuditLog> resultado =
-                service.findAll(pageable);
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn("127.0.0.1");
 
-        assertEquals(
-                1,
-                resultado.getContent().size()
-        );
-    }
+                doThrow(new RuntimeException("DB Error"))
+                                .when(auditLogRepository)
+                                .save(any(AuditLog.class));
 
-    @Test
-    void findWithFilters_DeveRetornarPagina() {
+                assertDoesNotThrow(() -> service.log(
+                                "CREATE",
+                                "UTILIZADOR",
+                                1L,
+                                "Teste"));
+        }
 
-        Pageable pageable =
-                PageRequest.of(0, 10);
+        @Test
+        void findAll_DeveRetornarPagina() {
 
-        Page<AuditLog> pagina =
-                new PageImpl<>(List.of(
-                        new AuditLog()
-                ));
+                Pageable pageable = PageRequest.of(0, 10);
 
-        LocalDateTime inicio =
-                LocalDateTime.now().minusDays(1);
+                Page<AuditLog> pagina = new PageImpl<>(List.of(
+                                new AuditLog()));
 
-        LocalDateTime fim =
-                LocalDateTime.now();
+                when(auditLogRepository
+                                .findAllByOrderByTimestampDesc(pageable))
+                                .thenReturn(pagina);
 
-        when(auditLogRepository.findWithFilters(
-                1L,
-                "CREATE",
-                "UTILIZADOR",
-                inicio,
-                fim,
-                pageable
-        )).thenReturn(pagina);
+                Page<AuditLog> resultado = service.findAll(pageable);
 
-        Page<AuditLog> resultado =
-                service.findWithFilters(
-                        1L,
-                        "CREATE",
-                        "UTILIZADOR",
-                        inicio,
-                        fim,
-                        pageable
-                );
+                assertEquals(
+                                1,
+                                resultado.getContent().size());
+        }
 
-        assertEquals(
-                1,
-                resultado.getContent().size()
-        );
-    }
+        @Test
+        void findWithFilters_DeveRetornarPagina() {
 
-    @Test
-    void getClientIp_DeveUsarXForwardedFor() throws Exception {
+                Pageable pageable = PageRequest.of(0, 10);
 
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn("192.168.1.100");
+                Page<AuditLog> pagina = new PageImpl<>(List.of(
+                                new AuditLog()));
 
-        String resultado =
-                invokeGetClientIp();
+                LocalDateTime inicio = LocalDateTime.now().minusDays(1);
 
-        assertEquals(
-                "192.168.1.100",
-                resultado
-        );
-    }
+                LocalDateTime fim = LocalDateTime.now();
 
-    @Test
-    void getClientIp_DeveUsarXRealIp() throws Exception {
+                when(auditLogRepository.findWithFilters(
+                                1L,
+                                "CREATE",
+                                "UTILIZADOR",
+                                inicio,
+                                fim,
+                                pageable)).thenReturn(pagina);
 
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn(null);
+                Page<AuditLog> resultado = service.findWithFilters(
+                                1L,
+                                "CREATE",
+                                "UTILIZADOR",
+                                inicio,
+                                fim,
+                                pageable);
 
-        when(request.getHeader("X-Real-IP"))
-                .thenReturn("10.0.0.1");
+                assertEquals(
+                                1,
+                                resultado.getContent().size());
+        }
 
-        String resultado =
-                invokeGetClientIp();
+        @Test
+        void getClientIp_DeveUsarXForwardedFor() throws Exception {
 
-        assertEquals(
-                "10.0.0.1",
-                resultado
-        );
-    }
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn("192.168.1.100");
 
-    @Test
-    void getClientIp_DeveUsarRemoteAddr() throws Exception {
+                String resultado = invokeGetClientIp();
 
-        when(request.getHeader("X-Forwarded-For"))
-                .thenReturn(null);
+                assertEquals(
+                                "192.168.1.100",
+                                resultado);
+        }
 
-        when(request.getHeader("X-Real-IP"))
-                .thenReturn(null);
+        @Test
+        void getClientIp_DeveUsarXRealIp() throws Exception {
 
-        when(request.getRemoteAddr())
-                .thenReturn("127.0.0.1");
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn(null);
 
-        String resultado =
-                invokeGetClientIp();
+                when(request.getHeader("X-Real-IP"))
+                                .thenReturn("10.0.0.1");
 
-        assertEquals(
-                "127.0.0.1",
-                resultado
-        );
-    }
+                String resultado = invokeGetClientIp();
 
-    @Test
-    void getClientIp_DeveRetornarUnknownQuandoRequestNull() throws Exception {
-        org.springframework.beans.factory.ObjectProvider<HttpServletRequest> emptyProvider = mock(org.springframework.beans.factory.ObjectProvider.class);
-        when(emptyProvider.getIfAvailable()).thenReturn(null);
+                assertEquals(
+                                "10.0.0.1",
+                                resultado);
+        }
 
-        ReflectionTestUtils.setField(service, "requestProvider", emptyProvider);
+        @Test
+        void getClientIp_DeveUsarRemoteAddr() throws Exception {
 
-        String resultado = invokeGetClientIp();
-        assertEquals("unknown", resultado);
-    }
+                when(request.getHeader("X-Forwarded-For"))
+                                .thenReturn(null);
 
-    private String invokeGetClientIp() throws Exception {
+                when(request.getHeader("X-Real-IP"))
+                                .thenReturn(null);
 
-        var method =
-                AuditLogService.class
-                        .getDeclaredMethod("getClientIp");
+                when(request.getRemoteAddr())
+                                .thenReturn("127.0.0.1");
 
-        method.setAccessible(true);
+                String resultado = invokeGetClientIp();
 
-        return (String) method.invoke(service);
-    }
+                assertEquals(
+                                "127.0.0.1",
+                                resultado);
+        }
+
+        @Test
+        void getClientIp_DeveRetornarUnknownQuandoRequestNull() throws Exception {
+
+                @SuppressWarnings("unchecked")
+                ObjectProvider<HttpServletRequest> emptyProvider = (ObjectProvider<HttpServletRequest>) mock(
+                                ObjectProvider.class);
+                when(emptyProvider.getIfAvailable()).thenReturn(null);
+
+                ReflectionTestUtils.setField(service, "requestProvider", emptyProvider);
+
+                String resultado = invokeGetClientIp();
+                assertEquals("unknown", resultado);
+        }
+
+        private String invokeGetClientIp() throws Exception {
+
+                var method = AuditLogService.class
+                                .getDeclaredMethod("getClientIp");
+
+                method.setAccessible(true);
+
+                return (String) method.invoke(service);
+        }
 }

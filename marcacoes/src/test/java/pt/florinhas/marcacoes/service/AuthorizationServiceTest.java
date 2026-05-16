@@ -2,9 +2,6 @@ package pt.florinhas.marcacoes.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
-import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,130 +13,109 @@ import pt.florinhas.common_data.repository.UtilizadorRepository;
 
 class AuthorizationServiceTest {
 
-    private UtilizadorRepository utilizadorRepository;
-    private AuthorizationService authorizationService;
+        private UtilizadorRepository utilizadorRepository;
+        private AuthorizationService authorizationService;
 
-    @BeforeEach
-    void setup() {
+        @BeforeEach
+        void setup() {
 
-        utilizadorRepository =
-                mock(UtilizadorRepository.class);
+                utilizadorRepository = mock(UtilizadorRepository.class);
 
-        authorizationService =
-                new AuthorizationService(utilizadorRepository);
-    }
+                authorizationService = new AuthorizationService(utilizadorRepository);
+        }
 
-    @AfterEach
-    void cleanup() {
+        @AfterEach
+        void cleanup() {
 
-        SecurityContextHolder.clearContext();
-    }
+                SecurityContextHolder.clearContext();
+        }
 
-    @Test
-    void getCurrentUserId_DeveRetornarId() {
+        @Test
+        void getCurrentUserId_DeveRetornarId() {
 
-        Utilizador user = new Utilizador();
-        user.setId(1L);
+                Utilizador user = new Utilizador();
+                user.setId(1L);
 
-        TestingAuthenticationToken auth =
-                new TestingAuthenticationToken(
-                        user,
-                        null,
-                        "ROLE_USER"
-                );
+                TestingAuthenticationToken auth = new TestingAuthenticationToken(
+                                user,
+                                null,
+                                "ROLE_USER");
 
-        auth.setAuthenticated(true);
+                auth.setAuthenticated(true);
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(auth);
+                SecurityContextHolder.getContext()
+                                .setAuthentication(auth);
 
-        Long resultado =
-                authorizationService.getCurrentUserId();
+                Long resultado = authorizationService.getCurrentUserId();
 
-        assertNotNull(resultado);
-        assertEquals(1L, resultado);
-    }
+                assertNotNull(resultado);
+                assertEquals(1L, resultado);
+        }
 
-    @Test
-    void hasAnyRole_DeveRetornarTrue() {
+        @Test
+        void hasAnyRole_DeveRetornarTrue() {
 
-        var auth =
-                new TestingAuthenticationToken(
-                        "user",
-                        null,
-                        "ROLE_SECRETARIA"
-                );
+                var auth = new TestingAuthenticationToken(
+                                "user",
+                                null,
+                                "ROLE_SECRETARIA");
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(auth);
+                SecurityContextHolder.getContext()
+                                .setAuthentication(auth);
 
-        assertTrue(
-                authorizationService.hasAnyRole(
-                        "ROLE_SECRETARIA"
-                )
-        );
-    }
+                assertTrue(
+                                authorizationService.hasAnyRole(
+                                                "ROLE_SECRETARIA"));
+        }
 
-    @Test
-    void isAdmin_DeveRetornarTrue() {
+        @Test
+        void isAdmin_DeveRetornarTrue() {
 
-        var auth =
-                new TestingAuthenticationToken(
-                        "user",
-                        null,
-                        "ROLE_SECRETARIA"
-                );
+                var auth = new TestingAuthenticationToken(
+                                "user",
+                                null,
+                                "ROLE_SECRETARIA");
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(auth);
+                SecurityContextHolder.getContext()
+                                .setAuthentication(auth);
 
-        assertTrue(
-                authorizationService.isAdmin()
-        );
-    }
+                assertTrue(
+                                authorizationService.isAdmin());
+        }
 
-    @Test
-    void checkPermission_DevePermitirAdmin() {
+        @Test
+        void checkPermission_DevePermitirAdmin() {
 
-        var auth =
-                new TestingAuthenticationToken(
-                        "user",
-                        null,
-                        "ROLE_SECRETARIA"
-                );
+                var auth = new TestingAuthenticationToken(
+                                "user",
+                                null,
+                                "ROLE_SECRETARIA");
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(auth);
+                SecurityContextHolder.getContext()
+                                .setAuthentication(auth);
 
-        assertDoesNotThrow(() ->
-                authorizationService.checkPermission(
-                        1L,
-                        "recurso"
-                )
-        );
-    }
+                assertDoesNotThrow(() -> authorizationService.checkPermission(
+                                1L,
+                                "recurso"));
+        }
 
-    @Test
-    void checkPermission_DeveLancarErro() {
+        @Test
+        void checkPermission_DeveLancarErro() {
 
-        Utilizador user = new Utilizador();
-        user.setId(2L);
+                Utilizador user = new Utilizador();
+                user.setId(2L);
 
-        var auth =
-                new TestingAuthenticationToken(
-                        user,
-                        null
-                );
+                var auth = new TestingAuthenticationToken(
+                                user,
+                                null);
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(auth);
+                SecurityContextHolder.getContext()
+                                .setAuthentication(auth);
 
-        assertThrows(
-                Exception.class,
-                () -> authorizationService.checkPermission(
-                        1L,
-                        "recurso"
-                )
-        );
-    }
+                assertThrows(
+                                Exception.class,
+                                () -> authorizationService.checkPermission(
+                                                1L,
+                                                "recurso"));
+        }
 }

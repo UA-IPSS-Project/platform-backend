@@ -303,7 +303,8 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
-    public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, String nif, Pageable pageable) {
+    public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, String nif,
+            Pageable pageable) {
         String nifHash = (nif != null && !nif.isBlank()) ? cryptoUtils.generateBlindIndex(nif) : null;
         return funcionarioRepository.findByNomeAndTipoFilter(nome, tipo, nifHash, pageable)
                 .map(UtilizadorResponseDTO::fromUtilizador);

@@ -1,17 +1,21 @@
 package pt.florinhas.marcacoes.controller;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import pt.florinhas.marcacoes.service.AuditLogService;
+import pt.florinhas.marcacoes.repository.AuditLogRepository;
 
 class AuditLogControllerTest {
 
     @Test
     @DisplayName("AuditLogController deve ser criado")
     void deveCriarController() {
-        pt.florinhas.marcacoes.service.AuditLogService service = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.AuditLogService.class);
-        pt.florinhas.marcacoes.repository.AuditLogRepository repository = org.mockito.Mockito.mock(pt.florinhas.marcacoes.repository.AuditLogRepository.class);
+        AuditLogService service = mock(AuditLogService.class);
+        AuditLogRepository repository = mock(AuditLogRepository.class);
         AuditLogController controller = new AuditLogController(service, repository, "secret");
         assertNotNull(controller);
     }

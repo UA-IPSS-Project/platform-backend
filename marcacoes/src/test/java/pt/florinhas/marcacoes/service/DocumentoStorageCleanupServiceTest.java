@@ -97,13 +97,6 @@ class DocumentoStorageCleanupServiceTest {
 
     @Test
     void removerDoArmazenamento_DeveIgnorarQuandoMinioNaoInicializado() {
-
-        DocumentoStorageCleanupService outroService =
-                new DocumentoStorageCleanupService(
-                        null,
-                        null
-                );
-
         assertDoesNotThrow(() ->
                 DocumentoStorageCleanupService
                         .removerDoArmazenamento(

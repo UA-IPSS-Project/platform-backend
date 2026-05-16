@@ -1,18 +1,23 @@
 package pt.florinhas.marcacoes.controller;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import pt.florinhas.marcacoes.service.AuthorizationService;
+import pt.florinhas.marcacoes.service.TermsService;
+import pt.florinhas.marcacoes.service.UtilizadorService;
 
 class UtilizadorControllerTest {
 
     @Test
     @DisplayName("UtilizadorController deve ser criado")
     void deveCriarController() {
-        pt.florinhas.marcacoes.service.UtilizadorService uService = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.UtilizadorService.class);
-        pt.florinhas.marcacoes.service.AuthorizationService aService = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.AuthorizationService.class);
-        pt.florinhas.marcacoes.service.TermsService tService = org.mockito.Mockito.mock(pt.florinhas.marcacoes.service.TermsService.class);
+        UtilizadorService uService = mock(UtilizadorService.class);
+        AuthorizationService aService = mock(AuthorizationService.class);
+        TermsService tService = mock(TermsService.class);
         UtilizadorController controller = new UtilizadorController(uService, aService, tService);
         assertNotNull(controller);
     }
