@@ -16,4 +16,5 @@ public class FormPage {
     private String description;
     private int order;
     private List<FieldDefinition> fields;
+    private FieldAudience audience;
 }

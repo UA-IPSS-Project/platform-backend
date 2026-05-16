@@ -7,6 +7,7 @@ import java.util.List;
 // Mongo
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.Indexed;
 
 // Lombok
@@ -24,6 +25,9 @@ public class Form {
 
     @Indexed(unique = true)
     private String name;
+
+    @Version
+    private Long version;
 
     private FormStatus status;
 
