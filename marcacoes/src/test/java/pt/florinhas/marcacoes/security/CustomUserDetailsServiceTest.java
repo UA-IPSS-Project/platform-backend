@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 import pt.florinhas.common_data.domain.Utente;
 
@@ -28,6 +29,8 @@ class CustomUserDetailsServiceTest {
 
     @Mock
     private UtilizadorRepository utilizadorRepository;
+    @Mock
+    private CryptoUtils cryptoUtils;
 
     @InjectMocks
     private CustomUserDetailsService userDetailsService;

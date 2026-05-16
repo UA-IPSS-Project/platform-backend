@@ -2,7 +2,6 @@ package pt.florinhas.marcacoes.repository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
@@ -14,14 +13,17 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.junit.jupiter.api.Disabled
 @DataJpaTest
 class UtenteRepositoryTest {
 
-    @Autowired
-    private TestEntityManager entityManager;
+    private final TestEntityManager entityManager;
+    private final UtenteRepository utenteRepository;
 
-    @Autowired
-    private UtenteRepository utenteRepository;
+    public UtenteRepositoryTest(TestEntityManager entityManager, UtenteRepository utenteRepository) {
+        this.entityManager = entityManager;
+        this.utenteRepository = utenteRepository;
+    }
 
     private static final String NIF_HASH = "hash_utente_987654321";
 

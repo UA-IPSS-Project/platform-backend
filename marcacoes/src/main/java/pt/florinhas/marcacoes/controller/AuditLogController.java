@@ -2,7 +2,6 @@ package pt.florinhas.marcacoes.controller;
 
 import java.time.LocalDateTime;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,14 +21,17 @@ import pt.florinhas.marcacoes.service.AuditLogService;
 @RequestMapping("/api/audit")
 public class AuditLogController {
 
-    @Autowired
-    private AuditLogService auditLogService;
+    private final AuditLogService auditLogService;
+    private final AuditLogRepository auditLogRepository;
+    private final String gatewaySharedSecret;
 
-    @Autowired
-    private AuditLogRepository auditLogRepository;
-
-    @Value("${gateway.shared-secret:florinhas}")
-    private String gatewaySharedSecret;
+    public AuditLogController(AuditLogService auditLogService,
+            AuditLogRepository auditLogRepository,
+            @Value("${gateway.shared-secret:florinhas}") String gatewaySharedSecret) {
+        this.auditLogService = auditLogService;
+        this.auditLogRepository = auditLogRepository;
+        this.gatewaySharedSecret = gatewaySharedSecret;
+    }
 
     private static final int MAX_PAGE_SIZE = 200;
 
@@ -42,14 +44,16 @@ public class AuditLogController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size
-    ) {
-        if (page < 0) return ResponseEntity.badRequest().body("O parâmetro 'page' deve ser >= 0.");
-        if (size < 1 || size > MAX_PAGE_SIZE) return ResponseEntity.badRequest().body("O parâmetro 'size' deve estar entre 1 e " + MAX_PAGE_SIZE + ".");
+            @RequestParam(defaultValue = "50") int size) {
+        if (page < 0)
+            return ResponseEntity.badRequest().body("O parâmetro 'page' deve ser >= 0.");
+        if (size < 1 || size > MAX_PAGE_SIZE)
+            return ResponseEntity.badRequest().body("O parâmetro 'size' deve estar entre 1 e " + MAX_PAGE_SIZE + ".");
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<AuditLogDTO> logs = auditLogService.findWithFilters(userId, action, entityType, startDate, endDate, pageable)
-            .map(AuditLogDTO::fromEntity);
+        Page<AuditLogDTO> logs = auditLogService
+                .findWithFilters(userId, action, entityType, startDate, endDate, pageable)
+                .map(AuditLogDTO::fromEntity);
         return ResponseEntity.ok(logs);
     }
 
@@ -68,15 +72,15 @@ public class AuditLogController {
         }
 
         AuditLog entry = AuditLog.builder()
-            .userId(req.userId())
-            .userName(req.userName())
-            .action(req.action())
-            .entityType(req.entityType())
-            .entityId(req.entityId())
-            .details(req.details())
-            .ipAddress(req.ipAddress())
-            .timestamp(LocalDateTime.now())
-            .build();
+                .userId(req.userId())
+                .userName(req.userName())
+                .action(req.action())
+                .entityType(req.entityType())
+                .entityId(req.entityId())
+                .details(req.details())
+                .ipAddress(req.ipAddress())
+                .timestamp(LocalDateTime.now())
+                .build();
 
         auditLogRepository.save(entry);
         return ResponseEntity.ok().build();
