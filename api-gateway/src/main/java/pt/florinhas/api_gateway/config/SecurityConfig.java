@@ -35,7 +35,8 @@ public class SecurityConfig {
                 .authorizeExchange(auth -> auth
                         .pathMatchers(
                                 "/actuator/health",
-                                "/api/utilizadores/terms-content")
+                                "/api/utilizadores/terms-content",
+                                "/api/auth/register/**")
                         .permitAll()
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
