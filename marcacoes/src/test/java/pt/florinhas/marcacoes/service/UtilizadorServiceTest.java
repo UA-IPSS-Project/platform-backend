@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -30,7 +30,6 @@ import pt.florinhas.common_data.security.CryptoUtils;
 import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
-import pt.florinhas.marcacoes.exception.NotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
@@ -38,15 +37,28 @@ import pt.florinhas.marcacoes.service.email.EmailService;
 @ExtendWith(MockitoExtension.class)
 public class UtilizadorServiceTest {
 
-    @Mock private UtilizadorRepository utilizadorRepository;
-    @Mock private UtenteRepository utenteRepository;
-    @Mock private FuncionarioRepository funcionarioRepository;
-    @Mock private NifValidator nifValidator;
-    @Mock private PasswordEncoder passwordEncoder;
-    @Mock private CryptoUtils cryptoUtils;
-    @Mock private DocumentoRepository documentoRepository;
-    @Mock private MarcacaoRepository marcacaoRepository;
-    @Mock private EmailService emailService;
+    @Mock
+    private UtilizadorRepository utilizadorRepository;
+    @Mock
+    private UtenteRepository utenteRepository;
+    @Mock
+    private FuncionarioRepository funcionarioRepository;
+    @Mock
+    private EmailService emailService;
+    @Mock
+    private AuditLogService auditLogService;
+    @Mock
+    private NotificacaoService notificacaoService;
+    @Mock
+    private NifValidator nifValidator;
+    @Mock
+    private PasswordEncoder passwordEncoder;
+    @Mock
+    private DocumentoRepository documentoRepository;
+    @Mock
+    private MarcacaoRepository marcacaoRepository;
+    @Mock
+    private CryptoUtils cryptoUtils;
 
     private UtilizadorService utilizadorService;
 
@@ -54,12 +66,20 @@ public class UtilizadorServiceTest {
     private static final String NIF_HASH = "hashed_nif";
 
     @BeforeEach
-    void setUp() {
+    void setup() {
+        MockitoAnnotations.openMocks(this);
         utilizadorService = new UtilizadorService(
-            utilizadorRepository, utenteRepository, funcionarioRepository,
-            nifValidator, passwordEncoder, cryptoUtils,
-            documentoRepository, marcacaoRepository, emailService
-        );
+                utilizadorRepository,
+                utenteRepository,
+                funcionarioRepository,
+                emailService,
+                auditLogService,
+                notificacaoService,
+                nifValidator,
+                passwordEncoder,
+                documentoRepository,
+                marcacaoRepository,
+                cryptoUtils);
     }
 
     @Test
@@ -107,8 +127,12 @@ public class UtilizadorServiceTest {
     @Test
     @DisplayName("Deve listar todos os utentes")
     void listarTodosUtentes_ShouldReturnList() {
-        Utente u1 = new Utente(); u1.setActivo(true); u1.setNome("A");
-        Utente u2 = new Utente(); u2.setActivo(false); u2.setNome("B");
+        Utente u1 = new Utente();
+        u1.setActivo(true);
+        u1.setNome("A");
+        Utente u2 = new Utente();
+        u2.setActivo(false);
+        u2.setNome("B");
         when(utenteRepository.findAll()).thenReturn(List.of(u1, u2));
 
         List<UtilizadorResponseDTO> result = utilizadorService.listarTodosUtentes();
@@ -140,7 +164,8 @@ public class UtilizadorServiceTest {
     @DisplayName("Deve aprovar funcionário pendente")
     void aprovarFuncionario_ShouldActivate() {
         Funcionario f = new Funcionario();
-        f.setId(1L); f.setActivo(false);
+        f.setId(1L);
+        f.setActivo(false);
         when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(f));
 
         utilizadorService.aprovarFuncionario(1L);
@@ -152,8 +177,10 @@ public class UtilizadorServiceTest {
     @DisplayName("Deve criar utilizador pela secretaria")
     void criarUtilizadorPelaSecretaria_ShouldCreateAndSendEmail() {
         CreateUserRequestDTO dto = new CreateUserRequestDTO();
-        dto.setNif(NIF); dto.setEmail("test@test.com"); dto.setRole("UTENTE");
-        
+        dto.setNif(NIF);
+        dto.setEmail("test@test.com");
+        dto.setRole("UTENTE");
+
         when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
         when(utilizadorRepository.existsByNifHash(NIF_HASH)).thenReturn(false);
         when(utilizadorRepository.existsByEmail(anyString())).thenReturn(false);
@@ -168,9 +195,12 @@ public class UtilizadorServiceTest {
     @Test
     @DisplayName("Deve recuperar conta e enviar nova senha")
     void recuperarConta_ShouldUpdateAndDeactivate() {
-        Utente u = new Utente(); u.setNif(NIF); u.setActivo(true);
+        Utente u = new Utente();
+        u.setNif(NIF);
+        u.setActivo(true);
         RecoverAccountDTO dto = new RecoverAccountDTO();
-        dto.setNif(NIF); dto.setUpdatedEmail("new@test.com");
+        dto.setNif(NIF);
+        dto.setUpdatedEmail("new@test.com");
 
         when(cryptoUtils.generateBlindIndex(NIF)).thenReturn(NIF_HASH);
         when(utilizadorRepository.findByNifHash(NIF_HASH)).thenReturn(List.of(u));

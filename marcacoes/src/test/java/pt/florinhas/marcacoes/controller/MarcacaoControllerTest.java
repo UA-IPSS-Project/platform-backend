@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -21,20 +20,17 @@ import org.springframework.security.access.AccessDeniedException;
 
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
-import pt.florinhas.marcacoes.dto.BalnearioAttendanceStatsDTO;
-import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
-import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
-import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.service.MarcacaoService;
 
 class MarcacaoControllerTest {
 
-    @Mock private MarcacaoService marcacaoService;
-    @Mock private AuthorizationService authService;
+    @Mock
+    private MarcacaoService marcacaoService;
+    @Mock
+    private AuthorizationService authService;
 
     private MarcacaoController controller;
 

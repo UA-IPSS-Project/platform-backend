@@ -6,7 +6,6 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -14,16 +13,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
-import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.AuthorizationService;
 import pt.florinhas.marcacoes.service.DocumentoService;
@@ -31,10 +26,14 @@ import pt.florinhas.marcacoes.service.AuditLogService;
 
 class DocumentoControllerTest {
 
-    @Mock private DocumentoService documentoService;
-    @Mock private AuthorizationService authService;
-    @Mock private MarcacaoRepository marcacaoRepository;
-    @Mock private AuditLogService auditLogService;
+    @Mock
+    private DocumentoService documentoService;
+    @Mock
+    private AuthorizationService authService;
+    @Mock
+    private MarcacaoRepository marcacaoRepository;
+    @Mock
+    private AuditLogService auditLogService;
 
     private DocumentoController controller;
 
@@ -45,7 +44,8 @@ class DocumentoControllerTest {
     }
 
     private DocumentoDTO buildDocumentoDto(Long id, Long marcacaoId) {
-        return new DocumentoDTO(id, "doc.pdf", "application/pdf", 123L, LocalDateTime.now(), marcacaoId, "Utente", "100000002", 1, "Finalidade");
+        return new DocumentoDTO(id, "doc.pdf", "application/pdf", 123L, LocalDateTime.now(), marcacaoId, "Utente",
+                "100000002", 1, "Finalidade");
     }
 
     private Marcacao buildMarcacaoWithOwner(Long userId) {

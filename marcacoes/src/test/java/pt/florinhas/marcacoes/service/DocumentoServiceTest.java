@@ -2,38 +2,28 @@ package pt.florinhas.marcacoes.service;
 
 import io.minio.GetObjectResponse;
 import io.minio.MinioClient;
-import io.minio.StatObjectResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
-import pt.florinhas.common_data.domain.Funcionario;
-import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utente;
-import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.marcacoes.domain.Documento;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
 import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
 import pt.florinhas.marcacoes.dto.DocumentoDTO;
-import pt.florinhas.marcacoes.dto.DocumentoMetadataDTO;
-import pt.florinhas.marcacoes.exception.ResourceNotFoundException;
+import pt.florinhas.common_data.exception.ResourceNotFoundException;
 import pt.florinhas.marcacoes.repository.DocumentoRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -43,12 +33,18 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class DocumentoServiceTest {
 
-    @Mock private DocumentoRepository documentoRepository;
-    @Mock private MarcacaoRepository marcacaoRepository;
-    @Mock private MinioClient minioClient;
-    @Mock private FuncionarioRepository funcionarioRepository;
-    @Mock private NotificacaoService notificacaoService;
-    @Mock private SystemConfigService systemConfigService;
+    @Mock
+    private DocumentoRepository documentoRepository;
+    @Mock
+    private MarcacaoRepository marcacaoRepository;
+    @Mock
+    private MinioClient minioClient;
+    @Mock
+    private FuncionarioRepository funcionarioRepository;
+    @Mock
+    private NotificacaoService notificacaoService;
+    @Mock
+    private SystemConfigService systemConfigService;
 
     private DocumentoService documentoService;
 
@@ -59,10 +55,9 @@ class DocumentoServiceTest {
     @BeforeEach
     void setup() {
         documentoService = new DocumentoService(
-            documentoRepository, marcacaoRepository, minioClient, 
-            funcionarioRepository, notificacaoService, systemConfigService
-        );
-        
+                documentoRepository, marcacaoRepository, minioClient,
+                funcionarioRepository, notificacaoService, systemConfigService);
+
         ReflectionTestUtils.setField(documentoService, "bucketName", "marcacoes");
         ReflectionTestUtils.setField(documentoService, "maxFileSize", 10_485_760L);
 
@@ -102,7 +97,8 @@ class DocumentoServiceTest {
     @DisplayName("Deve lançar erro ao fazer upload para marcação inexistente")
     void uploadDocumentoShouldThrowWhenMarcacaoNotFound() {
         when(marcacaoRepository.findById(1L)).thenReturn(Optional.empty());
-        assertThrows(ResourceNotFoundException.class, () -> documentoService.uploadDocumento(1L, pdfFile("doc.pdf"), "f"));
+        assertThrows(ResourceNotFoundException.class,
+                () -> documentoService.uploadDocumento(1L, pdfFile("doc.pdf"), "f"));
     }
 
     @Test
@@ -110,7 +106,8 @@ class DocumentoServiceTest {
     void uploadDocumentoShouldThrowWhenLimitReached() {
         when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
         when(documentoRepository.countByMarcacaoId(1L)).thenReturn(10L);
-        assertThrows(IllegalArgumentException.class, () -> documentoService.uploadDocumento(1L, pdfFile("doc.pdf"), "f"));
+        assertThrows(IllegalArgumentException.class,
+                () -> documentoService.uploadDocumento(1L, pdfFile("doc.pdf"), "f"));
     }
 
     @Test

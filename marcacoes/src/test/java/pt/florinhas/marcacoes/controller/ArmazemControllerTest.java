@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,15 +12,16 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.ResponseEntity;
 
-import pt.florinhas.marcacoes.dto.ConsumoEstatisticaDTO;
 import pt.florinhas.marcacoes.dto.ItemArmazemDTO;
 import pt.florinhas.marcacoes.service.ArmazemService;
 import pt.florinhas.marcacoes.service.AuditLogService;
 
 class ArmazemControllerTest {
 
-    @Mock private ArmazemService armazemService;
-    @Mock private AuditLogService auditLogService;
+    @Mock
+    private ArmazemService armazemService;
+    @Mock
+    private AuditLogService auditLogService;
 
     private ArmazemController controller;
 

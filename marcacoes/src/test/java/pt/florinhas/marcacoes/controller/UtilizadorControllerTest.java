@@ -1,10 +1,15 @@
 package pt.florinhas.marcacoes.controller;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -102,27 +107,31 @@ class UtilizadorControllerTest {
     }
 
     @Test
-    @DisplayName("Deve listar todos os funcionários")
+    @DisplayName("Deve listar todos os funcionários paginados")
     void listarTodosFuncionarios_DeveRetornarLista() {
         UtilizadorResponseDTO dto = mock(UtilizadorResponseDTO.class);
-        when(utilizadorService.listarTodosFuncionarios()).thenReturn(List.of(dto));
+        Page<UtilizadorResponseDTO> page = new PageImpl<>(List.of(dto));
+        
+        when(utilizadorService.pesquisarFuncionarios(any(), any(), any(), any())).thenReturn(page);
 
-        ResponseEntity<List<UtilizadorResponseDTO>> result = controller.listarTodosFuncionarios();
+        ResponseEntity<Page<UtilizadorResponseDTO>> result = controller.listarTodosFuncionarios(null, null, null, PageRequest.of(0, 20));
 
         assertEquals(200, result.getStatusCode().value());
-        assertEquals(1, result.getBody().size());
+        assertEquals(1, result.getBody().getContent().size());
     }
 
     @Test
-    @DisplayName("Deve listar todos os utentes")
+    @DisplayName("Deve listar todos os utentes paginados")
     void listarTodosUtentes_DeveRetornarLista() {
         UtilizadorResponseDTO dto = mock(UtilizadorResponseDTO.class);
-        when(utilizadorService.listarTodosUtentes()).thenReturn(List.of(dto));
+        Page<UtilizadorResponseDTO> page = new PageImpl<>(List.of(dto));
+        
+        when(utilizadorService.pesquisarUtentes(any(), any(), any())).thenReturn(page);
 
-        ResponseEntity<List<UtilizadorResponseDTO>> result = controller.listarTodosUtentes();
+        ResponseEntity<Page<UtilizadorResponseDTO>> result = controller.listarTodosUtentes(null, null, PageRequest.of(0, 20));
 
         assertEquals(200, result.getStatusCode().value());
-        assertEquals(1, result.getBody().size());
+        assertEquals(1, result.getBody().getContent().size());
     }
 
     @Test
