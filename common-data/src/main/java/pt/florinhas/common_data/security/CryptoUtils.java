@@ -13,6 +13,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.exception.CryptoException;
 
 @Component
 public class CryptoUtils {
@@ -59,7 +60,7 @@ public class CryptoUtils {
 
             return Base64.getEncoder().encodeToString(iv) + ":" + Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao cifrar dados", e);
+            throw new CryptoException("Erro ao cifrar dados", e);
         }
     }
 
@@ -78,7 +79,7 @@ public class CryptoUtils {
 
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao decifrar dados", e);
+            throw new CryptoException("Erro ao decifrar dados", e);
         }
     }
 
@@ -91,7 +92,7 @@ public class CryptoUtils {
             byte[] hash = digest.digest((normalized + blindIndexKey).getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao gerar blind index", e);
+            throw new CryptoException("Erro ao gerar blind index", e);
         }
     }
 

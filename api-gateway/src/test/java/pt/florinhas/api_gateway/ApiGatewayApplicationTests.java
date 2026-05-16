@@ -6,5 +6,6 @@ class ApiGatewayApplicationTests {
 
     @Test
     void contextLoads() {
+        // Documented empty method - this test only ensures that the Spring ApplicationContext starts successfully.
     }
 }
