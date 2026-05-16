@@ -384,13 +384,13 @@ public class MarcacaoService {
             fim = LocalDateTime.now().plusYears(1);
 
         List<Marcacao> list = marcacaoRepository.findMarcacoesBetweenDates(inicio, fim, tipo);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     public List<MarcacaoResponseDTO> procurarAgenda(LocalDateTime inicio, LocalDateTime fim, Long criadoPorId,
             Long utenteId, EventoEstado estado) {
         List<Marcacao> list = marcacaoRepository.findWithFilters(inicio, fim, criadoPorId, utenteId, estado);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     @Transactional
@@ -515,7 +515,7 @@ public class MarcacaoService {
         }
 
         List<Marcacao> list = marcacaoRepository.findMarcacoesPassadas(dataInicio, dataFim, utenteId, estado);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     public Page<MarcacaoResponseDTO> consultarMarcacoesPassadasPaginated(LocalDateTime dataInicio,
@@ -540,7 +540,7 @@ public class MarcacaoService {
         List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
                 .filter(byId::containsKey)
                 .map(id -> toDTO(byId.get(id)))
-                .collect(Collectors.toList());
+                .toList();
         return new org.springframework.data.domain.PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 
@@ -569,7 +569,7 @@ public class MarcacaoService {
                 .orElseThrow(() -> new EntityNotFoundException("Utente não encontrado com ID: " + utenteId));
 
         List<Marcacao> list = marcacaoRepository.findByUtente(utente);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     public List<Map<String, Object>> consultarMarcacoesBloqueadas(Long utenteId) {
@@ -595,14 +595,14 @@ public class MarcacaoService {
                         "id", m.getId(),
                         "data", m.getData().toString(),
                         "estado", m.getEstado().toString()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public List<MarcacaoResponseDTO> consultarMarcacoesFuncionario(Long funcionarioId) {
         Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
                 .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado: " + funcionarioId));
         return marcacaoRepository.findByCriadoPor(funcionario)
-                .stream().map(this::toDTO).collect(Collectors.toList());
+                .stream().map(this::toDTO).toList();
     }
 
     public MarcacaoResponseDTO obterMarcacaoDTO(Long id) {
@@ -804,7 +804,7 @@ public class MarcacaoService {
                         rDTO.setCategoria(r.getItem().getNome());
                     }
                     return rDTO;
-                }).collect(Collectors.toList());
+                }).toList();
                 balnDTO.setRoupas(roupasDTO);
             }
 
@@ -957,7 +957,7 @@ public class MarcacaoService {
         List<Object[]> queryPresencasPorDia = marcacaoRepository.findAttendanceByDay(inicio, fim);
         List<BalnearioAttendanceStatsDTO.AttendanceData> presencasPorDia = queryPresencasPorDia.stream()
                 .map(obj -> new BalnearioAttendanceStatsDTO.AttendanceData(obj[0].toString(), (Long) obj[1]))
-                .collect(Collectors.toList());
+                .toList();
 
         List<Object[]> queryPresencasPorHora = marcacaoRepository.findAttendanceByHour(inicio, fim);
         Map<Integer, Long> presencasPorHora = queryPresencasPorHora.stream()

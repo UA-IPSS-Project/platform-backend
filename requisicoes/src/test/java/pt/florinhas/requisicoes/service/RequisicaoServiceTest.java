@@ -238,8 +238,7 @@ class RequisicaoServiceTest {
                                 LocalDateTime.now().plusDays(1).plusHours(4),
                                 8,
                                 "Condutor 1",
-                                List.of(30L),
-                                null, null);
+                                List.of(30L), null);
 
                 RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
 
@@ -268,8 +267,7 @@ class RequisicaoServiceTest {
                                 LocalDateTime.now().plusDays(2).plusHours(2),
                                 3,
                                 "Condutor Teste",
-                                List.of(90L),
-                                null, null);
+                                List.of(90L), null);
 
                 ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
                                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -277,55 +275,7 @@ class RequisicaoServiceTest {
                 assertEquals("Transporte não encontrado: 90", exception.getMessage());
         }
 
-        @Test
-        void criarTransporte_quandoApenasTransporteId_deveAceitarCompatibilidade() {
-                Funcionario criadoPor = funcionarioComId(10L);
-                Transporte transporte = new Transporte();
-                transporte.setId(30L);
 
-                when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-                when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
-                when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
-                                .thenAnswer(invocation -> invocation.getArgument(0));
-
-                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                                "Pedido compatível",
-                                RequisicaoPrioridade.MEDIA,
-                                null,
-                                "Centro",
-                                LocalDateTime.now().plusDays(3),
-                                LocalDateTime.now().plusDays(3).plusHours(1),
-                                2,
-                                "Condutor Teste",
-                                null,
-                                30L, null);
-
-                RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
-
-                assertSame(transporte, resultado.getTransporte());
-                assertEquals(1, resultado.getTransportes().size());
-        }
-
-        @Test
-        void criarTransporte_quandoTransporteIdsETransporteId_fornecidos_deveLancarErro() {
-                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                                "Pedido inválido",
-                                RequisicaoPrioridade.MEDIA,
-                                null,
-                                "Centro",
-                                LocalDateTime.now().plusDays(3),
-                                LocalDateTime.now().plusDays(3).plusHours(1),
-                                2,
-                                "Condutor Teste",
-                                List.of(30L),
-                                31L, null);
-
-                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                                () -> requisicaoService.criarTransporte(request, 10L));
-
-                assertEquals("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.",
-                                exception.getMessage());
-        }
 
         @Test
         void criarTransporte_quandoNenhumTransporteFornecido_deveLancarErro() {
@@ -338,7 +288,6 @@ class RequisicaoServiceTest {
                                 LocalDateTime.now().plusDays(3).plusHours(1),
                                 2,
                                 "Condutor Teste",
-                                null,
                                 null, null);
 
                 IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -359,8 +308,7 @@ class RequisicaoServiceTest {
                                 LocalDateTime.now().plusDays(3).plusHours(1),
                                 2,
                                 "Condutor Teste",
-                                List.of(30L),
-                                null, null);
+                                List.of(30L), null);
 
                 IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -382,8 +330,7 @@ class RequisicaoServiceTest {
                                 dataHora,
                                 2,
                                 "Condutor Teste",
-                                List.of(30L),
-                                null, null);
+                                List.of(30L), null);
 
                 IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -405,8 +352,7 @@ class RequisicaoServiceTest {
                                 agora.plusDays(1),
                                 2,
                                 "Condutor Teste",
-                                List.of(30L),
-                                null, null);
+                                List.of(30L), null);
 
                 IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                                 () -> requisicaoService.criarTransporte(request, 10L));
@@ -427,8 +373,7 @@ class RequisicaoServiceTest {
                                 agora.minusDays(1),
                                 2,
                                 "Condutor Teste",
-                                List.of(30L),
-                                null, null);
+                                List.of(30L), null);
 
                 IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                                 () -> requisicaoService.criarTransporte(request, 10L));

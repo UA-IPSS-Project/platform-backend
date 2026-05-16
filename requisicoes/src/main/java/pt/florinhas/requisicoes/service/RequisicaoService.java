@@ -207,11 +207,14 @@ public class RequisicaoService {
     @Transactional
     public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request,
             Long authenticatedUtilizadorId) {
-        List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
+        if (request.transporteIds() == null || request.transporteIds().isEmpty()) {
+            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
+        }
+
         validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
         Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
-        List<Transporte> transportesSelecionados = transporteIds.stream()
+        List<Transporte> transportesSelecionados = request.transporteIds().stream()
                 .distinct()
                 .map(id -> transporteRepository.findById(id)
                         .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id)))
@@ -242,22 +245,6 @@ public class RequisicaoService {
         RequisicaoTransporte saved = requisicaoTransporteRepository.save(requisicao);
         notificarSecretarias(saved, authenticatedUtilizadorId);
         return saved;
-    }
-
-    private List<Long> resolverIdsTransporte(List<Long> transporteIds, Long transporteId) {
-        boolean temLista = transporteIds != null && !transporteIds.isEmpty();
-        boolean temSingular = transporteId != null;
-
-        if (temLista && temSingular) {
-            throw new IllegalArgumentException(
-                    "Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.");
-        }
-
-        if (!temLista && !temSingular) {
-            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
-        }
-
-        return temLista ? transporteIds : List.of(transporteId);
     }
 
     private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
