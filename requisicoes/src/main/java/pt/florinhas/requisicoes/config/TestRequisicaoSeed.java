@@ -3,7 +3,7 @@ package pt.florinhas.requisicoes.config;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.security.SecureRandom;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
@@ -43,7 +43,7 @@ import org.springframework.context.annotation.Profile;
 @Profile({"dev", "test"})
 @Order(4)
 public class TestRequisicaoSeed implements CommandLineRunner {
-    private static final Random RANDOM = new Random();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
