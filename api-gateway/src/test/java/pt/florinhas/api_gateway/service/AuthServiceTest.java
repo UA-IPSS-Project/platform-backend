@@ -278,6 +278,40 @@ class AuthServiceTest {
         assertThrows(BadRequestException.class, () -> authService.registerUtente(request));
     }
 
+    @Test
+    void registerUtente_DeveLancarErroQuandoEmailJaEmUso() {
+        UtenteRegisterRequest request = new UtenteRegisterRequest(
+                "Utente Novo",
+                "novo@utente.com",
+                "pass123",
+                "123456789",
+                "912345678",
+                LocalDate.now(),
+                true);
+
+        when(utilizadorRepository.existsByEmail("novo@utente.com")).thenReturn(true);
+
+        assertThrows(BadRequestException.class, () -> authService.registerUtente(request));
+    }
+
+    @Test
+    void registerUtente_DeveLancarErroQuandoNifJaEmUso() {
+        UtenteRegisterRequest request = new UtenteRegisterRequest(
+                "Utente Novo",
+                "novo@utente.com",
+                "pass123",
+                "123456789",
+                "912345678",
+                LocalDate.now(),
+                true);
+
+        when(utilizadorRepository.existsByEmail("novo@utente.com")).thenReturn(false);
+        when(cryptoUtils.generateBlindIndex("123456789")).thenReturn("blind_index");
+        when(utilizadorRepository.existsByNifHash("blind_index")).thenReturn(true);
+
+        assertThrows(BadRequestException.class, () -> authService.registerUtente(request));
+    }
+
     // ==========================================
     // REGISTER FUNCIONARIO TESTS
     // ==========================================
@@ -433,6 +467,23 @@ class AuthServiceTest {
     }
 
     @Test
+    void updatePassword_Funcionario_Sucesso_AceitaTermosAgora() {
+        Funcionario funcionario = new Funcionario();
+        funcionario.setId(2L);
+        funcionario.setTermsAcceptedAt(null);
+        funcionario.setActivo(false);
+
+        when(utilizadorRepository.findById(2L)).thenReturn(Optional.of(funcionario));
+        when(passwordEncoder.encode("nova")).thenReturn("hashed");
+
+        authService.updatePassword(2L, "nova", true);
+
+        assertTrue(funcionario.isActivo());
+        assertNotNull(funcionario.getTermsAcceptedAt());
+        verify(funcionarioRepository).save(funcionario);
+    }
+
+    @Test
     void updatePassword_UtilizadorGenerico_Sucesso() {
         Utilizador utilizador = new Utilizador() {
         };
@@ -483,6 +534,37 @@ class AuthServiceTest {
 
         assertTrue(res.isPresent());
         assertEquals("BALNEARIO", res.get().role());
+        assertTrue(res.get().active());
+    }
+
+    @Test
+    void getCurrentUserResponse_Sucesso_Utente() {
+        Utente utente = new Utente();
+        utente.setId(60L);
+        utente.setTermsAcceptedAt(LocalDateTime.now());
+        utente.setActivo(true);
+
+        when(utilizadorRepository.findById(60L)).thenReturn(Optional.of(utente));
+
+        var res = authService.getCurrentUserResponse(utente);
+
+        assertTrue(res.isPresent());
+        assertEquals("UTENTE", res.get().role());
+        assertTrue(res.get().active());
+    }
+
+    @Test
+    void getCurrentUserResponse_Sucesso_UtilizadorGenerico() {
+        Utilizador utilizador = new Utilizador() {};
+        utilizador.setId(60L);
+        utilizador.setTermsAcceptedAt(LocalDateTime.now());
+
+        when(utilizadorRepository.findById(60L)).thenReturn(Optional.of(utilizador));
+
+        var res = authService.getCurrentUserResponse(utilizador);
+
+        assertTrue(res.isPresent());
+        assertEquals("UTENTE", res.get().role());
         assertTrue(res.get().active());
     }
 
