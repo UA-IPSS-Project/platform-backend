@@ -51,6 +51,9 @@ public class ArmazemService {
     // MAPEAMENTO: Opções do formulário → Itens do armazém
     // =====================================================================
 
+    private static final String KEY_TRACKED = "tracked";
+    private static final String STATUS_BAIXO = "BAIXO";
+
     private static final String VAL_CHAMPO = "Champô";
     private static final String VAL_GEL_BANHO = "Gel de Banho";
     private static final String VAL_TOALHA = "Toalha";
@@ -380,23 +383,23 @@ public class ArmazemService {
 
             if (armazemNome == null || armazemCategoria == null) {
                 // Sem mapeamento: não trackado no armazém
-                resultado.put(formItem, Map.of("tracked", false));
+                resultado.put(formItem, Map.of(KEY_TRACKED, false));
                 continue;
             }
 
             Optional<ItemArmazem> itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
-                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : "BAIXO";
+                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : STATUS_BAIXO;
                 resultado.put(formItem, Map.of(
-                    "tracked", true,
+                    KEY_TRACKED, true,
                     "quantidade", item.getQuantidade(),
                     "quantidadeMinima", item.getQuantidadeMinima(),
                     "estado", estado,
                     "esgotado", item.getQuantidade() <= 0
                 ));
             } else {
-                resultado.put(formItem, Map.of("tracked", false));
+                resultado.put(formItem, Map.of(KEY_TRACKED, false));
             }
         }
 
@@ -413,16 +416,16 @@ public class ArmazemService {
             Optional<ItemArmazem> itemOpt = itemArmazemRepository.findByCategoriaAndNome("CALCADO", tamanho);
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
-                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : "BAIXO";
+                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : STATUS_BAIXO;
                 resultado.put(tamanho, Map.of(
-                    "tracked", true,
+                    KEY_TRACKED, true,
                     "quantidade", item.getQuantidade(),
                     "quantidadeMinima", item.getQuantidadeMinima(),
                     "estado", estado,
                     "esgotado", item.getQuantidade() <= 0
                 ));
             } else {
-                resultado.put(tamanho, Map.of("tracked", false));
+                resultado.put(tamanho, Map.of(KEY_TRACKED, false));
             }
         }
 
@@ -600,7 +603,7 @@ public class ArmazemService {
         dto.setTamanho(item.getTamanho());
         dto.setVolume(item.getVolume());
         dto.setDescricao(item.getDescricao());
-        dto.setEstado(item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : "BAIXO");
+        dto.setEstado(item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : STATUS_BAIXO);
         return dto;
     }
 }

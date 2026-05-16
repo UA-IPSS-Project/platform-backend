@@ -19,6 +19,8 @@ import pt.florinhas.requisicoes.dto.InternalAuditRequest;
 @Slf4j
 public class AuditService {
 
+    private static final String IP_UNKNOWN = "unknown";
+
     private final RestTemplate restTemplate;
     private final String marcacoesUrl;
     private final String gatewaySharedSecret;
@@ -76,14 +78,14 @@ public class AuditService {
     }
 
     private String getClientIp() {
-        if (request == null) return "unknown";
+        if (request == null) return IP_UNKNOWN;
         String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || IP_UNKNOWN.equalsIgnoreCase(ip)) {
             ip = request.getHeader("X-Real-IP");
         }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || IP_UNKNOWN.equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
-        return ip != null ? ip.split(",")[0].trim() : "unknown";
+        return ip != null ? ip.split(",")[0].trim() : IP_UNKNOWN;
     }
 }
