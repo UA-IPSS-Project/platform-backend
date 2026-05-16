@@ -20,5 +20,6 @@ public class CryptoConfig {
     @PostConstruct
     public void init() {
         Utilizador.setCryptoUtils(cryptoUtils);
+        NifEncryptorConverter.setStaticCryptoUtils(cryptoUtils);
     }
 }

@@ -5,6 +5,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
@@ -18,6 +19,6 @@ public record CriarRequisicaoTransporteRequest(
         @NotNull LocalDateTime dataHoraRegresso,
         @NotNull @PositiveOrZero Integer numeroPassageiros,
         @NotBlank String condutor,
-        List<Long> transporteIds,
+        @NotEmpty List<Long> transporteIds,
         @Valid RequisicaoPeriodicaConfigRequest periodica) {
 }

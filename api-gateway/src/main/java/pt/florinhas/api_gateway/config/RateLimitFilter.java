@@ -38,7 +38,7 @@ import reactor.core.publisher.Mono;
 public class RateLimitFilter implements WebFilter {
 
     private static final int LOGIN_LIMIT = 10;
-    private static final int GLOBAL_LIMIT = 300;
+    private static final int GLOBAL_LIMIT = 120;
     private static final long WINDOW_MS = 60_000L;
 
     private record Bucket(AtomicInteger count, long windowStart) {}

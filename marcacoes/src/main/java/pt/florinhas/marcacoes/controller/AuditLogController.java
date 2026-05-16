@@ -21,16 +21,17 @@ import pt.florinhas.marcacoes.service.AuditLogService;
 @RequestMapping("/api/audit")
 public class AuditLogController {
 
+    private final String gatewaySharedSecret;
     private final AuditLogService auditLogService;
     private final AuditLogRepository auditLogRepository;
 
-    public AuditLogController(AuditLogService auditLogService, AuditLogRepository auditLogRepository) {
+    public AuditLogController(AuditLogService auditLogService,
+            AuditLogRepository auditLogRepository,
+            @Value("${gateway.shared-secret:florinhas}") String gatewaySharedSecret) {
         this.auditLogService = auditLogService;
         this.auditLogRepository = auditLogRepository;
+        this.gatewaySharedSecret = gatewaySharedSecret;
     }
-
-    @Value("${gateway.shared-secret:florinhas}")
-    private String gatewaySharedSecret;
 
     private static final int MAX_PAGE_SIZE = 200;
 

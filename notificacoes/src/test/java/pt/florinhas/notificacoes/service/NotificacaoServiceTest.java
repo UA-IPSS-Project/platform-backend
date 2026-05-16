@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -20,153 +19,137 @@ import pt.florinhas.notificacoes.service.email.EmailService;
 
 class NotificacaoServiceTest {
 
-    private NotificacaoRepository notificacaoRepository;
+        private NotificacaoRepository notificacaoRepository;
 
-    private UtilizadorRepository utilizadorRepository;
+        private UtilizadorRepository utilizadorRepository;
 
-    private EmailService emailService;
+        private EmailService emailService;
 
-    private SimpMessagingTemplate messagingTemplate;
+        private SimpMessagingTemplate messagingTemplate;
 
-    private NotificacaoService service;
+        private NotificacaoService service;
 
-    @BeforeEach
-    void setUp() {
+        @BeforeEach
+        void setUp() {
 
-        notificacaoRepository =
-                mock(NotificacaoRepository.class);
+                notificacaoRepository = mock(NotificacaoRepository.class);
 
-        utilizadorRepository =
-                mock(UtilizadorRepository.class);
+                utilizadorRepository = mock(UtilizadorRepository.class);
 
-        emailService =
-                mock(EmailService.class);
+                emailService = mock(EmailService.class);
 
-        messagingTemplate =
-                mock(SimpMessagingTemplate.class);
+                messagingTemplate = mock(SimpMessagingTemplate.class);
 
-        service =
-                new NotificacaoService(
-                        notificacaoRepository,
-                        utilizadorRepository,
-                        emailService,
-                        messagingTemplate
-                );
-    }
+                service = new NotificacaoService(
+                                notificacaoRepository,
+                                utilizadorRepository,
+                                emailService,
+                                messagingTemplate);
+        }
 
-    private Utilizador createUser() {
+        private Utilizador createUser() {
 
-        Utilizador u =
-                new Utilizador();
+                Utilizador u = new Utilizador();
 
-        u.setId(1L);
-        u.setEmail("teste@teste.com");
-        u.setNif("123456789");
+                u.setId(1L);
+                u.setEmail("teste@teste.com");
+                u.setNif("123456789");
 
-        return u;
-    }
+                return u;
+        }
 
-    @Test
-    void criarNotificacao_DeveGuardar() {
+        @Test
+        void criarNotificacao_DeveGuardar() {
 
-        Utilizador user =
-                createUser();
+                Utilizador user = createUser();
 
-        when(utilizadorRepository.findById(1L))
-                .thenReturn(Optional.of(user));
+                when(utilizadorRepository.findById(1L))
+                                .thenReturn(Optional.of(user));
 
-        when(notificacaoRepository.save(any()))
-                .thenAnswer(i -> i.getArgument(0));
+                when(notificacaoRepository.save(any()))
+                                .thenAnswer(i -> i.getArgument(0));
 
-        Notificacao result =
-                service.criarNotificacao(
-                        1L,
-                        "Titulo",
-                        "Mensagem",
-                        "INFO",
-                        Map.of()
-                );
+                Notificacao result = service.criarNotificacao(
+                                1L,
+                                "Titulo",
+                                "Mensagem",
+                                "INFO",
+                                Map.of());
 
-        assertNotNull(result);
+                assertNotNull(result);
 
-        verify(notificacaoRepository)
-                .save(any());
+                verify(notificacaoRepository)
+                                .save(any());
 
-        verify(messagingTemplate)
-                .convertAndSendToUser(
-                        anyString(),
-                        eq("/queue/notifications"),
-                        any()
-                );
-    }
+                verify(messagingTemplate)
+                                .convertAndSendToUser(
+                                                anyString(),
+                                                eq("/queue/notifications"),
+                                                any());
+        }
 
-    @Test
-    void contarNaoLidas_DeveRetornarValor() {
+        @Test
+        void contarNaoLidas_DeveRetornarValor() {
 
-        when(notificacaoRepository
-                .countByUtilizadorIdAndLidaFalse(1L))
-                .thenReturn(5L);
+                when(notificacaoRepository
+                                .countByUtilizadorIdAndLidaFalse(1L))
+                                .thenReturn(5L);
 
-        long result =
-                service.contarNaoLidas(1L);
+                long result = service.contarNaoLidas(1L);
 
-        assertEquals(5L, result);
-    }
+                assertEquals(5L, result);
+        }
 
-    @Test
-    void marcarComoLida_DeveAtualizar() {
+        @Test
+        void marcarComoLida_DeveAtualizar() {
 
-        Notificacao notificacao =
-                new Notificacao();
+                Notificacao notificacao = new Notificacao();
 
-        when(notificacaoRepository
-                .findByIdAndUtilizadorId(1L, 1L))
-                .thenReturn(Optional.of(notificacao));
+                when(notificacaoRepository
+                                .findByIdAndUtilizadorId(1L, 1L))
+                                .thenReturn(Optional.of(notificacao));
 
-        service.marcarComoLida(1L, 1L);
+                service.marcarComoLida(1L, 1L);
 
-        assertTrue(notificacao.isLida());
+                assertTrue(notificacao.isLida());
 
-        verify(notificacaoRepository)
-                .save(notificacao);
-    }
+                verify(notificacaoRepository)
+                                .save(notificacao);
+        }
 
-    @Test
-    void eliminarTodas_DeveExecutar() {
+        @Test
+        void eliminarTodas_DeveExecutar() {
 
-        service.eliminarTodas(1L);
+                service.eliminarTodas(1L);
 
-        verify(notificacaoRepository)
-                .deleteByUtilizadorId(1L);
-    }
+                verify(notificacaoRepository)
+                                .deleteByUtilizadorId(1L);
+        }
 
-    @Test
-    void notificarNovaMarcacao_DeveEnviarEmail() {
+        @Test
+        void notificarNovaMarcacao_DeveEnviarEmail() {
 
-        Utilizador user =
-                createUser();
+                Utilizador user = createUser();
 
-        when(utilizadorRepository.findById(1L))
-                .thenReturn(Optional.of(user));
+                when(utilizadorRepository.findById(1L))
+                                .thenReturn(Optional.of(user));
 
-        when(notificacaoRepository.save(any()))
-                .thenAnswer(i -> i.getArgument(0));
+                when(notificacaoRepository.save(any()))
+                                .thenAnswer(i -> i.getArgument(0));
 
-        service.notificarNovaMarcacao(
-                1L,
-                5L,
-                LocalDateTime.now(),
-                30,
-                "Consulta"
-        );
+                service.notificarNovaMarcacao(
+                                1L,
+                                5L,
+                                LocalDateTime.now(),
+                                30,
+                                "Consulta");
 
-        verify(emailService)
-                .sendAppointmentCreated(
-                        anyString(),
-                        any(),
-                        eq(5L),
-                        eq("Consulta"),
-                        eq(30)
-                );
-    }
+                verify(emailService)
+                                .sendAppointmentCreated(
+                                                anyString(),
+                                                any(),
+                                                eq(5L),
+                                                eq("Consulta"),
+                                                eq(30));
+        }
 }

@@ -1,30 +1,23 @@
 package pt.florinhas.marcacoes.security;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.ArgumentMatchers.anyString;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.security.CryptoUtils;
 
-import pt.florinhas.common_data.domain.Utente;
-
-import java.util.Collections;
-import java.util.List;
-
-@ExtendWith(MockitoExtension.class)
 class CustomUserDetailsServiceTest {
 
     @Mock
@@ -32,48 +25,89 @@ class CustomUserDetailsServiceTest {
     @Mock
     private CryptoUtils cryptoUtils;
 
-    @InjectMocks
-    private CustomUserDetailsService userDetailsService;
-
-    private Utente utente;
+    private CustomUserDetailsService service;
 
     @BeforeEach
-    void setUp() {
-        utente = new Utente();
-        utente.setId(1L);
-        utente.setEmail("test@example.com");
-        utente.setNome("Test User");
-        utente.setPassHash("hashedPassword");
+    void setup() {
+        MockitoAnnotations.openMocks(this);
+        service = new CustomUserDetailsService(utilizadorRepository, cryptoUtils);
+    }
+
+    private Utilizador buildUser(Long id, String email, String nif) {
+        Utilizador u = new Utente();
+        u.setId(id);
+        u.setEmail(email);
+        u.setNif(nif);
+        u.setNome("User");
+        return u;
     }
 
     @Test
-    void loadUserByUsername_DeveRetornarUserDetails_QuandoUtilizadorExiste() {
-        // Arrange
-        when(utilizadorRepository.findByEmail("test@example.com"))
-            .thenReturn(List.of(utente));
-
-        // Act
-        UserDetails userDetails = userDetailsService.loadUserByUsername("test@example.com");
-
-        // Assert
-        assertNotNull(userDetails);
-        assertEquals("test@example.com", userDetails.getUsername());
-        assertEquals("hashedPassword", userDetails.getPassword());
-        verify(utilizadorRepository).findByEmail("test@example.com");
+    @DisplayName("Deve falhar quando o username é nulo")
+    void loadUserByUsername_DeveFalharQuandoUsernameNull() {
+        assertThrows(UsernameNotFoundException.class,
+                () -> service.loadUserByUsername(null));
     }
 
     @Test
-    void loadUserByUsername_DeveLancarException_QuandoUtilizadorNaoExiste() {
-        // Arrange
-        when(utilizadorRepository.findByEmail(anyString()))
-            .thenReturn(Collections.emptyList());
+    @DisplayName("Deve buscar por email prioritariamente")
+    void loadUserByUsername_DeveBuscarPorEmailPrimeiro() {
+        Utilizador user = buildUser(1L, "user@test.com", "123456789");
 
-        // Act & Assert
-        UsernameNotFoundException exception = assertThrows(
-                UsernameNotFoundException.class,
-                () -> userDetailsService.loadUserByUsername("nonexistent@example.com"));
+        when(utilizadorRepository.findByEmail("user@test.com"))
+                .thenReturn(List.of(user));
 
-        assertTrue(exception.getMessage().contains("Utilizador não encontrado"));
-        verify(utilizadorRepository).findByEmail("nonexistent@example.com");
+        UserDetails result = service.loadUserByUsername("user@test.com");
+
+        assertEquals(user, result);
+        verify(utilizadorRepository).findByEmail("user@test.com");
+        verify(utilizadorRepository, never()).findByNifHash(anyString());
+    }
+
+    @Test
+    @DisplayName("Deve fazer trim no email antes da busca")
+    void loadUserByUsername_DeveFazerTrimNoEmail() {
+        Utilizador user = buildUser(1L, "user@test.com", "123456789");
+
+        when(utilizadorRepository.findByEmail("user@test.com"))
+                .thenReturn(List.of(user));
+
+        UserDetails result = service.loadUserByUsername("  user@test.com  ");
+
+        assertEquals(user, result);
+        verify(utilizadorRepository).findByEmail("user@test.com");
+    }
+
+    @Test
+    @DisplayName("Deve buscar por NIF (Blind Index) quando não encontra por email")
+    void loadUserByUsername_DeveBuscarPorNifQuandoNaoEncontraPorEmail() {
+        Utilizador user = buildUser(1L, "user@test.com", "123456789");
+        String nif = "123456789";
+        String nifHash = "hashed_nif";
+
+        when(utilizadorRepository.findByEmail(nif)).thenReturn(List.of());
+        when(cryptoUtils.generateBlindIndex(nif)).thenReturn(nifHash);
+        when(utilizadorRepository.findByNifHash(nifHash)).thenReturn(List.of(user));
+
+        UserDetails result = service.loadUserByUsername(nif);
+
+        assertEquals(user, result);
+        verify(utilizadorRepository).findByEmail(nif);
+        verify(cryptoUtils).generateBlindIndex(nif);
+        verify(utilizadorRepository).findByNifHash(nifHash);
+    }
+
+    @Test
+    @DisplayName("Deve falhar quando utilizador não existe em nenhum campo")
+    void loadUserByUsername_DeveFalharQuandoNaoEncontraNemPorEmailNemPorNif() {
+        String username = "unknown";
+        String hash = "unknown_hash";
+
+        when(utilizadorRepository.findByEmail(username)).thenReturn(List.of());
+        when(cryptoUtils.generateBlindIndex(username)).thenReturn(hash);
+        when(utilizadorRepository.findByNifHash(hash)).thenReturn(List.of());
+
+        assertThrows(UsernameNotFoundException.class,
+                () -> service.loadUserByUsername(username));
     }
 }

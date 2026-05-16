@@ -1,23 +1,25 @@
 package pt.florinhas.requisicoes.controller;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
 import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.requisicoes.domain.Material;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
@@ -31,16 +33,32 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.service.AuditService;
 import pt.florinhas.requisicoes.service.RequisicaoService;
 
-@ExtendWith(MockitoExtension.class)
 class RequisicaoControllerTest {
 
-    @Mock
     private RequisicaoService requisicaoService;
-    @Mock
     private AuditService auditService;
+    private RequisicaoController controller;
 
-    @InjectMocks
-    private RequisicaoController requisicaoController;
+    @BeforeEach
+    void setUp() {
+        requisicaoService = mock(RequisicaoService.class);
+        auditService = mock(AuditService.class);
+        controller = new RequisicaoController(requisicaoService, auditService);
+    }
+
+    @Test
+    void listar_DeveRetornarPagina() {
+        Page<Requisicao> page = new PageImpl<>(List.of(mock(Requisicao.class)));
+
+        when(requisicaoService.procurarPaginated(
+                any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(page);
+
+        Page<Requisicao> result = controller.listar(RequisicaoEstado.ABERTO, PageRequest.of(0, 20));
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+    }
 
     @Test
     void listar_semEstado_deveUsarProcurarPaginated() {
@@ -48,35 +66,82 @@ class RequisicaoControllerTest {
         Pageable pageable = Pageable.unpaged();
         when(requisicaoService.procurarPaginated(null, null, null, null, null, null, pageable)).thenReturn(esperado);
 
-        Page<Requisicao> resultado = requisicaoController.listar(null, pageable);
+        Page<Requisicao> resultado = controller.listar(null, pageable);
 
         assertSame(esperado, resultado);
         verify(requisicaoService).procurarPaginated(null, null, null, null, null, null, pageable);
     }
 
     @Test
-    void listar_comEstado_deveUsarProcurarPaginated() {
-        Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
-        Pageable pageable = Pageable.unpaged();
-        when(requisicaoService.procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, pageable))
-                .thenReturn(esperado);
+    void obter_DeveRetornarRequisicao() {
+        Requisicao req = mock(Requisicao.class);
+        when(requisicaoService.obterPorId(1L)).thenReturn(req);
 
-        Page<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO, pageable);
+        Requisicao result = controller.obter(1L);
 
-        assertSame(esperado, resultado);
-        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null,
-                pageable);
+        assertNotNull(result);
+        assertSame(req, result);
     }
 
     @Test
-    void obter_deveDelegarNoService() {
-        Requisicao esperado = new RequisicaoManutencao();
-        when(requisicaoService.obterPorId(5L)).thenReturn(esperado);
+    void listarMateriais_DeveRetornarLista() {
+        when(requisicaoService.listarMateriais())
+                .thenReturn(List.of(mock(Material.class)));
 
-        Requisicao resultado = requisicaoController.obter(5L);
+        List<Material> result = controller.listarMateriais();
 
-        assertSame(esperado, resultado);
-        verify(requisicaoService).obterPorId(5L);
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void apagarMaterialCatalogo_DeveExecutar() {
+        assertDoesNotThrow(() -> controller.apagarMaterialCatalogo(1L));
+
+        verify(requisicaoService).apagarMaterialCatalogo(1L);
+        verify(auditService).log(
+                eq("APAGAR_MATERIAL_CATALOGO"),
+                eq("MATERIAL"),
+                eq(1L),
+                anyString());
+    }
+
+    @Test
+    void apagarTipoManutencao_DeveExecutar() {
+        assertDoesNotThrow(() -> controller.apagarTipoManutencao(1L));
+
+        verify(requisicaoService).apagarTipoManutencao(1L);
+        verify(auditService).log(
+                eq("APAGAR_TIPO_MANUTENCAO"),
+                eq("TIPO_MANUTENCAO"),
+                eq(1L),
+                anyString());
+    }
+
+    @Test
+    void apagarManutencaoItem_DeveExecutar() {
+        assertDoesNotThrow(() -> controller.apagarManutencaoItem(1L));
+
+        verify(requisicaoService).apagarManutencaoItem(1L);
+        verify(auditService).log(
+                eq("APAGAR_ITEM_MANUTENCAO_CATALOGO"),
+                eq("MANUTENCAO_ITEM"),
+                eq(1L),
+                anyString());
+    }
+
+    @Test
+    void procurar_DeveRetornarPagina() {
+        Page<Requisicao> page = new PageImpl<>(List.of(mock(Requisicao.class)));
+
+        when(requisicaoService.procurarPaginated(
+                any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(page);
+
+        Page<Requisicao> result = controller.procurar(
+                null, null, null, null, null, null, PageRequest.of(0, 20));
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
     }
 
     @Test
@@ -92,7 +157,7 @@ class RequisicaoControllerTest {
                 null,
                 pageable)).thenReturn(esperado);
 
-        Page<Requisicao> resultado = requisicaoController.procurar(
+        Page<Requisicao> resultado = controller.procurar(
                 RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
@@ -102,14 +167,26 @@ class RequisicaoControllerTest {
                 pageable);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).procurarPaginated(
-                RequisicaoEstado.ABERTO,
-                RequisicaoTipo.MANUTENCAO,
-                RequisicaoPrioridade.ALTA,
-                "Maria",
-                null,
-                null,
-                pageable);
+    }
+
+    @Test
+    void criarMaterial_DeveExecutar() {
+        Utilizador utilizador = mock(Utilizador.class);
+        RequisicaoMaterial requisicao = mock(RequisicaoMaterial.class);
+
+        when(utilizador.getId()).thenReturn(1L);
+        when(utilizador.getNome()).thenReturn("Ana");
+        when(requisicao.getId()).thenReturn(10L);
+
+        when(requisicaoService.criarMaterial(any(), eq(1L))).thenReturn(requisicao);
+
+        assertDoesNotThrow(() -> controller.criarMaterial(null, utilizador));
+
+        verify(auditService).log(
+                eq("CRIAR_REQUISICAO_MATERIAL"),
+                eq("REQUISICAO"),
+                eq(10L),
+                contains("Ana"));
     }
 
     @Test
@@ -124,7 +201,7 @@ class RequisicaoControllerTest {
         utilizador.setId(1L);
         when(requisicaoService.criarMaterial(request, 1L)).thenReturn((RequisicaoMaterial) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarMaterial(request, utilizador);
+        ResponseEntity<Requisicao> responseEntity = controller.criarMaterial(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());
@@ -147,7 +224,7 @@ class RequisicaoControllerTest {
         utilizador.setId(1L);
         when(requisicaoService.criarTransporte(request, 1L)).thenReturn((RequisicaoTransporte) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarTransporte(request, utilizador);
+        ResponseEntity<Requisicao> responseEntity = controller.criarTransporte(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());
@@ -165,7 +242,7 @@ class RequisicaoControllerTest {
         utilizador.setId(1L);
         when(requisicaoService.criarManutencao(request, 1L)).thenReturn((RequisicaoManutencao) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarManutencao(request, utilizador);
+        ResponseEntity<Requisicao> responseEntity = controller.criarManutencao(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());

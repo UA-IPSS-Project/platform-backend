@@ -11,6 +11,8 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -530,8 +532,7 @@ public class MarcacaoService {
         String estadoStr = estado != null ? estado.name() : null;
         // Native query has ORDER BY m.data DESC — pass unsorted Pageable to avoid
         // Spring Data injecting a conflicting ORDER BY clause on a non-SELECT field
-        org.springframework.data.domain.Pageable nativePageable = org.springframework.data.domain.PageRequest
-                .of(pageable.getPageNumber(), pageable.getPageSize());
+        Pageable nativePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         Page<Long> idsPage = marcacaoRepository.findMarcacoesPassadasPaginatedIds(
                 dataInicio, dataFim, utenteId, estadoStr, assunto, nomeUtente, nativePageable);
         List<Marcacao> marcacoes = marcacaoRepository.findAllById(idsPage.getContent());
@@ -540,8 +541,8 @@ public class MarcacaoService {
         List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
                 .filter(byId::containsKey)
                 .map(id -> toDTO(byId.get(id)))
-                .toList();
-        return new org.springframework.data.domain.PageImpl<>(dtos, pageable, idsPage.getTotalElements());
+                .collect(Collectors.toList());
+        return new PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 
     public MarcacaoResponseDTO notificarDocumentosInvalidos(Long id, NotificarDocumentosRequest request) {

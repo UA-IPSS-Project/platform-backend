@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,108 +14,98 @@ import pt.florinhas.notificacoes.service.email.EmailService;
 
 class InternalCommunicationControllerTest {
 
-    private NotificacaoService notificacaoService;
+        private NotificacaoService notificacaoService;
 
-    private EmailService emailService;
+        private EmailService emailService;
 
-    private InternalCommunicationController controller;
+        private InternalCommunicationController controller;
 
-    @BeforeEach
-    void setUp() {
+        @BeforeEach
+        void setUp() {
 
-        notificacaoService =
-                org.mockito.Mockito.mock(
-                        NotificacaoService.class);
+                notificacaoService = org.mockito.Mockito.mock(
+                                NotificacaoService.class);
 
-        emailService =
-                org.mockito.Mockito.mock(
-                        EmailService.class);
+                emailService = org.mockito.Mockito.mock(
+                                EmailService.class);
 
-        controller =
-                new InternalCommunicationController(
-                        notificacaoService,
-                        emailService);
-    }
+                controller = new InternalCommunicationController(
+                                notificacaoService,
+                                emailService);
+        }
 
-    @Test
-    void criarNotificacao_DeveRetornarOk() {
+        @Test
+        void criarNotificacao_DeveRetornarOk() {
 
-        var request =
-                new InternalCommunicationController
-                        .CriarNotificacaoRequest();
+                var request = new InternalCommunicationController.CriarNotificacaoRequest();
 
-        request.setUtilizadorId(1L);
+                request.setUtilizadorId(1L);
 
-        request.setTitulo("Titulo");
+                request.setTitulo("Titulo");
 
-        request.setMensagem("Mensagem");
+                request.setMensagem("Mensagem");
 
-        request.setTipo("INFO");
+                request.setTipo("INFO");
 
-        ResponseEntity<Void> response =
-                controller.criarNotificacao(
-                        request);
+                ResponseEntity<Void> response = controller.criarNotificacao(
+                                request);
 
-        assertEquals(
-                200,
-                response.getStatusCode().value());
+                assertEquals(
+                                200,
+                                response.getStatusCode().value());
 
-        verify(notificacaoService)
-                .criarNotificacao(
-                        1L,
-                        "Titulo",
-                        "Mensagem",
-                        "INFO",
-                        null);
-    }
+                verify(notificacaoService)
+                                .criarNotificacao(
+                                                1L,
+                                                "Titulo",
+                                                "Mensagem",
+                                                "INFO",
+                                                null);
+        }
 
-    @Test
-    void enviarPassword_DeveExecutar() {
+        @Test
+        void enviarPassword_DeveExecutar() {
 
-        var request =
-                new InternalCommunicationController
-                        .EmailPasswordRequest();
+                var request = new InternalCommunicationController.EmailPasswordRequest();
 
-        request.setTo("teste@test.com");
+                request.setTo("teste@test.com");
 
-        request.setPassword("123");
+                request.setPassword("123");
 
-        controller.enviarPassword(
-                request);
+                controller.enviarPassword(
+                                request);
 
-        verify(emailService)
-                .sendPassword(
-                        "teste@test.com",
-                        "123");
-    }
+                verify(emailService)
+                                .sendPassword(
+                                                "teste@test.com",
+                                                "123");
+        }
 
-    @Test
-    void enviarMarcacaoCriada_DeveExecutar() {
+        @Test
+        void enviarMarcacaoCriada_DeveExecutar() {
 
-        var request =
-                new InternalCommunicationController
-                        .EmailMarcacaoCriadaRequest();
+                var request = new InternalCommunicationController.EmailMarcacaoCriadaRequest();
 
-        request.setTo("teste@test.com");
+                request.setTo("teste@test.com");
 
-        request.setAppointmentDateTime(
-                LocalDateTime.now());
+                request.setAppointmentDateTime(
+                                LocalDateTime.now());
 
-        request.setAppointmentId(1L);
+                request.setAppointmentId(1L);
 
-        request.setSummary("Teste");
+                request.setSummary("Teste");
 
-        request.setDurationMinutes(30);
+                request.setDurationMinutes(30);
 
-        controller.enviarMarcacaoCriada(
-                request);
+                controller.enviarMarcacaoCriada(
+                                request);
 
-        verify(emailService)
-                .sendAppointmentCreated(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyLong(),
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.anyInt());
-    }
+                verify(emailService)
+                                .sendAppointmentCreated(
+                                                org.mockito.ArgumentMatchers.anyString(),
+                                                org.mockito.ArgumentMatchers.any(),
+                                                org.mockito.ArgumentMatchers.anyLong(),
+                                                org.mockito.ArgumentMatchers.anyString(),
+                                                org.mockito.ArgumentMatchers.anyInt());
+        }
 }

@@ -2,7 +2,7 @@ package pt.florinhas.marcacoes.service;
 
 import java.time.LocalDateTime;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -23,24 +23,24 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
     private final UtilizadorRepository utilizadorRepository;
-    private final HttpServletRequest request;
+    private final ObjectProvider<HttpServletRequest> requestProvider;
 
     public AuditLogService(AuditLogRepository auditLogRepository,
-                          UtilizadorRepository utilizadorRepository,
-                          @Autowired(required = false) HttpServletRequest request) {
+            UtilizadorRepository utilizadorRepository,
+            ObjectProvider<HttpServletRequest> requestProvider) {
         this.auditLogRepository = auditLogRepository;
         this.utilizadorRepository = utilizadorRepository;
-        this.request = request;
+        this.requestProvider = requestProvider;
     }
 
     @Transactional
     public void log(String action, String entityType, Long entityId, String details) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            
+
             Long userId = null;
             String userName = "Sistema";
-            
+
             if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
                 if (auth.getPrincipal() instanceof Utilizador user) {
                     userId = user.getId();
@@ -62,15 +62,15 @@ public class AuditLogService {
             String ipAddress = getClientIp();
 
             AuditLog auditLog = AuditLog.builder()
-                .userId(userId)
-                .userName(userName)
-                .action(action)
-                .entityType(entityType)
-                .entityId(entityId)
-                .details(details)
-                .ipAddress(ipAddress)
-                .timestamp(LocalDateTime.now())
-                .build();
+                    .userId(userId)
+                    .userName(userName)
+                    .action(action)
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .details(details)
+                    .ipAddress(ipAddress)
+                    .timestamp(LocalDateTime.now())
+                    .build();
 
             auditLogRepository.save(auditLog);
             log.debug("Auditoria registada: {} - {} - {}", action, entityType, entityId);
@@ -83,15 +83,17 @@ public class AuditLogService {
         return auditLogRepository.findAllByOrderByTimestampDesc(pageable);
     }
 
-    public Page<AuditLog> findWithFilters(Long userId, String action, String entityType, 
-                                          LocalDateTime startDate, LocalDateTime endDate, 
-                                          Pageable pageable) {
+    public Page<AuditLog> findWithFilters(Long userId, String action, String entityType,
+            LocalDateTime startDate, LocalDateTime endDate,
+            Pageable pageable) {
         return auditLogRepository.findWithFilters(userId, action, entityType, startDate, endDate, pageable);
     }
 
     private String getClientIp() {
-        if (request == null) return "unknown";
-        
+        HttpServletRequest request = requestProvider.getIfAvailable();
+        if (request == null)
+            return "unknown";
+
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getHeader("X-Real-IP");
