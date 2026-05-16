@@ -334,16 +334,6 @@ public class UtilizadorController {
     }
 
     /**
-     * Obtém o conteúdo dos termos para um idioma específico (DPO).
-     */
-    @GetMapping("/admin/terms-content")
-    @PreAuthorize("hasRole('DPO')")
-    public ResponseEntity<Map<String, String>> obterConteudoTermos(@RequestParam String lang) {
-        String content = termsService.getTermsContent(lang);
-        return ResponseEntity.ok(Map.of(KEY_CONTENT, content));
-    }
-
-    /**
      * Atualiza o conteúdo dos termos para um idioma específico.
      */
     @PutMapping("/admin/terms-content")

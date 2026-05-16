@@ -541,7 +541,7 @@ public class MarcacaoService {
         List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
                 .filter(byId::containsKey)
                 .map(id -> toDTO(byId.get(id)))
-                .collect(Collectors.toList());
+                .toList();
         return new PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 

@@ -8,7 +8,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -52,42 +51,59 @@ public class ArmazemService {
     // MAPEAMENTO: Opções do formulário → Itens do armazém
     // =====================================================================
 
+    private static final String VAL_CHAMPO = "Champô";
+    private static final String VAL_GEL_BANHO = "Gel de Banho";
+    private static final String VAL_TOALHA = "Toalha";
+    private static final String VAL_SABONETE_CREME = "Sabonete/Creme";
+    private static final String VAL_LAVAR_SECA = "Lavar Roupa Seca";
+    private static final String VAL_LAVAR_MOLHADA = "Lavar Roupa Molhada";
+    private static final String VAL_ROUPA_INTERIOR = "Roupa Interior";
+    private static final String VAL_MEIAS = "Meias";
+    private static final String VAL_AGASALHO = "Agasalho/Casaco";
+    private static final String VAL_DETERGENTE = "Detergente Roupa";
+    private static final String VAL_TSHIRT = "T-shirt/Camisola";
+    private static final String VAL_CALCAS = "Calças";
+
+    private static final String CAT_HIGIENE = "HIGIENE";
+    private static final String CAT_DETERGENTES = "DETERGENTES";
+    private static final String CAT_VESTUARIO = "VESTUARIO";
+
     /**
      * Mapeia a categoria do formulário (Roupa.categoria) para o nome do item no armazém.
      * Para calçado, o mapeamento é feito pelo tamanho (Roupa.tamanho → ItemArmazem.nome).
      */
     private static final Map<String, String> FORM_TO_ARMAZEM = Map.ofEntries(
-        Map.entry("Shampoo", "Champô"),
-        Map.entry("Champô", "Champô"),
-        Map.entry("Gel de Banho", "Gel de Banho"),
-        Map.entry("Toalha", "Toalha"),
-        Map.entry("Sabonete/Creme", "Sabonete/Creme"),
-        Map.entry("Lavar Roupa Seca", "Detergente Roupa"),
-        Map.entry("Lavar Roupa Molhada", "Detergente Roupa"),
-        Map.entry("T-shirt/Camisola", "T-shirt/Camisola"),
-        Map.entry("Calças", "Calças"),
-        Map.entry("Roupa Interior", "Roupa Interior"),
-        Map.entry("Meias", "Meias"),
-        Map.entry("Agasalho/Casaco", "Agasalho/Casaco")
+        Map.entry("Shampoo", VAL_CHAMPO),
+        Map.entry(VAL_CHAMPO, VAL_CHAMPO),
+        Map.entry(VAL_GEL_BANHO, VAL_GEL_BANHO),
+        Map.entry(VAL_TOALHA, VAL_TOALHA),
+        Map.entry(VAL_SABONETE_CREME, VAL_SABONETE_CREME),
+        Map.entry(VAL_LAVAR_SECA, VAL_DETERGENTE),
+        Map.entry(VAL_LAVAR_MOLHADA, VAL_DETERGENTE),
+        Map.entry(VAL_TSHIRT, VAL_TSHIRT),
+        Map.entry(VAL_CALCAS, VAL_CALCAS),
+        Map.entry(VAL_ROUPA_INTERIOR, VAL_ROUPA_INTERIOR),
+        Map.entry(VAL_MEIAS, VAL_MEIAS),
+        Map.entry(VAL_AGASALHO, VAL_AGASALHO)
     );
 
     /**
      * Mapeia a categoria do formulário para a categoria do armazém.
      */
     private static final Map<String, String> FORM_TO_CATEGORIA = Map.ofEntries(
-        Map.entry("Shampoo", "HIGIENE"),
-        Map.entry("Champô", "HIGIENE"),
-        Map.entry("Gel de Banho", "HIGIENE"),
-        Map.entry("Toalha", "HIGIENE"),
-        Map.entry("Sabonete/Creme", "HIGIENE"),
-        Map.entry("Lixívia", "DETERGENTES"),
-        Map.entry("Amaciador", "DETERGENTES"),
-        Map.entry("Detergente Chão", "DETERGENTES"),
-        Map.entry("Lavar Roupa Seca", "DETERGENTES"),
-        Map.entry("Lavar Roupa Molhada", "DETERGENTES"),
-        Map.entry("Roupa Interior", "VESTUARIO"),
-        Map.entry("Meias", "VESTUARIO"),
-        Map.entry("Agasalho/Casaco", "VESTUARIO")
+        Map.entry("Shampoo", CAT_HIGIENE),
+        Map.entry(VAL_CHAMPO, CAT_HIGIENE),
+        Map.entry(VAL_GEL_BANHO, CAT_HIGIENE),
+        Map.entry(VAL_TOALHA, CAT_HIGIENE),
+        Map.entry(VAL_SABONETE_CREME, CAT_HIGIENE),
+        Map.entry("Lixívia", CAT_DETERGENTES),
+        Map.entry("Amaciador", CAT_DETERGENTES),
+        Map.entry("Detergente Chão", CAT_DETERGENTES),
+        Map.entry(VAL_LAVAR_SECA, CAT_DETERGENTES),
+        Map.entry(VAL_LAVAR_MOLHADA, CAT_DETERGENTES),
+        Map.entry(VAL_ROUPA_INTERIOR, CAT_VESTUARIO),
+        Map.entry(VAL_MEIAS, CAT_VESTUARIO),
+        Map.entry(VAL_AGASALHO, CAT_VESTUARIO)
     );
 
     // =====================================================================
@@ -101,7 +117,7 @@ public class ArmazemService {
         return itemArmazemRepository.findAllByOrderByCategoriaAscNomeAsc()
             .stream()
             .map(this::toDTO)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     /**
@@ -111,7 +127,7 @@ public class ArmazemService {
         return itemArmazemRepository.findByCategoria(categoria)
             .stream()
             .map(this::toDTO)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     /**
