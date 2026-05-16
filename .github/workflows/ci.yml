@@ -1,7 +1,9 @@
-name: CI
+name: Backend CI
 
 on:
   pull_request:
+    branches: [ "main", "dev" ]
+  push:
     branches: [ "main", "dev" ]
 
 jobs:
@@ -9,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout do codigo
+      - name: Checkout do código
         uses: actions/checkout@v4
 
       - name: Configurar o Java 21
@@ -19,73 +21,5 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Criar ficheiro .env para CI (Valores Aleatórios)
-        run: |
-          # Gerar chaves de seguranca aleatorias dinamicamente para o ambiente de CI
-          echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
-          echo "BLIND_INDEX_KEY=$(openssl rand -base64 32)" >> .env
-          echo "JWT_SECRET=$(openssl rand -base64 64)" >> .env
-          
-          # Configuracoes de infraestrutura para testes
-          echo "POSTGRES_DB=florinhas" >> .env
-          echo "POSTGRES_USER=testuser" >> .env
-          echo "POSTGRES_PASSWORD=testpass" >> .env
-          echo "SPRING_DATASOURCE_URL_DOCKER=jdbc:postgresql://postgres:5432/florinhas" >> .env
-          echo "SPRING_DATASOURCE_USERNAME=testuser" >> .env
-          echo "SPRING_DATASOURCE_PASSWORD=testpass" >> .env
-          echo "MINIO_ROOT_USER=minioadmin" >> .env
-          echo "MINIO_ROOT_PASSWORD=minioadmin" >> .env
-          echo "MINIO_KMS_SECRET_KEY=my-minio-key:$(openssl rand -base64 32)" >> .env
-          echo "GATEWAY_SHARED_SECRET=ci_shared_secret" >> .env
-          echo "SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop" >> .env
-          echo "CORS_ALLOWED_ORIGINS=http://localhost:3000" >> .env
-          echo "SPRING_MAIL_HOST=localhost" >> .env
-          echo "SPRING_MAIL_PORT=1025" >> .env
-          echo "SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false" >> .env
-          echo "SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false" >> .env
-          echo "MINIO_URL_DOCKER=http://minio:9000" >> .env
-          echo "MINIO_ACCESS_KEY=minioadmin" >> .env
-          echo "MINIO_SECRET_KEY=minioadmin" >> .env
-          echo "MINIO_BUCKET_MARCACOES=marcacoes" >> .env
-          echo "MINIO_BUCKET_REQUISICOES=requisicoes" >> .env
-          echo "NOTIFICACOES_URL_DOCKER=http://notificacoes:8083" >> .env
-
-      - name: Docker Compose
-        run: docker compose up -d
-
-      - name: Verificar se os contentores estao saudaveis
-        run: |
-          echo "A aguardar que os servicos fiquem saudaveis..."
-          
-          # Timeout de 3 minutos (36 * 5s)
-          for i in {1..36}; do
-            # Obtém o estado de todos os serviços
-            # Filtra por serviços que têm Healthcheck definido e verifica se estão 'healthy'
-            # E verifica se todos os serviços estão em estado 'running'
-            ALL_RUNNING=$(docker compose ps --format json | jq -r 'select(.State != "running")' | wc -l)
-            UNHEALTHY=$(docker compose ps --format json | jq -r 'select(.Health == "unhealthy" or .Health == "starting")' | wc -l)
-            
-            if [ "$ALL_RUNNING" -eq "0" ] && [ "$UNHEALTHY" -eq "0" ]; then
-              echo "Todos os servicos estao operacionais!"
-              docker compose ps
-              exit 0
-            fi
-            
-            echo "A aguardar... (Ainda ha servicos a iniciar ou falhados)"
-            docker compose ps --format "table {{.Name}}\t{{.State}}\t{{.Health}}"
-            sleep 5
-          done
-          
-          echo "ERRO: O sistema nao estabilizou a tempo."
-          docker compose ps
-          docker compose logs
-          exit 1
-
-      - name: Correr Testes do Backend (Maven Spring Boot)
-        run: |
-          # Corre os testes a partir da raiz do projeto
-          mvn clean test
-          
-      - name: Limpar contentores
-        if: always()
-        run: docker compose down -v
+      - name: Correr Testes do Backend (Maven)
+        run: mvn clean test
