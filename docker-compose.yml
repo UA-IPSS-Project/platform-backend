@@ -69,6 +69,8 @@ services:
       - SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
+      - SECURE_COOKIES=${SECURE_COOKIES:-true}
+      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
     healthcheck:
       # wget is available in eclipse-temurin:21-jre-alpine; /actuator/health is public (no auth required)
       test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
@@ -76,8 +78,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
-      - SECURE_COOKIES=${SECURE_COOKIES:-true}
-      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
     restart: unless-stopped
     develop:
       watch:
@@ -225,6 +225,11 @@ services:
       - "3443:443"
     volumes:
       - ../platform-frontend/ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
     develop:
       watch:
@@ -257,6 +262,11 @@ services:
       HEALTHCHECK_PORT: 8080
     volumes:
       - ./backups/postgres:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   # Backup automático MinIO
@@ -277,6 +287,11 @@ services:
       - ./scripts/crontab:/etc/crontabs/root
     entrypoint: /bin/sh
     command: -c "chmod +x /backup-minio.sh && crond -f -l 2"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep crond || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
 volumes:
