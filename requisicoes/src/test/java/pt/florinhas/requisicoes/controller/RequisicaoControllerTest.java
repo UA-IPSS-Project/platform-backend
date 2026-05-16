@@ -88,6 +88,9 @@ class RequisicaoControllerTest {
                 "Maria", null, null, Pageable.unpaged());
 
         assertSame(esperado, resultado);
+        verify(requisicaoService).procurarPaginated(
+                RequisicaoEstado.ABERTO, RequisicaoTipo.MANUTENCAO, RequisicaoPrioridade.ALTA,
+                "Maria", null, null, Pageable.unpaged());
     }
 
     @Test

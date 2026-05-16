@@ -82,7 +82,7 @@ public class TermsService {
             "Conteúdo dos termos em " + lang.toUpperCase() + " atualizado.");
     }
 
-    @Cacheable(value = "terms-content", key = "#lang")
+    @Cacheable(value = "terms-content", key = "#lang == null ? null : #lang.toLowerCase()")
     public String getTermsContent(String lang) {
         String key = "en".equalsIgnoreCase(lang) ? KEY_TERMS_EN : KEY_TERMS_PT;
         return systemConfigService.getConfigValue(key, "");
