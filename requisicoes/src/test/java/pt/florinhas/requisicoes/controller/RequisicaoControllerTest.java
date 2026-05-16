@@ -141,8 +141,7 @@ class RequisicaoControllerTest {
                 LocalDateTime.now().plusDays(1).plusHours(3),
                 4,
                 "Motorista",
-                List.of(2L),
-                null, null);
+                List.of(2L), null);
         Requisicao resposta = new RequisicaoTransporte();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
