@@ -59,6 +59,7 @@ services:
       KC_PROXY_HEADERS: xforwarded
     volumes:
       - ./keycloak:/opt/keycloak/data/import
+      - ./keycloak/themes:/opt/keycloak/themes
     ports:
       - "8180:8080"
     depends_on:

@@ -2,6 +2,7 @@
   "realm": "florinhas",
   "enabled": true,
   "displayName": "Florinhas do Vouga",
+  "loginTheme": "florinhas",
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
