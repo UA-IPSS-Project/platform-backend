@@ -95,7 +95,7 @@ class MarcacaoControllerTest {
     @Test
     @DisplayName("Deve libertar slot de reserva temporária")
     void libertarSlot_DeveDelegarNoService() {
-        ResponseEntity<?> result = controller.libertarSlot(55L);
+        ResponseEntity<Void> result = controller.libertarSlot(55L);
         assertEquals(200, result.getStatusCode().value());
         verify(marcacaoService).apagarReservaTemporaria(55L);
     }

@@ -44,7 +44,7 @@ public class CalendarioController {
          */
         @PostMapping("/bloquear")
         @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO')")
-        public ResponseEntity<?> bloquearHorario(@RequestBody BloquearHorarioRequest request) {
+        public ResponseEntity<Map<String, String>> bloquearHorario(@RequestBody BloquearHorarioRequest request) {
 
                 Utilizador funcionario = utilizadorRepository.findById(request.getFuncionarioId())
                                 .orElseThrow(() -> new NotFoundException("Funcionário não encontrado"));
@@ -69,7 +69,7 @@ public class CalendarioController {
          */
         @DeleteMapping("/{id}")
         @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO')")
-        public ResponseEntity<?> removerBloqueio(@PathVariable Long id) {
+        public ResponseEntity<Map<String, String>> removerBloqueio(@PathVariable Long id) {
                 calendarioService.removerBloqueio(id);
                 return ResponseEntity.ok(
                                 Map.of("message", "Bloqueio removido"));

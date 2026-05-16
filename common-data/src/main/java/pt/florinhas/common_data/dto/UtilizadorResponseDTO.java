@@ -64,19 +64,21 @@ public class UtilizadorResponseDTO {
         dto.setLocalEmprego(utilizador.getLocalEmprego());
         dto.setMoradaEmprego(utilizador.getMoradaEmprego());
         dto.setTelefoneEmprego(utilizador.getTelefoneEmprego());
-        if (utilizador instanceof Funcionario func) {
-            dto.setActive(func.isActivo());
-            if (func.getTipo() != null) {
-                dto.setFuncao(func.getTipo().toString());
+        switch (utilizador) {
+            case Funcionario func -> {
+                dto.setActive(func.isActivo());
+                if (func.getTipo() != null) {
+                    dto.setFuncao(func.getTipo().toString());
+                }
+                // Se termsAcceptedAt é null, foi criado pela secretaria
+                dto.setCreatedBySecretaria(utilizador.getTermsAcceptedAt() == null);
             }
-            // Se termsAcceptedAt é null, foi criado pela secretaria
-            dto.setCreatedBySecretaria(utilizador.getTermsAcceptedAt() == null);
-        } else if (utilizador instanceof Utente utente) {
-            dto.setActive(utente.isActivo());
-            dto.setFuncao("UTENTE");
-            dto.setCreatedBySecretaria(utilizador.getTermsAcceptedAt() == null);
-        } else {
-            dto.setActive(true);
+            case Utente utente -> {
+                dto.setActive(utente.isActivo());
+                dto.setFuncao("UTENTE");
+                dto.setCreatedBySecretaria(utilizador.getTermsAcceptedAt() == null);
+            }
+            case null, default -> dto.setActive(true);
         }
         return dto;
     }

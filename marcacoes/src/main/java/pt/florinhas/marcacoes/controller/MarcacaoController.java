@@ -466,7 +466,7 @@ public class MarcacaoController {
      * return resposta vazia de sucesso
      */
     @DeleteMapping("/libertar-slot/{id}")
-    public ResponseEntity<?> libertarSlot(@PathVariable Long id) {
+    public ResponseEntity<Void> libertarSlot(@PathVariable Long id) {
 
         marcacaoService.apagarReservaTemporaria(id);
         return ResponseEntity.ok().build();
