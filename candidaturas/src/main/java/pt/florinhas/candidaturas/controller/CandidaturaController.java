@@ -69,6 +69,38 @@ public class CandidaturaController {
         return ResponseEntity.notFound().build();
     }
 
+    @GetMapping("/forms/{id}/draft")
+    public ResponseEntity<FormDraftResponse> getFormDraft(@PathVariable String id) {
+        FormDraft draft = formService.getDraftByFormId(id);
+        if (draft != null) {
+            return ResponseEntity.ok(FormDraftResponse.fromEntity(draft));
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/forms/{id}/draft")
+    public ResponseEntity<FormDraftResponse> saveFormDraft(
+            @PathVariable String id,
+            @RequestBody FormDraftSave dto,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        FormDraft draft = formService.saveOrUpdateDraft(id, dto, userId);
+        if (draft != null) {
+            return ResponseEntity.ok(FormDraftResponse.fromEntity(draft));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @DeleteMapping("/forms/{id}/draft")
+    public ResponseEntity<Void> deleteFormDraft(@PathVariable String id) {
+        if (!formService.deleteDraftByFormId(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/forms/{id}")
     public ResponseEntity<Void> deleteForm(@PathVariable String id) {
         if (!formService.deleteForm(id)) {

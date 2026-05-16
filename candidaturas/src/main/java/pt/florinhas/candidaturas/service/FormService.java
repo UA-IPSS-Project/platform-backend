@@ -9,9 +9,12 @@ import org.springframework.stereotype.Service;
 
 // From this project
 import pt.florinhas.candidaturas.repository.FormRepository;
+import pt.florinhas.candidaturas.repository.FormDraftRepository;
 import pt.florinhas.candidaturas.domain.Form;
+import pt.florinhas.candidaturas.domain.FormDraft;
 import pt.florinhas.candidaturas.dto.FormCreate;
 import pt.florinhas.candidaturas.dto.FormUpdate;
+import pt.florinhas.candidaturas.dto.FormDraftSave;
 
 // Lombok
 import lombok.AllArgsConstructor;
@@ -22,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FormService {
     private final FormRepository formRepository;
+    private final FormDraftRepository formDraftRepository;
 
     public Form createForm(FormCreate dto, Long userId) {
         if (formRepository.existsByName(dto.getName())) {
@@ -81,5 +85,31 @@ public class FormService {
 
     public List<Form> getForms() {
         return formRepository.findAll();
+    }
+
+    public FormDraft saveOrUpdateDraft(String formId, FormDraftSave dto, Long userId) {
+        if (!formRepository.existsById(formId)) {
+            log.error("Form with id {} does not exist.", formId);
+            return null;
+        }
+        FormDraft draft = formDraftRepository.findByFormId(formId).orElse(new FormDraft());
+        draft.setFormId(formId);
+        draft.setName(dto.getName());
+        draft.setPages(dto.getPages());
+        draft.setAtualizadoPor(userId);
+        draft.setAtualizadoEm(Instant.now());
+        return formDraftRepository.save(draft);
+    }
+
+    public FormDraft getDraftByFormId(String formId) {
+        return formDraftRepository.findByFormId(formId).orElse(null);
+    }
+
+    public boolean deleteDraftByFormId(String formId) {
+        if (formDraftRepository.findByFormId(formId).isEmpty()) {
+            return false;
+        }
+        formDraftRepository.deleteByFormId(formId);
+        return true;
     }
 }
