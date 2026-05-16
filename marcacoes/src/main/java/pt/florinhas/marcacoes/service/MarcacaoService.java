@@ -864,7 +864,8 @@ public class MarcacaoService {
     }
 
     private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration,
-            String summary, Long actorId) {
+                                           String summary, Long actorId) {
+
         String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
         boolean criadoPeloUtente = utenteId.equals(actorId);
 
@@ -872,43 +873,35 @@ public class MarcacaoService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    try {
-                        if (!criadoPeloUtente) {
-                            notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
-                        } else {
-                            // Utente criou a marcação — notificar todas as secretarias
-                            funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
-                                try {
-                                    notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente,
-                                            marcacaoId, data, summary);
-                                } catch (Exception e) {
-                                    log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
-                                }
-                            });
-                        }
-                    } catch (Exception e) {
-                        log.error("Falha ao notificar sobre marcação", e);
-                    }
+                    executarLgicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
                 }
             });
         } else {
-            try {
-                if (!criadoPeloUtente) {
-                    notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
-                } else {
-                    funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
-                        try {
-                            notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId,
-                                    data, summary);
-                        } catch (Exception e) {
-                            log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                log.error("Falha ao notificar sobre marcação", e);
-            }
+            executarLgicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
         }
+    }
+
+    private void executarLgicaNotificacao(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, 
+                                          String summary, String nomeUtente, boolean criadoPeloUtente) {
+        try {
+            if (!criadoPeloUtente) {
+                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+            } else {
+                notificarTodasSecretarias(nomeUtente, marcacaoId, data, summary);
+            }
+        } catch (Exception e) {
+            log.error("Falha ao notificar sobre marcação", e);
+        }
+    }
+
+    private void notificarTodasSecretarias(String nomeUtente, Long marcacaoId, LocalDateTime data, String summary) {
+        funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+            try {
+                notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+            } catch (Exception e) {
+                log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
+            }
+        });
     }
 
     private String maskNif(String nif) {
