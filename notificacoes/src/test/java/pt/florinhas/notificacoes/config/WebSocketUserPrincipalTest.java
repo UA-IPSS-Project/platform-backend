@@ -1,64 +1,55 @@
 package pt.florinhas.notificacoes.config;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 
 class WebSocketUserPrincipalTest {
 
     @Test
-    void getRoles_DeveRetornarRolesDiretas() {
+    void constructorComClaims_DeveRetornarDados() {
+
+        var claims = Jwts.claims()
+                .subject("teste")
+                .add("roles", List.of("ROLE_USER"))
+                .build();
 
         WebSocketUserPrincipal principal =
                 new WebSocketUserPrincipal(
                         "teste",
-                        List.of("ROLE_USER")
-                );
-
-        assertEquals(
-                List.of("ROLE_USER"),
-                principal.getRoles()
-        );
-    }
-
-    @Test
-    void getRoles_DeveRetornarRolesDosClaims() {
-
-        Claims claims =
-                mock(Claims.class);
-
-        when(claims.get("roles"))
-                .thenReturn(List.of("ROLE_ADMIN"));
-
-        WebSocketUserPrincipal principal =
-                new WebSocketUserPrincipal(
-                        "teste",
-                        claims
-                );
-
-        assertEquals(
-                List.of("ROLE_ADMIN"),
-                principal.getRoles()
-        );
-    }
-
-    @Test
-    void getName_DeveRetornarNome() {
-
-        WebSocketUserPrincipal principal =
-                new WebSocketUserPrincipal(
-                        "teste",
-                        List.of()
-                );
+                        claims);
 
         assertEquals(
                 "teste",
-                principal.getName()
-        );
+                principal.getName());
+
+        assertNotNull(
+                principal.getClaims());
+
+        assertEquals(
+                1,
+                principal.getRoles().size());
+    }
+
+    @Test
+    void constructorComRoles_DeveRetornarRoles() {
+
+        WebSocketUserPrincipal principal =
+                new WebSocketUserPrincipal(
+                        "teste",
+                        List.of("ROLE_ADMIN"));
+
+        assertEquals(
+                "teste",
+                principal.getName());
+
+        assertEquals(
+                "ROLE_ADMIN",
+                principal.getRoles().get(0));
     }
 }
