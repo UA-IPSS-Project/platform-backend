@@ -6,7 +6,6 @@ import static org.mockito.Mockito.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -15,11 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import pt.florinhas.api_gateway.dto.LoginFuncionarioRequest;
 import pt.florinhas.api_gateway.dto.UtenteRegisterRequest;
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.exception.BadRequestException;
@@ -32,209 +29,193 @@ import pt.florinhas.common_data.validation.NifValidator;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    @Mock
-    private UtilizadorRepository utilizadorRepository;
+        @Mock
+        private UtilizadorRepository utilizadorRepository;
 
-    @Mock
-    private FuncionarioRepository funcionarioRepository;
+        @Mock
+        private FuncionarioRepository funcionarioRepository;
 
-    @Mock
-    private UtenteRepository utenteRepository;
+        @Mock
+        private UtenteRepository utenteRepository;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
+        @Mock
+        private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private AuthenticationManager authenticationManager;
+        @Mock
+        private AuthenticationManager authenticationManager;
 
-    @Mock
-    private NifValidator nifValidator;
+        @Mock
+        private NifValidator nifValidator;
 
-    @Mock
-    private CryptoUtils cryptoUtils;
+        @Mock
+        private CryptoUtils cryptoUtils;
 
-    private AuthService authService;
+        private AuthService authService;
 
-    @BeforeEach
-    void setUp() {
-        authService = new AuthService(
-                utilizadorRepository,
-                funcionarioRepository,
-                utenteRepository,
-                passwordEncoder,
-                authenticationManager,
-                nifValidator,
-                cryptoUtils);
+        @BeforeEach
+        void setUp() {
+                authService = new AuthService(
+                                utilizadorRepository,
+                                funcionarioRepository,
+                                utenteRepository,
+                                passwordEncoder,
+                                authenticationManager,
+                                nifValidator,
+                                cryptoUtils);
 
-        ReflectionTestUtils.setField(
-                authService,
-                "jwtExpiration",
-                86400000L);
-    }
-    @Test
-    void registerUtente_DeveRegistarUtente() {
+                ReflectionTestUtils.setField(
+                                authService,
+                                "jwtExpiration",
+                                86400000L);
+        }
 
-        UtenteRegisterRequest request =
-                new UtenteRegisterRequest(
-                        "Teste",
-                        "teste@teste.com",
-                        "123456789",
-                        "912345678",
-                        "password",
-                        LocalDate.now(),
-                        true
-                );
+        @Test
+        void registerUtente_DeveRegistarUtente() {
 
-        when(utilizadorRepository.existsByEmail(any()))
-                .thenReturn(false);
+                UtenteRegisterRequest request = new UtenteRegisterRequest(
+                                "Teste",
+                                "teste@teste.com",
+                                "123456789",
+                                "912345678",
+                                "password",
+                                LocalDate.now(),
+                                true);
 
-        when(cryptoUtils.generateBlindIndex(any()))
-                .thenReturn("hash");
+                when(utilizadorRepository.existsByEmail(any()))
+                                .thenReturn(false);
 
-        when(utilizadorRepository.existsByNifHash(any()))
-                .thenReturn(false);
+                when(cryptoUtils.generateBlindIndex(any()))
+                                .thenReturn("hash");
 
-        when(passwordEncoder.encode(any()))
-                .thenReturn("encoded");
+                when(utilizadorRepository.existsByNifHash(any()))
+                                .thenReturn(false);
 
-        when(utenteRepository.save(any()))
-                .thenAnswer(i -> {
-                    Utente u = i.getArgument(0);
-                    u.setId(1L);
-                    return u;
-                });
+                when(passwordEncoder.encode(any()))
+                                .thenReturn("encoded");
 
-        AuthService.AuthResult result =
-                authService.registerUtente(request);
+                when(utenteRepository.save(any()))
+                                .thenAnswer(i -> {
+                                        Utente u = i.getArgument(0);
+                                        u.setId(1L);
+                                        return u;
+                                });
 
-        assertNotNull(result);
-        assertEquals("UTENTE", result.response().role());
+                AuthService.AuthResult result = authService.registerUtente(request);
 
-        verify(utenteRepository).save(any());
-    }
-     @Test
-    void getCurrentUserResponse_DeveRetornarResponse() {
+                assertNotNull(result);
+                assertEquals("UTENTE", result.response().role());
 
-        Utente utente = new Utente();
-        utente.setId(1L);
-        utente.setNome("Teste");
-        utente.setEmail("teste@teste.com");
-        utente.setActivo(true);
+                verify(utenteRepository).save(any());
+        }
 
-        when(utilizadorRepository.findById(1L))
-                .thenReturn(Optional.of(utente));
+        @Test
+        void getCurrentUserResponse_DeveRetornarResponse() {
 
-        var response =
-                authService.getCurrentUserResponse(utente);
+                Utente utente = new Utente();
+                utente.setId(1L);
+                utente.setNome("Teste");
+                utente.setEmail("teste@teste.com");
+                utente.setActivo(true);
 
-        assertTrue(response.isPresent());
-        assertEquals("Teste", response.get().nome());
-    }
+                when(utilizadorRepository.findById(1L))
+                                .thenReturn(Optional.of(utente));
 
-    @Test
-    void requiresPasswordSetup_DeveRetornarTrue() {
+                var response = authService.getCurrentUserResponse(utente);
 
-        Utente utente = new Utente();
-        utente.setTermsAcceptedAt(null);
+                assertTrue(response.isPresent());
+                assertEquals("Teste", response.get().nome());
+        }
 
-        boolean result =
-                authService.requiresPasswordSetup(utente, false);
+        @Test
+        void requiresPasswordSetup_DeveRetornarTrue() {
 
-        assertTrue(result);
-    }
-    @Test
+                Utente utente = new Utente();
+                utente.setTermsAcceptedAt(null);
+
+                boolean result = authService.requiresPasswordSetup(utente, false);
+
+                assertTrue(result);
+        }
+
+        @Test
         void registerUtente_DeveLancarErroQuandoEmailExiste() {
 
-        UtenteRegisterRequest request =
-                new UtenteRegisterRequest(
-                        "Teste",
-                        "teste@teste.com",
-                        "password",
-                        "123456789",
-                        "912345678",
-                        LocalDate.now(),
-                        true
-                );
+                UtenteRegisterRequest request = new UtenteRegisterRequest(
+                                "Teste",
+                                "teste@teste.com",
+                                "password",
+                                "123456789",
+                                "912345678",
+                                LocalDate.now(),
+                                true);
 
-        when(utilizadorRepository.existsByEmail(any()))
-                .thenReturn(true);
+                when(utilizadorRepository.existsByEmail(any()))
+                                .thenReturn(true);
 
-        assertThrows(
-                BadRequestException.class,
-                () -> authService.registerUtente(request)
-        );
+                assertThrows(
+                                BadRequestException.class,
+                                () -> authService.registerUtente(request));
 
-        verify(utenteRepository, never())
-                .save(any());
+                verify(utenteRepository, never())
+                                .save(any());
         }
 
         @Test
         void registerUtente_DeveLancarErroQuandoNifExiste() {
 
-        UtenteRegisterRequest request =
-                new UtenteRegisterRequest(
-                        "Teste",
-                        "teste@teste.com",
-                        "password",
-                        "123456789",
-                        "912345678",
-                        LocalDate.now(),
-                        true
-                );
+                UtenteRegisterRequest request = new UtenteRegisterRequest(
+                                "Teste",
+                                "teste@teste.com",
+                                "password",
+                                "123456789",
+                                "912345678",
+                                LocalDate.now(),
+                                true);
 
-        when(utilizadorRepository.existsByEmail(any()))
-                .thenReturn(false);
+                when(utilizadorRepository.existsByEmail(any()))
+                                .thenReturn(false);
 
-        when(cryptoUtils.generateBlindIndex(any()))
-                .thenReturn("hash");
+                when(cryptoUtils.generateBlindIndex(any()))
+                                .thenReturn("hash");
 
-        when(utilizadorRepository.existsByNifHash(any()))
-                .thenReturn(true);
+                when(utilizadorRepository.existsByNifHash(any()))
+                                .thenReturn(true);
 
-        assertThrows(
-                BadRequestException.class,
-                () -> authService.registerUtente(request)
-        );
+                assertThrows(
+                                BadRequestException.class,
+                                () -> authService.registerUtente(request));
 
-        verify(utenteRepository, never())
-                .save(any());
+                verify(utenteRepository, never())
+                                .save(any());
         }
 
         @Test
         void requiresPasswordSetup_DeveRetornarFalse() {
 
-        Utente utente =
-                new Utente();
+                Utente utente = new Utente();
 
-        utente.setTermsAcceptedAt(
-                LocalDateTime.now()
-        );
+                utente.setTermsAcceptedAt(
+                                LocalDateTime.now());
 
-        boolean result =
-                authService.requiresPasswordSetup(
-                        utente,
-                        false
-                );
+                boolean result = authService.requiresPasswordSetup(
+                                utente,
+                                false);
 
-        assertFalse(result);
+                assertFalse(result);
         }
 
         @Test
         void requiresPasswordSetup_DeveRetornarTrueMesmoComTermsAceites() {
 
-        Utente utente =
-                new Utente();
+                Utente utente = new Utente();
 
-        utente.setTermsAcceptedAt(
-                LocalDateTime.now()
-        );
+                utente.setTermsAcceptedAt(
+                                LocalDateTime.now());
 
-        boolean result =
-                authService.requiresPasswordSetup(
-                        utente,
-                        true
-                );
+                boolean result = authService.requiresPasswordSetup(
+                                utente,
+                                true);
 
-        assertFalse(result);
+                assertFalse(result);
         }
 }
