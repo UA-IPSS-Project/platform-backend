@@ -43,7 +43,7 @@ public class CandidaturaController {
     @PostMapping("/forms")
     public ResponseEntity<FormResponse> createForm(
             @Valid @RequestBody FormCreate dto,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long userId) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -58,7 +58,7 @@ public class CandidaturaController {
     public ResponseEntity<FormResponse> updateForm(
             @PathVariable String id,
             @Valid @RequestBody FormUpdate dto,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long userId) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -82,7 +82,7 @@ public class CandidaturaController {
     public ResponseEntity<FormDraftResponse> saveFormDraft(
             @PathVariable String id,
             @RequestBody FormDraftSave dto,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long userId) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -136,7 +136,7 @@ public class CandidaturaController {
     @PostMapping("/candidaturas")
     public ResponseEntity<CandidaturaResponse> createCandidatura(
             @Valid @RequestBody CandidaturaCreate dto,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long userId) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -151,7 +151,7 @@ public class CandidaturaController {
     public ResponseEntity<CandidaturaResponse> updateCandidatura(
             @PathVariable String id,
             @Valid @RequestBody CandidaturaUpdate dto,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long userId) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -166,7 +166,7 @@ public class CandidaturaController {
     public ResponseEntity<CandidaturaResponse> updateCandidaturaStatus(
             @PathVariable String id,
             @Valid @RequestBody CandidaturaStatusUpdate dto,
-            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(value = "X-Authenticated-User-Id", required = false) Long userId) {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
