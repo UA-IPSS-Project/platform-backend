@@ -1,4 +1,4 @@
-name: Deploy Backend to Azure VM
+name: Deploy Frontend to Azure VM
 
 on:
   push:
@@ -6,24 +6,17 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ipss-vm]
+
     steps:
-      - name: Deploy Backend
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USERNAME }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            # 1. Entrar apenas na pasta do backend
-            cd /home/florinhasuser/ipss-digital/platform-backend
-            
-            # 2. Puxar o código novo
-            git pull origin main
-            
-            # 3. Voltar à pasta mãe e reconstruir APENAS o backend
-            cd ..
-            sudo docker-compose up -d --build backend
-            
-            # 4. Limpeza
-            sudo docker image prune -f
+      - name: Deploy Backend Direct on VM
+        run: |
+          # Entrar na pasta do backend e atualizar o código
+          cd /home/florinhasuser/ipss-digital/platform-backend
+          git pull origin main
+
+          # Reconstruir a app
+          docker compose up -d --build
+          
+          # Limpeza de imagens antigas
+          docker image prune -f

@@ -58,6 +58,8 @@ class RequisicaoServiceTest {
     private MaterialRepository materialRepository;
     @Mock
     private TransporteRepository transporteRepository;
+    @Mock
+    private NotificacaoService notificacaoService;
 
     @InjectMocks
     private RequisicaoService requisicaoService;
@@ -231,8 +233,8 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.ALTA,
                 20L,
                 "Centro de Dia",
-                LocalDateTime.of(2026, 4, 11, 9, 0),
-                LocalDateTime.of(2026, 4, 11, 13, 0),
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(1).plusHours(4),
                 8,
                 "Condutor 1",
                 List.of(30L),
@@ -261,8 +263,8 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.BAIXA,
                 null,
                 "Hospital",
-                LocalDateTime.of(2026, 4, 12, 9, 0),
-                LocalDateTime.of(2026, 4, 12, 11, 0),
+                LocalDateTime.now().plusDays(2),
+                LocalDateTime.now().plusDays(2).plusHours(2),
                 3,
                 "Condutor Teste",
                 List.of(90L),
@@ -290,8 +292,8 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.MEDIA,
                 null,
                 "Centro",
-                LocalDateTime.of(2026, 4, 13, 9, 0),
-                LocalDateTime.of(2026, 4, 13, 10, 0),
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(3).plusHours(1),
                 2,
                 "Condutor Teste",
                 null,
@@ -310,8 +312,8 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.MEDIA,
                 null,
                 "Centro",
-                LocalDateTime.of(2026, 4, 13, 9, 0),
-                LocalDateTime.of(2026, 4, 13, 10, 0),
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(3).plusHours(1),
                 2,
                 "Condutor Teste",
                 List.of(30L),
@@ -331,8 +333,8 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.MEDIA,
                 null,
                 "Centro",
-                LocalDateTime.of(2026, 4, 13, 9, 0),
-                LocalDateTime.of(2026, 4, 13, 10, 0),
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(3).plusHours(1),
                 2,
                 "Condutor Teste",
                 null,
@@ -351,8 +353,8 @@ class RequisicaoServiceTest {
                 RequisicaoPrioridade.MEDIA,
                 null,
                 "Centro",
-                LocalDateTime.of(2026, 4, 13, 10, 0),
-                LocalDateTime.of(2026, 4, 13, 9, 0),
+                LocalDateTime.now().plusDays(3).plusHours(2),
+                LocalDateTime.now().plusDays(3).plusHours(1),
                 2,
                 "Condutor Teste",
                 List.of(30L),
@@ -366,7 +368,7 @@ class RequisicaoServiceTest {
 
     @Test
     void criarTransporte_quandoRegressoIgualSaida_deveLancarErro() {
-        LocalDateTime dataHora = LocalDateTime.of(2026, 4, 13, 10, 0);
+        LocalDateTime dataHora = LocalDateTime.now().plusDays(4);
 
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                 "Pedido inválido",

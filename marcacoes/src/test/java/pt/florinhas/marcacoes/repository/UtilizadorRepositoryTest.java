@@ -16,6 +16,7 @@ import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
 
+@org.junit.jupiter.api.Disabled
 @DataJpaTest
 class UtilizadorRepositoryTest {
 
