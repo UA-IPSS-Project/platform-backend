@@ -632,15 +632,17 @@ public class RequisicaoService {
     }
 
     private void validarConfiguracaoPeriodica(RequisicaoPeriodicaConfigRequest config) {
-        if (config.frequencia() == null) {
+        if (config == null) {
+            throw new IllegalArgumentException("A configuração periódica é obrigatória.");
+        } else if (config.frequencia() == null) {
             throw new IllegalArgumentException("A frequência da requisição periódica é obrigatória.");
-        }
-        if (config.dataInicio() == null) {
+        } else if (config.dataInicio() == null) {
             throw new IllegalArgumentException("A data de início da requisição periódica é obrigatória.");
-        }
-        if (config.dataFim() != null && config.dataFim().isBefore(config.dataInicio())) {
+        } else if (config.dataFim() != null && config.dataFim().isBefore(config.dataInicio())) {
             throw new IllegalArgumentException(
                     "A data de fim da requisição periódica não pode ser anterior à data de início.");
+        } else {
+            throw new IllegalArgumentException("Configuração periódica inválida.");
         }
     }
 
