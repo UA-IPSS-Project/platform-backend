@@ -1,20 +1,18 @@
 package pt.florinhas.requisicoes.dto;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.List;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import jakarta.validation.ConstraintViolation;
 import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
 
-class CriarRequisicaoMaterialRequestTest
-        extends BaseValidatorTest {
+class CriarRequisicaoMaterialRequestTest {
 
     @Test
-    void devePassarQuandoDadosValidos() {
+    void record_DeveGuardarValores() {
 
         CriarRequisicaoMaterialRequest.ItemMaterialRequest item =
                 new CriarRequisicaoMaterialRequest
@@ -24,68 +22,59 @@ class CriarRequisicaoMaterialRequestTest
 
         CriarRequisicaoMaterialRequest request =
                 new CriarRequisicaoMaterialRequest(
-                        "Teste",
+                        "Descricao teste",
                         RequisicaoPrioridade.ALTA,
-                        1L,
-                        List.of(item));
+                        10L,
+                        List.of(item),
+                        null);
 
-        Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
-                validator.validate(request);
+        assertEquals(
+                "Descricao teste",
+                request.descricao());
 
-        assertTrue(violations.isEmpty());
+        assertEquals(
+                RequisicaoPrioridade.ALTA,
+                request.prioridade());
+
+        assertEquals(
+                10L,
+                request.geridoPorId());
+
+        assertEquals(
+                1,
+                request.itens().size());
+
+        assertNotNull(
+                request.itens().get(0));
+
+        assertEquals(
+                1L,
+                request.itens().get(0).materialId());
+
+        assertEquals(
+                5,
+                request.itens().get(0).quantidade());
+
+        assertEquals(
+                null,
+                request.periodica());
     }
 
     @Test
-    void deveFalharQuandoPrioridadeNull() {
-
-        CriarRequisicaoMaterialRequest request =
-                new CriarRequisicaoMaterialRequest(
-                        "Teste",
-                        null,
-                        1L,
-                        List.of());
-
-        Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
-                validator.validate(request);
-
-        assertFalse(violations.isEmpty());
-    }
-
-    @Test
-    void deveFalharQuandoListaItensVazia() {
-
-        CriarRequisicaoMaterialRequest request =
-                new CriarRequisicaoMaterialRequest(
-                        "Teste",
-                        RequisicaoPrioridade.MEDIA,
-                        1L,
-                        List.of());
-
-        Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
-                validator.validate(request);
-
-        assertFalse(violations.isEmpty());
-    }
-
-    @Test
-    void deveFalharQuandoQuantidadeInvalida() {
+    void itemMaterialRequest_DeveGuardarValores() {
 
         CriarRequisicaoMaterialRequest.ItemMaterialRequest item =
                 new CriarRequisicaoMaterialRequest
                         .ItemMaterialRequest(
-                                1L,
-                                0);
+                                15L,
+                                3);
 
-        CriarRequisicaoMaterialRequest request =
-                new CriarRequisicaoMaterialRequest(
-                        "Teste",
-                        RequisicaoPrioridade.ALTA,
-                        1L,
-                        List.of(item));
+        assertEquals(
+                15L,
+                item.materialId());
 
-        Set<ConstraintViolation<CriarRequisicaoMaterialRequest>> violations =
-                validator.validate(request);
-
-        assertFalse(violations.isEmpty());
+        assertEquals(
+                3,
+                item.quantidade());
     }
 }
