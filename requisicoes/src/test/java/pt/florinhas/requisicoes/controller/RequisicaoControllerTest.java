@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
+import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
@@ -28,8 +29,6 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.service.RequisicaoService;
-
-import pt.florinhas.common_data.domain.Utilizador;
 
 @ExtendWith(MockitoExtension.class)
 class RequisicaoControllerTest {
@@ -96,8 +95,10 @@ class RequisicaoControllerTest {
     @Test
     void criarMaterial_deveRetornarResponseOkComBody() {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
-                "material", RequisicaoPrioridade.MEDIA, null,
-                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)));
+                "material",
+                RequisicaoPrioridade.MEDIA,
+                null,
+            List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)), null);
         Requisicao resposta = new RequisicaoMaterial();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
@@ -112,9 +113,16 @@ class RequisicaoControllerTest {
     @Test
     void criarTransporte_deveRetornarResponseOkComBody() {
         CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                "transporte", RequisicaoPrioridade.BAIXA, null, "Porto",
-                LocalDateTime.of(2026, 3, 21, 9, 0), LocalDateTime.of(2026, 3, 21, 12, 0),
-                4, "Motorista", List.of(2L), null);
+                "transporte",
+                RequisicaoPrioridade.BAIXA,
+                null,
+            "Porto",
+            LocalDateTime.of(2026, 3, 21, 9, 0),
+            LocalDateTime.of(2026, 3, 21, 12, 0),
+            4,
+            "Motorista",
+            List.of(2L),
+            null, null);
         Requisicao resposta = new RequisicaoTransporte();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
@@ -129,7 +137,10 @@ class RequisicaoControllerTest {
     @Test
     void criarManutencao_deveRetornarResponseOkComBody() {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
-                "manutencao", RequisicaoPrioridade.URGENTE, 2L, List.of());
+                "manutencao",
+                RequisicaoPrioridade.URGENTE,
+                2L,
+                List.of(), null);
         Requisicao resposta = new RequisicaoManutencao();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
