@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 // From this project
 import pt.florinhas.candidaturas.repository.FormRepository;
 import pt.florinhas.candidaturas.repository.FormDraftRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.candidaturas.domain.Form;
 import pt.florinhas.candidaturas.domain.FormDraft;
 import pt.florinhas.candidaturas.dto.FormCreate;
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 public class FormService {
     private final FormRepository formRepository;
     private final FormDraftRepository formDraftRepository;
+    private final UtilizadorRepository utilizadorRepository;
 
     public Form createForm(FormCreate dto, Long userId) {
         if (formRepository.existsByName(dto.getName())) {
@@ -38,6 +40,7 @@ public class FormService {
         form.setStatus(dto.getStatus() != null ? dto.getStatus() : pt.florinhas.candidaturas.domain.FormStatus.RASCUNHO);
         form.setPages(dto.getPages());
         form.setCriadoPor(userId);
+        form.setCriadoPorNome(utilizadorRepository.findById(userId).map(u -> u.getNome()).orElse(null));
         form.setCriadoEm(Instant.now());
 
         return formRepository.save(form);
@@ -61,6 +64,7 @@ public class FormService {
         }
         form.setPages(dto.getPages());
         form.setAtualizadoPor(userId);
+        form.setAtualizadoPorNome(utilizadorRepository.findById(userId).map(u -> u.getNome()).orElse(null));
         form.setAtualizadoEm(Instant.now());
 
         return formRepository.save(form);
@@ -97,6 +101,7 @@ public class FormService {
         draft.setName(dto.getName());
         draft.setPages(dto.getPages());
         draft.setAtualizadoPor(userId);
+        draft.setAtualizadoPorNome(utilizadorRepository.findById(userId).map(u -> u.getNome()).orElse(null));
         draft.setAtualizadoEm(Instant.now());
         return formDraftRepository.save(draft);
     }

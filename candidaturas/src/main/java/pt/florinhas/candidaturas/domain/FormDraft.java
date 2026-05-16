@@ -27,5 +27,6 @@ public class FormDraft {
     private List<FormPage> pages;
 
     private Long atualizadoPor;
+    private String atualizadoPorNome;
     private Instant atualizadoEm;
 }

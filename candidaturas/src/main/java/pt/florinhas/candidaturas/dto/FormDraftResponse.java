@@ -15,6 +15,7 @@ public class FormDraftResponse {
     private String name;
     private List<FormPage> pages;
     private Long atualizadoPor;
+    private String atualizadoPorNome;
     private Instant atualizadoEm;
 
     public static FormDraftResponse fromEntity(FormDraft draft) {
@@ -25,6 +26,7 @@ public class FormDraftResponse {
         dto.setName(draft.getName());
         dto.setPages(draft.getPages());
         dto.setAtualizadoPor(draft.getAtualizadoPor());
+        dto.setAtualizadoPorNome(draft.getAtualizadoPorNome());
         dto.setAtualizadoEm(draft.getAtualizadoEm());
         return dto;
     }

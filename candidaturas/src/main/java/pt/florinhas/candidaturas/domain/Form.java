@@ -35,7 +35,9 @@ public class Form {
 
     // Rastreamento
     private Long criadoPor;
+    private String criadoPorNome;
     private Instant criadoEm;
     private Long atualizadoPor;
+    private String atualizadoPorNome;
     private Instant atualizadoEm;
 }

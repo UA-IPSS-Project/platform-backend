@@ -20,8 +20,10 @@ public class FormResponse {
     private FormStatus status;
     private List<FormPage> pages;
     private Long criadoPor;
+    private String criadoPorNome;
     private Instant criadoEm;
     private Long atualizadoPor;
+    private String atualizadoPorNome;
     private Instant atualizadoEm;
 
     public static FormResponse fromEntity(Form form) {
@@ -34,8 +36,10 @@ public class FormResponse {
         dto.setStatus(form.getStatus());
         dto.setPages(form.getPages());
         dto.setCriadoPor(form.getCriadoPor());
+        dto.setCriadoPorNome(form.getCriadoPorNome());
         dto.setCriadoEm(form.getCriadoEm());
         dto.setAtualizadoPor(form.getAtualizadoPor());
+        dto.setAtualizadoPorNome(form.getAtualizadoPorNome());
         dto.setAtualizadoEm(form.getAtualizadoEm());
         return dto;
     }
