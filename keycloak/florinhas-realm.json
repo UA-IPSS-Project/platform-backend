@@ -45,7 +45,7 @@
       "clientId": "florinhas-gateway",
       "enabled": true,
       "publicClient": false,
-      "secret": "${KEYCLOAK_GATEWAY_SECRET}",
+      "secret": "florinhas-gateway-secret",
       "serviceAccountsEnabled": true,
       "directAccessGrantsEnabled": false,
       "standardFlowEnabled": false
