@@ -36,7 +36,7 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 
 @ExtendWith(MockitoExtension.class)
-public class UtilizadorServiceTest {
+class UtilizadorServiceTest {
 
     @Mock
     private UtilizadorRepository utilizadorRepository;
@@ -126,7 +126,7 @@ public class UtilizadorServiceTest {
     @Test
     @DisplayName("Deve lançar erro ao obter utente com NIF inválido")
     void obterOuCriarUtente_InvalidNif_ShouldThrowException() {
-        doThrow(new BadRequestException("Erro NIF")).when(nifValidator).validateRequiredOrThrow(eq("123"));
+        doThrow(new BadRequestException("Erro NIF")).when(nifValidator).validateRequiredOrThrow("123");
         assertThrows(BadRequestException.class, () -> utilizadorService.obterOuCriarUtente("123", "N", "E", "P"));
     }
 
