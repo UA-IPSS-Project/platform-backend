@@ -2,6 +2,8 @@ package pt.florinhas.marcacoes.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,6 +74,7 @@ public class TermsService {
     }
 
     @Transactional
+    @CacheEvict(value = "terms-content", allEntries = true)
     public void updateTermsContent(String lang, String content) {
         String key = "en".equalsIgnoreCase(lang) ? KEY_TERMS_EN : KEY_TERMS_PT;
         systemConfigService.setConfigValue(key, content, "Conteúdo dos termos em " + lang.toUpperCase());
@@ -79,6 +82,7 @@ public class TermsService {
             "Conteúdo dos termos em " + lang.toUpperCase() + " atualizado.");
     }
 
+    @Cacheable(value = "terms-content", key = "#lang == null ? null : #lang.toLowerCase()")
     public String getTermsContent(String lang) {
         String key = "en".equalsIgnoreCase(lang) ? KEY_TERMS_EN : KEY_TERMS_PT;
         return systemConfigService.getConfigValue(key, "");
@@ -91,6 +95,7 @@ public class TermsService {
      *    garantindo que não há emails enviados em caso de rollback.
      */
     @Transactional
+    @CacheEvict(value = "terms-content", allEntries = true)
     public int publishTerms(String contentPt, String contentEn, String changeDescription, Long publishedBy) {
         int newVersion = getCurrentVersion() + 1;
 

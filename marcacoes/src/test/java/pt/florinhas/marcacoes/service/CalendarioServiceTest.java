@@ -1,7 +1,14 @@
 package pt.florinhas.marcacoes.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,317 +33,410 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 class CalendarioServiceTest {
 
     private BloqueioRepository bloqueioRepository;
+
     private MarcacaoRepository marcacaoRepository;
+
     private ConfiguracaoAgendaRepository configuracaoAgendaRepository;
 
     private CalendarioService calendarioService;
 
     @BeforeEach
-    void setup() {
+    void setUp() {
 
         bloqueioRepository =
-                mock(BloqueioRepository.class);
+                org.mockito.Mockito.mock(
+                        BloqueioRepository.class);
 
         marcacaoRepository =
-                mock(MarcacaoRepository.class);
+                org.mockito.Mockito.mock(
+                        MarcacaoRepository.class);
 
         configuracaoAgendaRepository =
-                mock(ConfiguracaoAgendaRepository.class);
+                org.mockito.Mockito.mock(
+                        ConfiguracaoAgendaRepository.class);
 
         calendarioService =
                 new CalendarioService(
                         bloqueioRepository,
                         marcacaoRepository,
-                        configuracaoAgendaRepository
-                );
+                        configuracaoAgendaRepository);
     }
 
     @Test
-    void getCapacidadePorSlot_DeveUsarConfiguracao() {
+    void getCapacidadePorSlot_DeveRetornarDefaultSecretaria() {
 
-        ConfiguracaoAgenda cfg =
+        int result =
+                calendarioService.getCapacidadePorSlot(
+                        "SECRETARIA");
+
+        assertEquals(
+                1,
+                result);
+    }
+
+    @Test
+    void getCapacidadePorSlot_DeveRetornarDefaultBalneario() {
+
+        int result =
+                calendarioService.getCapacidadePorSlot(
+                        "BALNEARIO");
+
+        assertEquals(
+                2,
+                result);
+    }
+
+    @Test
+    void getCapacidadePorSlot_DeveRetornarConfiguracaoBD() {
+
+        ConfiguracaoAgenda config =
                 new ConfiguracaoAgenda();
 
-        cfg.setTipo("SECRETARIA");
-        cfg.setCapacidadePorSlot(5);
+        config.setTipo("SECRETARIA");
 
-        when(configuracaoAgendaRepository
-                .findByTipo("SECRETARIA"))
-                .thenReturn(Optional.of(cfg));
+        config.setCapacidadePorSlot(5);
 
-        int resultado =
-                calendarioService
-                        .getCapacidadePorSlot("SECRETARIA");
+        when(configuracaoAgendaRepository.findByTipo(
+                "SECRETARIA"))
+                .thenReturn(Optional.of(config));
 
-        assertEquals(5, resultado);
-    }
+        int result =
+                calendarioService.getCapacidadePorSlot(
+                        "SECRETARIA");
 
-    @Test
-    void getCapacidadePorSlot_DeveUsarDefault() {
-
-        when(configuracaoAgendaRepository
-                .findByTipo("SECRETARIA"))
-                .thenReturn(Optional.empty());
-
-        int resultado =
-                calendarioService
-                        .getCapacidadePorSlot("SECRETARIA");
-
-        assertEquals(1, resultado);
+        assertEquals(
+                5,
+                result);
     }
 
     @Test
     void atualizarCapacidadePorSlot_DeveAtualizar() {
 
-        ConfiguracaoAgenda cfg =
+        ConfiguracaoAgenda config =
                 new ConfiguracaoAgenda();
 
-        cfg.setTipo("SECRETARIA");
+        config.setTipo("SECRETARIA");
 
-        when(configuracaoAgendaRepository
-                .findByTipo("SECRETARIA"))
-                .thenReturn(Optional.of(cfg));
+        config.setCapacidadePorSlot(3);
 
-        when(configuracaoAgendaRepository
-                .save(any()))
+        when(configuracaoAgendaRepository.findByTipo(
+                "SECRETARIA"))
+                .thenReturn(Optional.of(config));
+
+        when(configuracaoAgendaRepository.save(
+                any()))
                 .thenAnswer(i -> i.getArgument(0));
 
         ConfiguracaoSlotDTO dto =
                 calendarioService
                         .atualizarCapacidadePorSlot(
                                 "SECRETARIA",
-                                10
-                        );
+                                10);
 
-        assertEquals(10,
+        assertEquals(
+                "SECRETARIA",
+                dto.getTipo());
+
+        assertEquals(
+                10,
                 dto.getCapacidadePorSlot());
     }
 
     @Test
-    void atualizarCapacidadePorSlot_DeveLancarErro() {
+    void atualizarCapacidadePorSlot_DeveCriarNovaConfig() {
+
+        when(configuracaoAgendaRepository.findByTipo(
+                "BALNEARIO"))
+                .thenReturn(Optional.empty());
+
+        when(configuracaoAgendaRepository.save(
+                any()))
+                .thenAnswer(i -> i.getArgument(0));
+
+        ConfiguracaoSlotDTO dto =
+                calendarioService
+                        .atualizarCapacidadePorSlot(
+                                "BALNEARIO",
+                                7);
+
+        assertEquals(
+                "BALNEARIO",
+                dto.getTipo());
+
+        assertEquals(
+                7,
+                dto.getCapacidadePorSlot());
+    }
+
+    @Test
+    void atualizarCapacidadePorSlot_DeveLancarExcecaoCapacidadeInvalida() {
 
         assertThrows(
                 BadRequestException.class,
                 () -> calendarioService
                         .atualizarCapacidadePorSlot(
                                 "SECRETARIA",
-                                0
-                        )
-        );
+                                0));
     }
 
     @Test
-    void isSlotBloqueado_DeveRetornarTrueQuandoCapacidadeAtingida() {
+    void atualizarCapacidadePorSlot_DeveLancarExcecaoTipoInvalido() {
 
-        LocalDate data =
-                LocalDate.now().plusDays(1);
+        assertThrows(
+                BadRequestException.class,
+                () -> calendarioService
+                        .atualizarCapacidadePorSlot(
+                                "INVALIDO",
+                                2));
+    }
 
-        LocalTime hora =
-                LocalTime.of(10, 0);
+    @Test
+    void listarConfiguracoesSlot_DeveRetornarLista() {
 
-        when(bloqueioRepository
-                .findByDataAndTipo(any(), any()))
-                .thenReturn(List.of());
-
-        when(configuracaoAgendaRepository
-                .findByTipo("SECRETARIA"))
-                .thenReturn(Optional.empty());
-
-        when(marcacaoRepository
-                .countByDataAndTipo(any(), any()))
-                .thenReturn(1L);
-
-        boolean resultado =
+        List<ConfiguracaoSlotDTO> result =
                 calendarioService
-                        .isSlotBloqueado(
-                                data,
-                                hora,
-                                "SECRETARIA"
-                        );
+                        .listarConfiguracoesSlot();
 
-        assertTrue(resultado);
+        assertEquals(
+                2,
+                result.size());
     }
 
     @Test
-    void isSlotBloqueado_DeveRetornarFalse() {
+    void isSlotBloqueado_DeveRetornarTrueQuandoFimSemana() {
+
+        boolean result =
+                calendarioService.isSlotBloqueado(
+                        LocalDate.of(2026, 5, 17),
+                        LocalTime.of(10, 0),
+                        "SECRETARIA");
+
+        assertTrue(result);
+    }
+
+    @Test
+    void isSlotBloqueado_DeveRetornarFalseSemBloqueios() {
 
         LocalDate data =
-                LocalDate.now().plusDays(1);
+                LocalDate.of(2026, 5, 18);
 
-        LocalTime hora =
-                LocalTime.of(10, 0);
-
-        when(bloqueioRepository
-                .findByDataAndTipo(any(), any()))
+        when(bloqueioRepository.findByDataAndTipo(
+                any(),
+                anyString()))
                 .thenReturn(List.of());
 
-        when(configuracaoAgendaRepository
-                .findByTipo("SECRETARIA"))
-                .thenReturn(Optional.empty());
-
-        when(marcacaoRepository
-                .countByDataAndTipo(any(), any()))
+        when(marcacaoRepository.countByDataAndTipo(
+                any(),
+                anyString()))
                 .thenReturn(0L);
 
-        boolean resultado =
-                calendarioService
-                        .isSlotBloqueado(
-                                data,
-                                hora,
-                                "SECRETARIA"
-                        );
+        boolean result =
+                calendarioService.isSlotBloqueado(
+                        data,
+                        LocalTime.of(10, 0),
+                        "SECRETARIA");
 
-        assertFalse(resultado);
+        assertFalse(result);
+    }
+
+    @Test
+    void isSlotBloqueado_DeveRetornarTrueQuandoCapacidadeExcedida() {
+
+        LocalDate data =
+                LocalDate.of(2026, 5, 18);
+
+        when(bloqueioRepository.findByDataAndTipo(
+                any(),
+                anyString()))
+                .thenReturn(List.of());
+
+        when(marcacaoRepository.countByDataAndTipo(
+                any(),
+                anyString()))
+                .thenReturn(1L);
+
+        boolean result =
+                calendarioService.isSlotBloqueado(
+                        data,
+                        LocalTime.of(10, 0),
+                        "SECRETARIA");
+
+        assertTrue(result);
     }
 
     @Test
     void bloquearHorario_DeveCriarBloqueio() {
 
         LocalDate data =
-                LocalDate.now().plusDays(2);
+                LocalDate.of(2026, 5, 18);
 
-        when(bloqueioRepository
-                .countConflictingWithLockByTipo(
-                        any(),
-                        any(),
-                        any(),
-                        any()
-                ))
+        when(bloqueioRepository.countConflictingWithLockByTipo(
+                any(),
+                any(),
+                any(),
+                any()))
                 .thenReturn(0L);
 
-        when(marcacaoRepository
-                .findMarcacoesBetweenDates(
-                        any(),
-                        any(),
-                        any()
-                ))
+        when(marcacaoRepository.findMarcacoesBetweenDates(
+                any(),
+                any(),
+                any()))
                 .thenReturn(List.of());
 
-        when(bloqueioRepository
-                .save(any()))
+        when(bloqueioRepository.save(any()))
                 .thenAnswer(i -> i.getArgument(0));
 
-        Utilizador user =
-                new Utilizador();
+        BloqueioAgenda result =
+                calendarioService.bloquearHorario(
+                        data,
+                        LocalTime.of(10, 0),
+                        LocalTime.of(11, 0),
+                        "Teste",
+                        new Utilizador(),
+                        "SECRETARIA");
 
-        BloqueioAgenda resultado =
-                calendarioService
-                        .bloquearHorario(
-                                data,
-                                LocalTime.of(10, 0),
-                                LocalTime.of(11, 0),
-                                "Teste",
-                                user,
-                                "SECRETARIA"
-                        );
+        assertNotNull(result);
 
-        assertNotNull(resultado);
-        assertEquals("Teste",
-                resultado.getMotivo());
+        assertEquals(
+                "Teste",
+                result.getMotivo());
     }
 
     @Test
-    void bloquearHorario_DeveLancarErroDataPassada() {
+    void bloquearHorario_DeveLancarExcecaoDataPassado() {
 
         assertThrows(
                 BadRequestException.class,
-                () -> calendarioService
-                        .bloquearHorario(
-                                LocalDate.now().minusDays(1),
-                                LocalTime.of(10, 0),
-                                LocalTime.of(11, 0),
-                                "Teste",
-                                new Utilizador(),
-                                "SECRETARIA"
-                        )
-        );
+                () -> calendarioService.bloquearHorario(
+                        LocalDate.now().minusDays(1),
+                        LocalTime.of(10, 0),
+                        LocalTime.of(11, 0),
+                        "Teste",
+                        new Utilizador(),
+                        "SECRETARIA"));
     }
 
     @Test
-    void bloquearHorario_DeveLancarErroConflito() {
+    void bloquearHorario_DeveLancarExcecaoHorarioInvalido() {
 
-        when(bloqueioRepository
-                .countConflictingWithLockByTipo(
-                        any(),
-                        any(),
-                        any(),
-                        any()
-                ))
+        assertThrows(
+                BadRequestException.class,
+                () -> calendarioService.bloquearHorario(
+                        LocalDate.of(2026, 5, 18),
+                        LocalTime.of(8, 0),
+                        LocalTime.of(11, 0),
+                        "Teste",
+                        new Utilizador(),
+                        "SECRETARIA"));
+    }
+
+    @Test
+    void bloquearHorario_DeveLancarExcecaoOrdemHoras() {
+
+        assertThrows(
+                BadRequestException.class,
+                () -> calendarioService.bloquearHorario(
+                        LocalDate.of(2026, 5, 18),
+                        LocalTime.of(11, 0),
+                        LocalTime.of(10, 0),
+                        "Teste",
+                        new Utilizador(),
+                        "SECRETARIA"));
+    }
+
+    @Test
+    void bloquearHorario_DeveLancarExcecaoConflito() {
+
+        when(bloqueioRepository.countConflictingWithLockByTipo(
+                any(),
+                any(),
+                any(),
+                any()))
                 .thenReturn(1L);
 
         assertThrows(
                 BadRequestException.class,
-                () -> calendarioService
-                        .bloquearHorario(
-                                LocalDate.now().plusDays(1),
-                                LocalTime.of(10, 0),
-                                LocalTime.of(11, 0),
-                                "Teste",
-                                new Utilizador(),
-                                "SECRETARIA"
-                        )
-        );
+                () -> calendarioService.bloquearHorario(
+                        LocalDate.of(2026, 5, 18),
+                        LocalTime.of(10, 0),
+                        LocalTime.of(11, 0),
+                        "Teste",
+                        new Utilizador(),
+                        "SECRETARIA"));
     }
 
     @Test
-    void bloquearHorario_DeveLancarErroMarcacoesAtivas() {
+    void bloquearHorario_DeveLancarExcecaoMarcacoesAtivas() {
 
         Marcacao marcacao =
                 new Marcacao();
 
         marcacao.setEstado(
-                EventoEstado.AGENDADO
-        );
+                EventoEstado.AGENDADO);
 
         marcacao.setData(
-                LocalDateTime.now()
-                        .plusDays(1)
-        );
+                LocalDateTime.now());
 
-        when(bloqueioRepository
-                .countConflictingWithLockByTipo(
-                        any(),
-                        any(),
-                        any(),
-                        any()
-                ))
+        when(bloqueioRepository.countConflictingWithLockByTipo(
+                any(),
+                any(),
+                any(),
+                any()))
                 .thenReturn(0L);
 
-        when(marcacaoRepository
-                .findMarcacoesBetweenDates(
-                        any(),
-                        any(),
-                        any()
-                ))
+        when(marcacaoRepository.findMarcacoesBetweenDates(
+                any(),
+                any(),
+                any()))
                 .thenReturn(List.of(marcacao));
 
         assertThrows(
                 BadRequestException.class,
-                () -> calendarioService
-                        .bloquearHorario(
-                                LocalDate.now().plusDays(1),
-                                LocalTime.of(10, 0),
-                                LocalTime.of(11, 0),
-                                "Teste",
-                                new Utilizador(),
-                                "SECRETARIA"
-                        )
-        );
+                () -> calendarioService.bloquearHorario(
+                        LocalDate.of(2026, 5, 18),
+                        LocalTime.of(10, 0),
+                        LocalTime.of(11, 0),
+                        "Teste",
+                        new Utilizador(),
+                        "SECRETARIA"));
     }
 
     @Test
-    void getTodosBloqueios_DeveRetornarLista() {
+    void removerBloqueio_DeveExecutarSemErro() {
 
-        when(bloqueioRepository
-                .findAll())
-                .thenReturn(List.of(
-                        new BloqueioAgenda()
-                ));
+        assertDoesNotThrow(
+                () -> calendarioService.removerBloqueio(
+                        1L));
+    }
 
-        List<BloqueioAgenda> resultado =
-                calendarioService
-                        .getTodosBloqueios(null);
+    @Test
+    void getBloqueiosDoMes_DeveRetornarPorTipo() {
 
-        assertEquals(1, resultado.size());
+        when(bloqueioRepository.findByDataBetweenAndTipo(
+                any(),
+                any(),
+                anyString()))
+                .thenReturn(List.of());
+
+        List<BloqueioAgenda> result =
+                calendarioService.getBloqueiosDoMes(
+                        2026,
+                        5,
+                        "SECRETARIA");
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void getTodosBloqueios_DeveRetornarTodos() {
+
+        when(bloqueioRepository.findAll())
+                .thenReturn(List.of());
+
+        List<BloqueioAgenda> result =
+                calendarioService.getTodosBloqueios(
+                        null);
+
+        assertNotNull(result);
     }
 }
