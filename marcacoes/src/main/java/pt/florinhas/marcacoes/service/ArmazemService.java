@@ -71,6 +71,12 @@ public class ArmazemService {
     private static final String CAT_DETERGENTES = "DETERGENTES";
     private static final String CAT_VESTUARIO = "VESTUARIO";
     private static final String CAT_CALCADO = "CALCADO";
+    private static final String BRAND_GENERATIVE = "Generative";
+    private static final String STATUS_OK = "OK";
+    private static final String UNIT_UN = "un";
+    private static final String UNIT_PARES = "pares";
+    private static final String UNIT_L = "L";
+    private static final String BRAND_STANDARD = "Standard";
 
     /**
      * Mapeia a categoria do formulário (Roupa.categoria) para o nome do item no armazém.
@@ -158,7 +164,7 @@ public class ArmazemService {
         item.setNome(nomeNorm);
         item.setQuantidade(dto.getQuantidade() != null ? Math.max(0, dto.getQuantidade()) : 0);
         item.setQuantidadeMinima(dto.getQuantidadeMinima() != null ? Math.max(0, dto.getQuantidadeMinima()) : 0);
-        item.setUnidade(dto.getUnidade() != null ? dto.getUnidade() : "un");
+        item.setUnidade(dto.getUnidade() != null ? dto.getUnidade() : UNIT_UN);
         item.setMarca(dto.getMarca());
         item.setTamanho(dto.getTamanho());
         item.setVolume(dto.getVolume());
@@ -391,7 +397,7 @@ public class ArmazemService {
             Optional<ItemArmazem> itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
-                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : STATUS_BAIXO;
+                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? STATUS_OK : STATUS_BAIXO;
                 resultado.put(formItem, Map.of(
                     KEY_TRACKED, true,
                     "quantidade", item.getQuantidade(),
@@ -417,7 +423,7 @@ public class ArmazemService {
             Optional<ItemArmazem> itemOpt = itemArmazemRepository.findByCategoriaAndNome(CAT_CALCADO, tamanho);
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
-                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : STATUS_BAIXO;
+                String estado = item.getQuantidade() >= item.getQuantidadeMinima() ? STATUS_OK : STATUS_BAIXO;
                 resultado.put(tamanho, Map.of(
                     KEY_TRACKED, true,
                     "quantidade", item.getQuantidade(),
@@ -541,29 +547,29 @@ public class ArmazemService {
         log.info("A inicializar dados padrão do armazém...");
 
         // Detergentes
-        criarItemSeNaoExiste(CAT_DETERGENTES, "Amaciador", 20, 5, "L", "Florinhas", null, 5.0, "Amaciador de roupa");
-        criarItemSeNaoExiste(CAT_DETERGENTES, "Lixívia", 10, 5, "L", "Domestos", null, 2.0, "Lixívia desinfetante");
-        criarItemSeNaoExiste(CAT_DETERGENTES, "Detergente Chão", 15, 8, "L", "Ajax", null, 5.0, "Detergente para o chão");
-        criarItemSeNaoExiste(CAT_DETERGENTES, VAL_DETERGENTE, 50, 10, "L", "Florinhas", null, 10.0, "Detergente para a roupa");
+        criarItemSeNaoExiste(CAT_DETERGENTES, "Amaciador", 20, 5, UNIT_L, "Florinhas", null, 5.0, "Amaciador de roupa");
+        criarItemSeNaoExiste(CAT_DETERGENTES, "Lixívia", 10, 5, UNIT_L, "Domestos", null, 2.0, "Lixívia desinfetante");
+        criarItemSeNaoExiste(CAT_DETERGENTES, "Detergente Chão", 15, 8, UNIT_L, "Ajax", null, 5.0, "Detergente para o chão");
+        criarItemSeNaoExiste(CAT_DETERGENTES, VAL_DETERGENTE, 50, 10, UNIT_L, "Florinhas", null, 10.0, "Detergente para a roupa");
 
         // Higiene
-        criarItemSeNaoExiste(CAT_HIGIENE, "Sabonete Líquido", 100, 15, "un", "Nivea", null, 0.5, "Sabonete para mãos");
-        criarItemSeNaoExiste(CAT_HIGIENE, VAL_CHAMPO, 40, 8, "un", "Garnier", null, 0.4, "Champô para cabelo");
-        criarItemSeNaoExiste(CAT_HIGIENE, VAL_GEL_BANHO, 40, 10, "un", "Dove", null, 0.5, "Gel de banho hidratante");
-        criarItemSeNaoExiste(CAT_HIGIENE, VAL_TOALHA, 100, 20, "un", "Standard", null, null, "Toalha de banho branca");
-        criarItemSeNaoExiste(CAT_HIGIENE, VAL_SABONETE_CREME, 50, 15, "un", "Dove", null, null, "Sabonete em barra ou creme");
+        criarItemSeNaoExiste(CAT_HIGIENE, "Sabonete Líquido", 100, 15, UNIT_UN, "Nivea", null, 0.5, "Sabonete para mãos");
+        criarItemSeNaoExiste(CAT_HIGIENE, VAL_CHAMPO, 40, 8, UNIT_UN, "Garnier", null, 0.4, "Champô para cabelo");
+        criarItemSeNaoExiste(CAT_HIGIENE, VAL_GEL_BANHO, 40, 10, UNIT_UN, "Dove", null, 0.5, "Gel de banho hidratante");
+        criarItemSeNaoExiste(CAT_HIGIENE, VAL_TOALHA, 100, 20, UNIT_UN, BRAND_STANDARD, null, null, "Toalha de banho branca");
+        criarItemSeNaoExiste(CAT_HIGIENE, VAL_SABONETE_CREME, 50, 15, UNIT_UN, "Dove", null, null, "Sabonete em barra ou creme");
         criarItemSeNaoExiste(CAT_HIGIENE, "Toalhetes", 60, 30, "pk", "Dodot", null, null, "Toalhetes de limpeza");
 
         // Vestuário
-        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_TSHIRT, 20, 10, "un", "Generative", "M", null, "T-shirt básica");
-        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_CALCAS, 15, 10, "un", "Generative", "L", null, "Calças confortáveis");
-        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_ROUPA_INTERIOR, 40, 20, "un", "Generative", "M", null, "Boxers/Cuecas");
-        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_MEIAS, 50, 20, "pares", "Generative", "39-42", null, "Meias de algodão");
-        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_AGASALHO, 10, 5, "un", "Generative", "XL", null, "Casaco de inverno");
+        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_TSHIRT, 20, 10, UNIT_UN, BRAND_GENERATIVE, "M", null, "T-shirt básica");
+        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_CALCAS, 15, 10, UNIT_UN, BRAND_GENERATIVE, "L", null, "Calças confortáveis");
+        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_ROUPA_INTERIOR, 40, 20, UNIT_UN, BRAND_GENERATIVE, "M", null, "Boxers/Cuecas");
+        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_MEIAS, 50, 20, UNIT_PARES, BRAND_GENERATIVE, "39-42", null, "Meias de algodão");
+        criarItemSeNaoExiste(CAT_VESTUARIO, VAL_AGASALHO, 10, 5, UNIT_UN, BRAND_GENERATIVE, "XL", null, "Casaco de inverno");
 
         // Calçado (tamanhos 35 a 46)
         for (int tamanho = 35; tamanho <= 46; tamanho++) {
-            criarItemSeNaoExiste(CAT_CALCADO, String.valueOf(tamanho), 10, 3, "pares", "Standard", String.valueOf(tamanho), null, "Sapatos tamanho " + tamanho);
+            criarItemSeNaoExiste(CAT_CALCADO, String.valueOf(tamanho), 10, 3, UNIT_PARES, BRAND_STANDARD, String.valueOf(tamanho), null, "Sapatos tamanho " + tamanho);
         }
 
         log.info("Dados padrão do armazém inicializados com sucesso.");
@@ -604,7 +610,7 @@ public class ArmazemService {
         dto.setTamanho(item.getTamanho());
         dto.setVolume(item.getVolume());
         dto.setDescricao(item.getDescricao());
-        dto.setEstado(item.getQuantidade() >= item.getQuantidadeMinima() ? "OK" : STATUS_BAIXO);
+        dto.setEstado(item.getQuantidade() >= item.getQuantidadeMinima() ? STATUS_OK : STATUS_BAIXO);
         return dto;
     }
 }

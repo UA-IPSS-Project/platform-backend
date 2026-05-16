@@ -204,6 +204,25 @@ class RequisicaoServiceTest {
     }
 
     @Test
+    void criarTransporte_quandoRegressoAntesDaSaida_deveLancarErro() {
+        LocalDateTime saida = LocalDateTime.now().plusDays(10);
+
+        CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                "Pedido de transporte",
+                RequisicaoPrioridade.ALTA,
+                null,
+                "Lisboa",
+                saida,
+                saida.minusHours(1),
+                3,
+                "Manuel",
+                List.of(5L),
+                null);
+
+        assertThrows(IllegalArgumentException.class, () -> service.criarTransporte(request, 1L));
+    }
+
+    @Test
     void criarManutencao_quandoDadosValidos_deveCriar() {
         Funcionario criadoPor = funcionarioComId(1L);
         when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
