@@ -4,16 +4,40 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
 
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
+import io.minio.MinioClient;
+import io.minio.SetBucketEncryptionArgs;
+import io.minio.messages.SseConfiguration;
+import io.minio.messages.SseConfigurationRule;
+import io.minio.messages.SseAlgorithm;
+
+import pt.florinhas.common_data.domain.*;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.security.CryptoUtils;
 
 @SpringBootApplication
+@ComponentScan(basePackages = {
+		"pt.florinhas.marcacoes",
+		"pt.florinhas.common_data"
+})
+@EntityScan(basePackages = {
+		"pt.florinhas.marcacoes.domain",
+		"pt.florinhas.common_data.domain"
+})
+@EnableJpaRepositories(basePackages = {
+		"pt.florinhas.marcacoes.repository",
+		"pt.florinhas.common_data.repository"
+})
 @EnableScheduling
 public class MarcacoesApplication {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MarcacoesApplication.class);
@@ -32,22 +56,37 @@ public class MarcacoesApplication {
 	}
 
 	/**
-	 * CommandLineRunner que garante a existência de contas base para administração
-	 * e secretaria ao iniciar a aplicação.
+	 * CommandLineRunner que garante a existência de contas base funcionais
+	 * (Secretaria, Balneário, Escola) ao iniciar a aplicação.
 	 */
 	@Bean
-	CommandLineRunner initAdminSecretaria(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder) {
+	NifValidator nifValidator() {
+		return new NifValidator();
+	}
+
+	@Bean
+	CommandLineRunner configureBucketEncryption(
+			MinioClient minioClient,
+			@Value("${minio.bucket:marcacoes}") String bucketName) {
+		return args -> {
+			try {
+				minioClient.setBucketEncryption(SetBucketEncryptionArgs.builder()
+						.bucket(bucketName)
+						.config(new SseConfiguration(new SseConfigurationRule(SseAlgorithm.AES256, null)))
+						.build());
+				LOGGER.info(">>> SSE-S3 encryption enabled on bucket '{}'.", bucketName);
+			} catch (Exception e) {
+				LOGGER.warn(">>> Could not enable SSE-S3 on bucket '{}': {}", bucketName, e.getMessage());
+			}
+		};
+	}
+	@ConditionalOnBean(PasswordEncoder.class)
+
+	@Bean
+	CommandLineRunner initDefaultFuncionarios(FuncionarioRepository funcionarioRepository, PasswordEncoder encoder, CryptoUtils cryptoUtils) {
 		return args -> {
 
-			upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
-					"999999999",
-					"Admin Plataforma",
-					"admin@florinhasdovouga.pt",
-					"999999999",
-					"admin123",
-					FuncionarioTipo.ADMIN));
-
-			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
 				    "999999998",
 				    "Funcionário Secretaria",
 				    "secretaria@florinhasdovouga.pt",
@@ -55,7 +94,7 @@ public class MarcacoesApplication {
 				    "sec123",
 				    FuncionarioTipo.SECRETARIA));
 
-			    upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+			    upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
 				    "999999997",
 				    "Funcionário Balneário",
 				    "balneario@florinhasdovouga.pt",
@@ -63,35 +102,46 @@ public class MarcacoesApplication {
 				    "bal123",
 				    FuncionarioTipo.BALNEARIO));
 
-				upsertFuncionario(funcionarioRepository, encoder, new SeedAccount(
+				upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
 				    "999999996",
 				    "Funcionário Escola",
 				    "escola@florinhasdovouga.pt",
 				    "999999996",
 				    "esc123",
 				    FuncionarioTipo.ESCOLA));
+
+			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
+				    "999999995",
+				    "Encarregado Proteção Dados",
+				    "dpo@florinhasdovouga.pt",
+				    "999999995",
+				    "dpo123",
+				    FuncionarioTipo.DPO));
 		};
 	}
 
 	private static void upsertFuncionario(
 			FuncionarioRepository funcionarioRepository,
 			PasswordEncoder encoder,
+			CryptoUtils cryptoUtils,
 			SeedAccount account) {
-		Funcionario funcionario = funcionarioRepository.findByNif(account.nif()).orElseGet(Funcionario::new);
-		boolean isNew = funcionario.getId() == null;
+		String nif = account.nif();
+		var byEmail = funcionarioRepository.findByEmail(account.email());
+		Funcionario funcionario = funcionarioRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif))
+				.or(() -> byEmail.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(byEmail.get(0)))
+				.orElseGet(Funcionario::new);
 
-		if (!isNew) {
-			return;
-		}
+		boolean isNew = funcionario.getId() == null;
 
 		funcionario.setNome(account.nome());
 		funcionario.setEmail(account.email());
-		funcionario.setNif(account.nif());
+		funcionario.setNif(nif);
 		funcionario.setTelefone(account.telefone());
 		funcionario.setTipo(account.tipo());
 		funcionario.setActivo(true);
+		funcionario.setTermsAcceptedAt(java.time.LocalDateTime.now());
 
-		if (isNew || funcionario.getPassHash() == null || funcionario.getPassHash().isBlank()) {
+		if (funcionario.getPassHash() == null || funcionario.getPassHash().isBlank()) {
 			funcionario.setPassHash(encoder.encode(account.defaultPassword()));
 		}
 

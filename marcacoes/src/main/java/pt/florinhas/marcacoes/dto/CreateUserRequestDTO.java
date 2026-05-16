@@ -1,11 +1,12 @@
 package pt.florinhas.marcacoes.dto;
 
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
 @Data
 public class CreateUserRequestDTO {
@@ -16,7 +17,6 @@ public class CreateUserRequestDTO {
     @Pattern(regexp = "\\d{9}", message = "NIF deve conter exatamente 9 dígitos numéricos")
     private String nif;
 
-    @NotBlank(message = "O contacto é obrigatório")
     @Pattern(regexp = "\\d{9}", message = "O contacto deve ter 9 dígitos")
     private String contact;
 
@@ -25,10 +25,11 @@ public class CreateUserRequestDTO {
     private String email;
 
     @NotBlank(message = "A data de nascimento é obrigatória")
-    private String birthDate; // YYYY-MM-DD
+    private String birthDate;
 
     @JsonProperty("isEmployee")
-    @JsonAlias({ "employee" })
+    @JsonAlias({"employee"})
     private boolean employee;
-    private String role; // Only if isEmployee is true
+
+    private String role;
 }

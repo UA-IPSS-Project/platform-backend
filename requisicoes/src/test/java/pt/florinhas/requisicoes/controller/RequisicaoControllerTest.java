@@ -12,8 +12,12 @@ import org.mockito.Mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
+import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
@@ -24,6 +28,7 @@ import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
+import pt.florinhas.requisicoes.service.AuditService;
 import pt.florinhas.requisicoes.service.RequisicaoService;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,30 +36,36 @@ class RequisicaoControllerTest {
 
     @Mock
     private RequisicaoService requisicaoService;
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private RequisicaoController requisicaoController;
 
     @Test
-    void listar_semEstado_deveUsarListarTodas() {
-        List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.listarTodas()).thenReturn(esperado);
+    void listar_semEstado_deveUsarProcurarPaginated() {
+        Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
+        Pageable pageable = Pageable.unpaged();
+        when(requisicaoService.procurarPaginated(null, null, null, null, null, null, pageable)).thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.listar(null);
+        Page<Requisicao> resultado = requisicaoController.listar(null, pageable);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).listarTodas();
+        verify(requisicaoService).procurarPaginated(null, null, null, null, null, null, pageable);
     }
 
     @Test
-    void listar_comEstado_deveUsarListarPorEstado() {
-        List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.listarPorEstado(RequisicaoEstado.EM_ANALISE)).thenReturn(esperado);
+    void listar_comEstado_deveUsarProcurarPaginated() {
+        Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
+        Pageable pageable = Pageable.unpaged();
+        when(requisicaoService.procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, pageable))
+                .thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_ANALISE);
+        Page<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO, pageable);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).listarPorEstado(RequisicaoEstado.EM_ANALISE);
+        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null,
+                pageable);
     }
 
     @Test
@@ -70,28 +81,35 @@ class RequisicaoControllerTest {
 
     @Test
     void procurar_deveDelegarNoServiceComTodosOsParametros() {
-        List<Requisicao> esperado = List.of(new RequisicaoManutencao());
-        when(requisicaoService.procurar(
-                RequisicaoEstado.ENVIADA,
+        Page<Requisicao> esperado = new PageImpl<>(List.of(new RequisicaoManutencao()));
+        Pageable pageable = Pageable.unpaged();
+        when(requisicaoService.procurarPaginated(
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João")).thenReturn(esperado);
+                null,
+                null,
+                pageable)).thenReturn(esperado);
 
-        List<Requisicao> resultado = requisicaoController.procurar(
-                RequisicaoEstado.ENVIADA,
+        Page<Requisicao> resultado = requisicaoController.procurar(
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null,
+                pageable);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).procurar(
-                RequisicaoEstado.ENVIADA,
+        verify(requisicaoService).procurarPaginated(
+                RequisicaoEstado.ABERTO,
                 RequisicaoTipo.MANUTENCAO,
                 RequisicaoPrioridade.ALTA,
                 "Maria",
-                "João");
+                null,
+                null,
+                pageable);
     }
 
     @Test
@@ -99,14 +117,14 @@ class RequisicaoControllerTest {
         CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                 "material",
                 RequisicaoPrioridade.MEDIA,
-                LocalDateTime.of(2026, 2, 28, 10, 0),
-                1L,
                 null,
-            List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)));
+                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)), null);
         Requisicao resposta = new RequisicaoMaterial();
-        when(requisicaoService.criarMaterial(request)).thenReturn((RequisicaoMaterial) resposta);
+        Utilizador utilizador = new Utilizador();
+        utilizador.setId(1L);
+        when(requisicaoService.criarMaterial(request, 1L)).thenReturn((RequisicaoMaterial) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarMaterial(request);
+        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarMaterial(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());
@@ -118,19 +136,19 @@ class RequisicaoControllerTest {
                 "transporte",
                 RequisicaoPrioridade.BAIXA,
                 null,
-                1L,
-                null,
-            "Porto",
-            LocalDateTime.of(2026, 3, 21, 9, 0),
-            LocalDateTime.of(2026, 3, 21, 12, 0),
-            4,
-            "Motorista",
-            List.of(2L),
-            null);
+                "Porto",
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(1).plusHours(3),
+                4,
+                "Motorista",
+                List.of(2L),
+                null, null);
         Requisicao resposta = new RequisicaoTransporte();
-        when(requisicaoService.criarTransporte(request)).thenReturn((RequisicaoTransporte) resposta);
+        Utilizador utilizador = new Utilizador();
+        utilizador.setId(1L);
+        when(requisicaoService.criarTransporte(request, 1L)).thenReturn((RequisicaoTransporte) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarTransporte(request);
+        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarTransporte(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());
@@ -141,15 +159,14 @@ class RequisicaoControllerTest {
         CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
                 "manutencao",
                 RequisicaoPrioridade.URGENTE,
-                null,
-                1L,
                 2L,
-            "porta",
-            null);
+                List.of(), null);
         Requisicao resposta = new RequisicaoManutencao();
-        when(requisicaoService.criarManutencao(request)).thenReturn((RequisicaoManutencao) resposta);
+        Utilizador utilizador = new Utilizador();
+        utilizador.setId(1L);
+        when(requisicaoService.criarManutencao(request, 1L)).thenReturn((RequisicaoManutencao) resposta);
 
-        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarManutencao(request);
+        ResponseEntity<Requisicao> responseEntity = requisicaoController.criarManutencao(request, utilizador);
 
         assertEquals(200, responseEntity.getStatusCode().value());
         assertSame(resposta, responseEntity.getBody());

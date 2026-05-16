@@ -1,9 +1,12 @@
 package pt.florinhas.requisicoes.domain;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,8 +19,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import pt.florinhas.common_data.domain.Funcionario;
 
 @Entity
 @Table(name = "Requisicao")
@@ -48,9 +50,6 @@ public abstract class Requisicao {
     @Column(nullable = false, length = 40)
     private RequisicaoTipo tipo;
 
-    @Column(name = "tempo_limite")
-    private LocalDateTime tempoLimite;
-
     @ManyToOne
     @JoinColumn(name = "criado_por_id", nullable = false)
     private Funcionario criadoPor;
@@ -65,10 +64,24 @@ public abstract class Requisicao {
     @Column(name = "ultima_alteracao_estado_em", nullable = false)
     private LocalDateTime ultimaAlteracaoEstadoEm;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "periodica_frequencia", length = 10)
+    private PeriodicidadeFrequencia periodicaFrequencia;
+
+    @Column(name = "periodica_data_inicio")
+    private LocalDate periodicaDataInicio;
+
+    @Column(name = "periodica_data_fim")
+    private LocalDate periodicaDataFim;
+
+    public boolean isPeriodica() {
+        return periodicaFrequencia != null;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (estado == null) {
-            estado = RequisicaoEstado.ENVIADA;
+            estado = RequisicaoEstado.ABERTO;
         }
         criadoEm = LocalDateTime.now();
         ultimaAlteracaoEstadoEm = criadoEm;

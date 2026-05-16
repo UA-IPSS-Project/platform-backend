@@ -1,32 +1,36 @@
 package pt.florinhas.api_gateway.controller;
 
 import java.util.List;
-import java.util.Map;
+import java.time.Duration;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.http.HttpCookie;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
-
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import pt.florinhas.api_gateway.dto.AuthResponse;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+
+import pt.florinhas.api_gateway.dto.*;
 import pt.florinhas.api_gateway.security.JwtService;
 import pt.florinhas.api_gateway.security.JwtService.AuthUserClaims;
-import reactor.core.publisher.Mono;
+import pt.florinhas.api_gateway.service.AuthService;
+import pt.florinhas.api_gateway.service.AuthService.AuthResult;
+
+import pt.florinhas.common_data.domain.Utilizador;
+
+import pt.florinhas.api_gateway.service.AuditClient;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final WebClient webClient;
+    private final AuthService authService;
     private final JwtService jwtService;
-
-    @Value("${auth.marcacoes-base-url:http://localhost:8081}")
-    private String marcacoesBaseUrl;
+    private final AuditClient auditClient;
 
     @Value("${app.secure-cookies:false}")
     private boolean secureCookies;
@@ -34,184 +38,151 @@ public class AuthController {
     @Value("${app.cookie-samesite:Lax}")
     private String cookieSameSite;
 
-    @Value("${gateway.shared-secret:}")
-    private String gatewaySharedSecret;
+    @Value("${jwt.expiration:86400000}")
+    private long jwtExpiration;
 
-    public AuthController(WebClient webClient, JwtService jwtService) {
-        this.webClient = webClient;
+    public AuthController(AuthService authService, JwtService jwtService, AuditClient auditClient) {
+        this.authService = authService;
         this.jwtService = jwtService;
+        this.auditClient = auditClient;
     }
 
     @PostMapping("/login/funcionario")
-    public Mono<ResponseEntity<Object>> loginFuncionario(@RequestBody Map<String, Object> payload) {
-        return proxyLoginOrRegister("/api/auth/login/funcionario", payload);
+    public ResponseEntity<AuthResponse> loginFuncionario(
+            @RequestBody LoginFuncionarioRequest request,
+            ServerHttpRequest httpRequest) {
+        AuthResult result = authService.loginFuncionario(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "LOGIN_FUNCIONARIO", "UTILIZADOR", result.response().id(),
+                "Login de funcionario (" + result.response().role() + "): " + result.response().email(),
+                getClientIp(httpRequest));
+        return withJwtCookie(result.response(), httpRequest);
     }
 
     @PostMapping("/login/utente")
-    public Mono<ResponseEntity<Object>> loginUtente(@RequestBody Map<String, Object> payload) {
-        return proxyLoginOrRegister("/api/auth/login/utente", payload);
+    public ResponseEntity<AuthResponse> loginUtente(
+            @RequestBody LoginUtenteRequest request,
+            ServerHttpRequest httpRequest) {
+        AuthResult result = authService.loginUtente(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "LOGIN_UTENTE", "UTILIZADOR", result.response().id(),
+                "Login de utente: " + result.response().email(),
+                getClientIp(httpRequest));
+        return withJwtCookie(result.response(), httpRequest);
     }
 
     @PostMapping("/register/utente")
-    public Mono<ResponseEntity<Object>> registerUtente(@RequestBody Map<String, Object> payload) {
-        return proxyLoginOrRegister("/api/auth/register/utente", payload);
+    public ResponseEntity<AuthResponse> registerUtente(
+            @Valid @RequestBody UtenteRegisterRequest request,
+            ServerHttpRequest httpRequest) {
+        AuthResult result = authService.registerUtente(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "REGISTO_UTENTE", "UTILIZADOR", result.response().id(),
+                "Novo registo de utente: " + result.response().email(),
+                getClientIp(httpRequest));
+        return withJwtCookie(result.response(), httpRequest);
     }
 
     @PostMapping("/register/funcionario")
-    public Mono<ResponseEntity<Object>> registerFuncionario(@RequestBody Map<String, Object> payload) {
-        return proxyLoginOrRegister("/api/auth/register/funcionario", payload);
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<?> me(ServerHttpRequest request) {
-        String token = extractToken(request);
-        if (!StringUtils.hasText(token)) {
-            return ResponseEntity.status(401).build();
-        }
-
-        try {
-            var claims = jwtService.parseClaims(token);
-            AuthResponse response = new AuthResponse(
-                    claims.get("userId", Number.class).longValue(),
-                    claims.get("email", String.class),
-                    claims.get("nome", String.class),
-                    claims.get("role", String.class),
-                    claims.get("nif", String.class),
-                    claims.get("telefone", String.class),
-                    claims.getExpiration().getTime(),
-                    true);
-            return ResponseEntity.ok(response);
-        } catch (Exception ex) {
-            return ResponseEntity.status(401).build();
-        }
+    public ResponseEntity<AuthResponse> registerFuncionario(
+            @Valid @RequestBody FuncionarioRegisterRequest request,
+            ServerHttpRequest httpRequest) {
+        AuthResult result = authService.registerFuncionario(request);
+        auditClient.logAsync(result.response().id(), result.response().nome(),
+                "REGISTO_FUNCIONARIO", "UTILIZADOR", result.response().id(),
+                "Novo registo de funcionario " + result.response().role() + ": " + result.response().email(),
+                getClientIp(httpRequest));
+        return withJwtCookie(result.response(), httpRequest);
     }
 
     @PutMapping("/password")
-    public Mono<ResponseEntity<Object>> updatePassword(
-            @RequestBody Map<String, Object> payload,
-            ServerHttpRequest request) {
+    public ResponseEntity<Void> updatePassword(@RequestBody UpdatePasswordRequest request,
+            @AuthenticationPrincipal Utilizador utilizador) {
+        authService.updatePassword(utilizador.getId(), request.newPassword(), request.termsAccepted());
+        return ResponseEntity.ok().build();
+    }
 
-        String token = extractToken(request);
-        if (!StringUtils.hasText(token)) {
-            return Mono.just(ResponseEntity.status(401).body((Object) null));
+    @GetMapping("/me")
+    public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal Utilizador utilizador) {
+        var response = authService.getCurrentUserResponse(utilizador);
+        if (response.isEmpty()) {
+            return ResponseEntity.status(401).build();
         }
-        String user = null;
-        String roles = null;
-        String userId = null;
-        try {
-            var claims = jwtService.parseClaims(token);
-            user = claims.get("email", String.class);
-            roles = claims.get("role", String.class);
-            userId = String.valueOf(claims.get("userId", Number.class).longValue());
-        } catch (Exception e) {
-            return Mono.just(ResponseEntity.status(401).body((Object) null));
-        }
-
-        return webClient.put()
-                .uri(marcacoesBaseUrl + "/api/auth/password")
-                .header("X-Authenticated-User", user)
-                .header("X-Authenticated-Roles", roles == null ? "" : roles)
-                .header("X-Authenticated-User-Id", userId == null ? "" : userId)
-                .header("X-Gateway-Secret", gatewaySharedSecret)
-                .bodyValue(payload)
-                .retrieve()
-                .toBodilessEntity()
-                .map(entity -> ResponseEntity.status(entity.getStatusCode()).body((Object) null))
-                .onErrorResume(WebClientResponseException.class,
-                    ex -> Mono.just(ResponseEntity.status(ex.getStatusCode()).body((Object) ex.getResponseBodyAsString())));
+        return ResponseEntity.ok(response.get());
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(
+            @AuthenticationPrincipal Utilizador utilizador,
+            ServerHttpRequest httpRequest) {
+        if (utilizador != null) {
+            auditClient.logAsync(utilizador.getId(), utilizador.getNome(),
+                    "LOGOUT", "UTILIZADOR", utilizador.getId(),
+                    "Logout: " + utilizador.getEmail(),
+                    getClientIp(httpRequest));
+        }
+        boolean cookieSecure = shouldUseSecureCookie(httpRequest);
         ResponseCookie jwtCookie = ResponseCookie.from("jwt", "")
             .httpOnly(true)
-            .secure(secureCookies)
+            .secure(cookieSecure)
             .path("/")
             .maxAge(0)
             .sameSite(cookieSameSite)
             .build();
+        return ResponseEntity.ok()
+            .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
+            .build();
+    }
+
+    private String getClientIp(ServerHttpRequest request) {
+        String forwarded = request.getHeaders().getFirst("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) return forwarded.split(",")[0].trim();
+        String realIp = request.getHeaders().getFirst("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) return realIp;
+        var addr = request.getRemoteAddress();
+        return addr != null ? addr.getAddress().getHostAddress() : "unknown";
+    }
+
+    private ResponseEntity<AuthResponse> withJwtCookie(AuthResponse response, ServerHttpRequest httpRequest) {
+        boolean cookieSecure = shouldUseSecureCookie(httpRequest);
+        String roleName = response.role() == null ? "UTENTE" : response.role();
+        if (!roleName.startsWith("ROLE_")) {
+            roleName = "ROLE_" + roleName;
+        }
+
+        String token = jwtService.generateToken(new AuthUserClaims(
+            response.id(),
+            response.email(),
+            response.nome(),
+            response.role(),
+            response.nif(),
+            response.telefone(),
+            List.of(new SimpleGrantedAuthority(roleName))));
+
+        ResponseCookie jwtCookie = ResponseCookie.from("jwt", token)
+            .httpOnly(true)
+            .secure(cookieSecure)
+            .path("/")
+            .maxAge(Duration.ofMillis(jwtExpiration))
+            .sameSite(cookieSameSite)
+            .build();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
-                .build();
+            .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
+            .body(response);
     }
 
-    private Mono<ResponseEntity<Object>> proxyLoginOrRegister(String path, Map<String, Object> payload) {
-        return webClient.post()
-            .uri(marcacoesBaseUrl + path)
-            .header("X-Gateway-Secret", gatewaySharedSecret)
-            .bodyValue(payload)
-            .retrieve()
-            .bodyToMono(AuthResponse.class)
-            .flatMap(downstream -> {
-                if (downstream == null) {
-                    return Mono.just(ResponseEntity.status(502)
-                    .body((Object) Map.of("message", "Resposta inválida do serviço de autenticação")));
-                }
-
-                String roleName = downstream.role() == null ? "UTENTE" : downstream.role();
-                if (!roleName.startsWith("ROLE_")) {
-                roleName = "ROLE_" + roleName;
-                }
-
-                String token = jwtService.generateToken(new AuthUserClaims(
-                    downstream.id(),
-                    downstream.email(),
-                    downstream.nome(),
-                    downstream.role(),
-                    downstream.nif(),
-                    downstream.telefone(),
-                    List.of(new SimpleGrantedAuthority(roleName))));
-
-                ResponseCookie cookie = ResponseCookie.from("jwt", token)
-                    .httpOnly(true)
-                    .secure(secureCookies)
-                    .path("/")
-                    .maxAge(-1)
-                    .sameSite(cookieSameSite)
-                    .build();
-
-
-                // Derivar expiresAt do claim exp do JWT
-                long expiresAt = 0L;
-                try {
-                    var claims = jwtService.parseClaims(token);
-                    if (claims.getExpiration() != null) {
-                        expiresAt = claims.getExpiration().getTime();
-                    }
-                } catch (Exception e) {
-                    expiresAt = 0L;
-                }
-
-                AuthResponse response = new AuthResponse(
-                    downstream.id(),
-                    downstream.email(),
-                    downstream.nome(),
-                    downstream.role(),
-                    downstream.nif(),
-                    downstream.telefone(),
-                    expiresAt,
-                    downstream.active());
-
-                return Mono.just(ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body((Object) response));
-            })
-            .onErrorResume(WebClientResponseException.class,
-                ex -> Mono.just(ResponseEntity.status(ex.getStatusCode()).body((Object) ex.getResponseBodyAsString())));
-    }
-
-    private String extractToken(ServerHttpRequest request) {
-        HttpCookie cookie = request.getCookies().getFirst("jwt");
-        if (cookie != null && StringUtils.hasText(cookie.getValue())) {
-            return cookie.getValue();
+    private boolean shouldUseSecureCookie(ServerHttpRequest request) {
+        if (!secureCookies) {
+            return false;
         }
 
-        String authHeader = request.getHeaders().getFirst("Authorization");
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
+        String scheme = request.getURI().getScheme();
+        if ("https".equalsIgnoreCase(scheme)) {
+            return true;
         }
 
-        return null;
+        String forwardedProto = request.getHeaders().getFirst("X-Forwarded-Proto");
+        return forwardedProto != null && forwardedProto.toLowerCase().contains("https");
     }
 }

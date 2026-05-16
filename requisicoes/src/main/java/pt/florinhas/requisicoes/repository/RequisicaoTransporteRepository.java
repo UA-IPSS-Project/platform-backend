@@ -11,4 +11,5 @@ public interface RequisicaoTransporteRepository extends JpaRepository<Requisicao
 	boolean existsByTransporteId(Long transporteId);
 
 	boolean existsByTransportesTransporteId(Long transporteId);
+	boolean existsByDescricao(String descricao);
 }

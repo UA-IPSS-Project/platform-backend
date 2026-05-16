@@ -40,6 +40,13 @@ public class Documento {
     private Long id;
 
     /**
+     * Número sequencial do documento dentro da marcação.
+     * Substitui o UUID para identificação amigável.
+     */
+    @Column(name = "sequencia")
+    private Integer sequencia;
+
+    /**
      * Nome original do ficheiro quando foi enviado.
      */
     @Column(name = "nome_original", nullable = false, length = 255)
@@ -72,10 +79,24 @@ public class Documento {
     private Long tamanho;
 
     /**
+     * Finalidade do documento (RGPD - art.º 13.º).
+     * Exemplo: "Comprovativo de residência", "Atestado médico", etc.
+     */
+    @Column(name = "finalidade", length = 255)
+    private String finalidade;
+
+    /**
      * Data/hora em que o documento foi enviado.
      */
     @Column(name = "uploaded_em", nullable = false, updatable = false)
     private LocalDateTime uploadedEm;
+
+    /**
+     * Data de expiração do documento (RGPD - retenção de dados).
+     * Após esta data, o documento pode ser automaticamente removido.
+     */
+    @Column(name = "data_expiracao")
+    private LocalDateTime dataExpiracao;
 
     /**
      * Marcação à qual este documento está associado.

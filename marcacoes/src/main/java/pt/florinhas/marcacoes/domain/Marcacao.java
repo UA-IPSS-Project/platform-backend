@@ -1,7 +1,8 @@
 package pt.florinhas.marcacoes.domain;
 
-import java.time.LocalDateTime;
+import pt.florinhas.common_data.domain.Utilizador;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -104,6 +105,10 @@ public class Marcacao {
     // Motivo do cancelamento (se estado for CANCELADO)
     @Column(name = "motivo_cancelamento")
     private String motivoCancelamento;
+
+    // Descrição curta da marcação (opcional)
+    @Column(name = "descricao")
+    private String descricao;
 
     /**
      * Detalhes específicos quando a marcação segue o fluxo de secretaria.

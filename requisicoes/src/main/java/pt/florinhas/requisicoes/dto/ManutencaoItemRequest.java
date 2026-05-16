@@ -1,6 +1,9 @@
 package pt.florinhas.requisicoes.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 public record ManutencaoItemRequest(
-        Long itemId,
+        @NotNull Long itemId,
+        Long transporteId,
         String observacoes) {
 }

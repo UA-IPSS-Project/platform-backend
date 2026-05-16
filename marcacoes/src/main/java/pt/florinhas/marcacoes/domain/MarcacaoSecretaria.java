@@ -1,5 +1,7 @@
 package pt.florinhas.marcacoes.domain;
 
+import pt.florinhas.common_data.domain.Utente;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -64,10 +66,10 @@ public class MarcacaoSecretaria {
     private String assunto;
 
     /**
-     * Descrição detalhada do pedido/atendimento.
-     * Comprimento máximo: 300 caracteres.
+     * Descrição detalhada da marcação (opcional).
+     * Comprimento máximo: 500 caracteres.
      */
-    @Column(name = "descricao", length = 300)
+    @Column(name = "descricao", length = 500)
     private String descricao;
 
     /**

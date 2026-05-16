@@ -1,0 +1,2 @@
+# Backup MinIO diário às 3h da manhã
+0 3 * * * /backup-minio.sh >> /var/log/minio-backup.log 2>&1

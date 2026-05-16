@@ -1,0 +1,18 @@
+# Build artifacts
+target/
+*.jar
+*.war
+
+# IDE files
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+
+# Environment
+.env
+*.log
+
+# OS
+.DS_Store

@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import lombok.extern.slf4j.Slf4j;
+
+import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.exception.ResourceNotFoundException;
+
 /**
  * Tratamento global de exceções para os controladores REST.
  *
@@ -20,6 +25,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * nos controllers e garantindo mensagens padronizadas para o frontend.
  */
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     /**
@@ -173,7 +179,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
-        ex.printStackTrace(); // Log no servidor para diagnóstico
+        log.error("Unhandled exception", ex);
         Map<String, String> error = new HashMap<>();
         // error.put("message", "Ocorreu um erro interno no servidor. Por favor, tente
         // novamente mais tarde.");

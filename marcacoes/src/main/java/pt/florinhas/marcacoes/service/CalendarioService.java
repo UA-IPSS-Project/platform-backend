@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,13 +22,14 @@ import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
 import pt.florinhas.marcacoes.dto.FeriadoDTO;
-import pt.florinhas.marcacoes.exception.BadRequestException;
 import pt.florinhas.marcacoes.repository.BloqueioRepository;
 import pt.florinhas.marcacoes.repository.ConfiguracaoAgendaRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.exception.BadRequestException;
 
 /**
  * Serviço responsável pela gestão do calendário e disponibilidade.
@@ -93,6 +96,7 @@ public class CalendarioService {
         }).start();
     }
 
+    @Cacheable(value = "feriados", key = "#ano")
     public List<LocalDate> getFeriadosDoAno(int ano) {
         return feriadosCache.computeIfAbsent(ano, this::fetchFeriados);
     }
@@ -165,6 +169,7 @@ public class CalendarioService {
     }
 
     @Transactional
+    @CacheEvict(value = "config-slots", allEntries = true)
     public ConfiguracaoSlotDTO atualizarCapacidadePorSlot(String tipo, Integer capacidadePorSlot) {
         String tipoNormalizado = normalizarTipoObrigatorio(tipo);
 
@@ -184,6 +189,7 @@ public class CalendarioService {
         return new ConfiguracaoSlotDTO(saved.getTipo(), saved.getCapacidadePorSlot());
     }
 
+    @Cacheable("config-slots")
     public List<ConfiguracaoSlotDTO> listarConfiguracoesSlot() {
         return List.of(
                 new ConfiguracaoSlotDTO(TIPO_SECRETARIA, getCapacidadePorSlot(TIPO_SECRETARIA)),
@@ -241,7 +247,8 @@ public class CalendarioService {
         LocalDateTime inicioBloqueio = LocalDateTime.of(data, inicio);
         LocalDateTime fimBloqueio = LocalDateTime.of(data, fim);
 
-        List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findMarcacoesBetweenDates(inicioBloqueio, fimBloqueio, tipo);
+        List<Marcacao> marcacoesNoPeriodo = marcacaoRepository.findMarcacoesBetweenDates(inicioBloqueio, fimBloqueio,
+                tipo);
 
         boolean temMarcacaoAtiva = marcacoesNoPeriodo.stream()
                 .filter(m -> m.getEstado() != EventoEstado.CANCELADO)

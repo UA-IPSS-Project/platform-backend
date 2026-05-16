@@ -1,9 +1,13 @@
 package pt.florinhas.marcacoes.domain;
 
 import jakarta.persistence.*;
+
 import lombok.*;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
+
+import pt.florinhas.common_data.domain.Utilizador;
 
 /**
  * Entidade JPA que representa um bloqueio de agenda.

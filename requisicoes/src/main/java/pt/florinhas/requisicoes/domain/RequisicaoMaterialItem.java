@@ -1,5 +1,6 @@
 package pt.florinhas.requisicoes.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,4 +26,9 @@ public class RequisicaoMaterialItem {
     private Material material;
 
     private Integer quantidade;
+
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "requisicao_id", nullable = false)
+    private RequisicaoMaterial requisicao;
 }

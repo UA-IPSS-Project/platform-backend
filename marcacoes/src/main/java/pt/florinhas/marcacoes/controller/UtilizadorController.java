@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -9,18 +10,30 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.web.bind.annotation.RequestParam;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pt.florinhas.marcacoes.service.AuthorizationService;
 
-import pt.florinhas.marcacoes.domain.Utilizador;
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
-import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
-import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
+import pt.florinhas.marcacoes.dto.TermsStatusDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
+import pt.florinhas.marcacoes.service.AuditLogService;
+import pt.florinhas.marcacoes.service.TermsService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
+
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
+import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
+
 import jakarta.validation.Valid;
 
 /**
@@ -50,6 +63,15 @@ public class UtilizadorController {
     @Autowired
     private UtilizadorService utilizadorService;
 
+    @Autowired
+    private AuthorizationService authorizationService;
+
+    @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
+    private TermsService termsService;
+
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo
      * frontend.
@@ -60,6 +82,7 @@ public class UtilizadorController {
     // Buscar utilizador por ID
     @GetMapping("/{id}")
     public ResponseEntity<UtilizadorResponseDTO> obterUtilizadorPorId(@PathVariable Long id) {
+        authorizationService.checkPermission(id, "visualizar este perfil");
         Utilizador utilizador = utilizadorService.obterUtilizadorPorId(id);
         UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
         return ResponseEntity.ok(response);
@@ -76,9 +99,10 @@ public class UtilizadorController {
      */
     // Buscar utilizador por NIF
     @GetMapping("/nif/{nif}")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<UtilizadorResponseDTO> buscarPorNif(@PathVariable String nif) {
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
-            .orElseThrow(() -> new NotFoundException(
+                .orElseThrow(() -> new NotFoundException(
                         "Utilizador não encontrado com NIF: " + nif));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
@@ -121,8 +145,24 @@ public class UtilizadorController {
      */
     @GetMapping("/funcionarios")
     @PreAuthorize("hasAnyRole('SECRETARIA', 'FUNCIONARIO')")
-    public ResponseEntity<List<UtilizadorResponseDTO>> listarTodosFuncionarios() {
-        return ResponseEntity.ok(utilizadorService.listarTodosFuncionarios());
+    public ResponseEntity<Page<UtilizadorResponseDTO>> listarTodosFuncionarios(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String nif,
+            @RequestParam(required = false) FuncionarioTipo tipo,
+            @PageableDefault(size = 20, sort = "nome") Pageable pageable) {
+        return ResponseEntity.ok(utilizadorService.pesquisarFuncionarios(nome, tipo, nif, pageable));
+    }
+
+    /**
+     * Lista todos os utentes (ativos e inativos).
+     */
+    @GetMapping("/utentes")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Page<UtilizadorResponseDTO>> listarTodosUtentes(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String nif,
+            @PageableDefault(size = 20, sort = "nome") Pageable pageable) {
+        return ResponseEntity.ok(utilizadorService.pesquisarUtentes(nome, nif, pageable));
     }
 
     /**
@@ -161,7 +201,7 @@ public class UtilizadorController {
         // Se serviço lançar exceção, deve ser tratado globalmente ou aqui
         Utilizador utilizador = utilizadorService.buscarPorNif(nif)
                 .orElseThrow(
-                () -> new NotFoundException("Utilizador não encontrado"));
+                        () -> new NotFoundException("Utilizador não encontrado"));
         return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(utilizador));
     }
 
@@ -184,6 +224,140 @@ public class UtilizadorController {
     public ResponseEntity<Void> recuperarConta(
             @Valid @RequestBody RecoverAccountDTO request) {
         utilizadorService.recuperarConta(request);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Solicita eliminação de conta (RGPD Art.º 17 - Direito ao Esquecimento).
+     * Marca flag na BD e notifica secretaria para processar anonimização.
+     */
+    @PostMapping("/me/delete-request")
+    public ResponseEntity<Void> solicitarEliminacaoConta() {
+        utilizadorService.solicitarEliminacaoConta();
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Anonimiza dados de um utilizador (RGPD Art.º 17).
+     * Substitui dados pessoais por valores genéricos mantendo registos históricos.
+     * Apenas secretaria pode executar.
+     */
+    @PostMapping("/{id}/anonimizar")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> anonimizarUtilizador(@PathVariable Long id) {
+        utilizadorService.anonimizarUtilizador(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Anonimiza e desativa um utilizador (RGPD Art.º 17).
+     * O registo é mantido para preservar integridade referencial do histórico.
+     * Apenas secretaria pode executar.
+     */
+    @DeleteMapping("/{id}/anonimizar-eliminar")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> anonimizarEEliminarUtilizador(@PathVariable Long id) {
+        utilizadorService.anonimizarEEliminarUtilizador(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Exporta todos os dados pessoais do utilizador (RGPD Art.º 20 - Direito de Portabilidade).
+     * Retorna JSON com dados de utilizador, documentos, marcações e requisições.
+     */
+    @GetMapping("/me/export")
+    public ResponseEntity<Map<String, Object>> exportarDados() {
+        Map<String, Object> dados = utilizadorService.exportarDadosUtilizador();
+        return ResponseEntity.ok(dados);
+    }
+
+    // =========================================================
+    // TERMOS DE USO — VERSIONAMENTO (RGPD)
+    // =========================================================
+
+    /**
+     * Verifica se o utilizador autenticado precisa de re-aceitar os termos.
+     */
+    @GetMapping("/me/terms-status")
+    public ResponseEntity<TermsStatusDTO> verificarTermos() {
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        return ResponseEntity.ok(termsService.getStatus(user));
+    }
+
+    /**
+     * Regista a aceitação dos termos pelo utilizador autenticado.
+     */
+    @PostMapping("/me/accept-terms")
+    public ResponseEntity<Void> aceitarTermos(@RequestParam int version) {
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        termsService.acceptTerms(user, version);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
+     */
+    @PostMapping("/admin/terms-publish")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Map<String, Object>> publicarTermos(@RequestBody Map<String, String> body) {
+        String contentPt = body.getOrDefault("contentPt", "");
+        String contentEn = body.getOrDefault("contentEn", "");
+        String changeDescription = body.get("changeDescription");
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        int newVersion = termsService.publishTerms(contentPt, contentEn, changeDescription, user.getId());
+        return ResponseEntity.ok(Map.of("version", newVersion));
+    }
+
+    /**
+     * Atualiza a versão dos termos e notifica todos os utilizadores por email.
+     * Apenas DPO (Responsável pela Proteção de Dados).
+     */
+    @PostMapping("/admin/terms-version")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Void> atualizarVersaoTermos(
+            @RequestParam int newVersion,
+            @RequestParam(required = false) String changeDescription) {
+        termsService.updateTermsVersion(newVersion, changeDescription);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Obtém o conteúdo dos termos para um idioma específico (Público — sem autenticação).
+     */
+    @GetMapping("/terms-content")
+    public ResponseEntity<Map<String, String>> obterConteudoTermosPublico(@RequestParam String lang) {
+        String content = termsService.getTermsContent(lang);
+        return ResponseEntity.ok(Map.of("content", content));
+    }
+
+    /**
+     * Obtém o conteúdo dos termos para um idioma específico (DPO).
+     */
+    @GetMapping("/admin/terms-content")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Map<String, String>> obterConteudoTermos(@RequestParam String lang) {
+        String content = termsService.getTermsContent(lang);
+        return ResponseEntity.ok(Map.of("content", content));
+    }
+
+    /**
+     * Atualiza o conteúdo dos termos para um idioma específico.
+     */
+    @PutMapping("/admin/terms-content")
+    @PreAuthorize("hasRole('DPO')")
+    public ResponseEntity<Void> atualizarConteudoTermos(
+            @RequestParam String lang,
+            @RequestBody Map<String, String> body) {
+        if (body == null || !body.containsKey("content")) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String content = body.get("content");
+        if (content == null || content.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        termsService.updateTermsContent(lang, content);
         return ResponseEntity.ok().build();
     }
 }

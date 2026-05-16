@@ -1,7 +1,7 @@
 package pt.florinhas.marcacoes.dto;
 
-import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -34,10 +34,6 @@ public class CriarMarcacaoRequest {
     @NotNull(message = "O assunto é obrigatório")
     @Size(max = 200, message = "O assunto não pode exceder 200 caracteres")
     private String assunto;
-
-    // Descrição detalhada do pedido/atendimento.
-    @Size(max = 2000, message = "A descrição não pode exceder 2000 caracteres")
-    private String descricao;
 
     // ID do utente associado à marcação (se já existir).
     private Long utenteId;
@@ -72,6 +68,9 @@ public class CriarMarcacaoRequest {
 
     // Data de nascimento do utente (formato ISO yyyy-MM-dd).
     private LocalDate utenteDataNasc;
+
+    // Descrição curta da marcação (opcional).
+    private String descricao;
 
     // Tipo de agenda para operações de reserva temporária (SECRETARIA | BALNEARIO).
     private String tipoAgenda;

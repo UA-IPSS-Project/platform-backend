@@ -18,7 +18,9 @@ public record DocumentoDTO(
     LocalDateTime uploadedEm,
     Long marcacaoId,
     String utenteNome,
-    String utenteNif
+    String utenteNif,
+    Integer sequencia,
+    String finalidade
 ) {
     /**
      * Converte uma entidade Documento em DTO.
@@ -45,7 +47,9 @@ public record DocumentoDTO(
             documento.getUploadedEm(),
             documento.getMarcacao().getId(),
             utenteNome,
-            utenteNif
+            utenteNif,
+            documento.getSequencia(),
+            documento.getFinalidade()
         );
     }
 }

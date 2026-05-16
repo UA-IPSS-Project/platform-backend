@@ -1,24 +1,93 @@
 services:
-  api-gateway:
-    build:
-      context: .
-      dockerfile: api-gateway/Dockerfile
-    container_name: api-gateway
-    ports:
-      - "8080:8080"
+  postgres:
+    image: postgres:16
+    container_name: florinhas_db
     env_file:
       - .env
     environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRATION=${JWT_EXPIRATION}
-      - AUTH_MARCACOES_BASE_URL=http://marcacoes:8080
-      - GATEWAY_MARCACOES_BASE_URL=http://marcacoes:8080
-      - GATEWAY_MARCACOES_WS_BASE_URL=ws://marcacoes:8080
-      - GATEWAY_REQUISICOES_BASE_URL=http://requisicoes:8080
-      - GATEWAY_REQUISICOES_WS_BASE_URL=ws://requisicoes:8080
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:9000/minio/health/ready || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  notificacoes:
+    build:
+      context: .
+      dockerfile: notificacoes/Dockerfile
+    container_name: notificacoes-backend
+    expose:
+      - "8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=${SPRING_JPA_HIBERNATE_DDL_AUTO}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
+      - SPRING_MAIL_HOST=${SPRING_MAIL_HOST}
+      - SPRING_MAIL_PORT=${SPRING_MAIL_PORT}
+      - SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME}
+      - SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD}
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
+      - SECURE_COOKIES=${SECURE_COOKIES:-true}
+      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+    healthcheck:
+      # wget is available in eclipse-temurin:21-jre-alpine; /actuator/health is public (no auth required)
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
+    develop:
+      watch:
+        - path: ./notificacoes/src
+          action: rebuild
+        - path: ./notificacoes/pom.xml
+          action: rebuild
+
   marcacoes:
     build:
       context: .
@@ -27,8 +96,12 @@ services:
     expose:
       - "8080"
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      notificacoes:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -42,9 +115,17 @@ services:
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET=${MINIO_BUCKET_MARCACOES}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
-
+      - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
-
     develop:
       watch:
         - path: ./marcacoes/src
@@ -60,8 +141,12 @@ services:
     expose:
       - "8080"
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      notificacoes:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -75,6 +160,16 @@ services:
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET=${MINIO_BUCKET_REQUISICOES}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
+      - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     develop:
       watch:
@@ -83,20 +178,67 @@ services:
         - path: ./requisicoes/pom.xml
           action: rebuild
 
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      marcacoes:
+        condition: service_healthy
+      requisicoes:
+        condition: service_healthy
+      notificacoes:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL_DOCKER}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - AUTH_MARCACOES_BASE_URL=${GATEWAY_MARCACOES_BASE_URL_DOCKER}
+      - GATEWAY_MARCACOES_BASE_URL=${GATEWAY_MARCACOES_BASE_URL_DOCKER}
+      - GATEWAY_MARCACOES_WS_BASE_URL=${GATEWAY_MARCACOES_WS_BASE_URL_DOCKER}
+      - GATEWAY_REQUISICOES_BASE_URL=${GATEWAY_REQUISICOES_BASE_URL_DOCKER}
+      - GATEWAY_REQUISICOES_WS_BASE_URL=${GATEWAY_REQUISICOES_WS_BASE_URL_DOCKER}
+      - GATEWAY_NOTIFICACOES_BASE_URL=${GATEWAY_NOTIFICACOES_BASE_URL_DOCKER}
+      - GATEWAY_NOTIFICACOES_WS_BASE_URL=${GATEWAY_NOTIFICACOES_WS_BASE_URL_DOCKER}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
+      # Defaults: false/Lax for dev; override in .env for production (true/Strict)
+      - SECURE_COOKIES=${SECURE_COOKIES:-false}
+      - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
   frontend:
     build:
       context: ../platform-frontend/
       dockerfile: Dockerfile
     container_name: florinhas_frontend
     depends_on:
-      - api-gateway
-      - marcacoes
-      - requisicoes
+      api-gateway:
+        condition: service_healthy
     ports:
       - "3000:80"
-
+      - "3443:443"
+    volumes:
+      - ../platform-frontend/ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
-
     develop:
       watch:
         - path: ../platform-frontend/src
@@ -106,37 +248,59 @@ services:
         - path: ../platform-frontend/vite.config.ts
           action: rebuild
 
-  postgres:
-    image: postgres:16
-    container_name: florinhas_db
+  # Backup automático PostgreSQL
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local
+    container_name: postgres_backup
+    depends_on:
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
+      POSTGRES_HOST: postgres
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_EXTRA_OPTS: "-Z9 --schema=public --blobs"
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 12
+      HEALTHCHECK_PORT: 8080
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - ./backups/postgres:/backups
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/ || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
-
-  minio:
-    image: minio/minio
-    container_name: minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - ./data:/data
+  # Backup automático MinIO
+  minio-backup:
+    image: minio/mc
+    container_name: minio_backup
+    depends_on:
+      minio:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    command: server /data --console-address ":9001"
+    volumes:
+      - ./backups/minio:/backups
+      - ./scripts/backup-minio.sh:/backup-minio.sh
+      - ./scripts/crontab:/etc/crontabs/root
+    entrypoint: /bin/sh
+    command: -c "chmod +x /backup-minio.sh && crond -f -l 2"
+    healthcheck:
+      test: [ "CMD-SHELL", "pgrep crond || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-
-

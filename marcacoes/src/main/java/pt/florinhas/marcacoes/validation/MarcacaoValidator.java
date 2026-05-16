@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
+import pt.florinhas.marcacoes.dto.RoupaDTO;
 import pt.florinhas.marcacoes.service.CalendarioService;
 
 /**
@@ -57,6 +59,22 @@ public class MarcacaoValidator {
         }
 
         validarDataHora(request.getData(), "BALNEARIO");
+        validarRoupas(request.getRoupas());
+    }
+
+    public void validarRoupas(List<RoupaDTO> roupas) {
+        if (roupas == null)
+            return;
+
+        for (RoupaDTO roupa : roupas) {
+            boolean temCategoria = roupa.getCategoria() != null && !roupa.getCategoria().trim().isEmpty();
+            boolean temItem = roupa.getItemId() != null;
+
+            if (!temCategoria && !temItem) {
+                throw new IllegalArgumentException(
+                        "Cada item de roupa deve ter uma categoria ou estar associado a um produto do armazém.");
+            }
+        }
     }
 
     /**

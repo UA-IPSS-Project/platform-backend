@@ -1,12 +1,30 @@
 package pt.florinhas.requisicoes.domain;
 
 public enum TransporteCategoria {
-    PESADO_DE_PASSAGEIROS,
+
+    // Ligeiros
     LIGEIRO_DE_PASSAGEIROS,
     LIGEIRO_DE_MERCADORIAS,
+    LIGEIRO_MISTO,
     LIGEIRO_ESPECIAL,
-    LIGEIRO,
-    PESADO,
-    PASSAGEIROS,
-    ADAPTADO
+
+    // Pesados
+    PESADO_DE_PASSAGEIROS,
+    PESADO_DE_MERCADORIAS,
+    PESADO_MISTO,
+
+    // Especiais
+    ADAPTADO,          // mobilidade reduzida
+    ESCOLAR,           // transporte de crianças
+    AMBULANCIA,
+    TRACTOR,
+    OUTRO,
+
+    // Estados especiais - Veículo indisponível (admin-only)
+    ABATIDO_VENDIDO_DESCONTINUADO,      // Veículo abatido, vendido ou descontinuado
+
+    // Deprecated - Manter para compatibilidade com dados existentes
+    @Deprecated LIGEIRO,
+    @Deprecated PESADO,
+    @Deprecated PASSAGEIROS
 }

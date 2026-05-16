@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,17 +19,20 @@ import lombok.RequiredArgsConstructor;
 import pt.florinhas.marcacoes.dto.ConsumoEstatisticaDTO;
 import pt.florinhas.marcacoes.dto.ItemArmazemDTO;
 import pt.florinhas.marcacoes.service.ArmazemService;
+import pt.florinhas.marcacoes.service.AuditLogService;
 
 /**
  * Controller REST para gestão do armazém do Balneário.
  *
  * Endpoints:
- * - GET  /api/armazem             — listar todo o inventário
- * - GET  /api/armazem/categoria   — listar por categoria
- * - PUT  /api/armazem/{id}        — atualizar quantidade/minimo
- * - POST /api/armazem/stock-check — verificar stock para itens do formulário
- * - POST /api/armazem/stock-check/calcado — verificar stock de calçado por tamanho
- * - GET  /api/armazem/estatisticas — dados de consumo agregados
+ * - GET     /api/armazem             — listar todo o inventário
+ * - POST    /api/armazem             — criar novo item
+ * - GET     /api/armazem/categoria   — listar por categoria
+ * - PUT     /api/armazem/{id}        — atualizar item (quantidade, nome, etc)
+ * - DELETE  /api/armazem/{id}        — eliminar item
+ * - POST    /api/armazem/stock-check — verificar stock para itens do formulário
+ * - POST    /api/armazem/stock-check/calcado — verificar stock de calçado por tamanho
+ * - GET     /api/armazem/estatisticas — dados de consumo agregados
  */
 @RestController
 @RequestMapping("/api/armazem")
@@ -35,6 +40,7 @@ import pt.florinhas.marcacoes.service.ArmazemService;
 public class ArmazemController {
 
     private final ArmazemService armazemService;
+    private final AuditLogService auditLogService;
 
     /**
      * Lista todos os itens do armazém ordenados por categoria e nome.
@@ -55,18 +61,41 @@ public class ArmazemController {
     }
 
     /**
-     * Atualiza a quantidade e/ou quantidade mínima de um item.
+     * Cria um novo item no armazém.
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
+    public ResponseEntity<ItemArmazemDTO> criarItem(@RequestBody ItemArmazemDTO dto) {
+        ItemArmazemDTO created = armazemService.criarItem(dto);
+        auditLogService.log("CRIAR_ITEM_ARMAZEM", "ITEM_ARMAZEM", created.getId(), 
+            "Criado item no armazém: " + created.getNome() + " (Qtd: " + created.getQuantidade() + ")");
+        return ResponseEntity.ok(created);
+    }
+
+    /**
+     * Atualiza um item (quantidade, nome, categoria, etc).
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<ItemArmazemDTO> atualizarItem(
             @PathVariable Long id,
-            @RequestBody Map<String, Integer> body) {
+            @RequestBody ItemArmazemDTO dto) {
 
-        Integer quantidade = body.get("quantidade");
-        Integer quantidadeMinima = body.get("quantidadeMinima");
-
-        ItemArmazemDTO updated = armazemService.atualizarItem(id, quantidade, quantidadeMinima);
+        ItemArmazemDTO updated = armazemService.atualizarItem(id, dto);
+        auditLogService.log("ATUALIZAR_ITEM_ARMAZEM", "ITEM_ARMAZEM", id, 
+            "Atualizado item no armazém: " + updated.getNome() + " (Nova Qtd: " + updated.getQuantidade() + ")");
         return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Elimina um item do armazém.
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
+    public ResponseEntity<Void> eliminarItem(@PathVariable Long id) {
+        armazemService.eliminarItem(id);
+        auditLogService.log("ELIMINAR_ITEM_ARMAZEM", "ITEM_ARMAZEM", id, "Item eliminado do armazém");
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -98,6 +127,7 @@ public class ArmazemController {
      * @param periodo DIA, SEMANA ou MES
      */
     @GetMapping("/estatisticas")
+    @PreAuthorize("hasRole('SECRETARIA') or hasRole('BALNEARIO')")
     public ResponseEntity<ConsumoEstatisticaDTO> obterEstatisticas(
             @RequestParam(defaultValue = "MES") String periodo) {
 

@@ -15,8 +15,9 @@ import org.springframework.data.domain.Pageable;
 
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Utilizador;
+
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
 
 /**
  * Repositório Spring Data JPA para a entidade Marcacao.
@@ -70,18 +71,22 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
         long countByDataAndTipo(@Param("data") LocalDateTime data, @Param("tipo") String tipo);
 
         /**
-         * Conta o número de marcações para uma determinada data/hora e lista de estados.
+         * Conta o número de marcações para uma determinada data/hora e lista de
+         * estados.
          * Útil para verificar vagas disponíveis num horário com capacidade > 1.
          */
         long countByDataAndEstadoIn(LocalDateTime data, List<EventoEstado> estados);
 
         /**
-         * Conta o número de marcações para uma determinada data/hora, lista de estados e tipo (SECRETARIA/BALNEARIO).
-         * Permite distinguir entre marcações da secretaria e do balneário, ou ambos (tipo = null).
+         * Conta o número de marcações para uma determinada data/hora, lista de estados
+         * e tipo (SECRETARIA/BALNEARIO).
+         * Permite distinguir entre marcações da secretaria e do balneário, ou ambos
+         * (tipo = null).
          */
         @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.data = :data AND m.estado IN :estados " +
-                "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL))")
-        long countByDataAndEstadoInAndTipo(@Param("data") LocalDateTime data, @Param("estados") List<EventoEstado> estados, @Param("tipo") String tipo);
+                        "AND (:tipo IS NULL OR (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL))")
+        long countByDataAndEstadoInAndTipo(@Param("data") LocalDateTime data,
+                        @Param("estados") List<EventoEstado> estados, @Param("tipo") String tipo);
 
         // Consulta com Lock Pessimista para evitar Race Conditions
         @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -97,12 +102,14 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "(:dataInicio IS NULL OR m.data >= :dataInicio) AND " +
                         "(:dataFim IS NULL OR m.data <= :dataFim) AND " +
                         "(:criadoPorId IS NULL OR m.criadoPor.id = :criadoPorId) AND " +
+                        "(:utenteId IS NULL OR ms.utente.id = :utenteId) AND " +
                         "(:estado IS NULL OR m.estado = :estado) " +
                         "ORDER BY m.data")
         List<Marcacao> findWithFilters(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
                         @Param("criadoPorId") Long criadoPorId,
+                        @Param("utenteId") Long utenteId,
                         @Param("estado") EventoEstado estado);
 
         // Consultar marcações passadas com filtros (Optimized)
@@ -122,6 +129,41 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         @Param("dataFim") LocalDateTime dataFim,
                         @Param("utenteId") Long utenteId,
                         @Param("estado") EventoEstado estado);
+
+        @Query(value = """
+                        SELECT m.id FROM marcacao m
+                        LEFT JOIN marcacao_secretaria ms ON m.id = ms.marcacao_id
+                        LEFT JOIN utente u ON u.id = ms.utente_id
+                        LEFT JOIN utilizador ul ON ul.id = u.id
+                        WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO')
+                        AND m.data >= :dataInicio AND m.data <= :dataFim
+                        AND (:utenteId IS NULL OR u.id = :utenteId)
+                        AND (:estado IS NULL OR m.estado = CAST(:estado AS VARCHAR))
+                        AND (:assunto IS NULL OR ms.assunto ILIKE ('%' || CAST(:assunto AS TEXT) || '%'))
+                        AND (:nomeUtente IS NULL OR ul.nome ILIKE ('%' || CAST(:nomeUtente AS TEXT) || '%'))
+                        ORDER BY m.data DESC
+                        """,
+                        countQuery = """
+                        SELECT COUNT(m.id) FROM marcacao m
+                        LEFT JOIN marcacao_secretaria ms ON m.id = ms.marcacao_id
+                        LEFT JOIN utente u ON u.id = ms.utente_id
+                        LEFT JOIN utilizador ul ON ul.id = u.id
+                        WHERE m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO')
+                        AND m.data >= :dataInicio AND m.data <= :dataFim
+                        AND (:utenteId IS NULL OR u.id = :utenteId)
+                        AND (:estado IS NULL OR m.estado = CAST(:estado AS VARCHAR))
+                        AND (:assunto IS NULL OR ms.assunto ILIKE ('%' || CAST(:assunto AS TEXT) || '%'))
+                        AND (:nomeUtente IS NULL OR ul.nome ILIKE ('%' || CAST(:nomeUtente AS TEXT) || '%'))
+                        """,
+                        nativeQuery = true)
+        Page<Long> findMarcacoesPassadasPaginatedIds(
+                        @Param("dataInicio") LocalDateTime dataInicio,
+                        @Param("dataFim") LocalDateTime dataFim,
+                        @Param("utenteId") Long utenteId,
+                        @Param("estado") String estado,
+                        @Param("assunto") String assunto,
+                        @Param("nomeUtente") String nomeUtente,
+                        Pageable pageable);
 
         // Estatísticas - contar marcações por estado
         @Query("SELECT m.estado, COUNT(m) FROM Marcacao m GROUP BY m.estado")
@@ -143,16 +185,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
          * Remove marcações com determinado estado criadas antes de um limite temporal.
          * Usado para limpeza de reservas temporárias (ex.: EM_PREENCHIMENTO expiradas).
          */
-        void deleteByEstadoAndCriadoEmBefore(EventoEstado emPreenchimento, LocalDateTime limite);
-
-        /**
-         * Remove marcações "EM_PREENCHIMENTO" que estejam expiradas OU com timestamp
-         * nulo
-         * (para corrigir bugs antigos onde o timestamp não era gravado).
-         */
-        @Modifying
-        @Query("DELETE FROM Marcacao m WHERE m.estado = :estado AND (m.criadoEm < :limite OR m.criadoEm IS NULL)")
-        void deleteExpiredOrorphan(@Param("estado") EventoEstado estado, @Param("limite") LocalDateTime limite);
+        List<Marcacao> findByEstadoAndCriadoEmBefore(EventoEstado estado, LocalDateTime limite);
 
         @Modifying(clearAutomatically = true)
         @Query("UPDATE Marcacao m SET m.estado = :novoEstado, m.version = m.version + 1 WHERE m.estado NOT IN :estadosExcluidos AND m.data < :limite")
@@ -168,11 +201,43 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         @Param("estadoAtual") EventoEstado estadoAtual,
                         @Param("limite") LocalDateTime limite);
 
-
         // Consulta paginada com fetch para evitar N+1
         @Query(value = "SELECT DISTINCT m FROM Marcacao m " +
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp", countQuery = "SELECT COUNT(m) FROM Marcacao m")
         Page<Marcacao> findAllWithRelations(Pageable pageable);
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado != 'CANCELADO' " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countTotalBalnearioAttendance(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado = 'NAO_COMPARECIDO' " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioFaltas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('AGENDADO', 'AVISO') " +
+            "AND m.data BETWEEN :inicio AND :fim")
+    long countBalnearioAgendadas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT FUNCTION('date', m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY FUNCTION('date', m.data) " +
+            "ORDER BY FUNCTION('date', m.data)")
+    List<Object[]> findAttendanceByDay(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    @Query("SELECT HOUR(m.data), COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
+            "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
+            "AND m.data BETWEEN :inicio AND :fim " +
+            "GROUP BY HOUR(m.data) " +
+            "ORDER BY HOUR(m.data)")
+    List<Object[]> findAttendanceByHour(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 }

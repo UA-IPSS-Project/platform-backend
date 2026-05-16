@@ -13,19 +13,35 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.extern.slf4j.Slf4j;
-import pt.florinhas.marcacoes.domain.Funcionario;
-import pt.florinhas.marcacoes.domain.FuncionarioTipo;
-import pt.florinhas.marcacoes.domain.Utente;
-import pt.florinhas.marcacoes.domain.Utilizador;
+
+import pt.florinhas.common_data.repository.FuncionarioRepository;
+import pt.florinhas.common_data.repository.UtenteRepository;
+import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.validation.NifValidator;
+import pt.florinhas.common_data.domain.Funcionario;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import pt.florinhas.common_data.domain.FuncionarioTipo;
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.UtilizadorInfoDTO;
+import pt.florinhas.common_data.dto.UtilizadorResponseDTO;
+import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.common_data.security.CryptoUtils;
+
 import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
-import pt.florinhas.marcacoes.dto.UtilizadorInfoDTO;
-import pt.florinhas.marcacoes.dto.UtilizadorResponseDTO;
-import pt.florinhas.marcacoes.repository.FuncionarioRepository;
-import pt.florinhas.marcacoes.repository.UtenteRepository;
-import pt.florinhas.marcacoes.repository.UtilizadorRepository;
+import pt.florinhas.marcacoes.exception.ConflictException;
+import pt.florinhas.marcacoes.exception.NotFoundException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.time.LocalDateTime;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import pt.florinhas.marcacoes.repository.DocumentoRepository;
+import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
-import pt.florinhas.marcacoes.validation.NifValidator;
 
 /**
  * Serviço responsável pela gestão de utilizadores e utentes.
@@ -55,10 +71,25 @@ public class UtilizadorService {
     private EmailService emailService;
 
     @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
+    private NotificacaoService notificacaoService;
+
+    @Autowired
     private NifValidator nifValidator;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private DocumentoRepository documentoRepository;
+    
+    @Autowired
+    private MarcacaoRepository marcacaoRepository;
+
+    @Autowired
+    private CryptoUtils cryptoUtils;
 
     /*
      * =========================================================
@@ -69,7 +100,7 @@ public class UtilizadorService {
     public Utilizador buscarPorEmail(String email) {
         List<Utilizador> users = utilizadorRepository.findByEmail(email);
         if (users.isEmpty()) {
-            throw new RuntimeException("Utilizador não encontrado com email: " + email);
+            throw new NotFoundException("Utilizador não encontrado com email: " + email);
         }
         return users.get(0);
     }
@@ -87,7 +118,7 @@ public class UtilizadorService {
         String searchNif = nif.trim();
         log.info("Searching for user with NIF: '{}'", searchNif);
 
-        List<Utilizador> results = utilizadorRepository.findByNif(searchNif);
+        List<Utilizador> results = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(searchNif));
         if (!results.isEmpty()) {
             log.trace("Found user: ID={}", results.get(0).getId());
             return Optional.of(results.get(0));
@@ -116,10 +147,8 @@ public class UtilizadorService {
      */
     @Transactional
     public Utente obterOuCriarUtente(String nif, String nome, String email, String telefone) {
-        nifValidator.validateRequiredOrThrow(nif);
-
         // Verificar se já existe
-        List<Utilizador> existingUsers = utilizadorRepository.findByNif(nif);
+        List<Utilizador> existingUsers = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif));
         Optional<Utilizador> existingUser = existingUsers.isEmpty() ? Optional.empty()
                 : Optional.of(existingUsers.get(0));
 
@@ -128,7 +157,7 @@ public class UtilizadorService {
             if (u instanceof Utente) {
                 return (Utente) u;
             } else {
-                throw new RuntimeException(
+                throw new ConflictException(
                         "Este NIF (" + nif + ") já está registado como Funcionário. Não pode ser usado como Utente.");
             }
         }
@@ -136,13 +165,14 @@ public class UtilizadorService {
         // Se não existir, criar novo utente
 
         log.info("Utente com NIF {} não encontrado. Criando novo utente...", nif);
+        nifValidator.validateRequiredOrThrow(nif);
 
         validarCampoObrigatorio(nome, "Nome do utente é obrigatório para criar novo registo");
         validarCampoObrigatorio(email, "Email do utente é obrigatório para criar novo registo");
         validarCampoObrigatorio(telefone, "Telefone do utente é obrigatório para criar novo registo");
 
         if (utenteRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email já está registado no sistema");
+            throw new ConflictException("Email já está registado no sistema");
         }
 
         Utente novoUtente = new Utente();
@@ -179,7 +209,7 @@ public class UtilizadorService {
 
     public Utilizador obterUtilizadorPorId(Long utilizadorId) {
         return utilizadorRepository.findById(utilizadorId)
-                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado com ID: " + utilizadorId));
+                .orElseThrow(() -> new NotFoundException("Utilizador não encontrado com ID: " + utilizadorId));
     }
 
     /**
@@ -200,7 +230,7 @@ public class UtilizadorService {
             if (!users.isEmpty()) {
                 Utilizador u = users.get(0);
                 if (!u.getId().equals(utilizadorId)) {
-                    throw new RuntimeException("Email já está em uso por outro utilizador");
+                    throw new ConflictException("Email já está em uso por outro utilizador");
                 }
             }
             utilizador.setEmail(request.getEmail());
@@ -217,7 +247,7 @@ public class UtilizadorService {
                         DateTimeFormatter.ISO_LOCAL_DATE);
                 utilizador.setDataNasc(dataNasc);
             } catch (Exception e) {
-                throw new RuntimeException("Formato de data inválido. Use YYYY-MM-DD");
+                throw new BadRequestException("Formato de data inválido. Use YYYY-MM-DD");
             }
         }
 
@@ -249,7 +279,16 @@ public class UtilizadorService {
             utilizador.setProfissao(request.getProfissao());
         }
 
-        return utilizadorRepository.save(utilizador);
+        Utilizador atualizado = utilizadorRepository.save(utilizador);
+
+        auditLogService.log(
+            "ATUALIZAR_PERFIL",
+            "UTILIZADOR",
+            utilizadorId,
+            String.format("Perfil atualizado: %s", utilizador.getNome())
+        );
+
+        return atualizado;
     }
 
     /*
@@ -264,19 +303,48 @@ public class UtilizadorService {
                 .collect(Collectors.toList());
     }
 
+    public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, String nif, Pageable pageable) {
+        String nifHash = (nif != null && !nif.isBlank()) ? cryptoUtils.generateBlindIndex(nif) : null;
+        return funcionarioRepository.findByNomeAndTipoFilter(nome, tipo, nifHash, pageable)
+                .map(UtilizadorResponseDTO::fromUtilizador);
+    }
+
     public List<UtilizadorResponseDTO> listarFuncionariosPendentes() {
         return funcionarioRepository.findByActivoFalse().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Lista todos os utentes (ativos e inativos).
+     */
+    public List<UtilizadorResponseDTO> listarTodosUtentes() {
+        return utenteRepository.findAll().stream()
+                .map(UtilizadorResponseDTO::fromUtilizador)
+                .collect(Collectors.toList());
+    }
+
+    public Page<UtilizadorResponseDTO> pesquisarUtentes(String nome, String nif, Pageable pageable) {
+        String nifHash = (nif != null && !nif.isBlank()) ? cryptoUtils.generateBlindIndex(nif) : null;
+        return utenteRepository.findByNomeFilter(nome, nifHash, pageable)
+                .map(UtilizadorResponseDTO::fromUtilizador);
+    }
+
     @Transactional
     public void aprovarFuncionario(Long id) {
         Funcionario funcionario = funcionarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado com ID: " + id));
+                .orElseThrow(() -> new NotFoundException("Funcionário não encontrado com ID: " + id));
 
         funcionario.setActivo(true);
         funcionarioRepository.save(funcionario);
+
+        auditLogService.log(
+            "APROVAR_FUNCIONARIO",
+            "FUNCIONARIO",
+            id,
+            String.format("Funcionário aprovado: %s (%s) - Tipo: %s", 
+                funcionario.getNome(), funcionario.getEmail(), funcionario.getTipo())
+        );
     }
 
     /*
@@ -290,19 +358,18 @@ public class UtilizadorService {
      */
     @Transactional
     public Utilizador criarUtilizadorPelaSecretaria(CreateUserRequestDTO request) {
-        nifValidator.validateRequiredOrThrow(request.getNif());
-        if (utilizadorRepository.existsByNif(request.getNif())) {
-            throw new RuntimeException("Já existe um utilizador com este NIF.");
+        if (utilizadorRepository.existsByNifHash(cryptoUtils.generateBlindIndex(request.getNif()))) {
+            throw new ConflictException("Já existe um utilizador com este NIF.");
         }
         if (utilizadorRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Já existe um utilizador com este Email.");
+            throw new ConflictException("Já existe um utilizador com este Email.");
         }
 
         Utilizador novoUtilizador;
 
         boolean employeeByRole = request.getRole() != null
-            && !request.getRole().trim().isEmpty()
-            && !"UTENTE".equalsIgnoreCase(request.getRole().trim());
+                && !request.getRole().trim().isEmpty()
+                && !"UTENTE".equalsIgnoreCase(request.getRole().trim());
         boolean shouldCreateEmployee = request.isEmployee() || employeeByRole;
 
         if (shouldCreateEmployee) {
@@ -353,13 +420,20 @@ public class UtilizadorService {
 
         Utilizador salvo = utilizadorRepository.save(novoUtilizador);
 
+        auditLogService.log(
+            "CRIAR_CONTA",
+            "UTILIZADOR",
+            salvo.getId(),
+            String.format("Conta criada pela secretaria: %s (%s) - Tipo: %s", 
+                salvo.getNome(), salvo.getEmail(), 
+                salvo instanceof Funcionario ? ((Funcionario)salvo).getTipo() : "UTENTE")
+        );
+
         try {
             emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
         } catch (Exception e) {
             log.error("Erro ao enviar email de criação: {}", e.getMessage());
         }
-
-        System.out.println(">>> DEBUG PASSWORD (CREATE): " + passwordInicial);
         return salvo;
     }
 
@@ -368,9 +442,9 @@ public class UtilizadorService {
      */
     @Transactional
     public void recuperarConta(RecoverAccountDTO request) {
-        List<Utilizador> users = utilizadorRepository.findByNif(request.getNif());
+        List<Utilizador> users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(request.getNif()));
         if (users.isEmpty()) {
-            throw new RuntimeException("Utilizador não encontrado com NIF: " + request.getNif());
+            throw new NotFoundException("Utilizador não encontrado com NIF: " + request.getNif());
         }
         Utilizador utilizador = users.get(0);
 
@@ -378,7 +452,7 @@ public class UtilizadorService {
                 && !request.getUpdatedEmail().equals(utilizador.getEmail())) {
 
             if (utilizadorRepository.existsByEmail(request.getUpdatedEmail())) {
-                throw new RuntimeException("O novo email já está associado a outra conta.");
+                throw new ConflictException("O novo email já está associado a outra conta.");
             }
             utilizador.setEmail(request.getUpdatedEmail());
         }
@@ -398,12 +472,19 @@ public class UtilizadorService {
         utilizador.setPassHash(passwordEncoder.encode(novaPassword));
 
         utilizadorRepository.save(utilizador);
+        
+        auditLogService.log(
+            "RECUPERAR_CONTA",
+            "UTILIZADOR",
+            utilizador.getId(),
+            String.format("Conta recuperada pela secretaria: %s (%s)", 
+                utilizador.getNome(), utilizador.getNif())
+        );
 
         try {
-            System.out.println(">>> DEBUG PASSWORD (RECOVER): " + novaPassword);
             emailService.sendPassword(utilizador.getEmail(), novaPassword);
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao enviar email de recuperação: " + e.getMessage());
+            throw new IllegalStateException("Erro ao enviar email de recuperação: " + e.getMessage(), e);
         }
     }
 
@@ -419,17 +500,267 @@ public class UtilizadorService {
 
     /*
      * =========================================================
+     * DIREITO AO ESQUECIMENTO (RGPD Art.º 17)
+     * =========================================================
+     */
+
+    /**
+     * Solicita eliminação de conta pelo próprio utilizador.
+     * Marca flag na BD e notifica secretaria para processar anonimização.
+     */
+    @Transactional
+    public void solicitarEliminacaoConta() {
+        Utilizador utilizador = buscarUtilizadorAutenticado();
+        
+        if (Boolean.TRUE.equals(utilizador.getDeleteRequested())) {
+            throw new BadRequestException("Já existe um pedido de eliminação pendente para esta conta.");
+        }
+
+        utilizador.setDeleteRequested(true);
+        utilizador.setDeleteRequestedAt(LocalDateTime.now());
+        utilizadorRepository.save(utilizador);
+
+        log.info("Pedido de eliminação registado para utilizador ID: {}", utilizador.getId());
+
+        auditLogService.log(
+            "SOLICITAR_ELIMINACAO",
+            "UTILIZADOR",
+            utilizador.getId(),
+            String.format("Pedido de eliminação registado para utilizador: %s (%s)", 
+                utilizador.getNome(), utilizador.getNif())
+        );
+
+        // Notificar secretaria
+        try {
+            List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+            String titulo = "Pedido de Eliminação de Conta (RGPD)";
+            String mensagem = String.format(
+                "O utilizador %s (NIF: %s) solicitou a eliminação da sua conta. " +
+                "Por favor, processe a anonimização dos dados no prazo de 1 mês conforme RGPD Art.º 17.",
+                utilizador.getNome(), utilizador.getNif()
+            );
+            
+            // Criar notificação para cada secretária
+            for (Funcionario secretaria : secretarias) {
+                try {
+                    notificacaoService.criarNotificacao(
+                        secretaria.getId(),
+                        titulo,
+                        mensagem,
+                        "ALERTA"
+                    );
+                } catch (Exception e) {
+                    log.error("Erro ao criar notificação para secretaria ID {}: {}", secretaria.getId(), e.getMessage());
+                }
+            }
+
+            // Enviar email à secretaria
+            emailService.sendGenericEmail(
+                "secretaria@florinhasdovouga.pt",
+                titulo,
+                mensagem
+            );
+        } catch (Exception e) {
+            log.error("Erro ao notificar secretaria sobre pedido de eliminação: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Anonimiza dados de um utilizador (RGPD Art.º 17).
+     * Substitui dados pessoais por valores genéricos mantendo registos históricos.
+     */
+    @Transactional
+    public void anonimizarUtilizador(Long id) {
+        Utilizador utilizador = obterUtilizadorPorId(id);
+        
+        String nifOriginal = utilizador.getNif();
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        
+        // Anonimizar dados pessoais
+        utilizador.setNome("Utilizador Anónimo #" + id);
+        utilizador.setEmail("anonimo." + timestamp + "@anonimizado.local");
+        utilizador.setTelefone("000000000");
+        utilizador.setNif(String.format("%09d", id)); // NIF fictício único baseado no ID
+        utilizador.setMorada(null);
+        utilizador.setCodigoPostal(null);
+        utilizador.setFreguesia(null);
+        utilizador.setTelefoneEmprego(null);
+        utilizador.setLocalEmprego(null);
+        utilizador.setMoradaEmprego(null);
+        utilizador.setProfissao(null);
+        utilizador.setDataNasc(null);
+        
+        // Invalidar password
+        utilizador.setPassHash(passwordEncoder.encode("ANONIMIZADO_" + timestamp));
+        
+        // Marcar como processado
+        utilizador.setDeleteRequested(false);
+        utilizador.setDeleteRequestedAt(null);
+        
+        // Desativar conta
+        if (utilizador instanceof Utente) {
+            ((Utente) utilizador).setActivo(false);
+        } else if (utilizador instanceof Funcionario) {
+            ((Funcionario) utilizador).setActivo(false);
+        }
+        
+        utilizadorRepository.save(utilizador);
+        
+        auditLogService.log(
+            "ANONIMIZAR_UTILIZADOR",
+            "UTILIZADOR",
+            id,
+            String.format("Utilizador anonimizado (NIF original: %s) - RGPD Art.º 17", nifOriginal)
+        );
+        
+        log.info("Utilizador ID {} (NIF original: {}) foi anonimizado com sucesso", id, nifOriginal);
+    }
+
+    /**
+     * Anonimiza um utilizador e desativa a conta (RGPD Art.º 17).
+     * O registo é mantido para preservar integridade referencial do histórico
+     * (Marcacao, BloqueioAgenda, etc.). Os dados pessoais são substituídos por
+     * valores genéricos e a conta é desativada permanentemente.
+     */
+    @Transactional
+    public void anonimizarEEliminarUtilizador(Long id) {
+        Utilizador utilizador = obterUtilizadorPorId(id);
+        String nifOriginal = utilizador.getNif();
+        String nomeOriginal = utilizador.getNome();
+
+        anonimizarUtilizador(id);
+
+        auditLogService.log(
+            "ELIMINAR_UTILIZADOR",
+            "UTILIZADOR",
+            id,
+            String.format("Utilizador anonimizado e desativado (Nome: %s, NIF: %s) - RGPD Art.º 17",
+                nomeOriginal, nifOriginal)
+        );
+
+        log.info("Utilizador ID {} (NIF original: {}) foi anonimizado e desativado", id, nifOriginal);
+    }
+
+    /**
+     * Obtém o utilizador autenticado do contexto de segurança.
+     */
+    private Utilizador buscarUtilizadorAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            throw new BadRequestException("Utilizador não autenticado");
+        }
+        
+        String email = auth.getName();
+        return buscarPorEmail(email);
+    }
+
+    /** Alias público para uso no controller. */
+    public Utilizador getUtilizadorAutenticado() {
+        return buscarUtilizadorAutenticado();
+    }
+
+    /*
+     * =========================================================
+     * DIREITO DE PORTABILIDADE (RGPD Art.º 20)
+     * =========================================================
+     */
+
+    /**
+     * Exporta todos os dados pessoais do utilizador autenticado.
+     * Retorna JSON com dados de utilizador, documentos, marcações e requisições.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> exportarDadosUtilizador() {
+        Utilizador utilizador = buscarUtilizadorAutenticado();
+        
+        Map<String, Object> dados = new HashMap<>();
+        
+        // Dados pessoais
+        Map<String, Object> dadosPessoais = new HashMap<>();
+        dadosPessoais.put("id", utilizador.getId());
+        dadosPessoais.put("nome", utilizador.getNome());
+        dadosPessoais.put("email", utilizador.getEmail());
+        dadosPessoais.put("nif", utilizador.getNif());
+        dadosPessoais.put("telefone", utilizador.getTelefone());
+        dadosPessoais.put("dataNascimento", utilizador.getDataNasc());
+        dadosPessoais.put("morada", utilizador.getMorada());
+        dadosPessoais.put("codigoPostal", utilizador.getCodigoPostal());
+        dadosPessoais.put("freguesia", utilizador.getFreguesia());
+        dadosPessoais.put("profissao", utilizador.getProfissao());
+        dadosPessoais.put("localEmprego", utilizador.getLocalEmprego());
+        dadosPessoais.put("moradaEmprego", utilizador.getMoradaEmprego());
+        dadosPessoais.put("telefoneEmprego", utilizador.getTelefoneEmprego());
+        dadosPessoais.put("dataCriacao", utilizador.getCreatedAt());
+        dados.put("dadosPessoais", dadosPessoais);
+        
+        // Documentos
+        try {
+            if (utilizador instanceof Utente) {
+                dados.put("documentos", documentoRepository.findByUtente((Utente) utilizador)
+                        .stream()
+                        .map(pt.florinhas.marcacoes.dto.DocumentoDTO::fromDocumento)
+                        .collect(Collectors.toList()));
+            } else {
+                dados.put("documentos", new ArrayList<>());
+            }
+        } catch (Exception e) {
+            log.error("Erro ao exportar documentos: {}", e.getMessage());
+            dados.put("documentos", new ArrayList<>());
+        }
+
+        // Marcações
+        try {
+            if (utilizador instanceof Utente) {
+                dados.put("marcacoes", marcacaoRepository.findByUtente((Utente) utilizador)
+                        .stream()
+                        .map(m -> {
+                            Map<String, Object> entry = new HashMap<>();
+                            entry.put("id", m.getId());
+                            entry.put("data", m.getData());
+                            entry.put("estado", m.getEstado());
+                            entry.put("motivoCancelamento", m.getMotivoCancelamento());
+                            if (m.getMarcacaoSecretaria() != null) {
+                                entry.put("assunto", m.getMarcacaoSecretaria().getAssunto());
+                                entry.put("descricao", m.getMarcacaoSecretaria().getDescricao());
+                            }
+                            return entry;
+                        })
+                        .collect(Collectors.toList()));
+            } else {
+                dados.put("marcacoes", new ArrayList<>());
+            }
+        } catch (Exception e) {
+            log.error("Erro ao exportar marcações: {}", e.getMessage());
+            dados.put("marcacoes", new ArrayList<>());
+        }
+        
+        // Requisições
+        dados.put("requisicoes", new ArrayList<>());
+        
+        dados.put("dataExportacao", LocalDateTime.now());
+        dados.put("formatoRGPD", "Art.º 20 - Direito de Portabilidade");
+        
+        log.info("Dados exportados para utilizador ID: {}", utilizador.getId());
+        
+        return dados;
+    }
+
+    /*
+     * =========================================================
      * MÉTODOS AUXILIARES
      * =========================================================
      */
 
-    // Character set aligned with the updated flow used in other account creation paths.
+    // Character set aligned with the updated flow used in other account creation
+    // paths.
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     /**
      * Gera uma password temporária segura com ~130 bits de entropia.
-     * Usa apenas caracteres alfanuméricos para evitar ambiguidades na cópia do email
+     * Usa apenas caracteres alfanuméricos para evitar ambiguidades na cópia do
+     * email
      * no primeiro login.
      */
     private String gerarPasswordSegura() {
@@ -446,7 +777,7 @@ public class UtilizadorService {
 
     private void validarCampoObrigatorio(String valor, String mensagemErro) {
         if (valor == null || valor.trim().isEmpty()) {
-            throw new RuntimeException(mensagemErro);
+            throw new BadRequestException(mensagemErro);
         }
     }
 }

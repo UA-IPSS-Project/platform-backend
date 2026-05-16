@@ -17,5 +17,6 @@ public record DocumentoMetadataDTO(
     Long marcacaoId,
     String etag,
     String minioLastModified,
-    Map<String, String> minioUserMetadata
+    Map<String, String> minioUserMetadata,
+    Integer sequencia
 ) {}

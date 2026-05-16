@@ -1,0 +1,43 @@
+# Build artifacts
+target/
+**/target/
+*.jar
+*.war
+*.ear
+*.class
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+.m2/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+*.swp
+*.swo
+
+# Version control
+.git/
+.gitignore
+
+# Environment and logs
+.env
+.env.*
+*.log
+logs/
+
+# Local data and tests
+data/
+k6-tests/
+node_modules/
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
