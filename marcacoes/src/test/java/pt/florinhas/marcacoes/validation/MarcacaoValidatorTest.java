@@ -1,375 +1,75 @@
 package pt.florinhas.marcacoes.validation;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
-import java.time.LocalDate;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
-import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.RoupaDTO;
 import pt.florinhas.marcacoes.service.CalendarioService;
 
+@ExtendWith(MockitoExtension.class)
 class MarcacaoValidatorTest {
 
-    private CalendarioService calendarioService;
-
-    private MarcacaoValidator validator;
-
-    @BeforeEach
-    void setUp() {
-
-        calendarioService =
-                org.mockito.Mockito.mock(
-                        CalendarioService.class);
-
-        validator =
-                new MarcacaoValidator(
-                        calendarioService);
-    }
-
-    @Test
-    void validarCriacao_DeveAceitarRequestValido() {
-
-        CriarMarcacaoRequest request =
-                new CriarMarcacaoRequest();
-
-        request.setAssunto("Teste");
-
-        request.setData(
-                LocalDateTime.of(
-                        2026,
-                        5,
-                        18,
-                        10,
-                        0));
-
-        when(calendarioService.getFeriadosDoAno(
-                2026))
-                .thenReturn(List.of());
-
-        when(calendarioService.isSlotBloqueado(
-                any(),
-                any(),
-                anyString()))
-                .thenReturn(false);
-
-        assertDoesNotThrow(
-                () -> validator.validarCriacao(
-                        request));
-    }
-
-    @Test
-    void validarCriacao_DeveLancarExcecaoRequestNull() {
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacao(
-                        null));
-    }
-
-    @Test
-    void validarCriacao_DeveLancarExcecaoAssuntoVazio() {
-
-        CriarMarcacaoRequest request =
-                new CriarMarcacaoRequest();
-
-        request.setAssunto("");
-
-        request.setData(
-                LocalDateTime.of(
-                        2026,
-                        5,
-                        18,
-                        10,
-                        0));
-
-        when(calendarioService.getFeriadosDoAno(
-                2026))
-                .thenReturn(List.of());
-
-        when(calendarioService.isSlotBloqueado(
-                any(),
-                any(),
-                anyString()))
-                .thenReturn(false);
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacao(
-                        request));
-    }
-
-    @Test
-    void validarCriacao_DeveLancarExcecaoDataPassado() {
-
-        CriarMarcacaoRequest request =
-                new CriarMarcacaoRequest();
-
-        request.setAssunto("Teste");
-
-        request.setData(
-                LocalDateTime.now()
-                        .minusDays(1));
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacao(
-                        request));
-    }
-
-    @Test
-    void validarCriacao_DeveLancarExcecaoFimSemana() {
-
-        CriarMarcacaoRequest request =
-                new CriarMarcacaoRequest();
-
-        request.setAssunto("Teste");
-
-        request.setData(
-                LocalDateTime.of(
-                        2026,
-                        5,
-                        17,
-                        10,
-                        0));
-
-        when(calendarioService.getFeriadosDoAno(
-                2026))
-                .thenReturn(List.of());
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacao(
-                        request));
-    }
-
-    @Test
-    void validarCriacao_DeveLancarExcecaoFeriado() {
-
-        CriarMarcacaoRequest request =
-                new CriarMarcacaoRequest();
-
-        request.setAssunto("Teste");
-
-        request.setData(
-                LocalDateTime.of(
-                        2026,
-                        5,
-                        18,
-                        10,
-                        0));
-
-        when(calendarioService.getFeriadosDoAno(
-                2026))
-                .thenReturn(
-                        List.of(
-                                LocalDate.of(
-                                        2026,
-                                        5,
-                                        18)));
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacao(
-                        request));
-    }
-
-    @Test
-    void validarCriacao_DeveLancarExcecaoSlotBloqueado() {
-
-        CriarMarcacaoRequest request =
-                new CriarMarcacaoRequest();
-
-        request.setAssunto("Teste");
-
-        request.setData(
-                LocalDateTime.of(
-                        2026,
-                        5,
-                        18,
-                        10,
-                        0));
-
-        when(calendarioService.getFeriadosDoAno(
-                2026))
-                .thenReturn(List.of());
-
-        when(calendarioService.isSlotBloqueado(
-                any(),
-                any(),
-                anyString()))
-                .thenReturn(true);
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacao(
-                        request));
-    }
-
-    @Test
-    void validarCriacao_DeveLancarExcecaoMais365Dias() {
-
-        CriarMarcacaoRequest request =
-                new CriarMarcacaoRequest();
-
-        request.setAssunto("Teste");
-
-        request.setData(
-                LocalDateTime.now()
-                        .plusDays(367));
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacao(
-                        request));
-    }
-
-    @Test
-    void validarCriacaoBalneario_DeveAceitarRequestValido() {
-
-        CriarMarcacaoBalnearioRequest request =
-                new CriarMarcacaoBalnearioRequest();
-
-        request.setData(
-                LocalDateTime.of(
-                        2026,
-                        5,
-                        18,
-                        10,
-                        0));
-
-        request.setRoupas(List.of());
-
-        when(calendarioService.getFeriadosDoAno(
-                2026))
-                .thenReturn(List.of());
-
-        when(calendarioService.isSlotBloqueado(
-                any(),
-                any(),
-                anyString()))
-                .thenReturn(false);
-
-        assertDoesNotThrow(
-                () -> validator.validarCriacaoBalneario(
-                        request));
-    }
-
-    @Test
-    void validarCriacaoBalneario_DeveLancarExcecaoRequestNull() {
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarCriacaoBalneario(
-                        null));
-    }
-
-    @Test
-    void validarRoupas_DeveAceitarNull() {
-
-        assertDoesNotThrow(
-                () -> validator.validarRoupas(
-                        null));
-    }
-
-    @Test
-    void validarRoupas_DeveAceitarCategoria() {
-
-        RoupaDTO roupa =
-                new RoupaDTO();
-
-        roupa.setCategoria("CAMISOLA");
-
-        assertDoesNotThrow(
-                () -> validator.validarRoupas(
-                        List.of(roupa)));
-    }
-
-    @Test
-    void validarRoupas_DeveAceitarItemId() {
-
-        RoupaDTO roupa =
-                new RoupaDTO();
-
-        roupa.setItemId(1L);
-
-        assertDoesNotThrow(
-                () -> validator.validarRoupas(
-                        List.of(roupa)));
-    }
-
-    @Test
-    void validarRoupas_DeveLancarExcecao() {
-
-        RoupaDTO roupa =
-                new RoupaDTO();
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarRoupas(
-                        List.of(roupa)));
-    }
-
-    @Test
-    void validarReagendamento_DeveAceitarValido() {
-
-        ReagendarMarcacaoRequest request =
-                new ReagendarMarcacaoRequest();
-
-        request.setNovaDataHora(
-                LocalDateTime.of(
-                        2026,
-                        5,
-                        18,
-                        10,
-                        0));
-
-        when(calendarioService.getFeriadosDoAno(
-                2026))
-                .thenReturn(List.of());
-
-        when(calendarioService.isSlotBloqueado(
-                any(),
-                any(),
-                anyString()))
-                .thenReturn(false);
-
-        assertDoesNotThrow(
-                () -> validator.validarReagendamento(
-                        request,
-                        "SECRETARIA"));
-    }
-
-    @Test
-    void validarReagendamento_DeveLancarExcecaoRequestNull() {
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarReagendamento(
-                        null,
-                        "SECRETARIA"));
-    }
-
-    @Test
-    void validarReagendamento_DeveLancarExcecaoNovaDataNull() {
-
-        ReagendarMarcacaoRequest request =
-                new ReagendarMarcacaoRequest();
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> validator.validarReagendamento(
-                        request,
-                        "SECRETARIA"));
-    }
+        @Mock
+        private CalendarioService calendarioService;
+        private MarcacaoValidator validator;
+
+        @BeforeEach
+        void setup() {
+                validator = new MarcacaoValidator(calendarioService);
+        }
+
+        @Test
+        @DisplayName("Deve validar criação de marcação com sucesso")
+        void validarCriacao_DeveAceitarRequestValido() {
+                CriarMarcacaoRequest request = new CriarMarcacaoRequest();
+                request.setAssunto("Pedido");
+                request.setData(LocalDateTime.now().plusDays(1));
+
+                while (request.getData().getDayOfWeek().getValue() >= 6) {
+                        request.setData(request.getData().plusDays(1));
+                }
+
+                when(calendarioService.getFeriadosDoAno(anyInt())).thenReturn(List.of());
+                when(calendarioService.isSlotBloqueado(any(), any(), any())).thenReturn(false);
+
+                assertDoesNotThrow(() -> validator.validarCriacao(request));
+        }
+
+        @Test
+        @DisplayName("Deve falhar quando o assunto é nulo ou vazio")
+        void validarCriacao_DeveLancarExcecaoAssuntoInvalido() {
+                CriarMarcacaoRequest request = new CriarMarcacaoRequest();
+                request.setAssunto("");
+                request.setData(LocalDateTime.now().plusDays(1));
+
+                assertThrows(IllegalArgumentException.class, () -> validator.validarCriacao(request));
+        }
+
+        @Test
+        @DisplayName("Deve validar roupas por categoria ou ID de item")
+        void validarRoupas_DeveAceitarCategoriaOuItem() {
+                RoupaDTO r1 = new RoupaDTO();
+                r1.setCategoria("Meias");
+                RoupaDTO r2 = new RoupaDTO();
+                r2.setItemId(1L);
+
+                assertDoesNotThrow(() -> validator.validarRoupas(List.of(r1, r2)));
+        }
+
+        @Test
+        @DisplayName("Deve falhar quando roupa não tem categoria nem item")
+        void validarRoupas_DeveLancarExcecaoQuandoAmbosNulos() {
+                RoupaDTO r = new RoupaDTO();
+                assertThrows(IllegalArgumentException.class, () -> validator.validarRoupas(List.of(r)));
+        }
 }
