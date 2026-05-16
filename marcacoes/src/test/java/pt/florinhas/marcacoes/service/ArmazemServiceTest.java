@@ -198,7 +198,8 @@ class ArmazemServiceTest {
         @DisplayName("Atualizar item deve lançar exceção se item não encontrado")
         void atualizarItem_ItemNaoEncontrado_DeveLancarException() {
             when(itemArmazemRepository.findById(1L)).thenReturn(Optional.empty());
-            assertThrows(IllegalArgumentException.class, () -> armazemService.atualizarItem(1L, new ItemArmazemDTO()));
+            ItemArmazemDTO dto = new ItemArmazemDTO();
+            assertThrows(IllegalArgumentException.class, () -> armazemService.atualizarItem(1L, dto));
         }
 
         @Test

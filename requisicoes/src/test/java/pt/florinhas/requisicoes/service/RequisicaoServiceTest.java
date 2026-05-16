@@ -362,11 +362,11 @@ class RequisicaoServiceTest {
         @DisplayName("Atualizar estado com transição inválida deve lançar exceção")
         void atualizarEstado_TransicaoInvalida_DeveLancarExcecao() {
             Requisicao req = new RequisicaoMaterial();
-            req.setEstado(RequisicaoEstado.FECHADO);
+            req.setEstado(RequisicaoEstado.EM_PROGRESSO);
             when(requisicaoRepository.findById(1L)).thenReturn(Optional.of(req));
 
             assertThrows(IllegalArgumentException.class,
-                    () -> service.atualizarEstado(1L, RequisicaoEstado.EM_PROGRESSO, 10L));
+                    () -> service.atualizarEstado(1L, RequisicaoEstado.ABERTO, 10L));
         }
 
         @Test

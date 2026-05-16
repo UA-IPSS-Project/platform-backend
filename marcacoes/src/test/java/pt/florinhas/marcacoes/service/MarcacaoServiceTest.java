@@ -834,8 +834,9 @@ class MarcacaoServiceTest {
     @Test
     void atualizarDetalhesBalneario_MarcacaoNaoEncontrada_DeveLancarErro() {
         when(marcacaoRepository.findById(1L)).thenReturn(Optional.empty());
+        List<RoupaDTO> roupas = List.of();
         assertThrows(IllegalArgumentException.class,
-                () -> marcacaoService.atualizarDetalhesBalneario(1L, true, true, List.of()));
+                () -> marcacaoService.atualizarDetalhesBalneario(1L, true, true, roupas));
     }
 
     @Test
@@ -845,8 +846,9 @@ class MarcacaoServiceTest {
 
         when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
 
+        List<RoupaDTO> roupas = List.of();
         assertThrows(IllegalArgumentException.class,
-                () -> marcacaoService.atualizarDetalhesBalneario(1L, true, true, List.of()));
+                () -> marcacaoService.atualizarDetalhesBalneario(1L, true, true, roupas));
     }
 
     @Test

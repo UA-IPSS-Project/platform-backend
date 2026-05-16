@@ -317,7 +317,8 @@ class MarcacaoControllerTest {
     @DisplayName("Deve falhar listagem geral de marcacoes se nao for admin")
     void listarTodasMarcacoes_DeveFalharSeNaoAdmin() {
         when(authService.isAdmin()).thenReturn(false);
-        assertThrows(AccessDeniedException.class, () -> controller.listarTodasMarcacoes(PageRequest.of(0, 20)));
+        PageRequest pageRequest = PageRequest.of(0, 20);
+        assertThrows(AccessDeniedException.class, () -> controller.listarTodasMarcacoes(pageRequest));
     }
 
     @Test

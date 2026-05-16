@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import pt.florinhas.common_data.TestUtils;
 import pt.florinhas.common_data.exception.CryptoException;
@@ -112,37 +114,21 @@ class CryptoUtilsTest {
         assertThrows(IllegalStateException.class, utils::init);
     }
 
-    @Test
-    @DisplayName("Inicialização com chave de tamanho ímpar deve lançar exceção")
-    void init_DeveLancarExcecaoQuandoComprimentoImpar() {
+    @ParameterizedTest
+    @CsvSource(delimiter = ';', value = {
+        "12345; hex inválido (comprimento ímpar)",
+        "0123456789ABCDEZ0123456789ABCDEZ; contém caracteres não-hex",
+        "0123456789ABCDEF; deve ser hex de 32, 48 ou 64 chars"
+    })
+    @DisplayName("Inicialização com chave hex inválida deve lançar exceção")
+    void init_DeveLancarExcecaoQuandoChaveInvalida(String hex, String expectedMessage) {
         CryptoUtils utils = new CryptoUtils();
-        TestUtils.setField(utils, "encryptionKeyHex", "12345"); // comprimento ímpar
+        TestUtils.setField(utils, "encryptionKeyHex", hex);
         TestUtils.setField(utils, "blindIndexKey", "blind");
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, utils::init);
-        assertTrue(ex.getMessage().contains("hex inválido (comprimento ímpar)"));
-    }
-
-    @Test
-    @DisplayName("Inicialização com chave contendo caracteres não-hex deve lançar exceção")
-    void init_DeveLancarExcecaoQuandoNaoHex() {
-        CryptoUtils utils = new CryptoUtils();
-        TestUtils.setField(utils, "encryptionKeyHex", "0123456789ABCDEZ0123456789ABCDEZ"); // 'Z' não é hex
-        TestUtils.setField(utils, "blindIndexKey", "blind");
-
-        IllegalStateException ex = assertThrows(IllegalStateException.class, utils::init);
-        assertTrue(ex.getMessage().contains("contém caracteres não-hex"));
-    }
-
-    @Test
-    @DisplayName("Inicialização com chave de tamanho inválido (nem 16, 24 ou 32 bytes) deve lançar exceção")
-    void init_DeveLancarExcecaoQuandoTamanhoNaoAES() {
-        CryptoUtils utils = new CryptoUtils();
-        TestUtils.setField(utils, "encryptionKeyHex", "0123456789ABCDEF"); // 8 bytes
-        TestUtils.setField(utils, "blindIndexKey", "blind");
-
-        IllegalStateException ex = assertThrows(IllegalStateException.class, utils::init);
-        assertTrue(ex.getMessage().contains("deve ser hex de 32, 48 ou 64 chars"));
+        assertTrue(ex.getMessage().contains(expectedMessage),
+            "Esperado que '" + ex.getMessage() + "' contenha '" + expectedMessage + "'");
     }
 
     @Test
