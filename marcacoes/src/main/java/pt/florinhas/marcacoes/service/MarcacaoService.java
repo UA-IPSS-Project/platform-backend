@@ -520,15 +520,28 @@ public class MarcacaoService {
     }
 
     public Page<MarcacaoResponseDTO> consultarMarcacoesPassadasPaginated(LocalDateTime dataInicio, LocalDateTime dataFim,
-            Long utenteId, EventoEstado estado, Pageable pageable) {
+            Long utenteId, EventoEstado estado, String assunto, String nomeUtente, Pageable pageable) {
         if (dataInicio == null) {
             dataInicio = LocalDateTime.of(2000, 1, 1, 0, 0);
         }
         if (dataFim == null) {
             dataFim = LocalDateTime.now();
         }
-        return marcacaoRepository.findMarcacoesPassadasPaginated(dataInicio, dataFim, utenteId, estado, pageable)
-                .map(this::toDTO);
+        String estadoStr = estado != null ? estado.name() : null;
+        // Native query has ORDER BY m.data DESC — pass unsorted Pageable to avoid
+        // Spring Data injecting a conflicting ORDER BY clause on a non-SELECT field
+        org.springframework.data.domain.Pageable nativePageable =
+                org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        Page<Long> idsPage = marcacaoRepository.findMarcacoesPassadasPaginatedIds(
+                dataInicio, dataFim, utenteId, estadoStr, assunto, nomeUtente, nativePageable);
+        List<Marcacao> marcacoes = marcacaoRepository.findAllById(idsPage.getContent());
+        // Preservar a ordem da query nativa
+        Map<Long, Marcacao> byId = marcacoes.stream().collect(Collectors.toMap(Marcacao::getId, m -> m));
+        List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
+                .filter(byId::containsKey)
+                .map(id -> toDTO(byId.get(id)))
+                .collect(Collectors.toList());
+        return new org.springframework.data.domain.PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 
     public MarcacaoResponseDTO notificarDocumentosInvalidos(Long id, NotificarDocumentosRequest request) {

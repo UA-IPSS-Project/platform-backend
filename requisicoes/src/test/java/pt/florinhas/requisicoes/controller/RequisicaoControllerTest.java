@@ -64,7 +64,8 @@ class RequisicaoControllerTest {
         Page<Requisicao> resultado = requisicaoController.listar(RequisicaoEstado.EM_PROGRESSO, pageable);
 
         assertSame(esperado, resultado);
-        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null, pageable);
+        verify(requisicaoService).procurarPaginated(RequisicaoEstado.EM_PROGRESSO, null, null, null, null, null,
+                pageable);
     }
 
     @Test
@@ -117,7 +118,7 @@ class RequisicaoControllerTest {
                 "material",
                 RequisicaoPrioridade.MEDIA,
                 null,
-            List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)), null);
+                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(2L, 3)), null);
         Requisicao resposta = new RequisicaoMaterial();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
@@ -135,13 +136,13 @@ class RequisicaoControllerTest {
                 "transporte",
                 RequisicaoPrioridade.BAIXA,
                 null,
-            "Porto",
-            LocalDateTime.now().plusDays(1),
-            LocalDateTime.now().plusDays(1).plusHours(3),
-            4,
-            "Motorista",
-            List.of(2L),
-            null, null);
+                "Porto",
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(1).plusHours(3),
+                4,
+                "Motorista",
+                List.of(2L),
+                null, null);
         Requisicao resposta = new RequisicaoTransporte();
         Utilizador utilizador = new Utilizador();
         utilizador.setId(1L);
