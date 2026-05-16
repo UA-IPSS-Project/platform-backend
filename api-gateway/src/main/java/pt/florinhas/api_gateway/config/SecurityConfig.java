@@ -1,155 +1,45 @@
 package pt.florinhas.api_gateway.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
-import org.springframework.security.web.server.csrf.CsrfToken;
-import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
-import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
-import org.springframework.http.HttpMethod;
-
-import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
-
-import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.web.server.ServerWebExchange;
-
-import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
 @Configuration
 @EnableWebFluxSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserDetailsService userDetailsService;
-
-    @Value("${app.secure-cookies:false}")
-    private boolean secureCookies;
-
-    @Value("${app.cookie-samesite:Lax}")
-    private String cookieSameSite;
-
-    /**
-     * CSRF matcher: applies only to state-changing methods (POST/PUT/DELETE/PATCH)
-     * excluding auth and actuator endpoints (no session before login).
-     * Extracted as a named helper for readability.
-     */
-    private ServerWebExchangeMatcher csrfProtectionMatcher() {
-        var stateMutatingMethods = new OrServerWebExchangeMatcher(
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.POST),
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.PUT),
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.DELETE),
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.PATCH)
-        );
-        var excludedPaths = new OrServerWebExchangeMatcher(
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/login/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/register/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/logout"),
-            // /actuator/** is auth-required except /actuator/health, but CSRF-exempt
-            // because actuator clients (health checks, monitoring) don't use browsers.
-            new PathPatternParserServerWebExchangeMatcher("/actuator/**")
-        );
-        return new AndServerWebExchangeMatcher(stateMutatingMethods, new NegatedServerWebExchangeMatcher(excludedPaths));
-    }
 
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
-        // Align CSRF cookie attributes with the JWT cookie policy
-        var csrfTokenRepository = CookieServerCsrfTokenRepository.withHttpOnlyFalse();
-        csrfTokenRepository.setCookieCustomizer(cookie ->
-            cookie.secure(secureCookies).sameSite(cookieSameSite));
-
         return http
-                .csrf(csrf -> csrf
-                    .csrfTokenRepository(csrfTokenRepository)
-                    .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler())
-                    .requireCsrfProtectionMatcher(csrfProtectionMatcher()))
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .logout(ServerHttpSecurity.LogoutSpec::disable)
                 .exceptionHandling(ex -> ex
-                    .authenticationEntryPoint((exchange, denied) -> {
-                        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                        exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
-                        return exchange.getResponse().setComplete();
-                    })
-                    .accessDeniedHandler((exchange, denied) -> {
-                        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
-                        exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
-                        return exchange.getResponse().setComplete();
-                    }))
+                        .authenticationEntryPoint((exchange, e) -> {
+                            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                            exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
+                            return exchange.getResponse().setComplete();
+                        })
+                        .accessDeniedHandler((exchange, e) -> {
+                            exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+                            exchange.getResponse().getHeaders().remove(HttpHeaders.WWW_AUTHENTICATE);
+                            return exchange.getResponse().setComplete();
+                        }))
                 .authorizeExchange(auth -> auth
-                    .pathMatchers("/api/auth/login/**", "/api/auth/register/**", "/api/auth/logout",
-                                  "/actuator/health", "/api/utilizadores/terms-content",
-                                  "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**")
-                    .permitAll()
-                    .anyExchange()
-                    .authenticated())
-                .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-                // Subscribe the deferred CsrfToken so XSRF-TOKEN cookie is written to response
-                .addFilterAfter((exchange, chain) -> {
-                    Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
-                    return csrfToken != null ? csrfToken.then(chain.filter(exchange)) : chain.filter(exchange);
-                }, SecurityWebFiltersOrder.CSRF)
+                        .pathMatchers(
+                                "/actuator/health",
+                                "/api/utilizadores/terms-content")
+                        .permitAll()
+                        .anyExchange().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(Customizer.withDefaults()))
                 .build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationProvider authenticationProvider) {
-        return new ProviderManager(authenticationProvider);
-    }
-
-    @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public GlobalFilter websocketAuthHeaderPropagator() {
-        return (exchange, chain) -> {
-            ServerHttpRequest request = exchange.getRequest();
-            String upgrade = request.getHeaders().getUpgrade();
-            if (upgrade != null && "websocket".equalsIgnoreCase(upgrade)) {
-                String authHeader = request.getHeaders().getFirst("Authorization");
-                if (authHeader != null) {
-                    ServerWebExchange mutated = exchange.mutate()
-                            .request(builder -> builder.header("Authorization", authHeader))
-                            .build();
-                    return chain.filter(mutated);
-                }
-            }
-            return chain.filter(exchange);
-        };
     }
 }
