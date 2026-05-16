@@ -38,7 +38,7 @@ import reactor.core.publisher.Mono;
 public class RateLimitFilter implements WebFilter {
 
     private static final int LOGIN_LIMIT = 10;
-    private static final int GLOBAL_LIMIT = 120;
+    private static final int GLOBAL_LIMIT = 300;
     private static final long WINDOW_MS = 60_000L;
 
     private record Bucket(AtomicInteger count, long windowStart) {}
@@ -57,12 +57,21 @@ public class RateLimitFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        String ip = getClientIp(exchange);
         String path = exchange.getRequest().getPath().value();
+        String method = exchange.getRequest().getMethod().name();
 
         boolean isAuthEndpoint = path.startsWith("/api/auth/login") || path.startsWith("/api/auth/register");
+
+        // Only rate-limit auth endpoints and state-changing methods (POST/PUT/DELETE/PATCH)
+        // GET requests are not rate-limited to avoid blocking dashboard parallel loads
+        if (!isAuthEndpoint && method.equals("GET")) {
+            return chain.filter(exchange);
+        }
+
         int limit = isAuthEndpoint ? LOGIN_LIMIT : GLOBAL_LIMIT;
         Cache<String, Bucket> cache = isAuthEndpoint ? loginBuckets : globalBuckets;
+
+        String ip = getClientIp(exchange);
 
         Bucket bucket = cache.get(ip, k -> new Bucket(new AtomicInteger(0), Instant.now().toEpochMilli()));
 
