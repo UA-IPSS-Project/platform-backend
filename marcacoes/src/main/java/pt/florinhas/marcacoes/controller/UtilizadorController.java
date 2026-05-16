@@ -26,7 +26,6 @@ import pt.florinhas.marcacoes.dto.CreateUserRequestDTO;
 import pt.florinhas.marcacoes.dto.RecoverAccountDTO;
 import pt.florinhas.marcacoes.dto.TermsStatusDTO;
 import pt.florinhas.marcacoes.exception.NotFoundException;
-import pt.florinhas.marcacoes.service.AuditLogService;
 import pt.florinhas.marcacoes.service.TermsService;
 import pt.florinhas.marcacoes.service.UtilizadorService;
 
@@ -65,9 +64,6 @@ public class UtilizadorController {
 
     @Autowired
     private AuthorizationService authorizationService;
-
-    @Autowired
-    private AuditLogService auditLogService;
 
     @Autowired
     private TermsService termsService;
@@ -262,7 +258,8 @@ public class UtilizadorController {
     }
 
     /**
-     * Exporta todos os dados pessoais do utilizador (RGPD Art.º 20 - Direito de Portabilidade).
+     * Exporta todos os dados pessoais do utilizador (RGPD Art.º 20 - Direito de
+     * Portabilidade).
      * Retorna JSON com dados de utilizador, documentos, marcações e requisições.
      */
     @GetMapping("/me/export")
@@ -295,7 +292,8 @@ public class UtilizadorController {
     }
 
     /**
-     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão atomicamente.
+     * Publica nova versão dos termos: guarda conteúdo PT+EN e incrementa versão
+     * atomicamente.
      */
     @PostMapping("/admin/terms-publish")
     @PreAuthorize("hasRole('DPO')")
@@ -322,7 +320,8 @@ public class UtilizadorController {
     }
 
     /**
-     * Obtém o conteúdo dos termos para um idioma específico (Público — sem autenticação).
+     * Obtém o conteúdo dos termos para um idioma específico (Público — sem
+     * autenticação).
      */
     @GetMapping("/terms-content")
     public ResponseEntity<Map<String, String>> obterConteudoTermosPublico(@RequestParam String lang) {

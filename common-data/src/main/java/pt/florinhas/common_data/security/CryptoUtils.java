@@ -20,6 +20,7 @@ public class CryptoUtils {
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
     private static final int IV_LENGTH = 12;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Value("${app.security.encryption.key}")
     private String encryptionKeyHex;
@@ -50,7 +51,7 @@ public class CryptoUtils {
         if (plainText == null) return null;
         try {
             byte[] iv = new byte[IV_LENGTH];
-            new SecureRandom().nextBytes(iv);
+            SECURE_RANDOM.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(encryptionKeyBytes, "AES"), new GCMParameterSpec(GCM_TAG_LENGTH, iv));

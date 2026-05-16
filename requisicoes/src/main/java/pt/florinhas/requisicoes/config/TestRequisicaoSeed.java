@@ -43,6 +43,7 @@ import org.springframework.context.annotation.Profile;
 @Profile({"dev", "test"})
 @Order(4)
 public class TestRequisicaoSeed implements CommandLineRunner {
+    private static final Random RANDOM = new Random();
 
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
@@ -108,7 +109,6 @@ public class TestRequisicaoSeed implements CommandLineRunner {
             return;
         }
 
-        Random random = new Random();
 
         // 2. Create Material Requisitions
         for (int i = 1; i <= 5; i++) {
@@ -116,15 +116,15 @@ public class TestRequisicaoSeed implements CommandLineRunner {
             req.setTipo(RequisicaoTipo.MATERIAL);
             req.setDescricao("Requisição de material de teste " + i);
             req.setPrioridade(RequisicaoPrioridade.MEDIA);
-            req.setEstado(RequisicaoEstado.values()[random.nextInt(RequisicaoEstado.values().length)]);
+            req.setEstado(RequisicaoEstado.values()[RANDOM.nextInt(RequisicaoEstado.values().length)]);
             req.setCriadoPor(ana);
-            req.setCriadoEm(LocalDateTime.now().minusDays(random.nextInt(30)));
+            req.setCriadoEm(LocalDateTime.now().minusDays(RANDOM.nextInt(30)));
             req.setItens(new ArrayList<>());
 
             for (int j = 0; j < 2; j++) {
                 RequisicaoMaterialItem item = new RequisicaoMaterialItem();
-                item.setMaterial(materiais.get(random.nextInt(materiais.size())));
-                item.setQuantidade(random.nextInt(10) + 1);
+                item.setMaterial(materiais.get(RANDOM.nextInt(materiais.size())));
+                item.setQuantidade(RANDOM.nextInt(10) + 1);
                 item.setRequisicao(req);
                 req.getItens().add(item);
             }
@@ -137,19 +137,19 @@ public class TestRequisicaoSeed implements CommandLineRunner {
             req.setTipo(RequisicaoTipo.TRANSPORTE);
             req.setDescricao("Requisição de transporte de teste " + i);
             req.setPrioridade(RequisicaoPrioridade.MEDIA);
-            req.setEstado(RequisicaoEstado.values()[random.nextInt(RequisicaoEstado.values().length)]);
+            req.setEstado(RequisicaoEstado.values()[RANDOM.nextInt(RequisicaoEstado.values().length)]);
             req.setCriadoPor(ana);
-            req.setCriadoEm(LocalDateTime.now().minusDays(random.nextInt(30)));
+            req.setCriadoEm(LocalDateTime.now().minusDays(RANDOM.nextInt(30)));
             req.setDestino("Destino de teste " + i);
             req.setDataHoraSaida(req.getCriadoEm().plusDays(1));
             req.setDataHoraRegresso(req.getDataHoraSaida().plusHours(2));
-            req.setNumeroPassageiros(random.nextInt(20) + 1);
-            req.setTransporte(transportes.get(random.nextInt(transportes.size())));
+            req.setNumeroPassageiros(RANDOM.nextInt(20) + 1);
+            req.setTransporte(transportes.get(RANDOM.nextInt(transportes.size())));
             req.setTransportes(new ArrayList<>());
 
             for (int j = 0; j < 1; j++) {
                 RequisicaoTransporteItem item = new RequisicaoTransporteItem();
-                item.setTransporte(transportes.get(random.nextInt(transportes.size())));
+                item.setTransporte(transportes.get(RANDOM.nextInt(transportes.size())));
                 item.setRequisicao(req);
                 req.getTransportes().add(item);
             }
@@ -162,16 +162,16 @@ public class TestRequisicaoSeed implements CommandLineRunner {
             req.setTipo(RequisicaoTipo.MANUTENCAO);
             req.setDescricao("Requisição de manutenção de teste " + i);
             req.setPrioridade(RequisicaoPrioridade.ALTA);
-            req.setEstado(RequisicaoEstado.values()[random.nextInt(RequisicaoEstado.values().length)]);
+            req.setEstado(RequisicaoEstado.values()[RANDOM.nextInt(RequisicaoEstado.values().length)]);
             req.setCriadoPor(ana);
-            req.setCriadoEm(LocalDateTime.now().minusDays(random.nextInt(30)));
+            req.setCriadoEm(LocalDateTime.now().minusDays(RANDOM.nextInt(30)));
 
             RequisicaoManutencao saved = requisicaoManutencaoRepository.save(req);
 
             for (int j = 0; j < 3; j++) {
                 RequisicaoManutencaoItem item = new RequisicaoManutencaoItem();
                 item.setRequisicao(saved);
-                item.setManutencaoItem(items.get(random.nextInt(items.size())));
+                item.setManutencaoItem(items.get(RANDOM.nextInt(items.size())));
                 item.setObservacoes("Observação de teste " + j);
                 requisicaoManutencaoItemRepository.save(item);
             }

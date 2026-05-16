@@ -229,9 +229,6 @@ class RequisicaoServiceTest {
                 when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-                LocalDateTime saida = LocalDateTime.now().plusDays(10);
-                LocalDateTime regresso = saida.plusHours(4);
-
                 CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                                 "Pedido de carrinha",
                                 RequisicaoPrioridade.ALTA,
@@ -262,9 +259,6 @@ class RequisicaoServiceTest {
                 when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
                 when(transporteRepository.findById(90L)).thenReturn(Optional.empty());
 
-                LocalDateTime saida = LocalDateTime.now().plusDays(2);
-                LocalDateTime regresso = saida.plusHours(2);
-
                 CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                                 "Pedido",
                                 RequisicaoPrioridade.BAIXA,
@@ -293,9 +287,6 @@ class RequisicaoServiceTest {
                 when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
                 when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
-
-                LocalDateTime saida = LocalDateTime.now().plusDays(10);
-                LocalDateTime regresso = saida.plusHours(4);
 
                 CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                                 "Pedido compatível",
@@ -358,8 +349,6 @@ class RequisicaoServiceTest {
 
         @Test
         void criarTransporte_quandoRegressoAntesDaSaida_deveLancarErro() {
-                LocalDateTime saida = LocalDateTime.now().plusDays(10);
-                LocalDateTime regresso = saida.minusHours(1);
 
                 CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
                                 "Pedido inválido",
