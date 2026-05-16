@@ -14,8 +14,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.requisicoes.domain.ManutencaoItem;
 import pt.florinhas.requisicoes.domain.Material;
+import pt.florinhas.requisicoes.domain.PeriodicidadeFrequencia;
 import pt.florinhas.requisicoes.domain.Requisicao;
 import pt.florinhas.requisicoes.domain.RequisicaoEstado;
 import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
@@ -36,6 +39,7 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
+import pt.florinhas.requisicoes.dto.RequisicaoPeriodicaConfigRequest;
 import pt.florinhas.requisicoes.exception.ResourceNotFoundException;
 import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 import pt.florinhas.requisicoes.repository.MaterialRepository;
@@ -46,9 +50,6 @@ import pt.florinhas.requisicoes.repository.RequisicaoRepository;
 import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
 import pt.florinhas.requisicoes.repository.TipoManutencaoRepository;
 import pt.florinhas.requisicoes.repository.TransporteRepository;
-
-import pt.florinhas.common_data.domain.Funcionario;
-import pt.florinhas.common_data.repository.FuncionarioRepository;
 
 @Service
 public class RequisicaoService {
@@ -198,6 +199,8 @@ public class RequisicaoService {
             requisicao.getItens().add(requisicaoMaterialItem);
         }
 
+        aplicarConfiguracaoPeriodica(requisicao, request.periodica());
+
         RequisicaoMaterial saved = requisicaoMaterialRepository.save(requisicao);
         notificarSecretarias(saved, authenticatedUtilizadorId);
         return saved;
@@ -234,6 +237,8 @@ public class RequisicaoService {
             item.setRequisicao(requisicao);
             requisicao.getTransportes().add(item);
         }
+
+        aplicarConfiguracaoPeriodica(requisicao, request.periodica());
 
         RequisicaoTransporte saved = requisicaoTransporteRepository.save(requisicao);
         notificarSecretarias(saved, authenticatedUtilizadorId);
@@ -302,6 +307,8 @@ public class RequisicaoService {
                 requisicao.getItens().add(requisicaoItem);
             }
         }
+
+        aplicarConfiguracaoPeriodica(requisicao, request.periodica());
 
         // Single save operation handles all items via CascadeType.ALL
         RequisicaoManutencao saved = requisicaoManutencaoRepository.save(requisicao);
@@ -618,6 +625,30 @@ public class RequisicaoService {
             throw new IllegalArgumentException(campo + " é obrigatório.");
         }
         return normalized;
+    }
+
+    private void aplicarConfiguracaoPeriodica(Requisicao requisicao, RequisicaoPeriodicaConfigRequest config) {
+        if (config == null) {
+            return;
+        }
+
+        validarConfiguracaoPeriodica(config);
+
+        requisicao.setPeriodicaFrequencia(config.frequencia());
+        requisicao.setPeriodicaDataInicio(config.dataInicio());
+        requisicao.setPeriodicaDataFim(config.dataFim());
+    }
+
+    private void validarConfiguracaoPeriodica(RequisicaoPeriodicaConfigRequest config) {
+        if (config.frequencia() == null) {
+            throw new IllegalArgumentException("A frequência da requisição periódica é obrigatória.");
+        }
+        if (config.dataInicio() == null) {
+            throw new IllegalArgumentException("A data de início da requisição periódica é obrigatória.");
+        }
+        if (config.dataFim() != null && config.dataFim().isBefore(config.dataInicio())) {
+            throw new IllegalArgumentException("A data de fim da requisição periódica não pode ser anterior à data de início.");
+        }
     }
 
     private String normalizarDescricao(String descricao) {
