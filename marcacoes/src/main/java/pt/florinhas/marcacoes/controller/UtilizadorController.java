@@ -3,7 +3,6 @@ package pt.florinhas.marcacoes.controller;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,14 +58,17 @@ public class UtilizadorController {
     /**
      * Serviço de domínio responsável por ler/atualizar utilizadores.
      */
-    @Autowired
-    private UtilizadorService utilizadorService;
+    private final UtilizadorService utilizadorService;
+    private final AuthorizationService authorizationService;
+    private final TermsService termsService;
 
-    @Autowired
-    private AuthorizationService authorizationService;
-
-    @Autowired
-    private TermsService termsService;
+    public UtilizadorController(UtilizadorService utilizadorService,
+            AuthorizationService authorizationService,
+            TermsService termsService) {
+        this.utilizadorService = utilizadorService;
+        this.authorizationService = authorizationService;
+        this.termsService = termsService;
+    }
 
     /**
      * Obtém um utilizador por ID e devolve um DTO adequado ao consumo pelo

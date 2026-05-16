@@ -21,14 +21,17 @@ import pt.florinhas.marcacoes.repository.AuditLogRepository;
 @Slf4j
 public class AuditLogService {
 
-    @Autowired
-    private AuditLogRepository auditLogRepository;
+    private final AuditLogRepository auditLogRepository;
+    private final UtilizadorRepository utilizadorRepository;
+    private final HttpServletRequest request;
 
-    @Autowired
-    private UtilizadorRepository utilizadorRepository;
-
-    @Autowired(required = false)
-    private HttpServletRequest request;
+    public AuditLogService(AuditLogRepository auditLogRepository,
+                          UtilizadorRepository utilizadorRepository,
+                          @Autowired(required = false) HttpServletRequest request) {
+        this.auditLogRepository = auditLogRepository;
+        this.utilizadorRepository = utilizadorRepository;
+        this.request = request;
+    }
 
     @Transactional
     public void log(String action, String entityType, Long entityId, String details) {
