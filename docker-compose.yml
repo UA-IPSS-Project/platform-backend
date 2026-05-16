@@ -37,7 +37,7 @@ services:
     command: server /data --console-address ":9001"
     healthcheck:
       # Use MinIO's built-in HTTP readiness endpoint (mc is not available in minio/minio image)
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/ready || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/ready || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -71,6 +71,9 @@ services:
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
       - SECURE_COOKIES=${SECURE_COOKIES:-true}
       - COOKIE_SAMESITE=${COOKIE_SAMESITE:-Lax}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     healthcheck:
       # wget is available in eclipse-temurin:21-jre-alpine; /actuator/health is public (no auth required)
       test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
@@ -114,6 +117,9 @@ services:
       - MINIO_BUCKET=${MINIO_BUCKET_MARCACOES}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
       - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 15s
@@ -156,6 +162,9 @@ services:
       - MINIO_BUCKET=${MINIO_BUCKET_REQUISICOES}
       - GATEWAY_SHARED_SECRET=${GATEWAY_SHARED_SECRET}
       - NOTIFICACOES_URL=${NOTIFICACOES_URL_DOCKER}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 15s
@@ -263,7 +272,7 @@ services:
     volumes:
       - ./backups/postgres:/backups
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
