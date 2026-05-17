@@ -16,7 +16,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -210,7 +209,7 @@ public class MarcacaoService {
         return value != null && !value.trim().isEmpty();
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
         // Validar data e conflitos antes de prosseguir
         marcacaoValidator.validarCriacao(request);
@@ -250,7 +249,7 @@ public class MarcacaoService {
         return marcacao;
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional
     public Marcacao criarMarcacaoBalneario(CriarMarcacaoBalnearioRequest request) {
         marcacaoValidator.validarCriacaoBalneario(request);
 
