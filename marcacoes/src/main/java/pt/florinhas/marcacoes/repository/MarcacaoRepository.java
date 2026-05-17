@@ -49,8 +49,6 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
-                        "LEFT JOIN FETCH mb.roupas r " +
-                        "LEFT JOIN FETCH r.item " +
                         "WHERE m.data >= :dataInicio AND m.data <= :dataFim " +
                         "AND (:tipo IS NULL OR " +
                         "    (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR " +
