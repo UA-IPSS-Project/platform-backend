@@ -2,9 +2,6 @@ import http from 'k6/http';
 
 export const BASE = 'https://20.63.17.2:3443';
 
-export function randomIp() {
-    return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
-}
 
 export function doLogin(email, password) {
     const res = http.post(
@@ -13,7 +10,6 @@ export function doLogin(email, password) {
         {
             headers: {
                 'Content-Type': 'application/json',
-                'X-Forwarded-For': randomIp(),
             },
         }
     );
@@ -29,7 +25,6 @@ export function doLogin(email, password) {
             'Content-Type': 'application/json',
             'Cookie': `jwt=${jwt}; XSRF-TOKEN=${xsrf}`,
             'X-XSRF-TOKEN': xsrf,
-            'X-Forwarded-For': randomIp(),
         },
     };
 }
@@ -46,17 +41,34 @@ export function randomUser() {
 
 
 let slotCounter = 0;
-// Gera um slot sequencial e único por VU
-export function dataFuturaSequencial(vuId) {
-    const d = new Date();
-    const extraDays = Math.floor(slotCounter / 16);
-    // vuId garante que VUs diferentes operam em dias base diferentes.
-    // extraDays * 1000 previne que VUs se cruzem quando avançam para dias extra.
-    d.setDate(d.getDate() + vuId + (extraDays * 1000));
+// Gera um slot sequencial e único por VU, garantindo que salta fins de semana e feriados
+export function dataFuturaSequencial(vuId, holidays = []) {
+    let d = new Date();
+    
+    // Distribuímos as VUs por dias diferentes para evitar conflitos na mesma hora.
+    let daysToAdd = vuId + Math.floor(slotCounter / 32);
+    
+    while (daysToAdd > 0) {
+        d.setDate(d.getDate() + 1);
+        const dayOfWeek = d.getDay();
+        
+        // Obtém YYYY-MM-DD de forma imune a fusos horários/UTC
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const yyyymmdd = `${year}-${month}-${day}`;
+        
+        const isFeriado = holidays.includes(yyyymmdd);
+        
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isFeriado) {
+            daysToAdd--;
+        }
+    }
 
-    const slotOfDay = slotCounter % 16;
-    const horas = 9 + Math.floor(slotOfDay / 2);
-    const minutos = (slotOfDay % 2) * 30;
+    const slotOfDay = slotCounter % 32;
+    const totalMinutes = slotOfDay * 15;
+    const horas = 9 + Math.floor(totalMinutes / 60);
+    const minutos = totalMinutes % 60;
 
     d.setHours(horas, minutos, 0, 0);
     slotCounter++;
