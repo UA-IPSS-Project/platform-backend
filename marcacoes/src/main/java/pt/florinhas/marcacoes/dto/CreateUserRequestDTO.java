@@ -20,7 +20,6 @@ public class CreateUserRequestDTO {
     @Pattern(regexp = "\\d{9}", message = "O contacto deve ter 9 dígitos")
     private String contact;
 
-    @NotBlank(message = "O email é obrigatório")
     @Email(message = "Formato de email inválido")
     private String email;
 

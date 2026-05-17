@@ -369,7 +369,8 @@ public class UtilizadorService {
         if (utilizadorRepository.existsByNifHash(cryptoUtils.generateBlindIndex(request.getNif()))) {
             throw new ConflictException("Já existe um utilizador com este NIF.");
         }
-        if (utilizadorRepository.existsByEmail(request.getEmail())) {
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && utilizadorRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Já existe um utilizador com este Email.");
         }
 
