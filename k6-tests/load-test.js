@@ -13,9 +13,9 @@ const criarReqDur = new Trend('criar_requisicao_duration');
 export const options = {
     insecureSkipTLSVerify: true,
     stages: [
-        { duration: '15s', target: 50 },
-        { duration: '30s', target: 50 },
-        { duration: '15s', target: 0 },
+        { duration: '1m', target: 10 },
+        { duration: '3m', target: 10 },
+        { duration: '1m', target: 0 },
     ],
     thresholds: {
         'marcacoes_duration': ['p(95)<500'],
@@ -27,13 +27,16 @@ export const options = {
     },
 };
 
-let auth = null;
-
-export default function () {
+export function setup() {
+    const auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
     if (!auth) {
-        auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
-        if (!auth) { sleep(2); return; }
+        throw new Error('Login failed in setup()');
     }
+    return { auth };
+}
+
+export default function (data) {
+    const auth = data.auth;
 
     // FLUXO 1: Dashboard de manhã
     group('Dashboard', () => {

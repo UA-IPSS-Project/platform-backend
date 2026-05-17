@@ -21,13 +21,16 @@ export const options = {
     },
 };
 
-let auth = null;
-
-export default function () {
+export function setup() {
+    const auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
     if (!auth) {
-        auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
-        if (!auth) { sleep(1); return; }
+        throw new Error('Login failed in setup()');
     }
+    return { auth };
+}
+
+export default function (data) {
+    const auth = data.auth;
 
     const t = Date.now();
     const res = http.get(`${BASE}/api/marcacoes`, auth);

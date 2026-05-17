@@ -23,13 +23,16 @@ export const options = {
     },
 };
 
-let auth = null;
-
-export default function () {
+export function setup() {
+    const auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
     if (!auth) {
-        auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
-        if (!auth) { sleep(1); return; }
+        throw new Error('Login failed in setup()');
     }
+    return { auth };
+}
+
+export default function (data) {
+    const auth = data.auth;
 
     group('Leitura sob stress', () => {
         let t = Date.now();

@@ -13,11 +13,16 @@ export const options = {
     },
 };
 
-let auth = null;
+export function setup() {
+    const auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
+    if (!auth) {
+        throw new Error('Login failed in setup()');
+    }
+    return { auth };
+}
 
-export default function () {
-    if (!auth) auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
-    if (!auth) { sleep(2); return; }
+export default function (data) {
+    const auth = data.auth;
 
     // Verifica endpoints principais
     check(http.get(`${BASE}/api/marcacoes`, auth), { 'marcações ok': (r) => r.status === 200 });
