@@ -134,10 +134,14 @@ public class CandidaturaController {
     }
 
     @GetMapping("/forms/{id}")
-    public ResponseEntity<FormResponse> getFormByID(@PathVariable String id) {
+    public ResponseEntity<FormResponse> getFormByID(
+            @PathVariable String id,
+            org.springframework.security.core.Authentication authentication) {
+        boolean includeInternal = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "SECRETARIA".equals(a.getAuthority()));
         Form form = formService.getFormById(id);
         if (form != null) {
-            return ResponseEntity.ok(FormResponse.fromEntity(form));
+            return ResponseEntity.ok(FormResponse.fromEntity(form, includeInternal));
         }
         return ResponseEntity.notFound().build();
     }
