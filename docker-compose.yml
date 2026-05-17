@@ -72,7 +72,7 @@ services:
       test:
         - CMD-SHELL
         - >
-          timeout 5 bash -lc 'exec 3<>/dev/tcp/localhost/9000; printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; read -r status <&3; [[ $$status == *"200"* ]]'
+          timeout 5 bash -lc 'exec 3<>/dev/tcp/localhost/9000; printf "GET /kc/health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; read -r status <&3; [[ $$status == *"200"* ]]'
       interval: 15s
       timeout: 5s
       retries: 10
