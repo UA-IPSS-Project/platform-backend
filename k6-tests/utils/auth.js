@@ -34,12 +34,31 @@ export function doLogin(email, password) {
     };
 }
 
-// Utilizadores reais do sistema
 export const USERS = [
     { email: 'secretaria@florinhasdovouga.pt', password: 'sec123' },
-    // Adiciona mais se tiveres
+    { email: 'balneario@florinhasdovouga.pt', password: 'bal123' },
+    { email: 'escola@florinhasdovouga.pt', password: 'esc123' },
 ];
 
 export function randomUser() {
     return USERS[Math.floor(Math.random() * USERS.length)];
+}
+
+
+let slotCounter = 0;
+// Gera um slot sequencial e único por VU
+export function dataFuturaSequencial(vuId) {
+    const d = new Date();
+    const extraDays = Math.floor(slotCounter / 16);
+    // vuId garante que VUs diferentes operam em dias base diferentes.
+    // extraDays * 1000 previne que VUs se cruzem quando avançam para dias extra.
+    d.setDate(d.getDate() + vuId + (extraDays * 1000));
+
+    const slotOfDay = slotCounter % 16;
+    const horas = 9 + Math.floor(slotOfDay / 2);
+    const minutos = (slotOfDay % 2) * 30;
+
+    d.setHours(horas, minutos, 0, 0);
+    slotCounter++;
+    return d.toISOString();
 }
