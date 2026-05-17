@@ -107,13 +107,14 @@ public class MarcacaoService {
     // expecting that I might need to refine this if logic is complex.
     // However, I will try to implement reasonable defaults.
 
+    @Transactional(readOnly = true)
     public long contarMarcacoesDiarias(LocalDateTime date) {
         LocalDateTime startOfDay = date.truncatedTo(ChronoUnit.DAYS);
         LocalDateTime endOfDay = startOfDay.plusDays(1).minusNanos(1);
         return marcacaoRepository.countMarcacoesBetweenDates(startOfDay, endOfDay);
     }
 
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
         // Validar data e conflitos antes de prosseguir
         marcacaoValidator.validarCriacao(request);
@@ -377,6 +378,7 @@ public class MarcacaoService {
         return toDTO(marcacao);
     }
 
+    @Transactional(readOnly = true)
     public List<MarcacaoResponseDTO> consultarAgenda(LocalDateTime inicio, LocalDateTime fim, String tipo) {
         if (inicio == null)
             inicio = LocalDateTime.now().minusYears(1);
@@ -387,6 +389,7 @@ public class MarcacaoService {
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<MarcacaoResponseDTO> procurarAgenda(LocalDateTime inicio, LocalDateTime fim, Long criadoPorId,
             Long utenteId, EventoEstado estado) {
         List<Marcacao> list = marcacaoRepository.findWithFilters(inicio, fim, criadoPorId, utenteId, estado);
@@ -506,6 +509,7 @@ public class MarcacaoService {
         return toDTO(marcacao);
     }
 
+    @Transactional(readOnly = true)
     public List<MarcacaoResponseDTO> consultarMarcacoesPassadas(LocalDateTime dataInicio, LocalDateTime dataFim,
             Long utenteId, EventoEstado estado) {
         if (dataInicio == null) {
@@ -519,6 +523,7 @@ public class MarcacaoService {
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public Page<MarcacaoResponseDTO> consultarMarcacoesPassadasPaginated(LocalDateTime dataInicio, LocalDateTime dataFim,
             Long utenteId, EventoEstado estado, String assunto, String nomeUtente, Pageable pageable) {
         if (dataInicio == null) {
@@ -564,6 +569,7 @@ public class MarcacaoService {
         return toDTO(marcacao);
     }
 
+    @Transactional(readOnly = true)
     public List<MarcacaoResponseDTO> consultarMarcacoesUtente(Long utenteId) {
         Utente utente = utenteRepository.findById(utenteId)
                 .orElseThrow(() -> new EntityNotFoundException("Utente não encontrado com ID: " + utenteId));
@@ -598,6 +604,7 @@ public class MarcacaoService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<MarcacaoResponseDTO> consultarMarcacoesFuncionario(Long funcionarioId) {
         Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
                 .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado: " + funcionarioId));
@@ -605,10 +612,12 @@ public class MarcacaoService {
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public MarcacaoResponseDTO obterMarcacaoDTO(Long id) {
         return marcacaoRepository.findById(id).map(this::toDTO).orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public Page<MarcacaoResponseDTO> listarTodasMarcacoesPaginated(Pageable pageable) {
         return marcacaoRepository.findAllWithRelations(pageable).map(this::toDTO);
     }

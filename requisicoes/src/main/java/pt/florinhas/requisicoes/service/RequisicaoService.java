@@ -91,19 +91,23 @@ public class RequisicaoService {
         this.notificacaoService = notificacaoService;
     }
 
+    @Transactional(readOnly = true)
     public List<Requisicao> listarTodas() {
         return requisicaoRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Requisicao obterPorId(Long id) {
         return requisicaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Requisição não encontrada: " + id));
     }
 
+    @Transactional(readOnly = true)
     public List<Requisicao> listarPorEstado(RequisicaoEstado estado) {
         return requisicaoRepository.findByEstado(estado);
     }
 
+    @Transactional(readOnly = true)
     public List<Requisicao> procurar(
             RequisicaoEstado estado,
             RequisicaoTipo tipo,
@@ -133,6 +137,7 @@ public class RequisicaoService {
         );
     }
 
+    @Transactional(readOnly = true)
     public Page<Requisicao> procurarPaginated(
             RequisicaoEstado estado,
             RequisicaoTipo tipo,
@@ -350,6 +355,7 @@ public class RequisicaoService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<Material> listarMateriais() {
         return materialRepository.findAllByOrderByCategoriaAscNomeAscAtributoAscValorAtributoAsc();
     }
@@ -390,6 +396,7 @@ public class RequisicaoService {
         materialRepository.deleteById(id);
     }
 
+    @Transactional(readOnly = true)
     public List<Transporte> listarTransportes() {
         return transporteRepository.findAll(
                 Sort.by(Sort.Order.asc("codigo"), Sort.Order.asc("tipo"), Sort.Order.asc("matricula")));

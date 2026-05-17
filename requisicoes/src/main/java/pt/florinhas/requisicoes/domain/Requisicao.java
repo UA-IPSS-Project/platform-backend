@@ -10,6 +10,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
@@ -22,7 +23,12 @@ import lombok.NoArgsConstructor;
 import pt.florinhas.common_data.domain.Funcionario;
 
 @Entity
-@Table(name = "Requisicao")
+@Table(name = "Requisicao", indexes = {
+    @Index(name = "idx_requisicao_criado_em",        columnList = "criado_em DESC"),
+    @Index(name = "idx_requisicao_estado_criado_em", columnList = "estado, criado_em"),
+    @Index(name = "idx_requisicao_tipo_criado_em",   columnList = "tipo, criado_em"),
+    @Index(name = "idx_requisicao_criado_por",       columnList = "criado_por_id")
+})
 @Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @NoArgsConstructor
