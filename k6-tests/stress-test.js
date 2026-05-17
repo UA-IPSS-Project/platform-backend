@@ -236,3 +236,208 @@ ou error connection refused).
 `,
     };
 }
+
+/*
+docker logs florinhas_db --tail 200
+2026-05-17 15:33:56.976 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:56.976 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during commit attempt.
+2026-05-17 15:33:56.976 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:56.976 UTC [268] STATEMENT:  COMMIT
+2026-05-17 15:33:57.033 UTC [270] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.033 UTC [270] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:57.033 UTC [270] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.033 UTC [270] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:57.049 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.049 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:57.049 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.049 UTC [258] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:57.140 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.140 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:57.140 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.140 UTC [258] STATEMENT:  insert into marcacao_secretaria (assunto,descricao,tipo_atendimento,utente_id,marcacao_id) values ($1,$2,$3,$4,$5)
+2026-05-17 15:33:57.154 UTC [269] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.154 UTC [269] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:57.154 UTC [269] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.154 UTC [269] STATEMENT:  insert into marcacao_secretaria (assunto,descricao,tipo_atendimento,utente_id,marcacao_id) values ($1,$2,$3,$4,$5)
+2026-05-17 15:33:57.338 UTC [266] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.338 UTC [266] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:57.338 UTC [266] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.338 UTC [266] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:57.498 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.498 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:57.498 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.498 UTC [268] STATEMENT:  insert into marcacao_secretaria (assunto,descricao,tipo_atendimento,utente_id,marcacao_id) values ($1,$2,$3,$4,$5)
+2026-05-17 15:33:57.500 UTC [266] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.500 UTC [266] DETAIL:  Reason code: Canceled on identification as a pivot, during commit attempt.
+2026-05-17 15:33:57.500 UTC [266] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.500 UTC [266] STATEMENT:  COMMIT
+2026-05-17 15:33:57.501 UTC [269] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.501 UTC [269] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:57.501 UTC [269] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.501 UTC [269] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:57.510 UTC [267] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.510 UTC [267] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:57.510 UTC [267] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.510 UTC [267] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:57.615 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.615 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:57.615 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.615 UTC [268] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:57.711 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.711 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:57.711 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.711 UTC [268] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:57.816 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.816 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:57.816 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.816 UTC [268] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:57.932 UTC [269] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.932 UTC [269] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:57.932 UTC [269] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.932 UTC [269] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:57.945 UTC [266] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:57.945 UTC [266] DETAIL:  Reason code: Canceled on identification as a pivot, during commit attempt.
+2026-05-17 15:33:57.945 UTC [266] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:57.945 UTC [266] STATEMENT:  COMMIT
+2026-05-17 15:33:58.005 UTC [262] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:58.005 UTC [262] DETAIL:  Reason code: Canceled on identification as a pivot, during commit attempt.
+2026-05-17 15:33:58.005 UTC [262] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:58.005 UTC [262] STATEMENT:  COMMIT
+2026-05-17 15:33:58.176 UTC [267] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:58.176 UTC [267] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:58.176 UTC [267] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:58.176 UTC [267] STATEMENT:  insert into marcacao_secretaria (assunto,descricao,tipo_atendimento,utente_id,marcacao_id) values ($1,$2,$3,$4,$5)
+2026-05-17 15:33:58.216 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:58.216 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:58.216 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:58.216 UTC [258] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:58.329 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:58.329 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:58.329 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:58.329 UTC [268] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:58.526 UTC [267] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:58.526 UTC [267] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:58.526 UTC [267] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:58.526 UTC [267] STATEMENT:  insert into marcacao_secretaria (assunto,descricao,tipo_atendimento,utente_id,marcacao_id) values ($1,$2,$3,$4,$5)
+2026-05-17 15:33:58.751 UTC [266] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:58.751 UTC [266] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:58.751 UTC [266] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:58.751 UTC [266] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:58.935 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:58.935 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:58.935 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:58.935 UTC [258] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.126 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.126 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.126 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.126 UTC [258] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.171 UTC [270] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.171 UTC [270] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.171 UTC [270] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.171 UTC [270] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.281 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.281 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:59.281 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.281 UTC [258] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:59.281 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.281 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.281 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.281 UTC [268] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.282 UTC [264] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.282 UTC [264] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:59.282 UTC [264] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.282 UTC [264] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:59.351 UTC [270] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.351 UTC [270] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.351 UTC [270] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.351 UTC [270] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.428 UTC [262] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.428 UTC [262] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.428 UTC [262] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.428 UTC [262] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.432 UTC [265] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.432 UTC [265] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:59.432 UTC [265] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.432 UTC [265] STATEMENT:  insert into marcacao_secretaria (assunto,descricao,tipo_atendimento,utente_id,marcacao_id) values ($1,$2,$3,$4,$5)
+2026-05-17 15:33:59.436 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.436 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:59.436 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.436 UTC [258] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:59.457 UTC [268] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.457 UTC [268] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.457 UTC [268] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.457 UTC [268] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.470 UTC [253] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.470 UTC [253] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.470 UTC [253] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.470 UTC [253] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.475 UTC [270] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.475 UTC [270] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.475 UTC [270] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.475 UTC [270] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:33:59.512 UTC [262] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.512 UTC [262] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:33:59.512 UTC [262] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.512 UTC [262] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:33:59.592 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:33:59.592 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:33:59.592 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:33:59.592 UTC [258] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:34:00.298 UTC [262] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:34:00.298 UTC [262] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:34:00.298 UTC [262] HINT:  The transaction might succeed if retried.
+2026-05-17 15:34:00.298 UTC [262] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:34:00.298 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:34:00.298 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:34:00.298 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:34:00.298 UTC [258] STATEMENT:  insert into audit_log (action,details,entity_id,entity_type,ip_address,timestamp,user_id,user_name) values ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+2026-05-17 15:34:00.366 UTC [262] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:34:00.366 UTC [262] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:34:00.366 UTC [262] HINT:  The transaction might succeed if retried.
+2026-05-17 15:34:00.366 UTC [262] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:34:00.391 UTC [253] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:34:00.391 UTC [253] DETAIL:  Reason code: Canceled on identification as a pivot, during conflict in checking.
+2026-05-17 15:34:00.391 UTC [253] HINT:  The transaction might succeed if retried.
+2026-05-17 15:34:00.391 UTC [253] STATEMENT:  insert into marcacao_secretaria (assunto,descricao,tipo_atendimento,utente_id,marcacao_id) values ($1,$2,$3,$4,$5)
+2026-05-17 15:34:00.550 UTC [258] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:34:00.550 UTC [258] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:34:00.550 UTC [258] HINT:  The transaction might succeed if retried.
+2026-05-17 15:34:00.550 UTC [258] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:34:01.266 UTC [262] ERROR:  could not serialize access due to read/write dependencies among transactions
+2026-05-17 15:34:01.266 UTC [262] DETAIL:  Reason code: Canceled on identification as a pivot, during write.
+2026-05-17 15:34:01.266 UTC [262] HINT:  The transaction might succeed if retried.
+2026-05-17 15:34:01.266 UTC [262] STATEMENT:  insert into marcacao (atendente_id,criado_em,utilizador_id,data,descricao,duration,estado,motivo_cancelamento,version) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+2026-05-17 15:34:20.092 UTC [74] LOG:  checkpoint complete: wrote 661 buffers (4.0%); 1 WAL file(s) added, 0 removed, 0 recycled; write=66.844 s, sync=0.056 s, total=67.135 s; sync files=192, longest=0.008 s, average=0.001 s; distance=4563 kB, estimate=4563 kB; lsn=0/1F48368, redo lsn=0/1D94050
+florinhasuser@VM-IPSS-Digital:~/ipss-digital/platform-backend$ 
+*/
