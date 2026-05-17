@@ -16,6 +16,7 @@ const criarReqDur = new Trend('criar_requisicao_duration');
 export const options = {
     insecureSkipTLSVerify: true,
     stages: [
+        {duration: '30s', target: 3}, // Warm-up
         { duration: '30s', target: 50 }, // Ramp-up para 50 utilizadores simultâneos
         { duration: '4m', target: 50 },  // Carga estável durante 4 minutos
         { duration: '30s', target: 0 },  // Ramp-down

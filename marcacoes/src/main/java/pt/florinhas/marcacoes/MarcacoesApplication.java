@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +39,7 @@ import pt.florinhas.common_data.security.CryptoUtils;
 		"pt.florinhas.marcacoes.repository",
 		"pt.florinhas.common_data.repository"
 })
+@EnableAsync
 @EnableScheduling
 public class MarcacoesApplication {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MarcacoesApplication.class);
