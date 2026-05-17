@@ -38,6 +38,14 @@ public class AuthorizationService {
             }
         }
 
+        // Keycloak flow: principal is the email string set by GatewayHeaderAuthenticationFilter
+        if (principal instanceof String email) {
+            var users = utilizadorRepository.findByEmail(email);
+            if (!users.isEmpty()) {
+                return users.get(0).getId();
+            }
+        }
+
         return null;
     }
 
