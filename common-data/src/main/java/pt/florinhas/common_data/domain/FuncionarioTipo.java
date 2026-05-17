@@ -10,6 +10,8 @@ package pt.florinhas.common_data.domain;
  */
 public enum FuncionarioTipo {
     SECRETARIA, BALNEARIO, OUTRO, ESCOLA, INTERNO,
+    // Funcionário de ERPI (único)
+    ERPI,
     /** Responsável pela Proteção de Dados — acesso exclusivo a termos, retenção e auditoria. */
     DPO
 }
