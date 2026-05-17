@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +18,11 @@ import pt.florinhas.requisicoes.domain.RequisicaoTipo;
 @Repository
 public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
 
+    @EntityGraph(attributePaths = {"criadoPor", "geridoPor"})
+    @Override
+    List<Requisicao> findAll();
+
+    @EntityGraph(attributePaths = {"criadoPor", "geridoPor"})
     List<Requisicao> findByEstado(RequisicaoEstado estado);
 
     List<Requisicao> findByTipo(RequisicaoTipo tipo);
@@ -24,7 +30,8 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
         List<Requisicao> findByCriadoPorNomeContainingIgnoreCase(String nome);
 
     @Query("SELECT r FROM Requisicao r " +
-            "LEFT JOIN r.criadoPor c " +
+            "JOIN FETCH r.criadoPor c " +
+            "LEFT JOIN FETCH r.geridoPor " +
             "WHERE " +
             "(CAST(:estado AS string) IS NULL OR r.estado = :estado) AND " +
             "(CAST(:tipo AS string) IS NULL OR r.tipo = :tipo) AND " +
@@ -42,7 +49,8 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             @Param("dataFim") java.time.LocalDateTime dataFim);
 
     @Query(value = "SELECT r FROM Requisicao r " +
-            "LEFT JOIN r.criadoPor c " +
+            "JOIN FETCH r.criadoPor c " +
+            "LEFT JOIN FETCH r.geridoPor " +
             "WHERE " +
             "(CAST(:estado AS string) IS NULL OR r.estado = :estado) AND " +
             "(CAST(:tipo AS string) IS NULL OR r.tipo = :tipo) AND " +

@@ -21,7 +21,7 @@ public interface TransporteRepository extends JpaRepository<Transporte, Long> {
 
     List<Transporte> findByCategoria(TransporteCategoria categoria);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Transporte t SET t.categoria = :destino WHERE t.categoria = :origem")
     int updateCategoriaByCategoria(
             @Param("origem") TransporteCategoria origem,
