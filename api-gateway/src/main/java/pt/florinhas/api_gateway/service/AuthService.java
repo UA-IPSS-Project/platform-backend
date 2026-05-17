@@ -46,6 +46,8 @@ import pt.florinhas.common_data.security.CryptoUtils;
 @Slf4j
 public class AuthService {
 
+        private static final String ROLE_UTENTE = "UTENTE";
+
         private final UtilizadorRepository utilizadorRepository;
         private final FuncionarioRepository funcionarioRepository;
         private final UtenteRepository utenteRepository;
@@ -151,14 +153,14 @@ public class AuthService {
                 }
                 var user = users.get(0);
 
-                log.debug("User found: {}, Active: {}", user.getEmail(), ((Utente) user).isActivo());
-
                 // Garantir que é efetivamente um Utente
-                if (!(user instanceof Utente)) {
+                if (!(user instanceof Utente utente)) {
                         throw new BadRequestException("Credenciais inválidas para utente");
                 }
 
-                return generateAuthResponse(user, "UTENTE", ((Utente) user).isActivo());
+                log.debug("User found: {}, Active: {}", user.getEmail(), utente.isActivo());
+
+                return generateAuthResponse(user, ROLE_UTENTE, utente.isActivo());
         }
 
         /**
@@ -196,7 +198,7 @@ public class AuthService {
 
                 utente = utenteRepository.save(utente);
 
-                return generateAuthResponse(utente, "UTENTE", true);
+                return generateAuthResponse(utente, ROLE_UTENTE, true);
         }
 
         /**
@@ -265,17 +267,19 @@ public class AuthService {
 
                 user.setPassHash(passwordEncoder.encode(newPassword));
 
-                if (user instanceof Utente utente) {
-                        utente.setActivo(true);
-                        utenteRepository.save(utente);
-                } else if (user instanceof Funcionario funcionario) {
-                        // Ativa funcionário se aceitou termos agora OU já tinha termos aceites
-                        if (acceptedTermsNow || funcionario.getTermsAcceptedAt() != null) {
-                                funcionario.setActivo(true);
+                switch (user) {
+                        case Utente utente -> {
+                                utente.setActivo(true);
+                                utenteRepository.save(utente);
                         }
-                        funcionarioRepository.save(funcionario);
-                } else {
-                        utilizadorRepository.save(user);
+                        case Funcionario funcionario -> {
+                                // Ativa funcionário se aceitou termos agora OU já tinha termos aceites
+                                if (acceptedTermsNow || funcionario.getTermsAcceptedAt() != null) {
+                                        funcionario.setActivo(true);
+                                }
+                                funcionarioRepository.save(funcionario);
+                        }
+                        default -> utilizadorRepository.save(user);
                 }
         }
 
@@ -332,7 +336,7 @@ public class AuthService {
                 String role = principal.getAuthorities().stream()
                                 .findFirst()
                                 .map(a -> a.getAuthority().replace("ROLE_", ""))
-                                .orElse("UTENTE");
+                                .orElse(ROLE_UTENTE);
 
                 var persistedUser = utilizadorRepository.findById(principal.getId());
                 if (persistedUser.isEmpty()) {
@@ -340,12 +344,11 @@ public class AuthService {
                 }
 
                 Utilizador user = persistedUser.get();
-                boolean active = true;
-                if (user instanceof Utente u) {
-                        active = u.isActivo();
-                } else if (user instanceof Funcionario f) {
-                        active = f.isActivo();
-                }
+                boolean active = switch (user) {
+                        case Utente u -> u.isActivo();
+                        case Funcionario f -> f.isActivo();
+                        default -> true;
+                };
 
                 boolean requiresPasswordSetup = requiresPasswordSetup(user, active);
 

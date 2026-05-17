@@ -20,7 +20,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Controller responsável pela gestão do calendário e dos bloqueios de agenda.
@@ -45,7 +44,7 @@ public class CalendarioController {
          */
         @PostMapping("/bloquear")
         @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO')")
-        public ResponseEntity<?> bloquearHorario(@RequestBody BloquearHorarioRequest request) {
+        public ResponseEntity<Map<String, String>> bloquearHorario(@RequestBody BloquearHorarioRequest request) {
 
                 Utilizador funcionario = utilizadorRepository.findById(request.getFuncionarioId())
                                 .orElseThrow(() -> new NotFoundException("Funcionário não encontrado"));
@@ -70,7 +69,7 @@ public class CalendarioController {
          */
         @DeleteMapping("/{id}")
         @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO')")
-        public ResponseEntity<?> removerBloqueio(@PathVariable Long id) {
+        public ResponseEntity<Map<String, String>> removerBloqueio(@PathVariable Long id) {
                 calendarioService.removerBloqueio(id);
                 return ResponseEntity.ok(
                                 Map.of("message", "Bloqueio removido"));
@@ -104,7 +103,7 @@ public class CalendarioController {
 
                 List<String> dates = calendarioService.getFeriadosDoAno(ano).stream()
                                 .map(LocalDate::toString)
-                                .collect(Collectors.toList());
+                                .toList();
                 return ResponseEntity.ok(dates);
         }
 

@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +17,7 @@ import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.common_data.domain.Funcionario;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
@@ -67,6 +68,7 @@ public class UtilizadorService {
     private final DocumentoRepository documentoRepository;
     private final MarcacaoRepository marcacaoRepository;
     private final CryptoUtils cryptoUtils;
+    private final ObjectProvider<UtilizadorService> selfProvider;
 
     public UtilizadorService(UtilizadorRepository utilizadorRepository,
             UtenteRepository utenteRepository,
@@ -78,7 +80,8 @@ public class UtilizadorService {
             PasswordEncoder passwordEncoder,
             DocumentoRepository documentoRepository,
             MarcacaoRepository marcacaoRepository,
-            CryptoUtils cryptoUtils) {
+            CryptoUtils cryptoUtils,
+            ObjectProvider<UtilizadorService> selfProvider) {
         this.utilizadorRepository = utilizadorRepository;
         this.utenteRepository = utenteRepository;
         this.funcionarioRepository = funcionarioRepository;
@@ -90,6 +93,11 @@ public class UtilizadorService {
         this.documentoRepository = documentoRepository;
         this.marcacaoRepository = marcacaoRepository;
         this.cryptoUtils = cryptoUtils;
+        this.selfProvider = selfProvider;
+    }
+
+    private UtilizadorService self() {
+        return selfProvider.getIfAvailable();
     }
 
     /*
@@ -300,7 +308,7 @@ public class UtilizadorService {
     public List<UtilizadorResponseDTO> listarTodosFuncionarios() {
         return funcionarioRepository.findAll().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public Page<UtilizadorResponseDTO> pesquisarFuncionarios(String nome, FuncionarioTipo tipo, String nif,
@@ -313,7 +321,7 @@ public class UtilizadorService {
     public List<UtilizadorResponseDTO> listarFuncionariosPendentes() {
         return funcionarioRepository.findByActivoFalse().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -322,7 +330,7 @@ public class UtilizadorService {
     public List<UtilizadorResponseDTO> listarTodosUtentes() {
         return utenteRepository.findAll().stream()
                 .map(UtilizadorResponseDTO::fromUtilizador)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public Page<UtilizadorResponseDTO> pesquisarUtentes(String nome, String nif, Pageable pageable) {
@@ -426,7 +434,7 @@ public class UtilizadorService {
                 salvo.getId(),
                 String.format("Conta criada pela secretaria: %s (%s) - Tipo: %s",
                         salvo.getNome(), salvo.getEmail(),
-                        salvo instanceof Funcionario ? ((Funcionario) salvo).getTipo() : "UTENTE"));
+                        salvo instanceof Funcionario funcionario ? funcionario.getTipo() : "UTENTE"));
 
         try {
             emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
@@ -622,7 +630,7 @@ public class UtilizadorService {
         String nifOriginal = utilizador.getNif();
         String nomeOriginal = utilizador.getNome();
 
-        anonimizarUtilizador(id);
+        self().anonimizarUtilizador(id);
 
         auditLogService.log(
                 "ELIMINAR_UTILIZADOR",
@@ -693,7 +701,7 @@ public class UtilizadorService {
                 dados.put("documentos", documentoRepository.findByUtente((Utente) utilizador)
                         .stream()
                         .map(pt.florinhas.marcacoes.dto.DocumentoDTO::fromDocumento)
-                        .collect(Collectors.toList()));
+                        .toList());
             } else {
                 dados.put("documentos", new ArrayList<>());
             }
@@ -719,7 +727,7 @@ public class UtilizadorService {
                             }
                             return entry;
                         })
-                        .collect(Collectors.toList()));
+                        .toList());
             } else {
                 dados.put("marcacoes", new ArrayList<>());
             }

@@ -7,41 +7,48 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.persistence.EntityNotFoundException;
-import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
-import java.time.LocalDateTime;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
-import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
-import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
+import pt.florinhas.common_data.domain.Funcionario;
+import pt.florinhas.common_data.domain.Utente;
+import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
 import pt.florinhas.common_data.repository.UtenteRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
+import pt.florinhas.common_data.security.CryptoUtils;
+import pt.florinhas.common_data.validation.NifValidator;
 import pt.florinhas.marcacoes.domain.AtendimentoTipo;
 import pt.florinhas.marcacoes.domain.EventoEstado;
+import pt.florinhas.marcacoes.domain.ItemArmazem;
 import pt.florinhas.marcacoes.domain.Marcacao;
+import pt.florinhas.marcacoes.domain.MarcacaoBalneario;
+import pt.florinhas.marcacoes.domain.MarcacaoSecretaria;
+import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
+import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
+import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
+import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
+import pt.florinhas.marcacoes.dto.RoupaDTO;
+import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
-
-import pt.florinhas.common_data.domain.Utente;
-import pt.florinhas.common_data.domain.Utilizador;
-import pt.florinhas.common_data.domain.Funcionario;
-
-import pt.florinhas.common_data.validation.NifValidator;
-import pt.florinhas.common_data.security.CryptoUtils;
 
 @ExtendWith(MockitoExtension.class)
 class MarcacaoServiceTest {
@@ -56,6 +63,8 @@ class MarcacaoServiceTest {
     private FuncionarioRepository funcionarioRepository;
     @Mock
     private UtilizadorRepository utilizadorRepository;
+    @Mock
+    private ItemArmazemRepository itemArmazemRepository;
     @Mock
     private NotificacaoService notificacaoService;
     @Mock
@@ -407,7 +416,7 @@ class MarcacaoServiceTest {
         marcacao.setId(1L);
         marcacao.setData(LocalDateTime.now().plusDays(1));
 
-        pt.florinhas.marcacoes.domain.MarcacaoSecretaria sec = new pt.florinhas.marcacoes.domain.MarcacaoSecretaria();
+        MarcacaoSecretaria sec = new MarcacaoSecretaria();
         marcacao.setMarcacaoSecretaria(sec);
 
         LocalDateTime novaData = LocalDateTime.now().plusDays(2);
@@ -450,7 +459,6 @@ class MarcacaoServiceTest {
         verify(marcacaoRepository, never()).deleteAllInBatch(any());
     }
 
-
     @Test
     void reagendarMarcacao_DeveLancarEntityNotFoundException_QuandoNaoExiste() {
         ReagendarMarcacaoRequest request = new ReagendarMarcacaoRequest();
@@ -468,7 +476,7 @@ class MarcacaoServiceTest {
         marcacao.setId(1L);
         marcacao.setData(LocalDateTime.now().plusDays(1));
 
-        pt.florinhas.marcacoes.domain.MarcacaoSecretaria sec = new pt.florinhas.marcacoes.domain.MarcacaoSecretaria();
+        MarcacaoSecretaria sec = new MarcacaoSecretaria();
         marcacao.setMarcacaoSecretaria(sec);
 
         LocalDateTime novaData = LocalDateTime.now().plusDays(2);
@@ -493,7 +501,7 @@ class MarcacaoServiceTest {
         marcacao.setId(1L);
         marcacao.setData(data);
 
-        pt.florinhas.marcacoes.domain.MarcacaoSecretaria sec = new pt.florinhas.marcacoes.domain.MarcacaoSecretaria();
+        MarcacaoSecretaria sec = new MarcacaoSecretaria();
         marcacao.setMarcacaoSecretaria(sec);
 
         ReagendarMarcacaoRequest request = new ReagendarMarcacaoRequest();
@@ -582,7 +590,7 @@ class MarcacaoServiceTest {
         assertEquals("Motivo teste", marcacao.getMotivoCancelamento());
         assertEquals(funcionario, marcacao.getAtendente());
 
-        verify(notificacaoService).notificarCancelamento(eq(20L), eq(marcacao.getData()), eq("Motivo teste"));
+        verify(notificacaoService).notificarCancelamento(20L, marcacao.getData(), "Motivo teste");
     }
 
     @Test
@@ -715,5 +723,278 @@ class MarcacaoServiceTest {
 
         assertThrows(EntityNotFoundException.class,
                 () -> marcacaoService.atualizarEstadoMarcacao(1L, request));
+    }
+
+    @Test
+    void criarMarcacaoBalneario_ComReservaExistenteEPreenchimento_DeveAgendarComSucesso() {
+        CriarMarcacaoBalnearioRequest request = new CriarMarcacaoBalnearioRequest();
+        request.setReservaId(100L);
+        request.setData(LocalDateTime.now().plusDays(1));
+        request.setNomeUtente("Utente Balneario");
+        request.setProdutosHigiene(true);
+        request.setLavagemRoupa(true);
+
+        Marcacao marcacao = new Marcacao();
+        marcacao.setId(100L);
+        marcacao.setEstado(EventoEstado.EM_PREENCHIMENTO);
+        MarcacaoBalneario detalhes = new MarcacaoBalneario();
+        marcacao.setMarcacaoBalneario(detalhes);
+
+        when(marcacaoRepository.findById(100L)).thenReturn(Optional.of(marcacao));
+        when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(i -> i.getArgument(0));
+
+        Marcacao result = marcacaoService.criarMarcacaoBalneario(request);
+
+        assertNotNull(result);
+        assertEquals(EventoEstado.AGENDADO, result.getEstado());
+        assertTrue(result.getMarcacaoBalneario().getProdutosHigiene());
+        assertTrue(result.getMarcacaoBalneario().getLavagemRoupa());
+        assertEquals("Utente Balneario", result.getMarcacaoBalneario().getNomeUtente());
+    }
+
+    @Test
+    void criarMarcacaoBalneario_ComReservaNaoEmPreenchimento_DeveLancarErro() {
+        CriarMarcacaoBalnearioRequest request = new CriarMarcacaoBalnearioRequest();
+        request.setReservaId(100L);
+        request.setData(LocalDateTime.now().plusDays(1));
+
+        Marcacao marcacao = new Marcacao();
+        marcacao.setId(100L);
+        marcacao.setEstado(EventoEstado.AGENDADO); // Not EM_PREENCHIMENTO
+
+        when(marcacaoRepository.findById(100L)).thenReturn(Optional.of(marcacao));
+
+        assertThrows(IllegalStateException.class, () -> marcacaoService.criarMarcacaoBalneario(request));
+    }
+
+    @Test
+    void criarMarcacaoBalneario_SemReserva_DeveCriarNovaMarcacao() {
+        CriarMarcacaoBalnearioRequest request = new CriarMarcacaoBalnearioRequest();
+        request.setData(LocalDateTime.now().plusDays(1));
+        request.setNomeUtente("Utente Balneario Novo");
+        request.setResponsavelId(200L);
+
+        Funcionario responsavel = new Funcionario();
+        responsavel.setId(200L);
+
+        when(funcionarioRepository.findById(200L)).thenReturn(Optional.of(responsavel));
+        when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(i -> i.getArgument(0));
+
+        Marcacao result = marcacaoService.criarMarcacaoBalneario(request);
+
+        assertNotNull(result);
+        assertEquals(EventoEstado.AGENDADO, result.getEstado());
+        assertEquals(30, result.getDuration()); // BALNEARIO_DEFAULT_DURATION_MINUTES
+        assertEquals(responsavel, result.getCriadoPor());
+        assertEquals(responsavel, result.getMarcacaoBalneario().getResponsavel());
+    }
+
+    @Test
+    void criarMarcacaoBalneario_ItemNaoEncontrado_DeveLancarErro() {
+        CriarMarcacaoBalnearioRequest request = new CriarMarcacaoBalnearioRequest();
+        request.setData(LocalDateTime.now().plusDays(1));
+
+        RoupaDTO rDTO = new RoupaDTO();
+        rDTO.setItemId(999L);
+        rDTO.setCategoria("TOWEL");
+        request.setRoupas(List.of(rDTO));
+
+        when(itemArmazemRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> marcacaoService.criarMarcacaoBalneario(request));
+    }
+
+    @Test
+    void criarMarcacaoBalneario_ComRoupasValidas_DeveAdicionarComSucesso() {
+        CriarMarcacaoBalnearioRequest request = new CriarMarcacaoBalnearioRequest();
+        request.setData(LocalDateTime.now().plusDays(1));
+
+        RoupaDTO rDTO = new RoupaDTO();
+        rDTO.setItemId(10L);
+        rDTO.setCategoria("TOWEL");
+        rDTO.setTamanho("L");
+        rDTO.setQuantidade(2);
+        request.setRoupas(List.of(rDTO));
+
+        ItemArmazem item = new ItemArmazem();
+        item.setId(10L);
+
+        when(itemArmazemRepository.findById(10L)).thenReturn(Optional.of(item));
+        when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(i -> i.getArgument(0));
+
+        Marcacao result = marcacaoService.criarMarcacaoBalneario(request);
+
+        assertNotNull(result);
+        assertEquals(1, result.getMarcacaoBalneario().getRoupas().size());
+        assertEquals("TOWEL", result.getMarcacaoBalneario().getRoupas().get(0).getCategoria());
+        assertEquals(2, result.getMarcacaoBalneario().getRoupas().get(0).getQuantidade());
+        assertEquals(item, result.getMarcacaoBalneario().getRoupas().get(0).getItem());
+    }
+
+    @Test
+    void atualizarDetalhesBalneario_MarcacaoNaoEncontrada_DeveLancarErro() {
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.empty());
+        List<RoupaDTO> roupas = List.of();
+        assertThrows(IllegalArgumentException.class,
+                () -> marcacaoService.atualizarDetalhesBalneario(1L, true, true, roupas));
+    }
+
+    @Test
+    void atualizarDetalhesBalneario_SemDetalhesBalneario_DeveLancarErro() {
+        Marcacao marcacao = new Marcacao();
+        marcacao.setId(1L);
+
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+
+        List<RoupaDTO> roupas = List.of();
+        assertThrows(IllegalArgumentException.class,
+                () -> marcacaoService.atualizarDetalhesBalneario(1L, true, true, roupas));
+    }
+
+    @Test
+    void atualizarDetalhesBalneario_ComSucesso() {
+        Marcacao marcacao = new Marcacao();
+        marcacao.setId(1L);
+        MarcacaoBalneario detalhes = new MarcacaoBalneario();
+        marcacao.setMarcacaoBalneario(detalhes);
+
+        RoupaDTO rDTO = new RoupaDTO();
+        rDTO.setItemId(10L);
+        rDTO.setCategoria("ROBE");
+        rDTO.setTamanho("M");
+        rDTO.setQuantidade(1);
+
+        ItemArmazem item = new ItemArmazem();
+        item.setId(10L);
+
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+        when(itemArmazemRepository.findById(10L)).thenReturn(Optional.of(item));
+
+        MarcacaoResponseDTO result = marcacaoService.atualizarDetalhesBalneario(1L, true, true, List.of(rDTO));
+
+        assertNotNull(result);
+        assertTrue(detalhes.getProdutosHigiene());
+        assertTrue(detalhes.getLavagemRoupa());
+        assertEquals(1, detalhes.getRoupas().size());
+        assertEquals("ROBE", detalhes.getRoupas().get(0).getCategoria());
+        verify(marcacaoRepository).save(marcacao);
+    }
+
+    @Test
+    void consultarAgenda_DeveRetornarAgendaFiltrada() {
+        LocalDateTime inicio = LocalDateTime.now().minusDays(1);
+        LocalDateTime fim = LocalDateTime.now().plusDays(1);
+
+        Marcacao m = new Marcacao();
+        m.setId(1L);
+        m.setData(LocalDateTime.now());
+        m.setEstado(EventoEstado.AGENDADO);
+
+        when(marcacaoRepository.findMarcacoesBetweenDates(inicio, fim, "BALNEARIO")).thenReturn(List.of(m));
+
+        List<MarcacaoResponseDTO> result = marcacaoService.consultarAgenda(inicio, fim, "BALNEARIO");
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(1L, result.get(0).getId());
+    }
+
+    @Test
+    void procurarAgenda_DeveRetornarResultadosFiltrados() {
+        LocalDateTime inicio = LocalDateTime.now().minusDays(1);
+        LocalDateTime fim = LocalDateTime.now().plusDays(1);
+
+        Marcacao m = new Marcacao();
+        m.setId(1L);
+        m.setData(LocalDateTime.now());
+        m.setEstado(EventoEstado.AGENDADO);
+
+        when(marcacaoRepository.findWithFilters(inicio, fim, 10L, 20L, EventoEstado.AGENDADO))
+                .thenReturn(List.of(m));
+
+        List<MarcacaoResponseDTO> result = marcacaoService.procurarAgenda(inicio, fim, 10L, 20L, EventoEstado.AGENDADO);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(1L, result.get(0).getId());
+    }
+
+    @Test
+    void criarMarcacaoPresencial_SemTransacaoAtiva_DeveEnviarEmailImediatamente() {
+        CriarMarcacaoRequest request = new CriarMarcacaoRequest();
+        request.setData(LocalDateTime.now().plusDays(1));
+        request.setAssunto("Consulta");
+        request.setUtenteNif("100000002");
+        request.setUtenteNome("Novo Utente");
+        request.setUtenteEmail("novo@teste.com");
+        request.setUtenteTelefone("999999999");
+
+        try (MockedStatic<TransactionSynchronizationManager> mockedStatic = mockStatic(
+                TransactionSynchronizationManager.class)) {
+            mockedStatic.when(TransactionSynchronizationManager::isActualTransactionActive).thenReturn(false);
+
+            when(cryptoUtils.generateBlindIndex("100000002")).thenReturn("HASHED_NIF");
+            when(utenteRepository.findByNifHash("HASHED_NIF")).thenReturn(List.of());
+            when(passwordEncoder.encode(anyString())).thenReturn("HASH");
+            when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
+                Utente u = invocation.getArgument(0);
+                u.setId(10L);
+                return u;
+            });
+            when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            Marcacao resultado = marcacaoService.criarMarcacaoPresencial(request);
+
+            assertNotNull(resultado);
+            verify(emailService).sendPassword(eq("novo@teste.com"), anyString());
+        }
+    }
+
+    @Test
+    void criarMarcacaoPresencial_ComTransacaoAtiva_DeveRegistrarSincronizacao() throws Exception {
+        CriarMarcacaoRequest request = new CriarMarcacaoRequest();
+        request.setData(LocalDateTime.now().plusDays(1));
+        request.setAssunto("Consulta");
+        request.setUtenteNif("100000002");
+        request.setUtenteNome("Novo Utente");
+        request.setUtenteEmail("novo@teste.com");
+        request.setUtenteTelefone("999999999");
+
+        try (MockedStatic<TransactionSynchronizationManager> mockedStatic = mockStatic(
+                TransactionSynchronizationManager.class)) {
+            mockedStatic.when(TransactionSynchronizationManager::isActualTransactionActive).thenReturn(true);
+
+            doNothing().when(TransactionSynchronizationManager.class);
+            TransactionSynchronizationManager.registerSynchronization(any(TransactionSynchronization.class));
+
+            when(cryptoUtils.generateBlindIndex("100000002")).thenReturn("HASHED_NIF");
+            when(utenteRepository.findByNifHash("HASHED_NIF")).thenReturn(List.of());
+            when(passwordEncoder.encode(anyString())).thenReturn("HASH");
+            when(utenteRepository.save(any(Utente.class))).thenAnswer(invocation -> {
+                Utente u = invocation.getArgument(0);
+                u.setId(10L);
+                return u;
+            });
+            when(marcacaoRepository.save(any(Marcacao.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            Marcacao resultado = marcacaoService.criarMarcacaoPresencial(request);
+
+            assertNotNull(resultado);
+
+            verify(emailService, never()).sendPassword(anyString(), anyString());
+
+            ArgumentCaptor<TransactionSynchronization> syncCaptor = ArgumentCaptor
+                    .forClass(TransactionSynchronization.class);
+            mockedStatic.verify(() -> TransactionSynchronizationManager.registerSynchronization(syncCaptor.capture()),
+                    atLeastOnce());
+
+            List<TransactionSynchronization> syncs = syncCaptor.getAllValues();
+            assertFalse(syncs.isEmpty());
+            for (TransactionSynchronization sync : syncs) {
+                sync.afterCommit();
+            }
+
+            verify(emailService).sendPassword(eq("novo@teste.com"), anyString());
+        }
     }
 }

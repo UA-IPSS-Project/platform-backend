@@ -25,434 +25,538 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import pt.florinhas.common_data.domain.Utilizador;
 
 class JwtAuthenticationFilterTest {
 
-    private JwtService jwtService;
+        private JwtService jwtService;
 
-    private UserDetailsService userDetailsService;
+        private UserDetailsService userDetailsService;
 
-    private JwtAuthenticationFilter filter;
+        private JwtAuthenticationFilter filter;
 
-    @BeforeEach
-    void setUp() {
+        @BeforeEach
+        void setUp() {
 
-        jwtService =
-                org.mockito.Mockito.mock(
-                        JwtService.class);
+                jwtService = org.mockito.Mockito.mock(
+                                JwtService.class);
 
-        userDetailsService =
-                org.mockito.Mockito.mock(
-                        UserDetailsService.class);
+                userDetailsService = org.mockito.Mockito.mock(
+                                UserDetailsService.class);
 
-        filter =
-                new JwtAuthenticationFilter(
-                        jwtService,
-                        userDetailsService,
-                        "");
+                filter = new JwtAuthenticationFilter(
+                                jwtService,
+                                userDetailsService,
+                                "");
 
-        TestUtils.setField(
-                filter,
-                "gatewaySharedSecret",
-                "gateway-secret");
-    }
+                TestUtils.setField(
+                                filter,
+                                "gatewaySharedSecret",
+                                "gateway-secret");
+        }
 
-    @Test
-    void filter_DevePermitirPublicPath() {
+        @Test
+        void filter_DevePermitirPublicPath() {
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/auth/login")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/auth/login")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
-    }
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
+        }
 
-    @Test
-    void filter_DevePermitirOptions() {
+        @Test
+        void filter_DevePermitirOptions() {
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .method(
-                                HttpMethod.OPTIONS,
-                                "/api/private")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .method(
+                                                HttpMethod.OPTIONS,
+                                                "/api/private")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
-    }
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
+        }
 
-    @Test
-    void filter_DeveRetornar401QuandoTokenAusente() {
+        @Test
+        void filter_DeveRetornar401QuandoTokenAusente() {
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
 
-        assertEquals(
-                401,
-                exchange.getResponse()
-                        .getStatusCode()
-                        .value());
+                assertEquals(
+                                401,
+                                exchange.getResponse()
+                                                .getStatusCode()
+                                                .value());
 
-        assertEquals(
-                MediaType.APPLICATION_JSON,
-                exchange.getResponse()
-                        .getHeaders()
-                        .getContentType());
-    }
+                assertEquals(
+                                MediaType.APPLICATION_JSON,
+                                exchange.getResponse()
+                                                .getHeaders()
+                                                .getContentType());
+        }
 
-    @Test
-    void filter_DeveRetornar401QuandoJwtInvalido() {
+        @Test
+        void filter_DeveRetornar401QuandoJwtInvalido() {
 
-        when(jwtService.parseClaims(anyString()))
-                .thenThrow(
-                        new RuntimeException(
-                                "JWT inválido"));
+                when(jwtService.parseClaims(anyString()))
+                                .thenThrow(
+                                                new RuntimeException(
+                                                                "JWT inválido"));
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .header(
-                                HttpHeaders.AUTHORIZATION,
-                                "Bearer token")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                "Bearer token")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
 
-        assertEquals(
-                401,
-                exchange.getResponse()
-                        .getStatusCode()
-                        .value());
-    }
+                assertEquals(
+                                401,
+                                exchange.getResponse()
+                                                .getStatusCode()
+                                                .value());
+        }
 
-    @Test
-    void filter_DeveRetornar401QuandoSubjectAusente() {
+        @Test
+        void filter_DeveRetornar401QuandoSubjectAusente() {
 
-        Claims claims =
-                Jwts.claims()
-                        .build();
+                Claims claims = Jwts.claims()
+                                .build();
 
-        when(jwtService.parseClaims(anyString()))
-                .thenReturn(claims);
+                when(jwtService.parseClaims(anyString()))
+                                .thenReturn(claims);
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .header(
-                                HttpHeaders.AUTHORIZATION,
-                                "Bearer token")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                "Bearer token")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
 
-        assertEquals(
-                401,
-                exchange.getResponse()
-                        .getStatusCode()
-                        .value());
-    }
+                assertEquals(
+                                401,
+                                exchange.getResponse()
+                                                .getStatusCode()
+                                                .value());
+        }
 
-    @Test
-    void filter_DeveRetornar401QuandoUtilizadorNaoExiste() {
+        @Test
+        void filter_DeveRetornar401QuandoUtilizadorNaoExiste() {
 
-        Claims claims =
-                Jwts.claims()
-                        .subject("teste")
-                        .build();
+                Claims claims = Jwts.claims()
+                                .subject("teste")
+                                .build();
 
-        when(jwtService.parseClaims(anyString()))
-                .thenReturn(claims);
+                when(jwtService.parseClaims(anyString()))
+                                .thenReturn(claims);
 
-        when(userDetailsService.loadUserByUsername("teste"))
-                .thenThrow(
-                        new RuntimeException(
-                                "User não encontrado"));
+                when(userDetailsService.loadUserByUsername("teste"))
+                                .thenThrow(
+                                                new RuntimeException(
+                                                                "User não encontrado"));
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .header(
-                                HttpHeaders.AUTHORIZATION,
-                                "Bearer token")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                "Bearer token")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
 
-        assertEquals(
-                401,
-                exchange.getResponse()
-                        .getStatusCode()
-                        .value());
-    }
+                assertEquals(
+                                401,
+                                exchange.getResponse()
+                                                .getStatusCode()
+                                                .value());
+        }
 
-    @Test
-    void filter_DeveAutenticarComBearerToken() {
+        @Test
+        void filter_DeveAutenticarComBearerToken() {
 
-        Claims claims =
-                Jwts.claims()
-                        .subject("teste")
-                        .add(
-                                "roles",
-                                List.of("ROLE_USER"))
-                        .add(
-                                "userId",
-                                1L)
-                        .build();
+                Claims claims = Jwts.claims()
+                                .subject("teste")
+                                .add(
+                                                "roles",
+                                                List.of("ROLE_USER"))
+                                .add(
+                                                "userId",
+                                                1L)
+                                .build();
 
-        UserDetails user =
-                User.withUsername("teste")
-                        .password("password")
-                        .authorities("ROLE_USER")
-                        .build();
+                UserDetails user = User.withUsername("teste")
+                                .password("password")
+                                .authorities("ROLE_USER")
+                                .build();
 
-        when(jwtService.parseClaims(anyString()))
-                .thenReturn(claims);
+                when(jwtService.parseClaims(anyString()))
+                                .thenReturn(claims);
 
-        when(userDetailsService.loadUserByUsername("teste"))
-                .thenReturn(user);
+                when(userDetailsService.loadUserByUsername("teste"))
+                                .thenReturn(user);
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .header(
-                                HttpHeaders.AUTHORIZATION,
-                                "Bearer token")
-                        .remoteAddress(
-                                new InetSocketAddress(
-                                        "127.0.0.1",
-                                        8080))
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                "Bearer token")
+                                .remoteAddress(
+                                                new InetSocketAddress(
+                                                                "127.0.0.1",
+                                                                8080))
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> {
+                WebFilterChain chain = webExchange -> {
 
-                    assertEquals(
-                            "teste",
-                            webExchange.getRequest()
-                                    .getHeaders()
-                                    .getFirst("X-Authenticated-User"));
+                        assertEquals(
+                                        "teste",
+                                        webExchange.getRequest()
+                                                        .getHeaders()
+                                                        .getFirst("X-Authenticated-User"));
 
-                    assertEquals(
-                            "1",
-                            webExchange.getRequest()
-                                    .getHeaders()
-                                    .getFirst("X-Authenticated-User-Id"));
+                        assertEquals(
+                                        "1",
+                                        webExchange.getRequest()
+                                                        .getHeaders()
+                                                        .getFirst("X-Authenticated-User-Id"));
 
-                    assertEquals(
-                            "ROLE_USER",
-                            webExchange.getRequest()
-                                    .getHeaders()
-                                    .getFirst("X-Authenticated-Roles"));
+                        assertEquals(
+                                        "ROLE_USER",
+                                        webExchange.getRequest()
+                                                        .getHeaders()
+                                                        .getFirst("X-Authenticated-Roles"));
 
-                    assertEquals(
-                            "gateway-secret",
-                            webExchange.getRequest()
-                                    .getHeaders()
-                                    .getFirst("X-Gateway-Secret"));
+                        assertEquals(
+                                        "gateway-secret",
+                                        webExchange.getRequest()
+                                                        .getHeaders()
+                                                        .getFirst("X-Gateway-Secret"));
 
-                    return Mono.empty();
+                        return Mono.empty();
                 };
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
-    }
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
+        }
 
-    @Test
-    void filter_DeveAutenticarViaCookie() {
+        @Test
+        void filter_DeveAutenticarViaCookie() {
 
-        Claims claims =
-                Jwts.claims()
-                        .subject("cookie-user")
-                        .build();
+                Claims claims = Jwts.claims()
+                                .subject("cookie-user")
+                                .build();
 
-        UserDetails user =
-                User.withUsername("cookie-user")
-                        .password("password")
-                        .authorities("ROLE_ADMIN")
-                        .build();
+                UserDetails user = User.withUsername("cookie-user")
+                                .password("password")
+                                .authorities("ROLE_ADMIN")
+                                .build();
 
-        when(jwtService.parseClaims(anyString()))
-                .thenReturn(claims);
+                when(jwtService.parseClaims(anyString()))
+                                .thenReturn(claims);
 
-        when(userDetailsService.loadUserByUsername("cookie-user"))
-                .thenReturn(user);
+                when(userDetailsService.loadUserByUsername("cookie-user"))
+                                .thenReturn(user);
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .cookie(
-                                new HttpCookie(
-                                        "jwt",
-                                        "cookie-token"))
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .cookie(
+                                                new HttpCookie(
+                                                                "jwt",
+                                                                "cookie-token"))
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
-    }
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
+        }
 
-    @Test
-    void filter_DeveUsarAuthoritiesDoUserQuandoJwtNaoTemRoles() {
+        @Test
+        void filter_DeveUsarAuthoritiesDoUserQuandoJwtNaoTemRoles() {
 
-        Claims claims =
-                Jwts.claims()
-                        .subject("teste")
-                        .build();
+                Claims claims = Jwts.claims()
+                                .subject("teste")
+                                .build();
 
-        UserDetails user =
-                User.withUsername("teste")
-                        .password("password")
-                        .authorities("ROLE_MANAGER")
-                        .build();
+                UserDetails user = User.withUsername("teste")
+                                .password("password")
+                                .authorities("ROLE_MANAGER")
+                                .build();
 
-        when(jwtService.parseClaims(anyString()))
-                .thenReturn(claims);
+                when(jwtService.parseClaims(anyString()))
+                                .thenReturn(claims);
 
-        when(userDetailsService.loadUserByUsername("teste"))
-                .thenReturn(user);
+                when(userDetailsService.loadUserByUsername("teste"))
+                                .thenReturn(user);
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .header(
-                                HttpHeaders.AUTHORIZATION,
-                                "Bearer token")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                "Bearer token")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        WebFilterChain chain =
-                webExchange -> {
+                WebFilterChain chain = webExchange -> {
 
-                    assertEquals(
-                            "ROLE_MANAGER",
-                            webExchange.getRequest()
-                                    .getHeaders()
-                                    .getFirst("X-Authenticated-Roles"));
+                        assertEquals(
+                                        "ROLE_MANAGER",
+                                        webExchange.getRequest()
+                                                        .getHeaders()
+                                                        .getFirst("X-Authenticated-Roles"));
 
-                    return Mono.empty();
+                        return Mono.empty();
                 };
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
-    }
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
+        }
 
-    @Test
-    void filter_DeveRemoverWWWAuthenticate() {
+        @Test
+        void filter_DeveRemoverWWWAuthenticate() {
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .build();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .build();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        exchange.getResponse()
-                .getHeaders()
-                .add(
-                        HttpHeaders.WWW_AUTHENTICATE,
-                        "Basic");
-
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
-
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
-
-        assertEquals(
-                null,
                 exchange.getResponse()
-                        .getHeaders()
-                        .getFirst(HttpHeaders.WWW_AUTHENTICATE));
-    }
+                                .getHeaders()
+                                .add(
+                                                HttpHeaders.WWW_AUTHENTICATE,
+                                                "Basic");
 
-    @Test
-    void filter_DeveDefinirContentTypeJson() {
+                WebFilterChain chain = webExchange -> Mono.empty();
 
-        MockServerHttpRequest request =
-                MockServerHttpRequest
-                        .get("/api/private")
-                        .build();
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
 
-        MockServerWebExchange exchange =
-                MockServerWebExchange.from(request);
+                assertEquals(
+                                null,
+                                exchange.getResponse()
+                                                .getHeaders()
+                                                .getFirst(HttpHeaders.WWW_AUTHENTICATE));
+        }
 
-        WebFilterChain chain =
-                webExchange -> Mono.empty();
+        @Test
+        void filter_DeveDefinirContentTypeJson() {
 
-        StepVerifier.create(
-                filter.filter(exchange, chain))
-                .verifyComplete();
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .build();
 
-        assertNotNull(
-                exchange.getResponse()
-                        .getHeaders()
-                        .getContentType());
-    }
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+                WebFilterChain chain = webExchange -> Mono.empty();
+
+                StepVerifier.create(
+                                filter.filter(exchange, chain))
+                                .verifyComplete();
+
+                assertNotNull(
+                                exchange.getResponse()
+                                                .getHeaders()
+                                                .getContentType());
+        }
+
+        @Test
+        void filter_DeveAutenticarComUtilizadorEEnviarId() {
+                Claims claims = Jwts.claims()
+                                .subject("utilizador@teste.com")
+                                .build();
+
+                Utilizador utilizador = new Utilizador();
+                utilizador.setId(999L);
+                utilizador.setEmail("utilizador@teste.com");
+                utilizador.setNome("Utilizador Teste");
+
+                when(jwtService.parseClaims(anyString())).thenReturn(claims);
+                when(userDetailsService.loadUserByUsername("utilizador@teste.com")).thenReturn(utilizador);
+
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
+                                .build();
+
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
+                WebFilterChain chain = webExchange -> {
+                        assertEquals("999", webExchange.getRequest().getHeaders().getFirst("X-Authenticated-User-Id"));
+                        return Mono.empty();
+                };
+
+                StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+        }
+
+        @Test
+        void filter_ComRolesVazias_NaoDeveAdicionarHeaderRoles() {
+                Claims claims = Jwts.claims()
+                                .subject("teste")
+                                .add("roles", List.of())
+                                .build();
+
+                UserDetails user = User.withUsername("teste")
+                                .password("password")
+                                .authorities(List.of())
+                                .build();
+
+                when(jwtService.parseClaims(anyString())).thenReturn(claims);
+                when(userDetailsService.loadUserByUsername("teste")).thenReturn(user);
+
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
+                                .build();
+
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
+                WebFilterChain chain = webExchange -> {
+                        assertEquals(null, webExchange.getRequest().getHeaders().getFirst("X-Authenticated-Roles"));
+                        return Mono.empty();
+                };
+
+                StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+        }
+
+        @Test
+        void filter_ComTokenRolesVazio_DeveUsarAuthoritiesDoUser() {
+                Claims claims = Jwts.claims()
+                                .subject("teste")
+                                .add("roles", List.of())
+                                .build();
+
+                UserDetails user = User.withUsername("teste")
+                                .password("password")
+                                .authorities("ROLE_SECRETARIA")
+                                .build();
+
+                when(jwtService.parseClaims(anyString())).thenReturn(claims);
+                when(userDetailsService.loadUserByUsername("teste")).thenReturn(user);
+
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
+                                .build();
+
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
+                WebFilterChain chain = webExchange -> {
+                        assertEquals("ROLE_SECRETARIA",
+                                        webExchange.getRequest().getHeaders().getFirst("X-Authenticated-Roles"));
+                        return Mono.empty();
+                };
+
+                StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+        }
+
+        @Test
+        void isPublicPath_DevePermitirTodosCaminhosPublicos() {
+                List<String> publicPaths = List.of(
+                                "/api/auth/login/qualquer",
+                                "/api/auth/register/qualquer",
+                                "/api/auth/logout",
+                                "/actuator/health",
+                                "/v3/api-docs",
+                                "/swagger-ui/index.html",
+                                "/webjars/some-library");
+
+                for (String path : publicPaths) {
+                        MockServerHttpRequest request = MockServerHttpRequest.get(path).build();
+                        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+                        WebFilterChain chain = webExchange -> Mono.empty();
+                        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+                }
+        }
+
+        @Test
+        void extractToken_CookieExistenteMasVazio_DeveFazerFallbackParaHeader() {
+                Claims claims = Jwts.claims()
+                                .subject("teste")
+                                .build();
+
+                UserDetails user = User.withUsername("teste")
+                                .password("password")
+                                .authorities("ROLE_USER")
+                                .build();
+
+                when(jwtService.parseClaims("header-token")).thenReturn(claims);
+                when(userDetailsService.loadUserByUsername("teste")).thenReturn(user);
+
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .cookie(new HttpCookie("jwt", "   "))
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer header-token")
+                                .build();
+
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
+                WebFilterChain chain = webExchange -> Mono.empty();
+
+                StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+                assertEquals(null, exchange.getResponse().getStatusCode());
+        }
+
+        @Test
+        void extractToken_HeaderSemBearer_DeveFalhar() {
+                MockServerHttpRequest request = MockServerHttpRequest
+                                .get("/api/private")
+                                .header(HttpHeaders.AUTHORIZATION, "Basic user:pass")
+                                .build();
+
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
+                WebFilterChain chain = webExchange -> Mono.empty();
+
+                StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
+                assertEquals(401, exchange.getResponse().getStatusCode().value());
+        }
 }

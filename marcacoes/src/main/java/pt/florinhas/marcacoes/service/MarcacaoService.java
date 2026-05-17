@@ -89,14 +89,14 @@ public class MarcacaoService {
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final Integer BALNEARIO_DEFAULT_DURATION_MINUTES = 30;
     private static final Integer SECRETARIA_DEFAULT_DURATION_MINUTES = 15;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private String generateRandomPassword() {
-        SecureRandom random = new SecureRandom();
         StringBuilder password = new StringBuilder(22);
 
         // 22 caracteres de 62 possíveis = log2(62^22) ≈ 130 bits de entropia
         for (int i = 0; i < 22; i++) {
-            int index = random.nextInt(ALPHANUMERIC.length());
+            int index = SECURE_RANDOM.nextInt(ALPHANUMERIC.length());
             password.append(ALPHANUMERIC.charAt(index));
         }
 
@@ -386,13 +386,13 @@ public class MarcacaoService {
             fim = LocalDateTime.now().plusYears(1);
 
         List<Marcacao> list = marcacaoRepository.findMarcacoesBetweenDates(inicio, fim, tipo);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     public List<MarcacaoResponseDTO> procurarAgenda(LocalDateTime inicio, LocalDateTime fim, Long criadoPorId,
             Long utenteId, EventoEstado estado) {
         List<Marcacao> list = marcacaoRepository.findWithFilters(inicio, fim, criadoPorId, utenteId, estado);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     @Transactional
@@ -517,7 +517,7 @@ public class MarcacaoService {
         }
 
         List<Marcacao> list = marcacaoRepository.findMarcacoesPassadas(dataInicio, dataFim, utenteId, estado);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     public Page<MarcacaoResponseDTO> consultarMarcacoesPassadasPaginated(LocalDateTime dataInicio,
@@ -541,7 +541,7 @@ public class MarcacaoService {
         List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
                 .filter(byId::containsKey)
                 .map(id -> toDTO(byId.get(id)))
-                .collect(Collectors.toList());
+                .toList();
         return new PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 
@@ -570,7 +570,7 @@ public class MarcacaoService {
                 .orElseThrow(() -> new EntityNotFoundException("Utente não encontrado com ID: " + utenteId));
 
         List<Marcacao> list = marcacaoRepository.findByUtente(utente);
-        return list.stream().map(this::toDTO).collect(Collectors.toList());
+        return list.stream().map(this::toDTO).toList();
     }
 
     public List<Map<String, Object>> consultarMarcacoesBloqueadas(Long utenteId) {
@@ -596,14 +596,14 @@ public class MarcacaoService {
                         "id", m.getId(),
                         "data", m.getData().toString(),
                         "estado", m.getEstado().toString()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public List<MarcacaoResponseDTO> consultarMarcacoesFuncionario(Long funcionarioId) {
         Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
                 .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado: " + funcionarioId));
         return marcacaoRepository.findByCriadoPor(funcionario)
-                .stream().map(this::toDTO).collect(Collectors.toList());
+                .stream().map(this::toDTO).toList();
     }
 
     public MarcacaoResponseDTO obterMarcacaoDTO(Long id) {
@@ -805,7 +805,7 @@ public class MarcacaoService {
                         rDTO.setCategoria(r.getItem().getNome());
                     }
                     return rDTO;
-                }).collect(Collectors.toList());
+                }).toList();
                 balnDTO.setRoupas(roupasDTO);
             }
 
@@ -864,7 +864,8 @@ public class MarcacaoService {
     }
 
     private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration,
-            String summary, Long actorId) {
+                                           String summary, Long actorId) {
+
         String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
         boolean criadoPeloUtente = utenteId.equals(actorId);
 
@@ -872,43 +873,35 @@ public class MarcacaoService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    try {
-                        if (!criadoPeloUtente) {
-                            notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
-                        } else {
-                            // Utente criou a marcação — notificar todas as secretarias
-                            funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
-                                try {
-                                    notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente,
-                                            marcacaoId, data, summary);
-                                } catch (Exception e) {
-                                    log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
-                                }
-                            });
-                        }
-                    } catch (Exception e) {
-                        log.error("Falha ao notificar sobre marcação", e);
-                    }
+                    executarLogicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
                 }
             });
         } else {
-            try {
-                if (!criadoPeloUtente) {
-                    notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
-                } else {
-                    funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
-                        try {
-                            notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId,
-                                    data, summary);
-                        } catch (Exception e) {
-                            log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                log.error("Falha ao notificar sobre marcação", e);
-            }
+            executarLogicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
         }
+    }
+
+    private void executarLogicaNotificacao(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, 
+                                          String summary, String nomeUtente, boolean criadoPeloUtente) {
+        try {
+            if (!criadoPeloUtente) {
+                notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+            } else {
+                notificarTodasSecretarias(nomeUtente, marcacaoId, data, summary);
+            }
+        } catch (Exception e) {
+            log.error("Falha ao notificar sobre marcação", e);
+        }
+    }
+
+    private void notificarTodasSecretarias(String nomeUtente, Long marcacaoId, LocalDateTime data, String summary) {
+        funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+            try {
+                notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
+            } catch (Exception e) {
+                log.error("Erro ao notificar secretaria {} sobre nova marcação", sec.getId(), e);
+            }
+        });
     }
 
     private String maskNif(String nif) {
@@ -958,7 +951,7 @@ public class MarcacaoService {
         List<Object[]> queryPresencasPorDia = marcacaoRepository.findAttendanceByDay(inicio, fim);
         List<BalnearioAttendanceStatsDTO.AttendanceData> presencasPorDia = queryPresencasPorDia.stream()
                 .map(obj -> new BalnearioAttendanceStatsDTO.AttendanceData(obj[0].toString(), (Long) obj[1]))
-                .collect(Collectors.toList());
+                .toList();
 
         List<Object[]> queryPresencasPorHora = marcacaoRepository.findAttendanceByHour(inicio, fim);
         Map<Integer, Long> presencasPorHora = queryPresencasPorHora.stream()

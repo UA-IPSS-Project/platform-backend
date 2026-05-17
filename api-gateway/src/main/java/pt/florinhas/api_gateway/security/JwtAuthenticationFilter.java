@@ -1,6 +1,7 @@
 package pt.florinhas.api_gateway.security;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -30,6 +31,9 @@ import reactor.core.publisher.Mono;
 @Component
 @Slf4j
 public class JwtAuthenticationFilter implements WebFilter {
+
+    private static final String MSG_TOKEN_INVALIDO = "Token inválido";
+    private static final String HEADER_AUTH_USER_ID = "X-Authenticated-User-Id";
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -64,13 +68,13 @@ public class JwtAuthenticationFilter implements WebFilter {
             claims = jwtService.parseClaims(token);
         } catch (Exception ex) {
             log.warn("JWT inválido para path={} method={}: {}", path, method, ex.getMessage());
-            return writeUnauthorized(exchange, "Token inválido");
+            return writeUnauthorized(exchange, MSG_TOKEN_INVALIDO);
         }
 
         String subject = claims.getSubject();
         if (!StringUtils.hasText(subject)) {
             log.warn("JWT sem subject para path={} method={}", path, method);
-            return writeUnauthorized(exchange, "Token inválido");
+            return writeUnauthorized(exchange, MSG_TOKEN_INVALIDO);
         }
 
         UserDetails userDetails;
@@ -78,10 +82,10 @@ public class JwtAuthenticationFilter implements WebFilter {
             userDetails = userDetailsService.loadUserByUsername(subject);
         } catch (Exception ex) {
             log.warn("Utilizador do JWT não encontrado subject={} path={} method={}", subject, path, method);
-            return writeUnauthorized(exchange, "Token inválido");
+            return writeUnauthorized(exchange, MSG_TOKEN_INVALIDO);
         }
 
-        Collection<? extends GrantedAuthority> authorities = extractAuthorities(claims, userDetails);
+        Collection<GrantedAuthority> authorities = extractAuthorities(claims, userDetails);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userDetails,
                 null,
@@ -93,7 +97,7 @@ public class JwtAuthenticationFilter implements WebFilter {
         ServerWebExchange mutatedExchange = exchange.mutate()
                 .request(builder -> builder.headers(headers -> {
                     headers.remove("X-Authenticated-User");
-                    headers.remove("X-Authenticated-User-Id");
+                    headers.remove(HEADER_AUTH_USER_ID);
                     headers.remove("X-Authenticated-Roles");
                     headers.remove("X-Gateway-Secret");
 
@@ -102,9 +106,9 @@ public class JwtAuthenticationFilter implements WebFilter {
 
                     Number userId = claims.get("userId", Number.class);
                     if (userId != null) {
-                        headers.set("X-Authenticated-User-Id", String.valueOf(userId.longValue()));
+                        headers.set(HEADER_AUTH_USER_ID, String.valueOf(userId.longValue()));
                     } else if (userDetails instanceof Utilizador u && u.getId() != null) {
-                        headers.set("X-Authenticated-User-Id", String.valueOf(u.getId()));
+                        headers.set(HEADER_AUTH_USER_ID, String.valueOf(u.getId()));
                     }
 
                     List<String> roles = authorities.stream()
@@ -121,18 +125,18 @@ public class JwtAuthenticationFilter implements WebFilter {
                     Mono.just(new SecurityContextImpl(authentication))));
     }
 
-            private Collection<? extends GrantedAuthority> extractAuthorities(Claims claims, UserDetails userDetails) {
             @SuppressWarnings("unchecked")
+            private Collection<GrantedAuthority> extractAuthorities(Claims claims, UserDetails userDetails) {
             List<String> tokenRoles = claims.get("roles", List.class);
 
             if (tokenRoles != null && !tokenRoles.isEmpty()) {
                 return tokenRoles.stream()
                     .filter(StringUtils::hasText)
-                    .map(SimpleGrantedAuthority::new)
+                    .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
                     .toList();
             }
 
-            return userDetails.getAuthorities();
+            return new ArrayList<>(userDetails.getAuthorities());
             }
 
     private boolean isPublicPath(String path) {
