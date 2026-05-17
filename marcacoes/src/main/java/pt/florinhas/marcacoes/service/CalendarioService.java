@@ -68,6 +68,14 @@ public class CalendarioService {
     private final Map<Integer, List<LocalDate>> feriadosCache = new ConcurrentHashMap<>();
 
     /**
+     * Cache em memória da capacidade por slot.
+     * @Cacheable não funciona em self-invocation (proxy AOP é ignorado),
+     * por isso usamos ConcurrentHashMap diretamente — mesmo padrão dos feriados.
+     * Invalidado explicitamente em atualizarCapacidadePorSlot.
+     */
+    private final Map<String, Integer> capacidadeCache = new ConcurrentHashMap<>();
+
+    /**
      * Endpoint público para feriados nacionais (Portugal).
      */
     private static final String API_PT_HOLIDAYS = "https://date.nager.at/api/v3/publicholidays/%d/PT";
@@ -163,15 +171,17 @@ public class CalendarioService {
             return CAPACIDADE_SLOT_DEFAULT_SECRETARIA;
         }
 
-        return configuracaoAgendaRepository.findByTipo(tipoNormalizado)
-                .map(ConfiguracaoAgenda::getCapacidadePorSlot)
-                .orElse(capacidadeSlotDefault(tipoNormalizado));
+        return capacidadeCache.computeIfAbsent(tipoNormalizado, t ->
+                configuracaoAgendaRepository.findByTipo(t)
+                        .map(ConfiguracaoAgenda::getCapacidadePorSlot)
+                        .orElse(capacidadeSlotDefault(t)));
     }
 
     @Transactional
     @CacheEvict(value = "config-slots", allEntries = true)
     public ConfiguracaoSlotDTO atualizarCapacidadePorSlot(String tipo, Integer capacidadePorSlot) {
         String tipoNormalizado = normalizarTipoObrigatorio(tipo);
+        capacidadeCache.remove(tipoNormalizado);
 
         if (capacidadePorSlot == null || capacidadePorSlot < 1) {
             throw new BadRequestException("A capacidade por slot deve ser um número inteiro maior ou igual a 1.");

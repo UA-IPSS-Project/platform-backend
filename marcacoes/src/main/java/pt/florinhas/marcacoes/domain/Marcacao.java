@@ -9,6 +9,7 @@ import java.util.List;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -30,7 +31,9 @@ import lombok.NoArgsConstructor;
  * Entidade JPA que representa uma Marcação (evento no calendário).
  */
 @Entity
-@Table(name = "Marcacao")
+@Table(name = "Marcacao", indexes = {
+    @Index(name = "idx_marcacao_data_estado", columnList = "data, estado")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
