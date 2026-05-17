@@ -14,7 +14,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -22,12 +21,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
-    private final CustomUserDetailsService userDetailsService;
     private final String expectedGatewaySecret;
 
-    public GatewayHeaderAuthenticationFilter(CustomUserDetailsService userDetailsService,
+    public GatewayHeaderAuthenticationFilter(
             @Value("${gateway.shared-secret:}") String expectedGatewaySecret) {
-        this.userDetailsService = userDetailsService;
         this.expectedGatewaySecret = expectedGatewaySecret;
     }
 
@@ -76,17 +73,9 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         try {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
-            if (authorities.isEmpty()) {
-                authorities = userDetails.getAuthorities();
-            }
-
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    authorities);
-
+                    username, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authToken);
         } catch (Exception e) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid authenticated user");
