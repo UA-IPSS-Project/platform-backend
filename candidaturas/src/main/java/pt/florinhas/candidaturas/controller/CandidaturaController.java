@@ -53,7 +53,7 @@ public class CandidaturaController {
                     .map(Candidatura::getFormId)
                     .collect(Collectors.toSet());
             forms = formService.getForms().stream()
-                    .filter(f -> formIds.contains(f.getId()))
+                    .filter(f -> formIds.contains(f.getId()) || f.getStatus() == FormStatus.ATIVO)
                     .collect(Collectors.toList());
         } else {
             forms = formService.getForms();
