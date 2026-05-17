@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Trend } from 'k6/metrics';
-import { doLogin, BASE, dataFutura } from './utils/auth.js';
+import { doLogin, BASE } from './utils/auth.js';
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 
 const marcacoesDur = new Trend('marcacoes_duration');

@@ -56,13 +56,18 @@ export default function (data) {
     // FLUXO 2: Criar marcação presencial
     group('Criar Marcação', () => {
         const slotData = dataFuturaSequencial(__VU);
-
+        const datePart = slotData.substring(0, 10);
+        const timePart = slotData.substring(11, 16);
+        
         // Verifica slot disponível
         const slotRes = http.get(
-            `${BASE}/api/marcacoes/verificar-slot?data=${slotData}&duration=30`,
+            `${BASE}/api/calendario/verificar-slot?data=${datePart}&hora=${timePart}&tipo=SECRETARIA`,
             auth
         );
         check(slotRes, { 'slot verificado': (r) => [200, 400].includes(r.status) });
+
+        const utenteNif = "999999" + (900 + __VU);
+        const utenteNome = "Utente VU " + __VU;
 
         // Cria marcação
         const t = Date.now();
@@ -72,7 +77,9 @@ export default function (data) {
                 data: slotData,
                 duration: 30,
                 descricao: 'Marcação de teste k6',
-                assuntoId: Math.floor(Math.random() * 4) + 1,
+                assunto: 'Atendimento Geral',
+                utenteNif: utenteNif,
+                utenteNome: utenteNome,
             }),
             auth
         );
@@ -108,8 +115,8 @@ export default function (data) {
     // FLUXO 4: Gestão de agenda
     group('Gestão Agenda', () => {
         http.get(`${BASE}/api/calendario/bloqueios?tipo=SECRETARIA`, auth);
-        http.get(`${BASE}/api/calendario/feriados`, auth);
-        http.get(`${BASE}/api/marcacoes/configuracao-slots`, auth);
+        http.get(`${BASE}/api/calendario/feriados?ano=2026`, auth);
+        http.get(`${BASE}/api/calendario/configuracao-slots`, auth);
         sleep(1);
     });
 
