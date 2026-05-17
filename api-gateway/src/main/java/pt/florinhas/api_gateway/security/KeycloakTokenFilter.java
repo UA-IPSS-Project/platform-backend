@@ -26,8 +26,10 @@ import reactor.core.publisher.Mono;
  * - X-Gateway-Secret          : segredo partilhado para validar origem
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 20)
+@Order(-90)
 public class KeycloakTokenFilter implements WebFilter {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KeycloakTokenFilter.class);
 
     private final String gatewaySharedSecret;
 
@@ -60,6 +62,9 @@ public class KeycloakTokenFilter implements WebFilter {
                                     .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
                                     .toList())
                             : "";
+
+                    log.info("KeycloakTokenFilter - User: {}, Roles Claim: {}, Formatted Roles Header: {}, All Claims: {}", 
+                            user, jwt.getClaim("roles"), rolesHeader, jwt.getClaims());
 
                     final String finalUser = user != null ? user : "";
                     final String finalSub = jwt.getSubject() != null ? jwt.getSubject() : "";

@@ -22,6 +22,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GatewayHeaderAuthenticationFilter.class);
+
     private final String expectedGatewaySecret;
 
     public GatewayHeaderAuthenticationFilter(
@@ -32,19 +34,25 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        String uri = request.getRequestURI();
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String username = request.getHeader("X-Authenticated-User");
+        String rolesHeader = request.getHeader("X-Authenticated-Roles");
+        String gatewaySecret = request.getHeader("X-Gateway-Secret");
+
+        log.info("GatewayHeaderAuthenticationFilter - URI: {}, X-Authenticated-User: '{}', X-Authenticated-Roles: '{}', X-Gateway-Secret: '{}'",
+                uri, username, rolesHeader, gatewaySecret);
+
         if (!StringUtils.hasText(username)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         // Verify that the request comes from the trusted gateway by checking a shared secret header.
-        String gatewaySecret = request.getHeader("X-Gateway-Secret");
         if (!StringUtils.hasText(gatewaySecret)
                 || !StringUtils.hasText(expectedGatewaySecret)
                 || !gatewaySecret.equals(expectedGatewaySecret)) {

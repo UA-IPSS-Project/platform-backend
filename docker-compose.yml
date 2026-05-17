@@ -156,7 +156,7 @@ services:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - BLIND_INDEX_KEY=${BLIND_INDEX_KEY}
       - JWT_SECRET=${JWT_SECRET}
-      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_URL=http://keycloak:8080/kc
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
       interval: 15s
