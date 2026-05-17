@@ -9,6 +9,7 @@ import java.util.List;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -32,7 +33,10 @@ import lombok.NoArgsConstructor;
  */
 @Entity
 @Table(name = "Marcacao", indexes = {
-    @Index(name = "idx_marcacao_data_estado", columnList = "data, estado")
+    @Index(name = "idx_marcacao_data_estado",   columnList = "data, estado"),
+    @Index(name = "idx_marcacao_utilizador_id", columnList = "utilizador_id"),
+    @Index(name = "idx_marcacao_atendente_id",  columnList = "atendente_id"),
+    @Index(name = "idx_marcacao_criado_em",     columnList = "criado_em")
 })
 @Data
 @NoArgsConstructor
@@ -84,7 +88,7 @@ public class Marcacao {
      * Relação N:1. A FK é armazenada em 'utilizador_id'.
      */
     // Relacionamento ManyToOne com Funcionario
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "utilizador_id")
     private Utilizador criadoPor; // Criador da marcação
 
@@ -101,7 +105,7 @@ public class Marcacao {
      * Relação N:1. A FK é 'atendente_id'.
      */
     // Funcionário que atendeu/concluiu a marcação
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "atendente_id")
     private Utilizador atendente;
 
