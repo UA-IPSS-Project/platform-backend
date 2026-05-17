@@ -271,6 +271,15 @@ public class UtilizadorController {
         return ResponseEntity.ok(dados);
     }
 
+    /**
+     * Obtém os detalhes do utilizador autenticado.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UtilizadorResponseDTO> obterUtilizadorAutenticado() {
+        Utilizador user = utilizadorService.getUtilizadorAutenticado();
+        return ResponseEntity.ok(UtilizadorResponseDTO.fromUtilizador(user));
+    }
+
     // =========================================================
     // TERMOS DE USO — VERSIONAMENTO (RGPD)
     // =========================================================
