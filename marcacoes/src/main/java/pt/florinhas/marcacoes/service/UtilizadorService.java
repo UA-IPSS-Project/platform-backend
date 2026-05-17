@@ -888,6 +888,14 @@ public class UtilizadorService {
         return password.toString();
     }
 
+    @Transactional
+    public void atualizarPasswordLocal(Long utilizadorId, String novaPassword) {
+        Utilizador utilizador = obterUtilizadorPorId(utilizadorId);
+        utilizador.setPassHash(passwordEncoder.encode(novaPassword));
+        utilizadorRepository.save(utilizador);
+        log.info("Password updated locally in DB for user ID: {}", utilizadorId);
+    }
+
     private void validarCampoObrigatorio(String valor, String mensagemErro) {
         if (valor == null || valor.trim().isEmpty()) {
             throw new BadRequestException(mensagemErro);

@@ -137,6 +137,36 @@ public class KeycloakAdminClient {
         return null;
     }
 
+    /**
+     * Atualiza a password de um utilizador no Keycloak.
+     */
+    public void atualizarPassword(String email, String novaPassword) {
+        String userId = getUserIdByEmail(email);
+        if (userId == null) {
+            throw new IllegalStateException("Utilizador não encontrado no Keycloak: " + email);
+        }
+
+        try {
+            String token = getAdminToken();
+            String resetPasswordUrl = keycloakUrl + "/admin/realms/" + realm + "/users/" + userId + "/reset-password";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(token);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> credentialRep = Map.of(
+                    "type", "password",
+                    "value", novaPassword,
+                    "temporary", false);
+
+            restTemplate.put(resetPasswordUrl, new HttpEntity<>(credentialRep, headers));
+            log.info("Password updated successfully in Keycloak for user: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to update password in Keycloak for user {}: {}", email, e.getMessage());
+            throw new RuntimeException("Erro ao atualizar password no Keycloak: " + e.getMessage(), e);
+        }
+    }
+
     private void assignRole(String token, String userId, String roleName) {
         try {
             // Get role representation
