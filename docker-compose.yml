@@ -58,7 +58,7 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
-      KC_HOSTNAME: ${KC_HOSTNAME:-https://localhost:3443}
+      KC_HOSTNAME: ${KC_HOSTNAME:-https://localhost:3443/kc}
       KC_HTTP_RELATIVE_PATH: /kc
     volumes:
       - ./keycloak:/opt/keycloak/data/import
