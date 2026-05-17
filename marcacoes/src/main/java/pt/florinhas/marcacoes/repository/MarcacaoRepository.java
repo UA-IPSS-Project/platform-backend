@@ -3,12 +3,13 @@ package pt.florinhas.marcacoes.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,13 +33,35 @@ import pt.florinhas.common_data.domain.Utilizador;
 @Repository
 public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
 
-        // Encontrar marcações por utente (através de MarcacaoSecretaria)
+        // Encontrar marcações por utente — com fetch de todas as relações acedidas no toDTO
+        @EntityGraph(attributePaths = {
+                "atendente",
+                "marcacaoSecretaria", "marcacaoSecretaria.utente",
+                "marcacaoBalneario", "marcacaoBalneario.responsavel",
+                "marcacaoBalneario.roupas", "marcacaoBalneario.roupas.item"
+        })
         @Query("SELECT m FROM Marcacao m WHERE m.marcacaoSecretaria.utente = :utente")
         List<Marcacao> findByUtente(@Param("utente") Utente utente);
 
-        // Encontrar marcações criadas por utilizador
+        // Encontrar marcações criadas por utilizador — com fetch de todas as relações acedidas no toDTO
+        @EntityGraph(attributePaths = {
+                "atendente",
+                "marcacaoSecretaria", "marcacaoSecretaria.utente",
+                "marcacaoBalneario", "marcacaoBalneario.responsavel",
+                "marcacaoBalneario.roupas", "marcacaoBalneario.roupas.item"
+        })
         @Query("SELECT m FROM Marcacao m WHERE m.criadoPor = :criadoPor")
         List<Marcacao> findByCriadoPor(@Param("criadoPor") Utilizador criadoPor);
+
+        // Carregar entidades por IDs com fetch completo — usado após paginação de IDs nas passadas
+        @EntityGraph(attributePaths = {
+                "atendente",
+                "marcacaoSecretaria", "marcacaoSecretaria.utente",
+                "marcacaoBalneario", "marcacaoBalneario.responsavel",
+                "marcacaoBalneario.roupas", "marcacaoBalneario.roupas.item"
+        })
+        @Query("SELECT m FROM Marcacao m WHERE m.id IN :ids")
+        List<Marcacao> findAllByIdWithDetails(@Param("ids") List<Long> ids);
 
         // Encontrar marcações por estado
         List<Marcacao> findByEstado(EventoEstado estado);

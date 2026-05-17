@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,7 +33,9 @@ import lombok.NoArgsConstructor;
  *  - Evita chaves artificiais e simplifica joins.
  */
 @Entity
-@Table(name = "Marcacao_Secretaria")
+@Table(name = "Marcacao_Secretaria", indexes = {
+    @Index(name = "idx_marcacaosecretaria_utente_id", columnList = "utente_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

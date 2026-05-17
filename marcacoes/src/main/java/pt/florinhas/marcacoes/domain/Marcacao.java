@@ -34,6 +34,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "Marcacao", indexes = {
     @Index(name = "idx_marcacao_data_estado",   columnList = "data, estado"),
+    @Index(name = "idx_marcacao_estado_data",   columnList = "estado, data"),
     @Index(name = "idx_marcacao_utilizador_id", columnList = "utilizador_id"),
     @Index(name = "idx_marcacao_atendente_id",  columnList = "atendente_id"),
     @Index(name = "idx_marcacao_criado_em",     columnList = "criado_em")

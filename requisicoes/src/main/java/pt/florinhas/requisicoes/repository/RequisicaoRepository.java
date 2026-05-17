@@ -48,9 +48,11 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             @Param("dataInicio") java.time.LocalDateTime dataInicio,
             @Param("dataFim") java.time.LocalDateTime dataFim);
 
+    // JOIN sem FETCH para o filtro de nome — @EntityGraph carrega as relações em passo separado,
+    // o que permite ao Spring Data aplicar LIMIT/OFFSET em SQL (evita paginação em memória).
+    @EntityGraph(attributePaths = {"criadoPor", "geridoPor"})
     @Query(value = "SELECT r FROM Requisicao r " +
-            "JOIN FETCH r.criadoPor c " +
-            "LEFT JOIN FETCH r.geridoPor " +
+            "JOIN r.criadoPor c " +
             "WHERE " +
             "(CAST(:estado AS string) IS NULL OR r.estado = :estado) AND " +
             "(CAST(:tipo AS string) IS NULL OR r.tipo = :tipo) AND " +

@@ -6,6 +6,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -296,18 +297,30 @@ public class MarcacaoService {
                 // existing roupas)
                 detalhes.getRoupas().clear();
             }
+
+            List<Long> itemIds = request.getRoupas().stream()
+                    .map(RoupaDTO::getItemId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<Long, ItemArmazem> itemsMap = itemArmazemRepository.findAllById(itemIds)
+                    .stream()
+                    .collect(Collectors.toMap(ItemArmazem::getId, i -> i));
+
             for (RoupaDTO rDTO : request.getRoupas()) {
                 Roupa r = new Roupa();
                 r.setCategoria(rDTO.getCategoria());
                 r.setTamanho(rDTO.getTamanho());
                 r.setQuantidade(rDTO.getQuantidade() != null ? rDTO.getQuantidade() : 1);
-                
+
                 if (rDTO.getItemId() != null) {
-                    ItemArmazem item = itemArmazemRepository.findById(rDTO.getItemId())
-                            .orElseThrow(() -> new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId()));
+                    ItemArmazem item = itemsMap.get(rDTO.getItemId());
+                    if (item == null) {
+                        throw new IllegalArgumentException("Item de armazém não encontrado com ID: " + rDTO.getItemId());
+                    }
                     r.setItem(item);
                 }
-                
+
                 detalhes.addRoupa(r);
             }
         }
@@ -538,7 +551,7 @@ public class MarcacaoService {
                 org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         Page<Long> idsPage = marcacaoRepository.findMarcacoesPassadasPaginatedIds(
                 dataInicio, dataFim, utenteId, estadoStr, assunto, nomeUtente, nativePageable);
-        List<Marcacao> marcacoes = marcacaoRepository.findAllById(idsPage.getContent());
+        List<Marcacao> marcacoes = marcacaoRepository.findAllByIdWithDetails(idsPage.getContent());
         // Preservar a ordem da query nativa
         Map<Long, Marcacao> byId = marcacoes.stream().collect(Collectors.toMap(Marcacao::getId, m -> m));
         List<MarcacaoResponseDTO> dtos = idsPage.getContent().stream()
