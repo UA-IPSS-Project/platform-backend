@@ -53,6 +53,58 @@
   ],
   "clientScopes": [
     {
+      "name": "openid",
+      "protocol": "openid-connect"
+    },
+    {
+      "name": "profile",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "email",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "claim.name": "email",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
       "name": "roles",
       "protocol": "openid-connect",
       "attributes": { "include.in.token.scope": "true" },
@@ -74,12 +126,39 @@
   ],
   "users": [
     {
-      "username": "admin-secretaria",
-      "enabled": true,
-      "email": "admin@florinhasdovouga.pt",
-      "firstName": "Admin",
+      "username": "secretaria@florinhasdovouga.pt",
+      "email": "secretaria@florinhasdovouga.pt",
+      "firstName": "Funcionário",
       "lastName": "Secretaria",
-      "credentials": [{ "type": "password", "value": "admin123", "temporary": true }],
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "sec123", "temporary": false }],
+      "realmRoles": ["SECRETARIA"]
+    },
+    {
+      "username": "balneario@florinhasdovouga.pt",
+      "email": "balneario@florinhasdovouga.pt",
+      "firstName": "Funcionário",
+      "lastName": "Balneário",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "bal123", "temporary": false }],
+      "realmRoles": ["BALNEARIO"]
+    },
+    {
+      "username": "escola@florinhasdovouga.pt",
+      "email": "escola@florinhasdovouga.pt",
+      "firstName": "Funcionário",
+      "lastName": "Escola",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "esc123", "temporary": false }],
+      "realmRoles": ["ESCOLA"]
+    },
+    {
+      "username": "dpo@florinhasdovouga.pt",
+      "email": "dpo@florinhasdovouga.pt",
+      "firstName": "Encarregado",
+      "lastName": "Proteção Dados",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "dpo123", "temporary": false }],
       "realmRoles": ["SECRETARIA"]
     }
   ]

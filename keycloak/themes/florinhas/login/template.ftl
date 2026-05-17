@@ -131,7 +131,7 @@
             </header>
 
             <#if displayMessage && message?has_content && (message.type != 'warning' || !isAppInitiatedAction??)>
-                <div class="mb-4 p-3 rounded-md text-sm ${message.type = 'error'?string('bg-red-500/10 text-red-500 border border-red-500/20','bg-green-500/10 text-green-500 border border-green-500/20')}">
+                <div class="mb-4 p-3 rounded-md text-sm ${(message.type == 'error')?string('bg-red-500/10 text-red-500 border border-red-500/20','bg-green-500/10 text-green-500 border border-green-500/20')}">
                     ${kcSanitize(message.summary)?no_esc}
                 </div>
             </#if>
