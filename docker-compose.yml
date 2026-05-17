@@ -58,6 +58,9 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME: ${KC_HOSTNAME:-localhost:3443}
+      KC_HOSTNAME_PATH: /kc
+      KC_HTTP_RELATIVE_PATH: /kc
     volumes:
       - ./keycloak:/opt/keycloak/data/import
       - ./keycloak/themes:/opt/keycloak/themes
@@ -262,6 +265,10 @@ services:
     build:
       context: ../platform-frontend/
       dockerfile: Dockerfile
+      args:
+        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-/kc}
+        VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-florinhas}
+        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-florinhas-frontend}
     container_name: florinhas_frontend
     depends_on:
       api-gateway:
