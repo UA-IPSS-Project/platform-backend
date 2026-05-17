@@ -7,7 +7,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -33,6 +37,7 @@ import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.domain.TransporteCategoria;
 import pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest;
+import pt.florinhas.requisicoes.dto.ManutencaoItemRequest;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
@@ -53,6 +58,8 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 
 @Service
 public class RequisicaoService {
+
+    private static final Logger log = LoggerFactory.getLogger(RequisicaoService.class);
 
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
@@ -186,6 +193,14 @@ public class RequisicaoService {
             itensNormalizados.put(item.materialId(), item.quantidade());
         }
 
+        Map<Long, Material> materialMap = materialRepository.findAllById(itensNormalizados.keySet())
+                .stream().collect(Collectors.toMap(Material::getId, Function.identity()));
+        itensNormalizados.keySet().forEach(id -> {
+            if (!materialMap.containsKey(id)) {
+                throw new ResourceNotFoundException("Material não encontrado: " + id);
+            }
+        });
+
         RequisicaoMaterial requisicao = new RequisicaoMaterial();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
@@ -194,11 +209,8 @@ public class RequisicaoService {
         requisicao.setGeridoPor(null);
 
         for (Map.Entry<Long, Integer> item : itensNormalizados.entrySet()) {
-            Material material = materialRepository.findById(item.getKey())
-                    .orElseThrow(() -> new ResourceNotFoundException("Material não encontrado: " + item.getKey()));
-
             RequisicaoMaterialItem requisicaoMaterialItem = new RequisicaoMaterialItem();
-            requisicaoMaterialItem.setMaterial(material);
+            requisicaoMaterialItem.setMaterial(materialMap.get(item.getKey()));
             requisicaoMaterialItem.setQuantidade(item.getValue());
             requisicaoMaterialItem.setRequisicao(requisicao);
             requisicao.getItens().add(requisicaoMaterialItem);
@@ -217,11 +229,15 @@ public class RequisicaoService {
         validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
         Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
-        List<Transporte> transportesSelecionados = transporteIds.stream()
-                .distinct()
-                .map(id -> transporteRepository.findById(id)
-                        .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id)))
-                .toList();
+        List<Long> distinctIds = transporteIds.stream().distinct().toList();
+        Map<Long, Transporte> transporteMap = transporteRepository.findAllById(distinctIds)
+                .stream().collect(Collectors.toMap(Transporte::getId, Function.identity()));
+        distinctIds.forEach(id -> {
+            if (!transporteMap.containsKey(id)) {
+                throw new ResourceNotFoundException("Transporte não encontrado: " + id);
+            }
+        });
+        List<Transporte> transportesSelecionados = distinctIds.stream().map(transporteMap::get).toList();
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
@@ -294,21 +310,37 @@ public class RequisicaoService {
 
         // Build items list before saving to benefit from CascadeType.ALL
         if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
-            for (var itemRequest : request.manutencaoItens()) {
-                ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + itemRequest.itemId()));
-                
-                RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
-                requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
-                requisicaoItem.setManutencaoItem(item);
-                requisicaoItem.setObservacoes(itemRequest.observacoes());
-
-                if (itemRequest.transporteId() != null) {
-                    Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + itemRequest.transporteId()));
-                    requisicaoItem.setTransporte(transporte);
+            List<Long> itemIds = request.manutencaoItens().stream()
+                    .map(ManutencaoItemRequest::itemId).toList();
+            Map<Long, ManutencaoItem> itemMap = manutencaoItemRepository.findAllById(itemIds)
+                    .stream().collect(Collectors.toMap(ManutencaoItem::getId, Function.identity()));
+            itemIds.forEach(id -> {
+                if (!itemMap.containsKey(id)) {
+                    throw new ResourceNotFoundException("Item de manutenção não encontrado: " + id);
                 }
+            });
 
+            List<Long> transporteIds = request.manutencaoItens().stream()
+                    .map(ManutencaoItemRequest::transporteId)
+                    .filter(id -> id != null).distinct().toList();
+            Map<Long, Transporte> transporteMap = transporteIds.isEmpty()
+                    ? Map.of()
+                    : transporteRepository.findAllById(transporteIds).stream()
+                            .collect(Collectors.toMap(Transporte::getId, Function.identity()));
+            transporteIds.forEach(id -> {
+                if (!transporteMap.containsKey(id)) {
+                    throw new ResourceNotFoundException("Transporte não encontrado: " + id);
+                }
+            });
+
+            for (var itemRequest : request.manutencaoItens()) {
+                RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
+                requisicaoItem.setRequisicao(requisicao);
+                requisicaoItem.setManutencaoItem(itemMap.get(itemRequest.itemId()));
+                requisicaoItem.setObservacoes(itemRequest.observacoes());
+                if (itemRequest.transporteId() != null) {
+                    requisicaoItem.setTransporte(transporteMap.get(itemRequest.transporteId()));
+                }
                 requisicao.getItens().add(requisicaoItem);
             }
         }
@@ -351,7 +383,7 @@ public class RequisicaoService {
                 }
             }
         } catch (Exception e) {
-            // Log but don't fail the transaction
+            log.warn("Falha ao notificar secretarias para requisição {}: {}", requisicao.getId(), e.getMessage());
         }
     }
 
@@ -496,15 +528,7 @@ public class RequisicaoService {
             throw new IllegalArgumentException("As categorias de origem e destino não podem ser iguais.");
         }
         
-        // Encontrar todos os veículos na categoria de origem
-        List<Transporte> veiculos = transporteRepository.findByCategoria(origem);
-        
-        // Mover cada veículo para a categoria de destino
-        for (Transporte veiculo : veiculos) {
-            veiculo.setCategoria(destino);
-        }
-        
-        transporteRepository.saveAll(veiculos);
+        transporteRepository.updateCategoriaByCategoria(origem, destino);
     }
 
     public List<TipoManutencao> listarTiposManutencao() {
