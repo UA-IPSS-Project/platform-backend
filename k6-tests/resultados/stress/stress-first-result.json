@@ -1,0 +1,76 @@
+{
+  "metrics": {
+    "marcacoes_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 4393.631751227496,
+        "min": 216,
+        "med": 4328.5,
+        "max": 16957,
+        "p(90)": 8238.7,
+        "p(95)": 9551.399999999996
+      }
+    },
+    "requisicoes_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "p(90)": 6716.1,
+        "p(95)": 7092.249999999998,
+        "avg": 3391.2258196721314,
+        "min": 160,
+        "med": 2536.5,
+        "max": 9062
+      }
+    },
+    "agenda_duration": {
+      "values": {
+        "min": 172,
+        "med": 4623,
+        "max": 19721,
+        "p(90)": 8434,
+        "p(95)": 9705,
+        "avg": 4677.381401065138
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "passadas_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "med": 4147,
+        "max": 16688,
+        "p(90)": 8186.000000000003,
+        "p(95)": 9374.949999999999,
+        "avg": 4190.686170212766,
+        "min": 148
+      }
+    },
+    "criar_marcacao_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 4163.176665287547,
+        "min": 182,
+        "med": 4096,
+        "max": 18048,
+        "p(90)": 7782.400000000002,
+        "p(95)": 9009
+      }
+    },
+    "criar_requisicao_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 2862.34426910299,
+        "min": 129,
+        "med": 1980,
+        "max": 8393,
+        "p(90)": 6161.6,
+        "p(95)": 6474
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import http from 'k6/http';
+import exec from 'k6/execution';
 
 export const BASE = 'https://20.63.17.2:3443';
 
@@ -40,13 +41,15 @@ export function randomUser() {
 }
 
 
-let slotCounter = 0;
-// Gera um slot sequencial e único por VU, garantindo que salta fins de semana e feriados
+// Gera um slot sequencial e único globalmente por "contador", garantindo que salta fins de semana e feriados
+// Cada iteração do teste obtém um slot totalmente único, preenchendo todos os slots de 15 minutos (9h às 16h45) sem falhas
 export function dataFuturaSequencial(vuId, holidays = []) {
+    const globalIndex = exec.scenario.iterationInTest;
     let d = new Date();
     
-    // Distribuímos as VUs por dias diferentes para evitar conflitos na mesma hora.
-    let daysToAdd = vuId + Math.floor(slotCounter / 32);
+    // 32 slots por dia (das 9h às 16h45 de 15 em 15 minutos)
+    // O contador globalIndex avança de 1 em 1, preenchendo todas as vagas consecutivamente
+    let daysToAdd = Math.floor(globalIndex / 32) + 1; // Começa a agendar a partir de amanhã
     
     while (daysToAdd > 0) {
         d.setDate(d.getDate() + 1);
@@ -65,12 +68,11 @@ export function dataFuturaSequencial(vuId, holidays = []) {
         }
     }
 
-    const slotOfDay = slotCounter % 32;
+    const slotOfDay = globalIndex % 32;
     const totalMinutes = slotOfDay * 15;
     const horas = 9 + Math.floor(totalMinutes / 60);
     const minutos = totalMinutes % 60;
 
     d.setHours(horas, minutos, 0, 0);
-    slotCounter++;
     return d.toISOString();
 }

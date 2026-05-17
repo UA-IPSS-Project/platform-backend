@@ -2,61 +2,122 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Trend, Rate } from 'k6/metrics';
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
-import { doLogin, BASE } from './utils/auth.js';
+import { doLogin, BASE, dataFuturaSequencial } from './utils/auth.js';
 
+// Métricas de stress
 const marcacoesDur = new Trend('marcacoes_duration');
 const requisicoesDur = new Trend('requisicoes_duration');
+const agendaDur = new Trend('agenda_duration');
+const passadasDur = new Trend('passadas_duration');
+const criarMarcDur = new Trend('criar_marcacao_duration');
+const criarReqDur = new Trend('criar_requisicao_duration');
 const errorRate = new Rate('erros_5xx');
 
 export const options = {
     insecureSkipTLSVerify: true,
-    // Num Stress Test, vamos subir gradualmente a carga para tentar "partir" o servidor
     stages: [
-        { duration: '1m', target: 50 },   // Começa com uma carga normal (50)
-        { duration: '1m', target: 150 },  // Dá um salto para 150 (possivelmente esgota HikariCP se não estiver otimizado)
-        { duration: '1m', target: 300 },  // Começa a forçar CPU/RAM seriamente
-        { duration: '1m', target: 500 },  // Ponto crítico (muitas apps default falham aqui)
-        { duration: '30s', target: 0 },   // Desce para recuperar e fechar o teste
+        { duration: '30s', target: 50 },   // Começa com carga moderada
+        { duration: '1m', target: 150 },  // Salto para 150 VUs (esgotamento de pool HikariCP?)
+        { duration: '1m', target: 350 },  // Força concorrência extrema / CPU
+        { duration: '1m', target: 500 },  // Ponto de ruptura (500 VUs)
+        { duration: '30s', target: 0 },   // Desce para recuperar
     ],
-    // Não vamos definir thresholds que falhem o teste, porque O OBJETIVO é que o teste mostre falhas
-    // Mas podíamos definir um limite para abortar o teste preventivamente se houver demasiados erros
 };
 
-let auth = null;
-
-export default function () {
+export function setup() {
+    console.log('[Setup] Efetuando login da secretaria...');
+    const auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
     if (!auth) {
-        auth = doLogin('secretaria@florinhasdovouga.pt', 'sec123');
-        if (!auth) {
-            // Se o próprio login falhar, o sistema já está inacessível.
-            sleep(2);
-            return;
-        }
+        throw new Error('Login failed for secretaria in setup()');
     }
 
-    group('Carga Agressiva - Marcações', () => {
+    console.log('[Setup] A assegurar a existência do utente com NIF 123456789...');
+    http.post(
+        `${BASE}/api/auth/register/utente`,
+        JSON.stringify({
+            nome: "Utente de Teste",
+            email: "utente_teste@gmail.com",
+            password: "password123",
+            nif: "123456789",
+            telefone: "912345678",
+            dataNasc: "1990-01-01",
+            termsAccepted: true
+        }),
+        {
+            headers: { 'Content-Type': 'application/json' }
+        }
+    );
+
+    console.log('[Setup] A carregar lista de feriados do backend...');
+    const res2026 = http.get(`${BASE}/api/calendario/feriados?ano=2026`, auth);
+    const res2027 = http.get(`${BASE}/api/calendario/feriados?ano=2027`, auth);
+
+    let holidays = [];
+    if (res2026.status === 200) {
+        holidays = holidays.concat(JSON.parse(res2026.body));
+    }
+    if (res2027.status === 200) {
+        holidays = holidays.concat(JSON.parse(res2027.body));
+    }
+
+    console.log(`[Setup] Carregados ${holidays.length} feriados.`);
+    return { auth, holidays };
+}
+
+export default function (data) {
+    const auth = data.auth;
+    const holidays = data.holidays || [];
+
+    // Consulta de Marcações (GET /api/marcacoes e históricos)
+    group('Consulta de Marcações', () => {
         let t = Date.now();
         const res = http.get(`${BASE}/api/marcacoes`, auth);
-
-        // Verificamos ativamente se o servidor começa a devolver 500, 502, 503, 504
-        if (res.status >= 500) {
-            errorRate.add(1);
-        } else {
-            errorRate.add(0);
-        }
-
-        check(res, {
-            'marcações status 200': (r) => r.status === 200,
-        });
+        if (res.status >= 500) errorRate.add(1); else errorRate.add(0);
+        check(res, { 'lista marcações status 200': (r) => r.status === 200 });
         marcacoesDur.add(Date.now() - t);
+
+        t = Date.now();
+        const resPassadas = http.get(`${BASE}/api/marcacoes/passadas`, auth);
+        if (resPassadas.status >= 500) errorRate.add(1); else errorRate.add(0);
+        check(resPassadas, { 'passadas 200': (r) => r.status === 200 });
+        passadasDur.add(Date.now() - t);
+
+        t = Date.now();
+        const resAgenda = http.get(`${BASE}/api/marcacoes/agenda`, auth);
+        if (resAgenda.status >= 500) errorRate.add(1); else errorRate.add(0);
+        check(resAgenda, { 'agenda 200': (r) => r.status === 200 });
+        agendaDur.add(Date.now() - t);
     });
 
-    // Menos tempo de "sleep" num stress test, queremos metralhar o servidor
     sleep(0.5);
 
-    group('Carga Agressiva - Requisições', () => {
+    // Consulta de Requisições
+    group('Consulta de Requisições', () => {
         let t = Date.now();
         const res = http.get(`${BASE}/api/requisicoes`, auth);
+        if (res.status >= 500) errorRate.add(1); else errorRate.add(0);
+        check(res, { 'lista requisições status 200': (r) => r.status === 200 });
+        requisicoesDur.add(Date.now() - t);
+    });
+
+    sleep(0.5);
+
+    // Criação de Marcação
+    group('Criar Marcação', () => {
+        const slotData = dataFuturaSequencial(__VU, holidays);
+
+        let t = Date.now();
+        const res = http.post(`${BASE}/api/marcacoes/presencial`,
+            JSON.stringify({
+                data: slotData,
+                duration: 15,
+                descricao: `Teste Stress presencial`,
+                assunto: 'Atendimento Geral',
+                utenteNif: '123456789',
+                utenteNome: 'Utente de Teste'
+            }),
+            auth
+        );
 
         if (res.status >= 500) {
             errorRate.add(1);
@@ -64,10 +125,62 @@ export default function () {
             errorRate.add(0);
         }
 
+        criarMarcDur.add(Date.now() - t);
+
         check(res, {
-            'requisições status 200': (r) => r.status === 200,
+            'cria marcação 200/201': (r) => [200, 201].includes(r.status),
         });
-        requisicoesDur.add(Date.now() - t);
+    });
+
+    sleep(0.5);
+
+    // Criação de Requisição
+    group('Criar Requisição', () => {
+        const tipoReq = __VU % 3;
+        let endpoint = 'material';
+        let payload = {};
+
+        if (tipoReq === 0) {
+            endpoint = 'material';
+            payload = {
+                descricao: 'Requisição de Material Stress k6',
+                prioridade: 'MEDIA',
+                itens: [{ materialId: 1, quantidade: 1 }]
+            };
+        } else if (tipoReq === 1) {
+            endpoint = 'transporte';
+            const reqDate = new Date();
+            reqDate.setDate(reqDate.getDate() + 1);
+            const reqDateRegresso = new Date(reqDate.getTime() + 2 * 60 * 60 * 1000);
+            payload = {
+                descricao: 'Requisição de Transporte Stress k6',
+                prioridade: 'MEDIA',
+                destino: 'Porto',
+                dataHoraSaida: reqDate.toISOString(),
+                dataHoraRegresso: reqDateRegresso.toISOString(),
+                numeroPassageiros: 2,
+                condutor: 'Condutor de Teste',
+                transporteIds: [1]
+            };
+        } else {
+            endpoint = 'manutencao';
+            payload = {
+                descricao: 'Requisição de Manutenção Stress k6',
+                prioridade: 'MEDIA',
+                manutencaoItens: [{ itemId: 1, observacoes: 'Teste' }]
+            };
+        }
+
+        let t = Date.now();
+        const res = http.post(`${BASE}/api/requisicoes/${endpoint}`,
+            JSON.stringify(payload),
+            auth
+        );
+        if (res.status >= 500) errorRate.add(1); else errorRate.add(0);
+        check(res, {
+            'cria requisição 200/201': (r) => [200, 201].includes(r.status),
+        });
+        criarReqDur.add(Date.now() - t);
     });
 
     sleep(0.5);
@@ -79,6 +192,10 @@ export function handleSummary(data) {
     const metricas = [
         'marcacoes_duration',
         'requisicoes_duration',
+        'agenda_duration',
+        'passadas_duration',
+        'criar_marcacao_duration',
+        'criar_requisicao_duration',
     ];
 
     const filtrado = { metrics: {} };
@@ -92,7 +209,7 @@ export function handleSummary(data) {
 
     return {
         [`resultados/stress/stress-${LABEL}-report.html`]: htmlReport(data),
-        [`resultados/stress/stress-${LABEL}-result.json`]: JSON.stringify(data, null, 2),
+        [`resultados/stress/stress-${LABEL}-result.json`]: JSON.stringify(filtrado, null, 2),
         stdout: `
 =========================================================
 === Resultados do STRESS TEST (${LABEL}) ===
@@ -113,14 +230,9 @@ Avaliação para Apresentação:
 Se a "Taxa de Colapso" for maior que 0%, significa que 
 encontraste o bottleneck do servidor.
 Consulta os logs do Docker (backend e BD) para descobrir
-o que falhou primeiro (ex: org.postgresql.util.PSQLException:
-FATAL: sorry, too many clients already).
+o que falhou primeiro (ex: HikariCP pool exhaustion, CPU 100%,
+ou error connection refused).
 =========================================================
 `,
     };
 }
-
-/*
-Como Correr:
-k6 run --insecure-skip-tls-verify stress-test.js
-*/
