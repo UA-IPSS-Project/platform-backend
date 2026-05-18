@@ -38,6 +38,6 @@ public class CustomUserDetailsService implements UserDetailsService {
             return usersByNif.get(0);
         }
 
-        throw new UsernameNotFoundException("Utilizador não encontrado: " + email);
+        throw new UsernameNotFoundException("Utilizador não encontrado");
     }
 }

@@ -66,7 +66,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             return usersByNif.get(0);
         }
 
-        throw new UsernameNotFoundException("Utilizador não encontrado: " + email);
+        throw new UsernameNotFoundException("Utilizador não encontrado");
     }
 
     /**
@@ -81,7 +81,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByEmail(String email) throws UsernameNotFoundException {
         var users = utilizadorRepository.findByEmail(email);
         if (users.isEmpty()) {
-            throw new UsernameNotFoundException("Funcionário não encontrado com email: " + email);
+            throw new UsernameNotFoundException("Funcionário não encontrado");
         }
         return users.get(0);
     }
@@ -98,7 +98,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByNif(String nif) throws UsernameNotFoundException {
         var users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif));
         if (users.isEmpty()) {
-            throw new UsernameNotFoundException("Utente não encontrado com NIF: " + nif);
+            throw new UsernameNotFoundException("Utente não encontrado");
         }
         return users.get(0);
     }

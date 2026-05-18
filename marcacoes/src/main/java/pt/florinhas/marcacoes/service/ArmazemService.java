@@ -77,6 +77,7 @@ public class ArmazemService {
     private static final String UNIT_PARES = "pares";
     private static final String UNIT_L = "L";
     private static final String BRAND_STANDARD = "Standard";
+    private static final String VAL_SAPATOS_SAPATILHAS = "Sapatos/Sapatilhas";
 
     /**
      * Mapeia a categoria do formulário (Roupa.categoria) para o nome do item no armazém.
@@ -276,9 +277,9 @@ public class ArmazemService {
                 String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
                 String armazemNome;
 
-                if ("Sapatos/Sapatilhas".equals(formCategoria)) {
+                if (VAL_SAPATOS_SAPATILHAS.equals(formCategoria)) {
                     armazemNome = roupa.getTamanho();
-                    armazemCategoria = "CALCADO";
+                    armazemCategoria = CAT_CALCADO;
                 } else {
                     armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
                 }
@@ -341,7 +342,7 @@ public class ArmazemService {
                 String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
                 String armazemNome;
 
-                if ("Sapatos/Sapatilhas".equals(formCategoria)) {
+                if (VAL_SAPATOS_SAPATILHAS.equals(formCategoria)) {
                     armazemNome = roupa.getTamanho();
                     armazemCategoria = CAT_CALCADO;
                 } else {
@@ -498,8 +499,8 @@ public class ArmazemService {
                 } else {
                     // Modo legado: usar campos de texto
                     String formCategoria = roupa.getCategoria();
-                    if ("Sapatos/Sapatilhas".equalsIgnoreCase(formCategoria)) {
-                        armazemCategoria = "CALCADO";
+                    if (VAL_SAPATOS_SAPATILHAS.equalsIgnoreCase(formCategoria)) {
+                        armazemCategoria = CAT_CALCADO;
                         armazemNome = roupa.getTamanho() != null ? roupa.getTamanho() : formCategoria;
                     } else {
                         armazemCategoria = FORM_TO_CATEGORIA.getOrDefault(formCategoria, "OUTRO");
