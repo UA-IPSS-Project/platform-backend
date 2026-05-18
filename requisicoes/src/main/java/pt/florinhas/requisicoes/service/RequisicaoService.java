@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.hibernate.Hibernate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -195,6 +196,17 @@ public class RequisicaoService {
                     .map(byId::get)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
+
+            // Initialize LAZY collections within the transaction (required with open-in-view=false)
+            for (Requisicao r : ordered) {
+                if (r instanceof RequisicaoMaterial rm) {
+                    Hibernate.initialize(rm.getItens());
+                } else if (r instanceof RequisicaoTransporte rt) {
+                    Hibernate.initialize(rt.getTransportes());
+                } else if (r instanceof RequisicaoManutencao rmn) {
+                    Hibernate.initialize(rmn.getItens());
+                }
+            }
 
             log.info("[procurarPaginated] sucesso: {} resultados (página {}/{})",
                     idsPage.getTotalElements(), pageable.getPageNumber(), idsPage.getTotalPages());

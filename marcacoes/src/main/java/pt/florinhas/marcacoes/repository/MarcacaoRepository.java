@@ -71,6 +71,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
                         "LEFT JOIN FETCH mb.responsavel " +
                         "LEFT JOIN FETCH mb.roupas roupas " +
@@ -124,6 +125,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
                         "LEFT JOIN FETCH mb.responsavel " +
                         "LEFT JOIN FETCH mb.roupas roupas " +
@@ -147,6 +149,7 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
                         "LEFT JOIN FETCH mb.responsavel " +
                         "LEFT JOIN FETCH mb.roupas roupas " +
