@@ -13,14 +13,20 @@ import org.springframework.security.web.DefaultSecurityFilterChain;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import pt.florinhas.common_data.security.CustomUserDetailsService;
 import pt.florinhas.requisicoes.security.GatewayHeaderAuthenticationFilter;
 
 class SecurityConfigTest {
 
+    private GatewayHeaderAuthenticationFilter createFilter() {
+        CustomUserDetailsService userDetailsService = mock(CustomUserDetailsService.class);
+        return new GatewayHeaderAuthenticationFilter(userDetailsService, "secret");
+    }
+
     @Test
     @DisplayName("PasswordEncoder deve ser instanciado como BCrypt e funcionar corretamente")
     void passwordEncoder_DeveExistirEFuncionar() {
-        GatewayHeaderAuthenticationFilter filter = mock(GatewayHeaderAuthenticationFilter.class);
+        GatewayHeaderAuthenticationFilter filter = createFilter();
         SecurityConfig config = new SecurityConfig(filter);
 
         PasswordEncoder encoder = config.passwordEncoder();
@@ -39,7 +45,7 @@ class SecurityConfigTest {
     @Test
     @DisplayName("SecurityConfig deve ser instanciada com construtor de injeção")
     void securityConfig_DeveSerCriada() {
-        GatewayHeaderAuthenticationFilter filter = mock(GatewayHeaderAuthenticationFilter.class);
+        GatewayHeaderAuthenticationFilter filter = createFilter();
         SecurityConfig config = new SecurityConfig(filter);
         assertNotNull(config);
     }
@@ -47,7 +53,7 @@ class SecurityConfigTest {
     @Test
     @DisplayName("securityFilterChain deve configurar filtros e retornar SecurityFilterChain válida")
     void securityFilterChain_DeveConfigurarCadeiaDeSeguranca() throws Exception {
-        GatewayHeaderAuthenticationFilter filter = mock(GatewayHeaderAuthenticationFilter.class);
+        GatewayHeaderAuthenticationFilter filter = createFilter();
         SecurityConfig config = new SecurityConfig(filter);
 
         // Moca o HttpSecurity com fluent API

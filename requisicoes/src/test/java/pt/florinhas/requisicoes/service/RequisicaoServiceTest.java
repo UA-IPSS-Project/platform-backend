@@ -325,6 +325,83 @@ class RequisicaoServiceTest {
 
             assertThrows(IllegalArgumentException.class, () -> service.criarMaterial(request, 10L));
         }
+
+        @Test
+        @DisplayName("Criar requisição de Material sem funcionário correspondente deve lançar exceção")
+        void criarMaterial_FuncionarioInexistente_DeveLancarExcecao() {
+            when(funcionarioRepository.findById(99L)).thenReturn(Optional.empty());
+            CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest("Pedido", RequisicaoPrioridade.MEDIA, null, List.of(), null);
+
+            assertThrows(ResourceNotFoundException.class, () -> service.criarMaterial(request, 99L));
+        }
+
+        @Test
+        @DisplayName("Criar requisição de Transporte sem funcionário correspondente deve lançar exceção")
+        void criarTransporte_FuncionarioInexistente_DeveLancarExcecao() {
+            when(funcionarioRepository.findById(99L)).thenReturn(Optional.empty());
+            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest("Pedido", RequisicaoPrioridade.MEDIA, null, "P", LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2), 2, "Pedro", List.of(1L), null);
+
+            assertThrows(ResourceNotFoundException.class, () -> service.criarTransporte(request, 99L));
+        }
+
+        @Test
+        @DisplayName("Criar requisição de Manutenção sem funcionário correspondente deve lançar exceção")
+        void criarManutencao_FuncionarioInexistente_DeveLancarExcecao() {
+            when(funcionarioRepository.findById(99L)).thenReturn(Optional.empty());
+            CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest("Pedido", RequisicaoPrioridade.MEDIA, null, List.of(), null);
+
+            assertThrows(ResourceNotFoundException.class, () -> service.criarManutencao(request, 99L));
+        }
+
+        @Test
+        @DisplayName("Criar transporte com data de regresso no passado deve lançar exceção")
+        void criarTransporte_DataRegressoNoPassado_DeveLancarExcecao() {
+            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest("Pedido", RequisicaoPrioridade.MEDIA, null, "P", LocalDateTime.now().plusDays(1), LocalDateTime.now().minusHours(2), 2, "Pedro", List.of(1L), null);
+            assertThrows(IllegalArgumentException.class, () -> service.criarTransporte(request, 10L));
+        }
+
+        @Test
+        @DisplayName("Criar transporte com IDs de transportes duplicados deve considerar apenas IDs distintos")
+        void criarTransporte_ComDistinctIds_DeveSalvarApenasDistinct() {
+            Transporte veiculo = new Transporte();
+            veiculo.setId(200L);
+
+            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+            when(transporteRepository.findById(200L)).thenReturn(Optional.of(veiculo));
+            when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
+                    .thenAnswer(i -> i.getArgument(0));
+
+            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                    "Viagem", RequisicaoPrioridade.ALTA, null, "Porto",
+                    LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
+                    5, "Pedro", List.of(200L, 200L), null);
+
+            RequisicaoTransporte result = service.criarTransporte(request, 10L);
+
+            assertNotNull(result);
+            assertEquals(1, result.getTransportes().size());
+        }
+
+        @Test
+        @DisplayName("Exceções ao enviar notificações não devem falhar a criação de requisições")
+        void notificarSecretarias_ComException_NaoDeveFalhar() {
+            Material mat = new Material();
+            mat.setId(100L);
+
+            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+            when(materialRepository.findById(100L)).thenReturn(Optional.of(mat));
+            when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
+                    .thenAnswer(i -> i.getArgument(0));
+
+            // Simular erro ao listar secretarias
+            when(funcionarioRepository.findByTipo(any())).thenThrow(new RuntimeException("Erro BD"));
+
+            CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
+                    "Pedido", RequisicaoPrioridade.MEDIA, null,
+                    List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(100L, 5)), null);
+
+            assertDoesNotThrow(() -> service.criarMaterial(request, 10L));
+        }
     }
 
     @Nested
@@ -586,6 +663,141 @@ class RequisicaoServiceTest {
             when(requisicaoManutencaoItemRepository.existsByManutencaoItemId(1L)).thenReturn(false);
             service.apagarManutencaoItem(1L);
             verify(manutencaoItemRepository).delete(item);
+        }
+
+        @Test
+        @DisplayName("Apagar material não existente deve lançar exceção")
+        void apagarMaterialCatalogo_MaterialNaoEncontrado_DeveLancarExcecao() {
+            when(requisicaoMaterialRepository.existsByItensMaterialId(99L)).thenReturn(false);
+            when(materialRepository.existsById(99L)).thenReturn(false);
+
+            assertThrows(ResourceNotFoundException.class, () -> service.apagarMaterialCatalogo(99L));
+        }
+
+        @Test
+        @DisplayName("Criar transporte com lotação menor ou igual a zero deve lançar exceção")
+        void criarTransporteCatalogo_LotacaoInvalida_DeveLancarExcecao() {
+            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 0, LocalDate.now());
+            assertThrows(IllegalArgumentException.class, () -> service.criarTransporteCatalogo(request));
+        }
+
+        @Test
+        @DisplayName("Criar transporte sem data de matrícula deve lançar exceção")
+        void criarTransporteCatalogo_DataMatriculaNull_DeveLancarExcecao() {
+            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 5, null);
+            assertThrows(IllegalArgumentException.class, () -> service.criarTransporteCatalogo(request));
+        }
+
+        @Test
+        @DisplayName("Criar transporte com campos obrigatórios em branco deve lançar exceção")
+        void criarTransporteCatalogo_MatriculaNull_DeveLancarExcecao() {
+            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, " ", "Ford", "Focus", 5, LocalDate.now());
+            assertThrows(IllegalArgumentException.class, () -> service.criarTransporteCatalogo(request));
+        }
+
+        @Test
+        @DisplayName("Atualizar transporte não existente deve lançar exceção")
+        void atualizarTransporteCatalogo_TransporteNaoEncontrado_DeveLancarExcecao() {
+            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 5, LocalDate.now());
+            when(transporteRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThrows(ResourceNotFoundException.class, () -> service.atualizarTransporteCatalogo(99L, request));
+        }
+
+        @Test
+        @DisplayName("Atualizar transporte com matrícula duplicada em outro veículo deve lançar exceção")
+        void atualizarTransporteCatalogo_MatriculaDuplicadaOutroVeiculo_DeveLancarExcecao() {
+            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 5, LocalDate.now());
+            Transporte t = new Transporte();
+            t.setId(1L);
+
+            Transporte outro = new Transporte();
+            outro.setId(2L);
+
+            when(transporteRepository.findById(1L)).thenReturn(Optional.of(t));
+            when(transporteRepository.findByMatricula("00-AA-00")).thenReturn(Optional.of(outro));
+
+            assertThrows(IllegalArgumentException.class, () -> service.atualizarTransporteCatalogo(1L, request));
+        }
+
+        @Test
+        @DisplayName("Atualizar categoria de transporte sem categoria informada deve lançar exceção")
+        void atualizarCategoriaTransporte_NullCategoria_DeveLancarExcecao() {
+            assertThrows(IllegalArgumentException.class, () -> service.atualizarCategoriaTransporte(1L, null));
+        }
+
+        @Test
+        @DisplayName("Atualizar categoria de transporte não existente deve lançar exceção")
+        void atualizarCategoriaTransporte_TransporteNaoEncontrado_DeveLancarExcecao() {
+            when(transporteRepository.findById(99L)).thenReturn(Optional.empty());
+            assertThrows(ResourceNotFoundException.class, () -> service.atualizarCategoriaTransporte(99L, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS));
+        }
+
+        @Test
+        @DisplayName("Atualizar categoria de transporte para abatido com requisição de transporte associada deve lançar exceção")
+        void atualizarCategoriaTransporte_AbatidoComRequisicaoItemAtiva_DeveLancarExcecao() {
+            Transporte t = new Transporte();
+            t.setId(1L);
+            when(transporteRepository.findById(1L)).thenReturn(Optional.of(t));
+            when(requisicaoTransporteRepository.existsByTransporteId(1L)).thenReturn(false);
+            when(requisicaoTransporteRepository.existsByTransportesTransporteId(1L)).thenReturn(true);
+
+            assertThrows(IllegalStateException.class, () -> service.atualizarCategoriaTransporte(1L, TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO));
+        }
+
+        @Test
+        @DisplayName("Mover veículos com categoria nula deve lançar exceção")
+        void moverVeiculosPorCategoria_NullCategorias_DeveLancarExcecao() {
+            assertThrows(IllegalArgumentException.class, () -> service.moverVeiculosPorCategoria(null, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS));
+            assertThrows(IllegalArgumentException.class, () -> service.moverVeiculosPorCategoria(TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, null));
+        }
+
+        @Test
+        @DisplayName("Atualizar tipo de manutenção não existente deve lançar exceção")
+        void atualizarTipoManutencao_TipoNaoEncontrado_DeveLancarExcecao() {
+            CriarTipoManutencaoRequest request = new CriarTipoManutencaoRequest("Preventiva", "Descrição");
+            when(tipoManutencaoRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThrows(ResourceNotFoundException.class, () -> service.atualizarTipoManutencao(99L, request));
+        }
+
+        @Test
+        @DisplayName("Atualizar tipo de manutenção com nome duplicado deve lançar exceção")
+        void atualizarTipoManutencao_NomeDuplicadoOutro_DeveLancarExcecao() {
+            CriarTipoManutencaoRequest request = new CriarTipoManutencaoRequest("Preventiva", "Descrição");
+            TipoManutencao tipo = new TipoManutencao();
+            tipo.setId(1L);
+
+            TipoManutencao outro = new TipoManutencao();
+            outro.setId(2L);
+
+            when(tipoManutencaoRepository.findById(1L)).thenReturn(Optional.of(tipo));
+            when(tipoManutencaoRepository.findByNomeIgnoreCase("Preventiva")).thenReturn(Optional.of(outro));
+
+            assertThrows(IllegalArgumentException.class, () -> service.atualizarTipoManutencao(1L, request));
+        }
+
+        @Test
+        @DisplayName("Eliminar tipo de manutenção não existente deve lançar exceção")
+        void apagarTipoManutencao_TipoNaoEncontrado_DeveLancarExcecao() {
+            when(tipoManutencaoRepository.findById(99L)).thenReturn(Optional.empty());
+            assertThrows(ResourceNotFoundException.class, () -> service.apagarTipoManutencao(99L));
+        }
+
+        @Test
+        @DisplayName("Atualizar item de manutenção não existente deve lançar exceção")
+        void atualizarManutencaoItem_ItemNaoEncontrado_DeveLancarExcecao() {
+            CriarManutencaoItemRequest request = new CriarManutencaoItemRequest("Categoria", "Espaco", "Verificacao");
+            when(manutencaoItemRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThrows(ResourceNotFoundException.class, () -> service.atualizarManutencaoItem(99L, request));
+        }
+
+        @Test
+        @DisplayName("Eliminar item de manutenção não existente deve lançar exceção")
+        void apagarManutencaoItem_ItemNaoEncontrado_DeveLancarExcecao() {
+            when(manutencaoItemRepository.findById(99L)).thenReturn(Optional.empty());
+            assertThrows(ResourceNotFoundException.class, () -> service.apagarManutencaoItem(99L));
         }
     }
 }
