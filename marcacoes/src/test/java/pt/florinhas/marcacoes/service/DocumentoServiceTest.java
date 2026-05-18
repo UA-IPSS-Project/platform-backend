@@ -97,8 +97,9 @@ class DocumentoServiceTest {
     @DisplayName("Deve lançar erro ao fazer upload para marcação inexistente")
     void uploadDocumentoShouldThrowWhenMarcacaoNotFound() {
         when(marcacaoRepository.findById(1L)).thenReturn(Optional.empty());
+        MultipartFile file = pdfFile("doc.pdf");
         assertThrows(ResourceNotFoundException.class,
-                () -> documentoService.uploadDocumento(1L, pdfFile("doc.pdf"), "f"));
+                () -> documentoService.uploadDocumento(1L, file, "f"));
     }
 
     @Test
@@ -106,8 +107,9 @@ class DocumentoServiceTest {
     void uploadDocumentoShouldThrowWhenLimitReached() {
         when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
         when(documentoRepository.countByMarcacaoId(1L)).thenReturn(10L);
+        MultipartFile file = pdfFile("doc.pdf");
         assertThrows(IllegalArgumentException.class,
-                () -> documentoService.uploadDocumento(1L, pdfFile("doc.pdf"), "f"));
+                () -> documentoService.uploadDocumento(1L, file, "f"));
     }
 
     @Test

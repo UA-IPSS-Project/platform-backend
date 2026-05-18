@@ -29,10 +29,14 @@ public class DocumentoStorageCleanupService {
         this.bucketName = bucketName;
     }
 
-    @PostConstruct
-    void init() {
+    private static void setStaticFields(MinioClient minioClient, String bucketName) {
         minioClientStatic = minioClient;
         bucketNameStatic = bucketName;
+    }
+
+    @PostConstruct
+    void init() {
+        setStaticFields(minioClient, bucketName);
     }
 
     public static void removerDoArmazenamento(String caminho, Long documentoId) {

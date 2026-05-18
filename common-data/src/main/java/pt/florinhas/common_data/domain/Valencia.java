@@ -10,6 +10,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.io.Serializable;
 import java.util.Set;
 
 /**
@@ -20,21 +22,22 @@ import java.util.Set;
  * à qual um ou mais funcionários podem estar associados.
  *
  * É usada para:
- *  - classificar funcionários,
- *  - filtrar agendas/atendimentos,
- *  - aplicar regras de atribuição de marcações.
+ * - classificar funcionários,
+ * - filtrar agendas/atendimentos,
+ * - aplicar regras de atribuição de marcações.
  */
 @Entity
 @Table(name = "valencia")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Valencia {
+public class Valencia implements Serializable {
 
+    private static final long serialVersionUID = 1L;
 
     // Chave primária autogerada (IDENTITY).
 
-	@Id
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -55,13 +58,14 @@ public class Valencia {
     /**
      * Funcionários associados a esta valência.
      *
-     * Lado inverso da relação Many-to-Many definida em {@link Funcionario#valencias}.
+     * Lado inverso da relação Many-to-Many definida em
+     * {@link Funcionario#valencias}.
      * 'mappedBy' indica que a tabela de junção é definida do lado de Funcionario.
      *
      * Considerações:
-     *  - A coleção é LAZY por defeito.
-     *  - A gestão de associações (adicionar/remover funcionários)
-     *    deve ser feita de forma consistente na camada de serviço.
+     * - A coleção é LAZY por defeito.
+     * - A gestão de associações (adicionar/remover funcionários)
+     * deve ser feita de forma consistente na camada de serviço.
      */
     @ManyToMany(mappedBy = "valencias")
     private Set<Funcionario> funcionarios;

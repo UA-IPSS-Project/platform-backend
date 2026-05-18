@@ -26,6 +26,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Utilizador;
 
+import pt.florinhas.common_data.security.CustomUserDetailsService;
+
 class GatewayHeaderAuthenticationFilterTest {
 
     private CustomUserDetailsService userDetailsService;

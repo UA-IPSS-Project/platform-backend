@@ -54,6 +54,7 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 public class RequisicaoService {
 
     private static final String MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO = "Item de manutenção não encontrado: ";
+    private static final String MSG_TRANSPORTE_NAO_ENCONTRADO = "Transporte não encontrado: ";
 
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
@@ -219,7 +220,7 @@ public class RequisicaoService {
         List<Transporte> transportesSelecionados = request.transporteIds().stream()
                 .distinct()
                 .map(id -> transporteRepository.findById(id)
-                        .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id)))
+                        .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id)))
                 .toList();
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
@@ -278,26 +279,24 @@ public class RequisicaoService {
         requisicao.setGeridoPor(null);
 
         // Build items list before saving to benefit from CascadeType.ALL
-        if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
-            for (var itemRequest : request.manutencaoItens()) {
-                ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
+        for (var itemRequest : request.manutencaoItens()) {
+            ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + itemRequest.itemId()));
+
+            RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
+            requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
+            requisicaoItem.setManutencaoItem(item);
+            requisicaoItem.setObservacoes(itemRequest.observacoes());
+
+            if (itemRequest.transporteId() != null) {
+                Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + itemRequest.itemId()));
-
-                RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
-                requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
-                requisicaoItem.setManutencaoItem(item);
-                requisicaoItem.setObservacoes(itemRequest.observacoes());
-
-                if (itemRequest.transporteId() != null) {
-                    Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "Transporte não encontrado: " + itemRequest.transporteId()));
-                    requisicaoItem.setTransporte(transporte);
-                }
-
-                requisicao.getItens().add(requisicaoItem);
+                                MSG_TRANSPORTE_NAO_ENCONTRADO + itemRequest.transporteId()));
+                requisicaoItem.setTransporte(transporte);
             }
+
+            requisicao.getItens().add(requisicaoItem);
         }
 
         aplicarConfiguracaoPeriodica(requisicao, request.periodica());
@@ -395,9 +394,6 @@ public class RequisicaoService {
         String marcaNormalizada = normalizarTextoObrigatorio(request.marca(), "Marca");
         String modeloNormalizado = normalizarTextoObrigatorio(request.modelo(), "Modelo");
 
-        if (request.categoria() == null) {
-            throw new IllegalArgumentException("A categoria do transporte é obrigatória.");
-        }
         if (request.lotacao() == null || request.lotacao() <= 0) {
             throw new IllegalArgumentException("A lotação do transporte é obrigatória e deve ser maior que zero.");
         }
@@ -429,7 +425,7 @@ public class RequisicaoService {
     @Transactional
     public Transporte atualizarTransporteCatalogo(Long id, CriarTransporteRequest request) {
         Transporte transporte = transporteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id));
 
         String matriculaNormalizada = request.matricula().trim().toUpperCase(Locale.ROOT);
         transporteRepository.findByMatricula(matriculaNormalizada)
@@ -457,16 +453,15 @@ public class RequisicaoService {
         }
 
         Transporte transporte = transporteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id));
 
         // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há
         // requisições ativas
-        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO) {
-            if (requisicaoTransporteRepository.existsByTransporteId(id)
-                    || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
-                throw new IllegalStateException(
-                        "Não é possível marcar como indisponível: transporte está associado a requisições ativas.");
-            }
+        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO
+                && (requisicaoTransporteRepository.existsByTransporteId(id)
+                || requisicaoTransporteRepository.existsByTransportesTransporteId(id))) {
+            throw new IllegalStateException(
+                    "Não é possível marcar como indisponível: transporte está associado a requisições ativas.");
         }
 
         transporte.setCategoria(novaCategoria);

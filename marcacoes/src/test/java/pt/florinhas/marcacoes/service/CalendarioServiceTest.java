@@ -50,8 +50,13 @@ class CalendarioServiceTest {
     @Test
     @DisplayName("Deve lançar erro ao bloquear data no passado")
     void bloquearHorario_DeveLancarExcecaoDataPassada() {
-        assertThrows(BadRequestException.class, () -> calendarioService.bloquearHorario(LocalDate.now().minusDays(1),
-                LocalTime.of(10, 0), LocalTime.of(11, 0), "M", new Utilizador(), "SECRETARIA"));
+        LocalDate dataPassada = LocalDate.now().minusDays(1);
+        LocalTime horaInicio = LocalTime.of(10, 0);
+        LocalTime horaFim = LocalTime.of(11, 0);
+        Utilizador utilizador = new Utilizador();
+
+        assertThrows(BadRequestException.class, () -> 
+                calendarioService.bloquearHorario(dataPassada, horaInicio, horaFim, "M", utilizador, "SECRETARIA"));
     }
 
     @Test

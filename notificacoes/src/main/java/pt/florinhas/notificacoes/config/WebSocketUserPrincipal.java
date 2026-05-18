@@ -38,9 +38,9 @@ public class WebSocketUserPrincipal implements Principal {
         if (claims == null) {
             return List.of();
         }
-        Object roles = claims.get("roles");
-        if (roles instanceof List<?>) {
-            return (List<String>) roles;
+        Object rolesClaim = claims.get("roles");
+        if (rolesClaim instanceof List<?>) {
+            return (List<String>) rolesClaim;
         }
         return List.of();
     }

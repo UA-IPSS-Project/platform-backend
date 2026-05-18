@@ -116,12 +116,12 @@ class NifEncryptorConverterTest {
                 "cryptoUtils",
                 null);
 
-        NifEncryptorConverter converter =
+        NifEncryptorConverter localConverter =
                 new NifEncryptorConverter();
 
         assertThrows(
                 IllegalStateException.class,
-                () -> converter.convertToDatabaseColumn(
+                () -> localConverter.convertToDatabaseColumn(
                         "123456789"));
     }
 }

@@ -18,6 +18,8 @@ import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.security.CryptoUtils;
 
+import pt.florinhas.common_data.security.CustomUserDetailsService;
+
 class CustomUserDetailsServiceTest {
 
     @Mock

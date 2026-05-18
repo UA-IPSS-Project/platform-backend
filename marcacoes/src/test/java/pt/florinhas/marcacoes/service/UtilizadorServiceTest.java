@@ -529,4 +529,143 @@ class UtilizadorServiceTest {
         when(utenteRepository.countByActivo(true)).thenReturn(10L);
         assertEquals(10L, utilizadorService.contarUtentesAtivos());
     }
+
+    @Test
+    @DisplayName("solicitarEliminacaoConta deve falhar se já houver pedido pendente")
+    void solicitarEliminacaoConta_AlreadyRequested_ShouldThrowBadRequestException() {
+        Utilizador user = new Utente();
+        user.setEmail("user@test.com");
+        user.setDeleteRequested(true);
+
+        org.springframework.security.core.context.SecurityContext context = mock(org.springframework.security.core.context.SecurityContext.class);
+        org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getName()).thenReturn("user@test.com");
+        when(context.getAuthentication()).thenReturn(auth);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+
+        when(utilizadorRepository.findByEmail("user@test.com")).thenReturn(List.of(user));
+
+        assertThrows(BadRequestException.class, () -> utilizadorService.solicitarEliminacaoConta());
+    }
+
+    @Test
+    @DisplayName("solicitarEliminacaoConta deve falhar se não houver utilizador autenticado")
+    void solicitarEliminacaoConta_NotAuthenticated_ShouldThrowBadRequestException() {
+        org.springframework.security.core.context.SecurityContext context = mock(org.springframework.security.core.context.SecurityContext.class);
+        when(context.getAuthentication()).thenReturn(null);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+
+        assertThrows(BadRequestException.class, () -> utilizadorService.solicitarEliminacaoConta());
+    }
+
+    @Test
+    @DisplayName("solicitarEliminacaoConta deve ter sucesso, guardar e notificar secretarias")
+    void solicitarEliminacaoConta_Success_ShouldSaveAndNotify() {
+        Utilizador user = new Utente();
+        user.setId(1L);
+        user.setNome("Manuel");
+        user.setNif("123456789");
+        user.setEmail("user@test.com");
+        user.setDeleteRequested(false);
+
+        org.springframework.security.core.context.SecurityContext context = mock(org.springframework.security.core.context.SecurityContext.class);
+        org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getName()).thenReturn("user@test.com");
+        when(context.getAuthentication()).thenReturn(auth);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+
+        when(utilizadorRepository.findByEmail("user@test.com")).thenReturn(List.of(user));
+
+        Funcionario sec1 = new Funcionario();
+        sec1.setId(10L);
+        when(funcionarioRepository.findByTipo(pt.florinhas.common_data.domain.FuncionarioTipo.SECRETARIA)).thenReturn(List.of(sec1));
+
+        utilizadorService.solicitarEliminacaoConta();
+
+        assertTrue(user.getDeleteRequested());
+        assertNotNull(user.getDeleteRequestedAt());
+        verify(utilizadorRepository).save(user);
+        verify(notificacaoService).criarNotificacao(eq(10L), anyString(), anyString(), eq("ALERTA"));
+        verify(emailService).sendGenericEmail(eq("secretaria@florinhasdovouga.pt"), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("anonimizarUtilizador deve anonimizar todos os dados pessoais com sucesso")
+    void anonimizarUtilizador_ShouldAnonymizeFields() {
+        Utente user = new Utente();
+        user.setId(100L);
+        user.setNome("Manuel Silva");
+        user.setEmail("manuel@test.com");
+        user.setTelefone("912345678");
+        user.setNif("123456789");
+        user.setMorada("Rua Central");
+        user.setActivo(true);
+
+        when(utilizadorRepository.findById(100L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_anon");
+
+        utilizadorService.anonimizarUtilizador(100L);
+
+        assertEquals("Utilizador Anónimo #100", user.getNome());
+        assertTrue(user.getEmail().startsWith("anonimo."));
+        assertEquals("000000000", user.getTelefone());
+        assertEquals("000000100", user.getNif());
+        assertNull(user.getMorada());
+        assertFalse(user.isActivo());
+        assertEquals("hashed_anon", user.getPassHash());
+        verify(utilizadorRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("anonimizarEEliminarUtilizador deve invocar self e registar audit log")
+    void anonimizarEEliminarUtilizador_ShouldLogAudit() {
+        Utente user = new Utente();
+        user.setId(100L);
+        user.setNif("123456789");
+        user.setNome("Manuel Silva");
+
+        when(utilizadorRepository.findById(100L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_anon");
+
+        utilizadorService.anonimizarEEliminarUtilizador(100L);
+
+        verify(utilizadorRepository, atLeastOnce()).save(user);
+        verify(auditLogService, times(2)).log(anyString(), anyString(), eq(100L), anyString());
+    }
+
+    @Test
+    @DisplayName("exportarDadosUtilizador deve exportar com sucesso todos os dados, documentos e marcações")
+    @SuppressWarnings("unchecked")
+    void exportarDadosUtilizador_Success_ShouldExportCompleteProfile() {
+        Utente user = new Utente();
+        user.setId(1L);
+        user.setNome("Manuel Silva");
+        user.setEmail("manuel@test.com");
+        user.setNif("123456789");
+
+        org.springframework.security.core.context.SecurityContext context = mock(org.springframework.security.core.context.SecurityContext.class);
+        org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
+        when(auth.isAuthenticated()).thenReturn(true);
+        when(auth.getName()).thenReturn("manuel@test.com");
+        when(context.getAuthentication()).thenReturn(auth);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+
+        when(utilizadorRepository.findByEmail("manuel@test.com")).thenReturn(List.of(user));
+        when(documentoRepository.findByUtente(user)).thenReturn(List.of());
+        when(marcacaoRepository.findByUtente(user)).thenReturn(List.of());
+
+        java.util.Map<String, Object> export = utilizadorService.exportarDadosUtilizador();
+
+        assertNotNull(export);
+        java.util.Map<String, Object> dadosPessoais = (java.util.Map<String, Object>) export.get("dadosPessoais");
+        assertEquals("Manuel Silva", dadosPessoais.get("nome"));
+        assertEquals("manuel@test.com", dadosPessoais.get("email"));
+        assertEquals("123456789", dadosPessoais.get("nif"));
+        assertNotNull(export.get("dadosPessoais"));
+        assertNotNull(export.get("documentos"));
+        assertNotNull(export.get("marcacoes"));
+        assertEquals("Art.º 20 - Direito de Portabilidade", export.get("formatoRGPD"));
+    }
 }

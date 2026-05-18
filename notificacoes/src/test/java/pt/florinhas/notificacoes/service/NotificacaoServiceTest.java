@@ -4,152 +4,258 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import pt.florinhas.common_data.domain.Notificacao;
 import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.dto.NotificacaoResponseDTO;
 import pt.florinhas.common_data.repository.NotificacaoRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.notificacoes.service.email.EmailService;
 
 class NotificacaoServiceTest {
 
-        private NotificacaoRepository notificacaoRepository;
+    private NotificacaoRepository notificacaoRepository;
+    private UtilizadorRepository utilizadorRepository;
+    private EmailService emailService;
+    private SimpMessagingTemplate messagingTemplate;
+    private NotificacaoService service;
 
-        private UtilizadorRepository utilizadorRepository;
+    @BeforeEach
+    void setUp() {
+        notificacaoRepository = mock(NotificacaoRepository.class);
+        utilizadorRepository = mock(UtilizadorRepository.class);
+        emailService = mock(EmailService.class);
+        messagingTemplate = mock(SimpMessagingTemplate.class);
+        service = new NotificacaoService(
+                notificacaoRepository,
+                utilizadorRepository,
+                emailService,
+                messagingTemplate);
+    }
 
-        private EmailService emailService;
+    private Utilizador createUser() {
+        Utilizador u = new Utilizador();
+        u.setId(1L);
+        u.setEmail("teste@teste.com");
+        u.setNif("123456789");
+        return u;
+    }
 
-        private SimpMessagingTemplate messagingTemplate;
+    @Test
+    @DisplayName("criarNotificacao deve guardar e enviar via websocket")
+    void criarNotificacao_DeveGuardar() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        private NotificacaoService service;
+        Notificacao result = service.criarNotificacao(1L, "Titulo", "Mensagem", "INFO", Map.of());
 
-        @BeforeEach
-        void setUp() {
+        assertNotNull(result);
+        verify(notificacaoRepository).save(any());
+        verify(messagingTemplate).convertAndSendToUser(
+                eq("teste@teste.com"),
+                eq("/queue/notifications"),
+                any(NotificacaoResponseDTO.class));
+    }
 
-                notificacaoRepository = mock(NotificacaoRepository.class);
+    @Test
+    @DisplayName("criarNotificacao deve falhar com utilizador inexistente")
+    void criarNotificacao_UtilizadorInexistente_DeveLancarExcecao() {
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class, () -> 
+            service.criarNotificacao(1L, "T", "M", "T")
+        );
+    }
 
-                utilizadorRepository = mock(UtilizadorRepository.class);
+    @Test
+    @DisplayName("criarNotificacao com WebSocket falhando não deve interromper transação")
+    void criarNotificacao_WebSocketComErro_NaoDeveFalhar() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        doThrow(new RuntimeException("WebSocket down")).when(messagingTemplate).convertAndSendToUser(anyString(), anyString(), any());
 
-                emailService = mock(EmailService.class);
+        Notificacao result = assertDoesNotThrow(() ->
+            service.criarNotificacao(1L, "Titulo", "Mensagem", "INFO", Map.of())
+        );
 
-                messagingTemplate = mock(SimpMessagingTemplate.class);
+        assertNotNull(result);
+        verify(notificacaoRepository).save(any());
+    }
 
-                service = new NotificacaoService(
-                                notificacaoRepository,
-                                utilizadorRepository,
-                                emailService,
-                                messagingTemplate);
-        }
+    @Test
+    @DisplayName("listarPorUtilizador deve retornar lista de DTOs convertidos")
+    void listarPorUtilizador_DeveRetornarLista() {
+        Notificacao n = new Notificacao();
+        n.setId(10L);
+        n.setTitulo("T");
+        n.setMensagem("M");
+        n.setLida(false);
+        n.setUtilizador(createUser());
 
-        private Utilizador createUser() {
+        when(notificacaoRepository.findByUtilizadorIdOrderByDataCriacaoDesc(1L)).thenReturn(List.of(n));
 
-                Utilizador u = new Utilizador();
+        List<NotificacaoResponseDTO> result = service.listarPorUtilizador(1L);
 
-                u.setId(1L);
-                u.setEmail("teste@teste.com");
-                u.setNif("123456789");
+        assertEquals(1, result.size());
+        assertEquals(10L, result.get(0).getId());
+        assertEquals("T", result.get(0).getTitulo());
+    }
 
-                return u;
-        }
+    @Test
+    @DisplayName("contarNaoLidas deve retornar quantidade correta")
+    void contarNaoLidas_DeveRetornarValor() {
+        when(notificacaoRepository.countByUtilizadorIdAndLidaFalse(1L)).thenReturn(5L);
+        long result = service.contarNaoLidas(1L);
+        assertEquals(5L, result);
+    }
 
-        @Test
-        void criarNotificacao_DeveGuardar() {
+    @Test
+    @DisplayName("marcarComoLida deve atualizar estado da notificação")
+    void marcarComoLida_DeveAtualizar() {
+        Notificacao notificacao = new Notificacao();
+        notificacao.setLida(false);
 
-                Utilizador user = createUser();
+        when(notificacaoRepository.findByIdAndUtilizadorId(1L, 1L)).thenReturn(Optional.of(notificacao));
 
-                when(utilizadorRepository.findById(1L))
-                                .thenReturn(Optional.of(user));
+        service.marcarComoLida(1L, 1L);
 
-                when(notificacaoRepository.save(any()))
-                                .thenAnswer(i -> i.getArgument(0));
+        assertTrue(notificacao.isLida());
+        verify(notificacaoRepository).save(notificacao);
+    }
 
-                Notificacao result = service.criarNotificacao(
-                                1L,
-                                "Titulo",
-                                "Mensagem",
-                                "INFO",
-                                Map.of());
+    @Test
+    @DisplayName("marcarComoLida deve falhar para notificação inexistente")
+    void marcarComoLida_Inexistente_DeveLancarExcecao() {
+        when(notificacaoRepository.findByIdAndUtilizadorId(1L, 1L)).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class, () -> service.marcarComoLida(1L, 1L));
+    }
 
-                assertNotNull(result);
+    @Test
+    @DisplayName("marcarTodasComoLidas deve atualizar todas as notificações do utilizador")
+    void marcarTodasComoLidas_DeveAtualizarTodas() {
+        Notificacao n1 = new Notificacao();
+        n1.setLida(false);
+        Notificacao n2 = new Notificacao();
+        n2.setLida(false);
 
-                verify(notificacaoRepository)
-                                .save(any());
+        when(notificacaoRepository.findByUtilizadorIdOrderByDataCriacaoDesc(1L)).thenReturn(List.of(n1, n2));
 
-                verify(messagingTemplate)
-                                .convertAndSendToUser(
-                                                anyString(),
-                                                eq("/queue/notifications"),
-                                                any());
-        }
+        service.marcarTodasComoLidas(1L);
 
-        @Test
-        void contarNaoLidas_DeveRetornarValor() {
+        assertTrue(n1.isLida());
+        assertTrue(n2.isLida());
+        verify(notificacaoRepository).saveAll(anyList());
+    }
 
-                when(notificacaoRepository
-                                .countByUtilizadorIdAndLidaFalse(1L))
-                                .thenReturn(5L);
+    @Test
+    @DisplayName("eliminarNotificacao deve apagar a notificação correspondente")
+    void eliminarNotificacao_DeveApagar() {
+        Notificacao notificacao = new Notificacao();
+        when(notificacaoRepository.findByIdAndUtilizadorId(1L, 1L)).thenReturn(Optional.of(notificacao));
 
-                long result = service.contarNaoLidas(1L);
+        service.eliminarNotificacao(1L, 1L);
 
-                assertEquals(5L, result);
-        }
+        verify(notificacaoRepository).delete(notificacao);
+    }
 
-        @Test
-        void marcarComoLida_DeveAtualizar() {
+    @Test
+    @DisplayName("eliminarNotificacao deve falhar com notificação inexistente")
+    void eliminarNotificacao_Inexistente_DeveLancarExcecao() {
+        when(notificacaoRepository.findByIdAndUtilizadorId(1L, 1L)).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class, () -> service.eliminarNotificacao(1L, 1L));
+    }
 
-                Notificacao notificacao = new Notificacao();
+    @Test
+    @DisplayName("eliminarTodas deve invocar eliminação no repositório")
+    void eliminarTodas_DeveExecutar() {
+        service.eliminarTodas(1L);
+        verify(notificacaoRepository).deleteByUtilizadorId(1L);
+    }
 
-                when(notificacaoRepository
-                                .findByIdAndUtilizadorId(1L, 1L))
-                                .thenReturn(Optional.of(notificacao));
+    @Test
+    @DisplayName("notificarNovaMarcacao deve salvar notificação e enviar email")
+    void notificarNovaMarcacao_DeveEnviarEmail() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-                service.marcarComoLida(1L, 1L);
+        service.notificarNovaMarcacao(1L, 5L, LocalDateTime.now(), 30, "Consulta");
 
-                assertTrue(notificacao.isLida());
+        verify(emailService).sendAppointmentCreated(anyString(), any(), eq(5L), eq("Consulta"), eq(30));
+    }
 
-                verify(notificacaoRepository)
-                                .save(notificacao);
-        }
+    @Test
+    @DisplayName("notificarLembreteUmDia deve salvar notificação e enviar email")
+    void notificarLembreteUmDia_DeveSalvarEEnviarEmail() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        @Test
-        void eliminarTodas_DeveExecutar() {
+        LocalDateTime data = LocalDateTime.now().plusDays(1);
+        service.notificarLembreteUmDia(1L, 5L, data);
 
-                service.eliminarTodas(1L);
+        verify(emailService).sendAppointmentReminderOneDay("teste@teste.com", data);
+        verify(notificacaoRepository).save(any());
+    }
 
-                verify(notificacaoRepository)
-                                .deleteByUtilizadorId(1L);
-        }
+    @Test
+    @DisplayName("notificarCancelamento deve salvar notificação e enviar email correspondente")
+    void notificarCancelamento_DeveSalvarEEnviarEmail() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        @Test
-        void notificarNovaMarcacao_DeveEnviarEmail() {
+        LocalDateTime data = LocalDateTime.now();
+        service.notificarCancelamento(1L, data, "Impossibilidade técnica");
 
-                Utilizador user = createUser();
+        verify(emailService).sendAppointmentCancelled("teste@teste.com", "Impossibilidade técnica");
+        verify(notificacaoRepository).save(any());
+    }
 
-                when(utilizadorRepository.findById(1L))
-                                .thenReturn(Optional.of(user));
+    @Test
+    @DisplayName("notificarCancelamentoPeloUtente deve criar notificação de cancelamento")
+    void notificarCancelamentoPeloUtente_DeveSalvar() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-                when(notificacaoRepository.save(any()))
-                                .thenAnswer(i -> i.getArgument(0));
+        LocalDateTime data = LocalDateTime.now();
+        service.notificarCancelamentoPeloUtente(1L, "Manuel Silva", data);
 
-                service.notificarNovaMarcacao(
-                                1L,
-                                5L,
-                                LocalDateTime.now(),
-                                30,
-                                "Consulta");
+        verify(notificacaoRepository).save(any());
+    }
 
-                verify(emailService)
-                                .sendAppointmentCreated(
-                                                anyString(),
-                                                any(),
-                                                eq(5L),
-                                                eq("Consulta"),
-                                                eq(30));
-        }
+    @Test
+    @DisplayName("notificarDocumentosInvalidos deve salvar notificação correspondente")
+    void notificarDocumentosInvalidos_DeveSalvar() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        service.notificarDocumentosInvalidos(1L, "Falta assinatura");
+
+        verify(notificacaoRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("Falha no envio de email não deve falhar o fluxo principal")
+    void sendEmailIfAvailable_ComErro_NaoDeveFalhar() {
+        Utilizador user = createUser();
+        when(utilizadorRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(notificacaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        doThrow(new RuntimeException("SMTP down")).when(emailService).sendAppointmentReminderOneDay(anyString(), any());
+
+        assertDoesNotThrow(() ->
+            service.notificarLembreteUmDia(1L, 5L, LocalDateTime.now())
+        );
+    }
 }
