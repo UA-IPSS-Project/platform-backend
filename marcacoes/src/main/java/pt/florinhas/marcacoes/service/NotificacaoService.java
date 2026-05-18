@@ -40,6 +40,7 @@ public class NotificacaoService {
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
     private static final String MSG_PREFIX_UTENTE = "O utente ";
     private static final String METADATA_APPOINTMENT_ID = "appointmentId";
+    private static final String TIPO_LEMBRETE = "LEMBRETE";
 
     public void criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo) {
         enviarParaMicrosservico(utilizadorId, titulo, mensagem, tipo, null);
@@ -69,7 +70,7 @@ public class NotificacaoService {
         metadata.put("createdTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "CREATED");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, metadata);
     }
 
     public void notificarLembreteUmDia(Long utilizadorId, Long marcacaoId, LocalDateTime data) {
@@ -83,7 +84,7 @@ public class NotificacaoService {
         metadata.put("appointmentTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, metadata);
     }
 
     public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
@@ -115,7 +116,7 @@ public class NotificacaoService {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", null);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, null);
     }
 
     public void notificarReagendamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime dataAntiga, LocalDateTime dataNova) {
@@ -129,7 +130,7 @@ public class NotificacaoService {
         metadata.put("newDate", dataNova.format(DATE_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "RESCHEDULED");
 
-        enviarParaMicrosservico(destinatarioId, assunto, mensagem, "LEMBRETE", metadata);
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, TIPO_LEMBRETE, metadata);
     }
 
     private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, String tipo, Map<String, Object> metadata) {

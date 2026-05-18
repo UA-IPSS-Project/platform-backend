@@ -54,6 +54,7 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 public class RequisicaoService {
 
     private static final String MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO = "Item de manutenção não encontrado: ";
+    private static final String MSG_TRANSPORTE_NAO_ENCONTRADO = "Transporte não encontrado: ";
 
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
@@ -219,7 +220,7 @@ public class RequisicaoService {
         List<Transporte> transportesSelecionados = request.transporteIds().stream()
                 .distinct()
                 .map(id -> transporteRepository.findById(id)
-                        .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id)))
+                        .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id)))
                 .toList();
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
@@ -292,7 +293,7 @@ public class RequisicaoService {
                 if (itemRequest.transporteId() != null) {
                     Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
                             .orElseThrow(() -> new ResourceNotFoundException(
-                                    "Transporte não encontrado: " + itemRequest.transporteId()));
+                                    MSG_TRANSPORTE_NAO_ENCONTRADO + itemRequest.transporteId()));
                     requisicaoItem.setTransporte(transporte);
                 }
 
@@ -429,7 +430,7 @@ public class RequisicaoService {
     @Transactional
     public Transporte atualizarTransporteCatalogo(Long id, CriarTransporteRequest request) {
         Transporte transporte = transporteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id));
 
         String matriculaNormalizada = request.matricula().trim().toUpperCase(Locale.ROOT);
         transporteRepository.findByMatricula(matriculaNormalizada)
@@ -457,16 +458,15 @@ public class RequisicaoService {
         }
 
         Transporte transporte = transporteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id));
 
         // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há
         // requisições ativas
-        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO) {
-            if (requisicaoTransporteRepository.existsByTransporteId(id)
-                    || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
-                throw new IllegalStateException(
-                        "Não é possível marcar como indisponível: transporte está associado a requisições ativas.");
-            }
+        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO
+                && (requisicaoTransporteRepository.existsByTransporteId(id)
+                || requisicaoTransporteRepository.existsByTransportesTransporteId(id))) {
+            throw new IllegalStateException(
+                    "Não é possível marcar como indisponível: transporte está associado a requisições ativas.");
         }
 
         transporte.setCategoria(novaCategoria);
