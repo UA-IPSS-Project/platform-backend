@@ -61,8 +61,8 @@ public class NotificacaoService {
 
     public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data) {
         String dataFormatada = data.format(DATE_TIME_FORMATTER);
-        String mensagem = "Marcacao criada para " + dataFormatada + ".";
-        String assunto = "Marcacao Criada";
+        String mensagem = "Marcação criada para " + dataFormatada + ".";
+        String assunto = "Marcação Criada";
 
         Map<String, Object> metadata = new HashMap<>();
         metadata.put(METADATA_APPOINTMENT_ID, marcacaoId.toString());
