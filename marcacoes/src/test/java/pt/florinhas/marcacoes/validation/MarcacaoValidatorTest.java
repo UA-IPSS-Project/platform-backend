@@ -62,14 +62,16 @@ class MarcacaoValidatorTest {
                 r1.setCategoria("Meias");
                 RoupaDTO r2 = new RoupaDTO();
                 r2.setItemId(1L);
+                List<RoupaDTO> roupas = List.of(r1, r2);
 
-                assertDoesNotThrow(() -> validator.validarRoupas(List.of(r1, r2)));
+                assertDoesNotThrow(() -> validator.validarRoupas(roupas));
         }
 
         @Test
         @DisplayName("Deve falhar quando roupa não tem categoria nem item")
         void validarRoupas_DeveLancarExcecaoQuandoAmbosNulos() {
                 RoupaDTO r = new RoupaDTO();
-                assertThrows(IllegalArgumentException.class, () -> validator.validarRoupas(List.of(r)));
+                List<RoupaDTO> roupas = List.of(r);
+                assertThrows(IllegalArgumentException.class, () -> validator.validarRoupas(roupas));
         }
 }
