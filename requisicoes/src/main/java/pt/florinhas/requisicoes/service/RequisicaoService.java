@@ -279,26 +279,24 @@ public class RequisicaoService {
         requisicao.setGeridoPor(null);
 
         // Build items list before saving to benefit from CascadeType.ALL
-        if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
-            for (var itemRequest : request.manutencaoItens()) {
-                ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
+        for (var itemRequest : request.manutencaoItens()) {
+            ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + itemRequest.itemId()));
+
+            RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
+            requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
+            requisicaoItem.setManutencaoItem(item);
+            requisicaoItem.setObservacoes(itemRequest.observacoes());
+
+            if (itemRequest.transporteId() != null) {
+                Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
                         .orElseThrow(() -> new ResourceNotFoundException(
-                                MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + itemRequest.itemId()));
-
-                RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
-                requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
-                requisicaoItem.setManutencaoItem(item);
-                requisicaoItem.setObservacoes(itemRequest.observacoes());
-
-                if (itemRequest.transporteId() != null) {
-                    Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    MSG_TRANSPORTE_NAO_ENCONTRADO + itemRequest.transporteId()));
-                    requisicaoItem.setTransporte(transporte);
-                }
-
-                requisicao.getItens().add(requisicaoItem);
+                                MSG_TRANSPORTE_NAO_ENCONTRADO + itemRequest.transporteId()));
+                requisicaoItem.setTransporte(transporte);
             }
+
+            requisicao.getItens().add(requisicaoItem);
         }
 
         aplicarConfiguracaoPeriodica(requisicao, request.periodica());
@@ -396,9 +394,6 @@ public class RequisicaoService {
         String marcaNormalizada = normalizarTextoObrigatorio(request.marca(), "Marca");
         String modeloNormalizado = normalizarTextoObrigatorio(request.modelo(), "Modelo");
 
-        if (request.categoria() == null) {
-            throw new IllegalArgumentException("A categoria do transporte é obrigatória.");
-        }
         if (request.lotacao() == null || request.lotacao() <= 0) {
             throw new IllegalArgumentException("A lotação do transporte é obrigatória e deve ser maior que zero.");
         }

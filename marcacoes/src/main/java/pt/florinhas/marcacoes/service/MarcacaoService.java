@@ -875,16 +875,16 @@ public class MarcacaoService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    executarLogicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
+                    executarLogicaNotificacao(utenteId, marcacaoId, data, summary, nomeUtente, criadoPeloUtente);
                 }
             });
         } else {
-            executarLogicaNotificacao(utenteId, marcacaoId, data, duration, summary, nomeUtente, criadoPeloUtente);
+            executarLogicaNotificacao(utenteId, marcacaoId, data, summary, nomeUtente, criadoPeloUtente);
         }
     }
 
-    private void executarLogicaNotificacao(Long utenteId, Long marcacaoId, LocalDateTime data, int duration, 
-                                          String summary, String nomeUtente, boolean criadoPeloUtente) {
+    private void executarLogicaNotificacao(Long utenteId, Long marcacaoId, LocalDateTime data, 
+                                           String summary, String nomeUtente, boolean criadoPeloUtente) {
         try {
             if (!criadoPeloUtente) {
                 notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data);
