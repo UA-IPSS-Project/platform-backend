@@ -93,9 +93,11 @@ public class DocumentoService {
     private static final String MSG_DOC_NAO_ENCONTRADO = "Documento não encontrado com ID: ";
 
     private String normalizeFinalidade(String finalidade) {
-        if (finalidade == null) return null;
+        if (finalidade == null)
+            return null;
         String normalized = finalidade.trim();
-        if (normalized.isEmpty()) return null;
+        if (normalized.isEmpty())
+            return null;
         if (normalized.length() > MAX_FINALIDADE_LENGTH) {
             log.warn("Valor de finalidade excede {} caracteres. Será truncado.", MAX_FINALIDADE_LENGTH);
             normalized = normalized.substring(0, MAX_FINALIDADE_LENGTH);
@@ -113,6 +115,7 @@ public class DocumentoService {
      * @throws IllegalArgumentException  se o ficheiro for inválido
      * @throws IOException               se houver erro ao guardar o ficheiro
      */
+    @SuppressWarnings("unused")
     @Transactional
 
     public DocumentoDTO uploadDocumento(Long marcacaoId, MultipartFile file, String finalidade) throws IOException {
@@ -215,7 +218,7 @@ public class DocumentoService {
         // Notificar secretarias apenas se o criador da marcação for utente (não
         // funcionário/secretaria)
         Utilizador criador = marcacao.getCriadoPor();
-        if (criador instanceof Utente) {
+        if (criador instanceof Utente utente) {
             try {
                 List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
                 String titulo = "Novo documento enviado";
@@ -225,8 +228,7 @@ public class DocumentoService {
                             secretaria.getId(),
                             titulo,
                             mensagem,
-                            "FICHEIRO"
-                    );
+                            "FICHEIRO");
                 }
             } catch (Exception e) {
                 log.error("Erro ao notificar secretarias sobre upload de documento", e);

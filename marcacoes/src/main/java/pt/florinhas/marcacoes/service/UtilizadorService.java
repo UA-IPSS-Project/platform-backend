@@ -57,6 +57,9 @@ import pt.florinhas.marcacoes.service.email.EmailService;
 @Slf4j
 public class UtilizadorService {
 
+    private static final String AUDIT_LOG_UTILIZADOR = "UTILIZADOR";
+    private static final String KEY_DOCUMENTOS = "documentos";
+
     private final UtilizadorRepository utilizadorRepository;
     private final UtenteRepository utenteRepository;
     private final FuncionarioRepository funcionarioRepository;
@@ -163,8 +166,8 @@ public class UtilizadorService {
 
         if (existingUser.isPresent()) {
             Utilizador u = existingUser.get();
-            if (u instanceof Utente) {
-                return (Utente) u;
+            if (u instanceof Utente utente) {
+                return utente;
             } else {
                 throw new ConflictException(
                         "Este NIF (" + nif + ") já está registado como Funcionário. Não pode ser usado como Utente.");
@@ -292,7 +295,7 @@ public class UtilizadorService {
 
         auditLogService.log(
                 "ATUALIZAR_PERFIL",
-                "UTILIZADOR",
+                AUDIT_LOG_UTILIZADOR,
                 utilizadorId,
                 String.format("Perfil atualizado: %s", utilizador.getNome()));
 
@@ -430,7 +433,7 @@ public class UtilizadorService {
 
         auditLogService.log(
                 "CRIAR_CONTA",
-                "UTILIZADOR",
+                AUDIT_LOG_UTILIZADOR,
                 salvo.getId(),
                 String.format("Conta criada pela secretaria: %s (%s) - Tipo: %s",
                         salvo.getNome(), salvo.getEmail(),
@@ -469,10 +472,10 @@ public class UtilizadorService {
             utilizador.setTelefone(request.getUpdatedContact());
         }
 
-        if (utilizador instanceof Utente) {
-            ((Utente) utilizador).setActivo(false);
-        } else if (utilizador instanceof Funcionario) {
-            ((Funcionario) utilizador).setActivo(false);
+        if (utilizador instanceof Utente utente) {
+            utente.setActivo(false);
+        } else if (utilizador instanceof Funcionario funcionario) {
+            funcionario.setActivo(false);
         }
 
         String novaPassword = gerarPasswordSegura();
@@ -482,7 +485,7 @@ public class UtilizadorService {
 
         auditLogService.log(
                 "RECUPERAR_CONTA",
-                "UTILIZADOR",
+                AUDIT_LOG_UTILIZADOR,
                 utilizador.getId(),
                 String.format("Conta recuperada pela secretaria: %s (%s)",
                         utilizador.getNome(), utilizador.getNif()));
@@ -530,7 +533,7 @@ public class UtilizadorService {
 
         auditLogService.log(
                 "SOLICITAR_ELIMINACAO",
-                "UTILIZADOR",
+                AUDIT_LOG_UTILIZADOR,
                 utilizador.getId(),
                 String.format("Pedido de eliminação registado para utilizador: %s (%s)",
                         utilizador.getNome(), utilizador.getNif()));
@@ -601,17 +604,17 @@ public class UtilizadorService {
         utilizador.setDeleteRequestedAt(null);
 
         // Desativar conta
-        if (utilizador instanceof Utente) {
-            ((Utente) utilizador).setActivo(false);
-        } else if (utilizador instanceof Funcionario) {
-            ((Funcionario) utilizador).setActivo(false);
+        if (utilizador instanceof Utente utente) {
+            utente.setActivo(false);
+        } else if (utilizador instanceof Funcionario funcionario) {
+            funcionario.setActivo(false);
         }
 
         utilizadorRepository.save(utilizador);
 
         auditLogService.log(
                 "ANONIMIZAR_UTILIZADOR",
-                "UTILIZADOR",
+                AUDIT_LOG_UTILIZADOR,
                 id,
                 String.format("Utilizador anonimizado (NIF original: %s) - RGPD Art.º 17", nifOriginal));
 
@@ -634,7 +637,7 @@ public class UtilizadorService {
 
         auditLogService.log(
                 "ELIMINAR_UTILIZADOR",
-                "UTILIZADOR",
+                AUDIT_LOG_UTILIZADOR,
                 id,
                 String.format("Utilizador anonimizado e desativado (Nome: %s, NIF: %s) - RGPD Art.º 17",
                         nomeOriginal, nifOriginal));
@@ -697,23 +700,23 @@ public class UtilizadorService {
 
         // Documentos
         try {
-            if (utilizador instanceof Utente) {
-                dados.put("documentos", documentoRepository.findByUtente((Utente) utilizador)
+            if (utilizador instanceof Utente utente) {
+                dados.put(KEY_DOCUMENTOS, documentoRepository.findByUtente(utente)
                         .stream()
                         .map(pt.florinhas.marcacoes.dto.DocumentoDTO::fromDocumento)
                         .toList());
             } else {
-                dados.put("documentos", new ArrayList<>());
+                dados.put(KEY_DOCUMENTOS, new ArrayList<>());
             }
         } catch (Exception e) {
             log.error("Erro ao exportar documentos: {}", e.getMessage());
-            dados.put("documentos", new ArrayList<>());
+            dados.put(KEY_DOCUMENTOS, new ArrayList<>());
         }
 
         // Marcações
         try {
-            if (utilizador instanceof Utente) {
-                dados.put("marcacoes", marcacaoRepository.findByUtente((Utente) utilizador)
+            if (utilizador instanceof Utente utente) {
+                dados.put("marcacoes", marcacaoRepository.findByUtente(utente)
                         .stream()
                         .map(m -> {
                             Map<String, Object> entry = new HashMap<>();
