@@ -12,6 +12,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import pt.florinhas.common_data.domain.Utilizador;
 
+import pt.florinhas.common_data.security.CustomUserDetailsService;
+
 class GatewayHeaderAuthenticationFilterTest {
 
     private CustomUserDetailsService userDetailsService;

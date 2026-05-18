@@ -1,4 +1,4 @@
-package pt.florinhas.notificacoes.security;
+package pt.florinhas.common_data.security;
 
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -7,7 +7,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import pt.florinhas.common_data.repository.UtilizadorRepository;
-import pt.florinhas.common_data.security.CryptoUtils;
 
 @Service
 @Primary
@@ -28,11 +27,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
         String trimmedEmail = email.trim();
 
+        // 1) Tenta por email primeiro (funcionários)
         var usersByEmail = utilizadorRepository.findByEmail(trimmedEmail);
         if (!usersByEmail.isEmpty()) {
             return usersByEmail.get(0);
         }
 
+        // 2) Depois por NIF (utentes) - devolve Lista
         var usersByNif = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(trimmedEmail));
         if (!usersByNif.isEmpty()) {
             return usersByNif.get(0);
