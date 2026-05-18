@@ -1,5 +1,6 @@
 package pt.florinhas.requisicoes.config;
 
+import com.fasterxml.jackson.datatype.hibernate6.Hibernate6Module;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -12,6 +13,11 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 @EnableCaching
 public class CacheConfig {
+
+    @Bean
+    Hibernate6Module hibernate6Module() {
+        return new Hibernate6Module();
+    }
 
     @Bean
     CacheManager cacheManager() {
