@@ -23,7 +23,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         if (email == null) {
-            throw new UsernameNotFoundException("Email is null");
+            throw new UsernameNotFoundException("Utilizador não encontrado");
         }
         String trimmedEmail = email.trim();
 
@@ -40,21 +40,5 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
 
         throw new UsernameNotFoundException("Utilizador não encontrado");
-    }
-
-    public UserDetails loadUserByEmail(String email) throws UsernameNotFoundException {
-        var users = utilizadorRepository.findByEmail(email);
-        if (users.isEmpty()) {
-            throw new UsernameNotFoundException("Funcionário não encontrado");
-        }
-        return users.get(0);
-    }
-
-    public UserDetails loadUserByNif(String nif) throws UsernameNotFoundException {
-        var users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif));
-        if (users.isEmpty()) {
-            throw new UsernameNotFoundException("Utente não encontrado");
-        }
-        return users.get(0);
     }
 }

@@ -204,7 +204,7 @@ public class MarcacaoService {
 
         // Notify utente about new appointment
         if (utente != null) {
-            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(),
+            registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(),
                     saved.getMarcacaoSecretaria().getAssunto(), authorizationService.getCurrentUserId());
         }
 
@@ -231,7 +231,7 @@ public class MarcacaoService {
 
         // Notify utente about new remote appointment (async)
         // Notify utente about new remote appointment (async)
-        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(), saved.getDuration(),
+        registrarNotificacaoAsync(utente.getId(), saved.getId(), saved.getData(),
                 saved.getMarcacaoSecretaria().getAssunto(), utente.getId());
 
         return saved;
@@ -865,7 +865,7 @@ public class MarcacaoService {
         }
     }
 
-    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration,
+    private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data,
                                            String summary, Long actorId) {
 
         String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
