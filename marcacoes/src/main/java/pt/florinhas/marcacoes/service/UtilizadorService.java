@@ -59,6 +59,7 @@ public class UtilizadorService {
 
     private static final String AUDIT_LOG_UTILIZADOR = "UTILIZADOR";
     private static final String KEY_DOCUMENTOS = "documentos";
+    private static final String KEY_MARCACOES = "marcacoes";
 
     private final UtilizadorRepository utilizadorRepository;
     private final UtenteRepository utenteRepository;
@@ -716,7 +717,7 @@ public class UtilizadorService {
         // Marcações
         try {
             if (utilizador instanceof Utente utente) {
-                dados.put("marcacoes", marcacaoRepository.findByUtente(utente)
+                dados.put(KEY_MARCACOES, marcacaoRepository.findByUtente(utente)
                         .stream()
                         .map(m -> {
                             Map<String, Object> entry = new HashMap<>();
@@ -732,11 +733,11 @@ public class UtilizadorService {
                         })
                         .toList());
             } else {
-                dados.put("marcacoes", new ArrayList<>());
+                dados.put(KEY_MARCACOES, new ArrayList<>());
             }
         } catch (Exception e) {
             log.error("Erro ao exportar marcações: {}", e.getMessage());
-            dados.put("marcacoes", new ArrayList<>());
+            dados.put(KEY_MARCACOES, new ArrayList<>());
         }
 
         // Requisições

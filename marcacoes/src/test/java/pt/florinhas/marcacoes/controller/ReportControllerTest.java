@@ -59,11 +59,11 @@ class ReportControllerTest {
 
         assertEquals(200, result.getStatusCode().value());
         verify(emailService).sendEmailWithAttachment(
-                eq("user@test.com"),
-                eq("Assunto"),
-                eq("Corpo"),
-                eq(pdf),
-                eq("relatorio.pdf"));
+                "user@test.com",
+                "Assunto",
+                "Corpo",
+                pdf,
+                "relatorio.pdf");
     }
 
     @Test
@@ -81,11 +81,11 @@ class ReportControllerTest {
         controller.sendReportByEmail(request);
 
         verify(emailService).sendEmailWithAttachment(
-                eq("user@test.com"),
-                eq("Assunto"),
-                eq("Corpo"),
-                eq(pdf),
-                eq("meu.pdf"));
+                "user@test.com",
+                "Assunto",
+                "Corpo",
+                pdf,
+                "meu.pdf");
     }
 
     @Test
@@ -103,10 +103,10 @@ class ReportControllerTest {
         controller.sendReportByEmail(request);
 
         verify(emailService).sendEmailWithAttachment(
-                eq("user@test.com"),
-                eq("Assunto"),
-                eq("Corpo"),
-                eq(pdf),
-                eq("relatorio.pdf"));
+                "user@test.com",
+                "Assunto",
+                "Corpo",
+                pdf,
+                "relatorio.pdf");
     }
 }

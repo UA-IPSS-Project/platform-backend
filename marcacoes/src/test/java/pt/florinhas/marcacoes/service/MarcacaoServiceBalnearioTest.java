@@ -73,12 +73,13 @@ class MarcacaoServiceBalnearioTest {
         when(marcacaoRepository.findById(1L))
                 .thenReturn(Optional.empty());
 
+        List<RoupaDTO> roupas = List.of();
         assertThrows(IllegalArgumentException.class,
                 () -> service.atualizarDetalhesBalneario(
                         1L,
                         true,
                         false,
-                        List.of()
+                        roupas
                 ));
     }
 }

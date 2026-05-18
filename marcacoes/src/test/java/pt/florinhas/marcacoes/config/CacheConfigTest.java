@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 
@@ -40,42 +42,11 @@ class CacheConfigTest {
                         .isPresent());
     }
 
-    @Test
-    void cacheManager_DeveConterCacheConfigSlots() {
-
-        CacheManager cacheManager =
-                cacheConfig.cacheManager();
-
-        CaffeineCache cache =
-                (CaffeineCache) cacheManager.getCache(
-                        "config-slots");
-
-        assertNotNull(cache);
-    }
-
-    @Test
-    void cacheManager_DeveConterCacheFeriados() {
-
-        CacheManager cacheManager =
-                cacheConfig.cacheManager();
-
-        CaffeineCache cache =
-                (CaffeineCache) cacheManager.getCache(
-                        "feriados");
-
-        assertNotNull(cache);
-    }
-
-    @Test
-    void cacheManager_DeveConterCacheTermsContent() {
-
-        CacheManager cacheManager =
-                cacheConfig.cacheManager();
-
-        CaffeineCache cache =
-                (CaffeineCache) cacheManager.getCache(
-                        "terms-content");
-
+    @ParameterizedTest
+    @ValueSource(strings = {"config-slots", "feriados", "terms-content"})
+    void cacheManager_DeveConterCaches(String cacheName) {
+        CacheManager cacheManager = cacheConfig.cacheManager();
+        CaffeineCache cache = (CaffeineCache) cacheManager.getCache(cacheName);
         assertNotNull(cache);
     }
 
