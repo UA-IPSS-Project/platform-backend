@@ -261,41 +261,7 @@ public class ArmazemService {
         List<String> avisos = new ArrayList<>();
 
         for (Roupa roupa : detalhes.getRoupas()) {
-            // Tentar pelo ID primeiro (Novo modo Objeto)
-            Optional<ItemArmazem> itemOpt = Optional.empty();
-            if (roupa.getItem() != null) {
-                itemOpt = itemArmazemRepository.findById(roupa.getItem().getId());
-            }
-
-            // Fallback para nome/categoria se o ID não estiver presente
-            if (itemOpt.isEmpty()) {
-                String formCategoria = roupa.getCategoria();
-                if (formCategoria == null || formCategoria.trim().isBlank()) {
-                    log.warn("Item da marcação ignorado no desconto: Categoria/Nome nulo.");
-                    continue;
-                }
-                String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
-                String armazemNome;
-
-                if (VAL_SAPATOS_SAPATILHAS.equals(formCategoria)) {
-                    armazemNome = roupa.getTamanho();
-                    armazemCategoria = CAT_CALCADO;
-                } else {
-                    armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
-                }
-
-                if (armazemNome == null) armazemNome = formCategoria;
-
-                if (armazemCategoria != null) {
-                    itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
-                } else {
-                    List<String> managedCats = List.of(CAT_HIGIENE, CAT_DETERGENTES, CAT_VESTUARIO, CAT_CALCADO);
-                    for (String cat : managedCats) {
-                        itemOpt = itemArmazemRepository.findByCategoriaAndNome(cat, armazemNome);
-                        if (itemOpt.isPresent()) break;
-                    }
-                }
-            }
+            Optional<ItemArmazem> itemOpt = encontrarItemArmazemParaRoupa(roupa, "desconto");
 
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
@@ -328,39 +294,7 @@ public class ArmazemService {
         }
 
         for (Roupa roupa : detalhes.getRoupas()) {
-            Optional<ItemArmazem> itemOpt = Optional.empty();
-            if (roupa.getItem() != null) {
-                itemOpt = itemArmazemRepository.findById(roupa.getItem().getId());
-            }
-
-            if (itemOpt.isEmpty()) {
-                String formCategoria = roupa.getCategoria();
-                if (formCategoria == null || formCategoria.trim().isBlank()) {
-                    log.warn("Item da marcação ignorado no restauro: Categoria/Nome nulo.");
-                    continue;
-                }
-                String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
-                String armazemNome;
-
-                if (VAL_SAPATOS_SAPATILHAS.equals(formCategoria)) {
-                    armazemNome = roupa.getTamanho();
-                    armazemCategoria = CAT_CALCADO;
-                } else {
-                    armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
-                }
-
-                if (armazemNome == null) armazemNome = formCategoria;
-
-                if (armazemCategoria != null) {
-                    itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
-                } else {
-                    List<String> managedCats = List.of(CAT_HIGIENE, CAT_DETERGENTES, CAT_VESTUARIO, CAT_CALCADO);
-                    for (String cat : managedCats) {
-                        itemOpt = itemArmazemRepository.findByCategoriaAndNome(cat, armazemNome);
-                        if (itemOpt.isPresent()) break;
-                    }
-                }
-            }
+            Optional<ItemArmazem> itemOpt = encontrarItemArmazemParaRoupa(roupa, "restauro");
 
             if (itemOpt.isPresent()) {
                 ItemArmazem item = itemOpt.get();
@@ -369,6 +303,43 @@ public class ArmazemService {
                 log.debug("Stock restaurado para '{}': +{}", item.getNome(), roupa.getQuantidade());
             }
         }
+    }
+
+    private Optional<ItemArmazem> encontrarItemArmazemParaRoupa(Roupa roupa, String operacao) {
+        Optional<ItemArmazem> itemOpt = Optional.empty();
+        if (roupa.getItem() != null) {
+            itemOpt = itemArmazemRepository.findById(roupa.getItem().getId());
+        }
+
+        if (itemOpt.isEmpty()) {
+            String formCategoria = roupa.getCategoria();
+            if (formCategoria == null || formCategoria.trim().isBlank()) {
+                log.warn("Item da marcação ignorado no {}: Categoria/Nome nulo.", operacao);
+                return Optional.empty();
+            }
+            String armazemCategoria = FORM_TO_CATEGORIA.get(formCategoria);
+            String armazemNome;
+
+            if (VAL_SAPATOS_SAPATILHAS.equals(formCategoria)) {
+                armazemNome = roupa.getTamanho();
+                armazemCategoria = CAT_CALCADO;
+            } else {
+                armazemNome = FORM_TO_ARMAZEM.get(formCategoria);
+            }
+
+            if (armazemNome == null) armazemNome = formCategoria;
+
+            if (armazemCategoria != null) {
+                itemOpt = itemArmazemRepository.findByCategoriaAndNome(armazemCategoria, armazemNome);
+            } else {
+                List<String> managedCats = List.of(CAT_HIGIENE, CAT_DETERGENTES, CAT_VESTUARIO, CAT_CALCADO);
+                for (String cat : managedCats) {
+                    itemOpt = itemArmazemRepository.findByCategoriaAndNome(cat, armazemNome);
+                    if (itemOpt.isPresent()) break;
+                }
+            }
+        }
+        return itemOpt;
     }
 
     // =====================================================================
