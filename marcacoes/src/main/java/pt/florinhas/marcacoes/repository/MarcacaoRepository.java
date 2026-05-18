@@ -72,6 +72,9 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
                         "WHERE m.data >= :dataInicio AND m.data <= :dataFim " +
                         "AND (:tipo IS NULL OR " +
                         "    (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR " +
@@ -121,6 +124,10 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
                         "WHERE " +
                         "(:dataInicio IS NULL OR m.data >= :dataInicio) AND " +
                         "(:dataFim IS NULL OR m.data <= :dataFim) AND " +
@@ -140,6 +147,10 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
                         "WHERE " +
                         "m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
                         "m.data >= :dataInicio AND " +

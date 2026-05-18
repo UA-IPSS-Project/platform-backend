@@ -48,9 +48,8 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             @Param("dataInicio") java.time.LocalDateTime dataInicio,
             @Param("dataFim") java.time.LocalDateTime dataFim);
 
-    @Query(value = "SELECT r FROM Requisicao r " +
-            "JOIN FETCH r.criadoPor c " +
-            "LEFT JOIN FETCH r.geridoPor " +
+    // Step 1: retorna apenas IDs paginados — sem JOIN FETCH, evita in-memory pagination
+    @Query(value = "SELECT r.id FROM Requisicao r LEFT JOIN r.criadoPor c " +
             "WHERE " +
             "(CAST(:estado AS string) IS NULL OR r.estado = :estado) AND " +
             "(CAST(:tipo AS string) IS NULL OR r.tipo = :tipo) AND " +
@@ -65,7 +64,7 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             "(:criadoPorNome IS NULL OR LOWER(c.nome) LIKE :criadoPorNome) AND " +
             "(CAST(:dataInicio AS timestamp) IS NULL OR r.criadoEm >= :dataInicio) AND " +
             "(CAST(:dataFim AS timestamp) IS NULL OR r.criadoEm <= :dataFim)")
-    Page<Requisicao> findWithFiltersPaginated(
+    Page<Long> findIdsPaginated(
             @Param("estado") RequisicaoEstado estado,
             @Param("tipo") RequisicaoTipo tipo,
             @Param("prioridade") RequisicaoPrioridade prioridade,
@@ -73,4 +72,9 @@ public interface RequisicaoRepository extends JpaRepository<Requisicao, Long> {
             @Param("dataInicio") java.time.LocalDateTime dataInicio,
             @Param("dataFim") java.time.LocalDateTime dataFim,
             Pageable pageable);
+
+    // Step 2: fetch entidades por IDs com criadoPor/geridoPor eagerly loaded
+    @EntityGraph(attributePaths = {"criadoPor", "geridoPor"})
+    @Query("SELECT r FROM Requisicao r WHERE r.id IN :ids")
+    List<Requisicao> findByIdsWithCriadoPor(@Param("ids") List<Long> ids);
 }

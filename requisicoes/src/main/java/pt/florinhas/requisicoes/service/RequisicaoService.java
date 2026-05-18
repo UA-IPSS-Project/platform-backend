@@ -3,18 +3,23 @@ package pt.florinhas.requisicoes.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -170,11 +175,30 @@ public class RequisicaoService {
         log.info("[procurarPaginated] a executar query: estado={} tipo={} prioridade={} criadoPorPattern={} dataInicio={} dataFim={}",
                 estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim);
         try {
-            Page<Requisicao> result = requisicaoRepository.findWithFiltersPaginated(
+            // Step 1: IDs paginados — sem JOIN FETCH, paginação correcta na base de dados
+            Page<Long> idsPage = requisicaoRepository.findIdsPaginated(
                 estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim, pageable);
+
+            if (idsPage.isEmpty()) {
+                log.info("[procurarPaginated] sem resultados");
+                return new PageImpl<>(Collections.emptyList(), pageable, 0);
+            }
+
+            // Step 2: fetch entidades por IDs com criadoPor/geridoPor eager
+            List<Long> ids = idsPage.getContent();
+            List<Requisicao> requisicoes = requisicaoRepository.findByIdsWithCriadoPor(ids);
+
+            // Preservar a ordem da paginação do step 1
+            Map<Long, Requisicao> byId = requisicoes.stream()
+                    .collect(Collectors.toMap(Requisicao::getId, r -> r));
+            List<Requisicao> ordered = ids.stream()
+                    .map(byId::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
             log.info("[procurarPaginated] sucesso: {} resultados (página {}/{})",
-                    result.getTotalElements(), pageable.getPageNumber(), result.getTotalPages());
-            return result;
+                    idsPage.getTotalElements(), pageable.getPageNumber(), idsPage.getTotalPages());
+            return new PageImpl<>(ordered, pageable, idsPage.getTotalElements());
         } catch (Exception e) {
             log.error("[procurarPaginated] falhou com exception: {}", e.getMessage(), e);
             throw e;
@@ -399,11 +423,13 @@ public class RequisicaoService {
         }
     }
 
+    @Cacheable("materiais")
     @Transactional(readOnly = true)
     public List<Material> listarMateriais() {
         return materialRepository.findAllByOrderByCategoriaAscNomeAscAtributoAscValorAtributoAsc();
     }
 
+    @CacheEvict(value = "materiais", allEntries = true)
     @Transactional
     public Material criarMaterialCatalogo(CriarMaterialRequest request) {
         Material material = new Material();
@@ -414,6 +440,7 @@ public class RequisicaoService {
         return materialRepository.save(material);
     }
 
+    @CacheEvict(value = "materiais", allEntries = true)
     @Transactional
     public Material atualizarMaterialCatalogo(Long id, CriarMaterialRequest request) {
         Material material = materialRepository.findById(id)
@@ -427,6 +454,7 @@ public class RequisicaoService {
         return materialRepository.save(material);
     }
 
+    @CacheEvict(value = "materiais", allEntries = true)
     @Transactional
     public void apagarMaterialCatalogo(Long id) {
         if (requisicaoMaterialRepository.existsByItensMaterialId(id)) {
@@ -440,12 +468,14 @@ public class RequisicaoService {
         materialRepository.deleteById(id);
     }
 
+    @Cacheable("transportes")
     @Transactional(readOnly = true)
     public List<Transporte> listarTransportes() {
         return transporteRepository.findAll(
                 Sort.by(Sort.Order.asc("codigo"), Sort.Order.asc("tipo"), Sort.Order.asc("matricula")));
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public Transporte criarTransporteCatalogo(CriarTransporteRequest request) {
         String codigoNormalizado = normalizarTextoObrigatorio(request.codigo(), "Código interno");
@@ -484,6 +514,7 @@ public class RequisicaoService {
         return transporteRepository.save(transporte);
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public Transporte atualizarTransporteCatalogo(Long id, CriarTransporteRequest request) {
         Transporte transporte = transporteRepository.findById(id)
@@ -508,6 +539,7 @@ public class RequisicaoService {
         return transporteRepository.save(transporte);
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public Transporte atualizarCategoriaTransporte(Long id, TransporteCategoria novaCategoria) {
         if (novaCategoria == null) {
@@ -530,6 +562,7 @@ public class RequisicaoService {
         return transporteRepository.save(transporte);
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public void moverVeiculosPorCategoria(TransporteCategoria origem, TransporteCategoria destino) {
         if (origem == null || destino == null) {
@@ -543,10 +576,12 @@ public class RequisicaoService {
         transporteRepository.updateCategoriaByCategoria(origem, destino);
     }
 
+    @Cacheable("tipos-manutencao")
     public List<TipoManutencao> listarTiposManutencao() {
         return tipoManutencaoRepository.findAllByOrderByNomeAsc();
     }
 
+    @CacheEvict(value = "tipos-manutencao", allEntries = true)
     @Transactional
     public TipoManutencao criarTipoManutencao(CriarTipoManutencaoRequest request) {
         String nomeNormalizado = request.nome().trim();
@@ -561,6 +596,7 @@ public class RequisicaoService {
         return tipoManutencaoRepository.save(tipo);
     }
 
+    @CacheEvict(value = "tipos-manutencao", allEntries = true)
     @Transactional
     public TipoManutencao atualizarTipoManutencao(Long id, CriarTipoManutencaoRequest request) {
         TipoManutencao tipo = tipoManutencaoRepository.findById(id)
@@ -578,6 +614,7 @@ public class RequisicaoService {
         return tipoManutencaoRepository.save(tipo);
     }
 
+    @CacheEvict(value = "tipos-manutencao", allEntries = true)
     @Transactional
     public void apagarTipoManutencao(Long id) {
         TipoManutencao tipo = tipoManutencaoRepository.findById(id)
@@ -587,6 +624,7 @@ public class RequisicaoService {
         tipoManutencaoRepository.delete(tipo);
     }
 
+    @Cacheable("manutencao-items")
     public List<ManutencaoItem> listarManutencaoItems() {
         return manutencaoItemRepository.findAllByOrderByCategoriaAscEspacoAsc();
     }
@@ -595,6 +633,7 @@ public class RequisicaoService {
         return manutencaoItemRepository.findByCategoria(categoria);
     }
 
+    @CacheEvict(value = "manutencao-items", allEntries = true)
     @Transactional
     public ManutencaoItem criarManutencaoItem(CriarManutencaoItemRequest request) {
         ManutencaoItem item = new ManutencaoItem();
@@ -604,6 +643,7 @@ public class RequisicaoService {
         return manutencaoItemRepository.save(item);
     }
 
+    @CacheEvict(value = "manutencao-items", allEntries = true)
     @Transactional
     public ManutencaoItem atualizarManutencaoItem(Long id, CriarManutencaoItemRequest request) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)
@@ -615,6 +655,7 @@ public class RequisicaoService {
         return manutencaoItemRepository.save(item);
     }
 
+    @CacheEvict(value = "manutencao-items", allEntries = true)
     @Transactional
     public void apagarManutencaoItem(Long id) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)

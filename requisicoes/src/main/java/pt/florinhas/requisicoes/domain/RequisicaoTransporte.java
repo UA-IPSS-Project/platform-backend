@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -44,5 +45,6 @@ public class RequisicaoTransporte extends Requisicao {
     private Transporte transporte;
 
     @OneToMany(mappedBy = "requisicao", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<RequisicaoTransporteItem> transportes = new ArrayList<>();
 }
