@@ -241,6 +241,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp", countQuery = "SELECT COUNT(m) FROM Marcacao m")
         Page<Marcacao> findAllWithRelations(Pageable pageable);
+
+        // Step 1 do 2-step pagination para listarTodas — retorna IDs sem JOIN FETCH
+        @Query(value = "SELECT m.id FROM Marcacao m ORDER BY m.data DESC",
+               countQuery = "SELECT COUNT(m) FROM Marcacao m")
+        Page<Long> findAllIdsPaginated(Pageable pageable);
     @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
             "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
             "AND m.data BETWEEN :inicio AND :fim")

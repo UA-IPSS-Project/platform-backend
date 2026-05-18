@@ -12,7 +12,10 @@ import java.util.stream.Collectors;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -76,6 +79,7 @@ public class MarcacaoService {
     private final ArmazemService armazemService;
     private final AuthorizationService authorizationService;
     private final AuditLogService auditLogService;
+    private final FuncionarioService funcionarioService;
 
     @Lazy
     private final CalendarioService calendarioService;
@@ -114,6 +118,7 @@ public class MarcacaoService {
         return marcacaoRepository.countMarcacoesBetweenDates(startOfDay, endOfDay);
     }
 
+    @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
         // Validar data e conflitos antes de prosseguir
@@ -210,6 +215,7 @@ public class MarcacaoService {
         return value != null && !value.trim().isEmpty();
     }
 
+    @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
         // Validar data e conflitos antes de prosseguir
@@ -250,6 +256,7 @@ public class MarcacaoService {
         return marcacao;
     }
 
+    @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public Marcacao criarMarcacaoBalneario(CriarMarcacaoBalnearioRequest request) {
         marcacaoValidator.validarCriacaoBalneario(request);
@@ -390,6 +397,7 @@ public class MarcacaoService {
         return toDTO(marcacao);
     }
 
+    @Cacheable(value = "agenda", key = "#inicio + '_' + #fim + '_' + #tipo")
     @Transactional(readOnly = true)
     public List<MarcacaoResponseDTO> consultarAgenda(LocalDateTime inicio, LocalDateTime fim, String tipo) {
         if (inicio == null)
@@ -408,6 +416,7 @@ public class MarcacaoService {
         return list.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
+    @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public MarcacaoResponseDTO atualizarEstadoMarcacao(Long id, AtualizarEstadoRequest request) {
         Marcacao marcacao = marcacaoRepository.findById(id)
@@ -492,7 +501,7 @@ public class MarcacaoService {
 
                 if (atorId != null && atorId.equals(utenteAlvo.getId())) {
                     // Cancelado pelo Utente -> Notificar Secretarias
-                    List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+                    List<Funcionario> secretarias = funcionarioService.listarSecretarias();
                     for (Funcionario sec : secretarias) {
                         try {
                             notificacaoService.notificarCancelamentoPeloUtente(sec.getId(), utenteAlvo.getNome(),
@@ -631,7 +640,16 @@ public class MarcacaoService {
 
     @Transactional(readOnly = true)
     public Page<MarcacaoResponseDTO> listarTodasMarcacoesPaginated(Pageable pageable) {
-        return marcacaoRepository.findAllWithRelations(pageable).map(this::toDTO);
+        Page<Long> idsPage = marcacaoRepository.findAllIdsPaginated(pageable);
+        if (idsPage.isEmpty()) return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        List<Long> ids = idsPage.getContent();
+        List<Marcacao> marcacoes = marcacaoRepository.findAllByIdWithDetails(ids);
+        Map<Long, Marcacao> byId = marcacoes.stream()
+            .collect(Collectors.toMap(Marcacao::getId, m -> m));
+        List<MarcacaoResponseDTO> ordered = ids.stream()
+            .map(byId::get).filter(Objects::nonNull)
+            .map(this::toDTO).collect(Collectors.toList());
+        return new PageImpl<>(ordered, pageable, idsPage.getTotalElements());
     }
 
     @Transactional
@@ -697,6 +715,7 @@ public class MarcacaoService {
         }
     }
 
+    @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public MarcacaoResponseDTO reagendarMarcacao(Long id, ReagendarMarcacaoRequest request) {
         // Buscar marcação existente
@@ -750,7 +769,7 @@ public class MarcacaoService {
             MarcacaoSecretaria secDetails = saved.getMarcacaoSecretaria();
             if (!actorIsAdmin && secDetails != null && secDetails.getUtente() != null && actorId.equals(secDetails.getUtente().getId())) {
                 // Notificar todas as secretarias
-                List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
+                List<Funcionario> secretarias = funcionarioService.listarSecretarias();
                 for (Funcionario sec : secretarias) {
                     // Não notificar a própria pessoa que reagendou (se for o caso)
                     if (!sec.getId().equals(actorId)) {
@@ -895,7 +914,7 @@ public class MarcacaoService {
                             notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
                         } else {
                             // Utente criou a marcação — notificar todas as secretarias
-                            funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+                            funcionarioService.listarSecretarias().forEach(sec -> {
                                 try {
                                     notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
                                 } catch (Exception e) {
@@ -913,7 +932,7 @@ public class MarcacaoService {
                 if (!criadoPeloUtente) {
                     notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
                 } else {
-                    funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA).forEach(sec -> {
+                    funcionarioService.listarSecretarias().forEach(sec -> {
                         try {
                             notificacaoService.notificarNovaMarcacaoParaSecretaria(sec.getId(), nomeUtente, marcacaoId, data, summary);
                         } catch (Exception e) {
