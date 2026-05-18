@@ -152,6 +152,9 @@ public class RequisicaoService {
             String dataInicioStr,
             String dataFimStr,
             Pageable pageable) {
+        log.info("[procurarPaginated] estado={} tipo={} prioridade={} criadoPorNome={} dataInicio={} dataFim={} pageable={}",
+                estado, tipo, prioridade, criadoPorNome, dataInicioStr, dataFimStr, pageable);
+
         String criadoPorPattern = prepararPadraoLike(criadoPorNome);
 
         LocalDateTime dataInicio = null;
@@ -164,8 +167,18 @@ public class RequisicaoService {
             dataFim = LocalDate.parse(dataFimStr).atTime(LocalTime.MAX);
         }
 
-        return requisicaoRepository.findWithFiltersPaginated(
-            estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim, pageable);
+        log.info("[procurarPaginated] a executar query: estado={} tipo={} prioridade={} criadoPorPattern={} dataInicio={} dataFim={}",
+                estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim);
+        try {
+            Page<Requisicao> result = requisicaoRepository.findWithFiltersPaginated(
+                estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim, pageable);
+            log.info("[procurarPaginated] sucesso: {} resultados (página {}/{})",
+                    result.getTotalElements(), pageable.getPageNumber(), result.getTotalPages());
+            return result;
+        } catch (Exception e) {
+            log.error("[procurarPaginated] falhou com exception: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     private String prepararPadraoLike(String filtro) {
