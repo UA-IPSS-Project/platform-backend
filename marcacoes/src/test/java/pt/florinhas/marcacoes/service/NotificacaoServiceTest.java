@@ -48,9 +48,7 @@ class NotificacaoServiceTest {
                 assertDoesNotThrow(() -> service.notificarNovaMarcacao(
                                 1L,
                                 10L,
-                                LocalDateTime.now(),
-                                30,
-                                "Resumo"));
+                                LocalDateTime.now()));
         }
 
         @Test

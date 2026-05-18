@@ -39,6 +39,7 @@ import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.domain.FuncionarioTipo;
 import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.exception.ResourceNotFoundException;
 
 /**
@@ -88,6 +89,8 @@ public class DocumentoService {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
     private static final int MAX_FINALIDADE_LENGTH = 255;
+
+    private static final String MSG_DOC_NAO_ENCONTRADO = "Documento não encontrado com ID: ";
 
     private String normalizeFinalidade(String finalidade) {
         if (finalidade == null) return null;
@@ -212,7 +215,7 @@ public class DocumentoService {
         // Notificar secretarias apenas se o criador da marcação for utente (não
         // funcionário/secretaria)
         Utilizador criador = marcacao.getCriadoPor();
-        if (criador != null && criador.getClass().getSimpleName().equals("Utente")) {
+        if (criador instanceof Utente) {
             try {
                 List<Funcionario> secretarias = funcionarioRepository.findByTipo(FuncionarioTipo.SECRETARIA);
                 String titulo = "Novo documento enviado";
@@ -362,7 +365,7 @@ public class DocumentoService {
     @Transactional(readOnly = true)
     public DocumentoDTO obterDocumento(Long documentoId) {
         Documento documento = documentoRepository.findById(documentoId)
-                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_DOC_NAO_ENCONTRADO + documentoId));
 
         return DocumentoDTO.fromDocumento(documento);
     }
@@ -376,7 +379,7 @@ public class DocumentoService {
     @Transactional(readOnly = true)
     public DocumentoMetadataDTO obterMetadadosDocumento(Long documentoId) {
         Documento documento = documentoRepository.findById(documentoId)
-                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_DOC_NAO_ENCONTRADO + documentoId));
 
         try {
             StatObjectResponse statObject = minioClient.statObject(
@@ -422,7 +425,7 @@ public class DocumentoService {
     @Transactional(readOnly = true)
     public Resource carregarFicheiro(Long documentoId) {
         Documento documento = documentoRepository.findById(documentoId)
-                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_DOC_NAO_ENCONTRADO + documentoId));
 
         try {
             GetObjectResponse objeto = minioClient.getObject(
@@ -448,7 +451,7 @@ public class DocumentoService {
         log.info("Removendo documento {}", documentoId);
 
         Documento documento = documentoRepository.findById(documentoId)
-                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_DOC_NAO_ENCONTRADO + documentoId));
 
         // Remover registo da base de dados
         documentoRepository.delete(documento);
@@ -467,7 +470,7 @@ public class DocumentoService {
         Marcacao marcacao = marcacaoRepository.findById(marcacaoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Marcação não encontrada com ID: " + marcacaoId));
         Documento documento = documentoRepository.findById(documentoId)
-                .orElseThrow(() -> new ResourceNotFoundException("Documento não encontrado com ID: " + documentoId));
+                .orElseThrow(() -> new ResourceNotFoundException(MSG_DOC_NAO_ENCONTRADO + documentoId));
         Utilizador utente = null;
         if (marcacao.getMarcacaoSecretaria() != null && marcacao.getMarcacaoSecretaria().getUtente() != null) {
             utente = marcacao.getMarcacaoSecretaria().getUtente();
