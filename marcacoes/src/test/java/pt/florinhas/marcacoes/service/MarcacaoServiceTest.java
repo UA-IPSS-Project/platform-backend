@@ -9,11 +9,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.EntityNotFoundException;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -43,6 +45,7 @@ import pt.florinhas.marcacoes.dto.AtualizarEstadoRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoBalnearioRequest;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.MarcacaoResponseDTO;
+import pt.florinhas.marcacoes.dto.NotificarDocumentosRequest;
 import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.RoupaDTO;
 import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
@@ -996,5 +999,271 @@ class MarcacaoServiceTest {
 
             verify(emailService).sendPassword(eq("novo@teste.com"), anyString());
         }
+    }
+
+    @Test
+    void contarMarcacoesDiarias_DeveContarCorretamente() {
+        LocalDateTime date = LocalDateTime.of(2026, 5, 18, 12, 0);
+        when(marcacaoRepository.countMarcacoesBetweenDates(any(), any())).thenReturn(5L);
+
+        long resultado = marcacaoService.contarMarcacoesDiarias(date);
+
+        assertEquals(5L, resultado);
+        verify(marcacaoRepository).countMarcacoesBetweenDates(any(), any());
+    }
+
+    @Test
+    void notificarDocumentosInvalidos_ComSucesso() {
+        Utente utente = new Utente();
+        utente.setId(10L);
+
+        MarcacaoSecretaria sec = new MarcacaoSecretaria();
+        sec.setUtente(utente);
+
+        Marcacao marcacao = new Marcacao();
+        marcacao.setId(1L);
+        marcacao.setMarcacaoSecretaria(sec);
+
+        NotificarDocumentosRequest request = new NotificarDocumentosRequest();
+        request.setObservacoes("Documento rasurado");
+
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+        doNothing().when(notificacaoService).notificarDocumentosInvalidos(10L, "Documento rasurado");
+
+        var resultado = marcacaoService.notificarDocumentosInvalidos(1L, request);
+
+        assertNotNull(resultado);
+        verify(notificacaoService).notificarDocumentosInvalidos(10L, "Documento rasurado");
+    }
+
+    @Test
+    void notificarDocumentosInvalidos_DeveLancarEntityNotFoundException_QuandoMarcacaoNaoExiste() {
+        NotificarDocumentosRequest request = new NotificarDocumentosRequest();
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class,
+                () -> marcacaoService.notificarDocumentosInvalidos(1L, request));
+    }
+
+    @Test
+    void notificarDocumentosInvalidos_DeveLancarIllegalStateException_QuandoSemUtenteOuSecretaria() {
+        Marcacao marcacao = new Marcacao();
+        marcacao.setId(1L);
+
+        NotificarDocumentosRequest request = new NotificarDocumentosRequest();
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+
+        assertThrows(IllegalStateException.class,
+                () -> marcacaoService.notificarDocumentosInvalidos(1L, request));
+    }
+
+    @Test
+    void notificarDocumentosInvalidos_DeveCapturarExceptionDaNotificacao() {
+        Utente utente = new Utente();
+        utente.setId(10L);
+
+        MarcacaoSecretaria sec = new MarcacaoSecretaria();
+        sec.setUtente(utente);
+
+        Marcacao marcacao = new Marcacao();
+        marcacao.setId(1L);
+        marcacao.setMarcacaoSecretaria(sec);
+
+        NotificarDocumentosRequest request = new NotificarDocumentosRequest();
+        request.setObservacoes("Observação");
+
+        when(marcacaoRepository.findById(1L)).thenReturn(Optional.of(marcacao));
+        doThrow(new RuntimeException("Falha na rede")).when(notificacaoService).notificarDocumentosInvalidos(anyLong(),
+                anyString());
+
+        assertDoesNotThrow(() -> marcacaoService.notificarDocumentosInvalidos(1L, request));
+    }
+
+    @Test
+    void consultarMarcacoesUtente_ComSucesso() {
+        Utente utente = new Utente();
+        utente.setId(1L);
+
+        Marcacao m = new Marcacao();
+        m.setId(10L);
+        m.setEstado(EventoEstado.AGENDADO);
+
+        when(utenteRepository.findById(1L)).thenReturn(Optional.of(utente));
+        when(marcacaoRepository.findByUtente(utente)).thenReturn(List.of(m));
+
+        var resultado = marcacaoService.consultarMarcacoesUtente(1L);
+
+        assertEquals(1, resultado.size());
+        assertEquals(10L, resultado.get(0).getId());
+    }
+
+    @Test
+    void consultarMarcacoesUtente_DeveLancarEntityNotFoundException_QuandoUtenteNaoExiste() {
+        when(utenteRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class,
+                () -> marcacaoService.consultarMarcacoesUtente(1L));
+    }
+
+    @Test
+    void consultarMarcacoesFuncionario_ComSucesso() {
+        Funcionario f = new Funcionario();
+        f.setId(1L);
+
+        Marcacao m = new Marcacao();
+        m.setId(10L);
+        m.setEstado(EventoEstado.AGENDADO);
+
+        when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(f));
+        when(marcacaoRepository.findByCriadoPor(f)).thenReturn(List.of(m));
+
+        var resultado = marcacaoService.consultarMarcacoesFuncionario(1L);
+
+        assertEquals(1, resultado.size());
+        assertEquals(10L, resultado.get(0).getId());
+    }
+
+    @Test
+    void consultarMarcacoesFuncionario_DeveLancarEntityNotFoundException_QuandoFuncionarioNaoExiste() {
+        when(funcionarioRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class,
+                () -> marcacaoService.consultarMarcacoesFuncionario(1L));
+    }
+
+    @Test
+    void obterMarcacaoDTO_DeveRetornarDTO_QuandoExiste() {
+        Marcacao m = new Marcacao();
+        m.setId(5L);
+        m.setEstado(EventoEstado.AGENDADO);
+
+        when(marcacaoRepository.findById(5L)).thenReturn(Optional.of(m));
+
+        var resultado = marcacaoService.obterMarcacaoDTO(5L);
+
+        assertNotNull(resultado);
+        assertEquals(5L, resultado.getId());
+    }
+
+    @Test
+    void obterMarcacaoDTO_DeveRetornarNull_QuandoNaoExiste() {
+        when(marcacaoRepository.findById(5L)).thenReturn(Optional.empty());
+
+        var resultado = marcacaoService.obterMarcacaoDTO(5L);
+
+        assertNull(resultado);
+    }
+
+    @Test
+    void listarTodasMarcacoesPaginated_DeveRetornarPage() {
+        Marcacao m = new Marcacao();
+        m.setId(1L);
+        m.setEstado(EventoEstado.AGENDADO);
+
+        org.springframework.data.domain.Page<Marcacao> page = new org.springframework.data.domain.PageImpl<>(
+                List.of(m));
+        when(marcacaoRepository.findAllWithRelations(any())).thenReturn(page);
+
+        var resultado = marcacaoService
+                .listarTodasMarcacoesPaginated(org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertNotNull(resultado);
+        assertEquals(1, resultado.getTotalElements());
+        assertEquals(1L, resultado.getContent().get(0).getId());
+    }
+
+    @Test
+    void consultarMarcacoesBloqueadas_DeveFiltrarBloqueiosCorretamente() {
+        // Marcacao própria do utente (deve ser filtrada/excluída)
+        Utente proprioUtente = new Utente();
+        proprioUtente.setId(1L);
+        MarcacaoSecretaria sec1 = new MarcacaoSecretaria();
+        sec1.setUtente(proprioUtente);
+        Marcacao m1 = new Marcacao();
+        m1.setId(10L);
+        m1.setEstado(EventoEstado.AGENDADO);
+        m1.setData(LocalDateTime.now());
+        m1.setMarcacaoSecretaria(sec1);
+
+        // Marcacao de outro utente (deve ser incluída)
+        Utente outroUtente = new Utente();
+        outroUtente.setId(2L);
+        MarcacaoSecretaria sec2 = new MarcacaoSecretaria();
+        sec2.setUtente(outroUtente);
+        Marcacao m2 = new Marcacao();
+        m2.setId(20L);
+        m2.setEstado(EventoEstado.AGENDADO);
+        m2.setData(LocalDateTime.now());
+        m2.setMarcacaoSecretaria(sec2);
+
+        // Marcacao criada pelo próprio utente (deve ser filtrada/excluída)
+        Marcacao m3 = new Marcacao();
+        m3.setId(30L);
+        m3.setEstado(EventoEstado.AGENDADO);
+        m3.setData(LocalDateTime.now());
+        m3.setCriadoPor(proprioUtente);
+
+        when(marcacaoRepository.findMarcacoesBetweenDates(any(), any(), eq("SECRETARIA")))
+                .thenReturn(List.of(m1, m2, m3));
+
+        List<Map<String, Object>> resultado = marcacaoService.consultarMarcacoesBloqueadas(1L);
+
+        assertEquals(1, resultado.size());
+        assertEquals("20", resultado.get(0).get("id").toString());
+    }
+
+    @Test
+    void obterEstatisticasFrequenciaBalneario_DeveCalcularParaVariosPeriodos() {
+        when(marcacaoRepository.countBalnearioAttendance(any(), any())).thenReturn(10L);
+        when(marcacaoRepository.countTotalBalnearioAttendance(any(), any())).thenReturn(15L);
+        when(marcacaoRepository.countBalnearioFaltas(any(), any())).thenReturn(3L);
+        when(marcacaoRepository.countBalnearioAgendadas(any(), any())).thenReturn(2L);
+
+        when(marcacaoRepository.findAttendanceByDay(any(), any()))
+                .thenReturn(List.<Object[]>of(new Object[] { "2026-05-18", 5L }));
+        when(marcacaoRepository.findAttendanceByHour(any(), any()))
+            .thenReturn(Collections.singletonList(new Object[] { 14, 4L }));
+
+        // DIA Period
+        var statsDia = marcacaoService.obterEstatisticasFrequenciaBalneario("DIA");
+        assertNotNull(statsDia);
+        assertEquals("DIA", statsDia.getPeriodo());
+        assertEquals(10L, statsDia.getTotalPresencas());
+
+        // SEMANA Period
+        var statsSemana = marcacaoService.obterEstatisticasFrequenciaBalneario("SEMANA");
+        assertEquals("SEMANA", statsSemana.getPeriodo());
+
+        // MES/Default Period
+        var statsMes = marcacaoService.obterEstatisticasFrequenciaBalneario("MES");
+        assertEquals("MES", statsMes.getPeriodo());
+    }
+
+    @Test
+    void consultarMarcacoesPassadasPaginated_DevePreservarOrdemDaQueryNativa() {
+        org.springframework.data.domain.Page<Long> idsPage = new org.springframework.data.domain.PageImpl<>(
+                List.of(20L, 10L));
+        when(marcacaoRepository.findMarcacoesPassadasPaginatedIds(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(idsPage);
+
+        Marcacao m10 = new Marcacao();
+        m10.setId(10L);
+        m10.setEstado(EventoEstado.AGENDADO);
+
+        Marcacao m20 = new Marcacao();
+        m20.setId(20L);
+        m20.setEstado(EventoEstado.AGENDADO);
+
+        when(marcacaoRepository.findAllById(List.of(20L, 10L))).thenReturn(List.of(m10, m20));
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+        var pageResult = marcacaoService.consultarMarcacoesPassadasPaginated(null, null, 1L, EventoEstado.AGENDADO,
+                "Assunto", "Nome", pageable);
+
+        assertNotNull(pageResult);
+        assertEquals(2, pageResult.getTotalElements());
+        // Deve preservar a ordem dos IDs da query nativa (20L primeiro, depois 10L)
+        assertEquals(20L, pageResult.getContent().get(0).getId());
+        assertEquals(10L, pageResult.getContent().get(1).getId());
     }
 }

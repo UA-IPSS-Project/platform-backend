@@ -203,7 +203,7 @@ class NotificacaoServiceTest {
         LocalDateTime data = LocalDateTime.now().plusDays(1);
         service.notificarLembreteUmDia(1L, 5L, data);
 
-        verify(emailService).sendAppointmentReminderOneDay(eq("teste@teste.com"), eq(data));
+        verify(emailService).sendAppointmentReminderOneDay("teste@teste.com", data);
         verify(notificacaoRepository).save(any());
     }
 
@@ -217,7 +217,7 @@ class NotificacaoServiceTest {
         LocalDateTime data = LocalDateTime.now();
         service.notificarCancelamento(1L, data, "Impossibilidade técnica");
 
-        verify(emailService).sendAppointmentCancelled(eq("teste@teste.com"), eq("Impossibilidade técnica"));
+        verify(emailService).sendAppointmentCancelled("teste@teste.com", "Impossibilidade técnica");
         verify(notificacaoRepository).save(any());
     }
 
