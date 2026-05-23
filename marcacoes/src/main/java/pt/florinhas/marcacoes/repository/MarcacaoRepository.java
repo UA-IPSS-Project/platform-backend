@@ -300,4 +300,6 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
             "GROUP BY HOUR(m.data) " +
             "ORDER BY HOUR(m.data)")
     List<Object[]> findAttendanceByHour(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    List<Marcacao> findByEstadoAndDataBefore(EventoEstado estado, LocalDateTime data);
 }

@@ -128,6 +128,15 @@ public class CalendarioController {
                 return ResponseEntity.ok(calendarioService.listarConfiguracoesSlot());
         }
 
+        @GetMapping("/configuracao-slots/{tipo}/preview")
+        @PreAuthorize("(hasRole('SECRETARIA') and #tipo?.toUpperCase() == 'SECRETARIA') or (hasRole('BALNEARIO') and #tipo?.toUpperCase() == 'BALNEARIO')")
+        public ResponseEntity<Map<String, Integer>> previewReducaoSlot(
+                        @PathVariable String tipo,
+                        @RequestParam int novaCapacidade) {
+                int afetadas = calendarioService.previewReducaoCapacidade(tipo, novaCapacidade);
+                return ResponseEntity.ok(Map.of("marcacoesAfetadas", afetadas));
+        }
+
         @PutMapping("/configuracao-slots/{tipo}")
         @PreAuthorize("(hasRole('SECRETARIA') and #tipo?.toUpperCase() == 'SECRETARIA') or (hasRole('BALNEARIO') and #tipo?.toUpperCase() == 'BALNEARIO')")
         public ResponseEntity<ConfiguracaoSlotDTO> atualizarConfiguracaoSlot(

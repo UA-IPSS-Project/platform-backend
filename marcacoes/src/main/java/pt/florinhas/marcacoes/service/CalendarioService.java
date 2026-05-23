@@ -202,6 +202,21 @@ public class CalendarioService {
                         .orElse(capacidadeSlotDefault(t)));
     }
 
+    public int previewReducaoCapacidade(String tipo, int novaCapacidade) {
+        String tipoNormalizado = normalizarTipoObrigatorio(tipo);
+        int atual = getCapacidadePorSlot(tipoNormalizado);
+        if (novaCapacidade >= atual) return 0;
+
+        LocalDateTime agora = LocalDateTime.now();
+        List<Marcacao> futuras = marcacaoRepository.findActiveFutureMarcacoes(agora, tipoNormalizado);
+
+        return (int) futuras.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Marcacao::getData))
+                .values().stream()
+                .mapToLong(list -> Math.max(0, list.size() - novaCapacidade))
+                .sum();
+    }
+
     @Transactional
     @CacheEvict(value = "config-slots", allEntries = true)
     public ConfiguracaoSlotDTO atualizarCapacidadePorSlot(String tipo, Integer capacidadePorSlot) {
