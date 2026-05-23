@@ -28,8 +28,6 @@ import pt.florinhas.common_data.exception.ResourceNotFoundException;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    private static final String KEY_MESSAGE = "message";
-
     /**
      * Mapeia NotFoundException para HTTP 404 (NOT_FOUND).
      *
@@ -38,10 +36,13 @@ public class GlobalExceptionHandler {
      * "message": "<detalhe do erro>"
      * }
      */
+    /**
+     * Mapeia NotFoundException para HTTP 404 (NOT_FOUND).
+     */
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFoundException(NotFoundException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -49,11 +50,11 @@ public class GlobalExceptionHandler {
      * Mapeia NoResourceFoundException (Spring 6+) para HTTP 404.
      * Evita que 404s caiam no handler genérico 500.
      */
-    @ExceptionHandler(NoResourceFoundException.class)
+        @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, String>> handleNoResourceFoundException(
             NoResourceFoundException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, "O recurso solicitado não foi encontrado: " + ex.getResourcePath());
+        error.put("message", "O recurso solicitado não foi encontrado: " + ex.getResourcePath());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -68,7 +69,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Map<String, String>> handleBadRequestException(BadRequestException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
@@ -78,7 +79,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
@@ -91,7 +92,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<Map<String, String>> handleBusinessRuleException(BusinessRuleException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
@@ -101,7 +102,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Map<String, String>> handleConflictException(ConflictException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
@@ -112,7 +113,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> handleIllegalStateException(IllegalStateException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
@@ -122,7 +123,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleResourceNotFoundException(ResourceNotFoundException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -141,7 +142,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField(); // nome do campo inválido
             String errorMessage = error.getDefaultMessage(); // mensagem definida na constraint
             errors.put(fieldName, errorMessage);
@@ -153,7 +154,7 @@ public class GlobalExceptionHandler {
                 .orElse("Erro de validação nos campos fornecidos");
 
         Map<String, Object> response = new HashMap<>();
-        response.put(KEY_MESSAGE, mainMessage);
+        response.put("message", mainMessage);
         response.put("errors", errors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
@@ -162,11 +163,11 @@ public class GlobalExceptionHandler {
     /**
      * Mapeia AccessDeniedException para HTTP 403 (FORBIDDEN).
      */
-    @ExceptionHandler(AccessDeniedException.class)
+        @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAccessDeniedException(
             AccessDeniedException ex) {
         Map<String, String> error = new HashMap<>();
-        error.put(KEY_MESSAGE, ex.getMessage());
+        error.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
@@ -180,8 +181,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
         log.error("Unhandled exception", ex);
         Map<String, String> error = new HashMap<>();
-
-        error.put(KEY_MESSAGE, ex.getMessage() != null ? ex.getMessage() : "Ocorreu um erro interno no servidor.");
+        // error.put("message", "Ocorreu um erro interno no servidor. Por favor, tente
+        // novamente mais tarde.");
+        // vv para desenvolvimento
+        error.put("message", ex.getMessage() != null ? ex.getMessage() : "Ocorreu um erro interno no servidor.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

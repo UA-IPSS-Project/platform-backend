@@ -34,7 +34,9 @@ import java.util.List;
  * (Funcionario vs Utente).
  */
 @Entity
-@Table(name = "Utilizador")
+@Table(name = "Utilizador", indexes = {
+    @Index(name = "idx_utilizador_email", columnList = "email")
+})
 @Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @SuperBuilder

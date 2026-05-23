@@ -1,0 +1,106 @@
+{
+  "metrics": {
+    "marcacoes_duration": {
+      "values": {
+        "avg": 390.60402097902096,
+        "min": 121,
+        "med": 363.5,
+        "max": 2100,
+        "p(90)": 633,
+        "p(95)": 782.8999999999987
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "requisicoes_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 1235.2954545454545,
+        "min": 137,
+        "med": 822,
+        "max": 4751,
+        "p(90)": 3118.5,
+        "p(95)": 3501.2999999999984
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      }
+    },
+    "agenda_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "p(95)": 2184.499999999999,
+        "avg": 1488.1643356643356,
+        "min": 691,
+        "med": 1408,
+        "max": 6729,
+        "p(90)": 2001.6000000000004
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      }
+    },
+    "passadas_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "min": 110,
+        "med": 132,
+        "max": 1572,
+        "p(90)": 249,
+        "p(95)": 351.8499999999999,
+        "avg": 170.12762237762237
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      }
+    },
+    "criar_marcacao_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 195.2298951048951,
+        "min": 121,
+        "med": 164,
+        "max": 1484,
+        "p(90)": 279,
+        "p(95)": 359
+      },
+      "thresholds": {
+        "p(95)<250": {
+          "ok": false
+        }
+      }
+    },
+    "criar_requisicao_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "max": 4942,
+        "p(90)": 2371.6000000000004,
+        "p(95)": 2656.2499999999995,
+        "avg": 716.2403846153846,
+        "min": 111,
+        "med": 163.5
+      },
+      "thresholds": {
+        "p(95)<250": {
+          "ok": false
+        }
+      }
+    }
+  }
+}

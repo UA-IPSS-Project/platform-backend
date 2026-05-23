@@ -47,8 +47,6 @@ import pt.florinhas.marcacoes.service.DocumentoService;
 @RequiredArgsConstructor
 public class DocumentoController {
 
-    private static final String ENTITY_TYPE_DOCUMENTO = "DOCUMENTO";
-
     private final DocumentoService documentoService;
     private final AuthorizationService authorizationService;
     private final MarcacaoRepository marcacaoRepository;
@@ -79,7 +77,7 @@ public class DocumentoController {
         
         auditLogService.log(
             "UPLOAD_DOCUMENTO",
-            ENTITY_TYPE_DOCUMENTO,
+            "DOCUMENTO",
             documento.id(),
             String.format("Upload: %s (Marcação: %d, Finalidade: %s)", 
                 documento.nomeOriginal(), marcacaoId, finalidade != null ? finalidade : "N/A")
@@ -180,7 +178,7 @@ public class DocumentoController {
 
         auditLogService.log(
             "DOWNLOAD_DOCUMENTO",
-            ENTITY_TYPE_DOCUMENTO,
+            "DOCUMENTO",
             id,
             String.format("Download: %s (Marcação: %d)", documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
         );
@@ -208,7 +206,7 @@ public class DocumentoController {
 
         auditLogService.log(
             "PREVIEW_DOCUMENTO",
-            ENTITY_TYPE_DOCUMENTO,
+            "DOCUMENTO",
             id,
             String.format("Preview: %s (Marcação: %d)", documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())
         );
@@ -256,7 +254,7 @@ public class DocumentoController {
 
         auditLogService.log(
             "DELETE_DOCUMENTO",
-            ENTITY_TYPE_DOCUMENTO,
+            "DOCUMENTO",
             id,
             String.format("Documento removido: %s (Marcação: %d)", 
                 documentoDTO.nomeOriginal(), documentoDTO.marcacaoId())

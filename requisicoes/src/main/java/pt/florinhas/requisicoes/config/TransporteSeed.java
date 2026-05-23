@@ -21,9 +21,6 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 @Order(2)
 public class TransporteSeed implements CommandLineRunner {
 
-    private static final String TIPO_CARRINHA = "Carrinha";
-    private static final String MARCA_RENAULT = "Renault";
-
     private final TransporteRepository transporteRepository;
 
     public TransporteSeed(TransporteRepository transporteRepository) {
@@ -49,21 +46,21 @@ public class TransporteSeed implements CommandLineRunner {
         List<TransporteSeedItem> transportesBase = List.of(
                 new TransporteSeedItem("V01", "Mini Autocarro", TransporteCategoria.PESADO_DE_PASSAGEIROS, "Iveco", "70c18", "32-TS-44",
                         LocalDate.of(2017, 10, 26), 31),
-                new TransporteSeedItem("V02", TIPO_CARRINHA, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, MARCA_RENAULT, "Master", "61-PX-87",
+                new TransporteSeedItem("V02", "Carrinha", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Renault", "Master", "61-PX-87",
                         LocalDate.of(2015, 5, 26), 9),
-                new TransporteSeedItem("V03", TIPO_CARRINHA, TransporteCategoria.LIGEIRO_DE_MERCADORIAS, MARCA_RENAULT, "Kangoo", "36-OU-67",
+                new TransporteSeedItem("V03", "Carrinha", TransporteCategoria.LIGEIRO_DE_MERCADORIAS, "Renault", "Kangoo", "36-OU-67",
                         LocalDate.of(2014, 6, 25), 3),
-                new TransporteSeedItem("V04", TIPO_CARRINHA, TransporteCategoria.LIGEIRO_DE_MERCADORIAS, MARCA_RENAULT, "Trafic", "79-NV-51",
+                new TransporteSeedItem("V04", "Carrinha", TransporteCategoria.LIGEIRO_DE_MERCADORIAS, "Renault", "Trafic", "79-NV-51",
                         LocalDate.of(2013, 7, 19), 2),
-                new TransporteSeedItem("V05", TIPO_CARRINHA, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Ford", "Transit", "75-HJ-95",
+                new TransporteSeedItem("V05", "Carrinha", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Ford", "Transit", "75-HJ-95",
                         LocalDate.of(2009, 3, 18), 9),
-                new TransporteSeedItem("V06", TIPO_CARRINHA, TransporteCategoria.LIGEIRO_ESPECIAL, "Mercedes", "215 CDI", "43-HD-54",
+                new TransporteSeedItem("V06", "Carrinha", TransporteCategoria.LIGEIRO_ESPECIAL, "Mercedes", "215 CDI", "43-HD-54",
                         LocalDate.of(2009, 1, 13), 6),
                 new TransporteSeedItem("V07", "Carro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Skoda", "Fabia", "68-ED-26",
                         LocalDate.of(2007, 7, 31), 5),
-                new TransporteSeedItem("V08", TIPO_CARRINHA, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, MARCA_RENAULT, "Kangoo-Al", "90-43-LJ",
+                new TransporteSeedItem("V08", "Carrinha", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Renault", "Kangoo-Al", "90-43-LJ",
                         LocalDate.of(1998, 7, 1), 6),
-                new TransporteSeedItem("V09", TIPO_CARRINHA, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Mercedes", "208 D/30", "54-95-GE",
+                new TransporteSeedItem("V09", "Carrinha", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "Mercedes", "208 D/30", "54-95-GE",
                         LocalDate.of(1996, 1, 19), 9));
 
         List<Transporte> allTransportes = transporteRepository.findAll();

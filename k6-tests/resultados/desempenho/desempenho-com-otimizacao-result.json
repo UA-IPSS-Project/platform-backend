@@ -1,0 +1,106 @@
+{
+  "metrics": {
+    "marcacoes_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "max": 1836,
+        "p(90)": 831.4000000000001,
+        "p(95)": 926.7,
+        "avg": 525.5422842197036,
+        "min": 128,
+        "med": 487
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      }
+    },
+    "requisicoes_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 1072.182214472537,
+        "min": 147,
+        "med": 1114,
+        "max": 2652,
+        "p(90)": 1571.8000000000002,
+        "p(95)": 1708.5000000000002
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      }
+    },
+    "agenda_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "p(90)": 2554.4,
+        "p(95)": 2864.9000000000005,
+        "avg": 2023.5727986050567,
+        "min": 839,
+        "med": 1882,
+        "max": 9083
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      }
+    },
+    "passadas_duration": {
+      "values": {
+        "avg": 188.1377506538797,
+        "min": 110,
+        "med": 138,
+        "max": 1068,
+        "p(90)": 327,
+        "p(95)": 455.2000000000003
+      },
+      "thresholds": {
+        "p(95)<150": {
+          "ok": false
+        }
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "criar_marcacao_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "min": 118,
+        "med": 174,
+        "max": 1179,
+        "p(90)": 318.8000000000002,
+        "p(95)": 411,
+        "avg": 211.6617262423714
+      },
+      "thresholds": {
+        "p(95)<250": {
+          "ok": false
+        }
+      }
+    },
+    "criar_requisicao_duration": {
+      "values": {
+        "avg": 307.90584132519615,
+        "min": 113,
+        "med": 179,
+        "max": 1578,
+        "p(90)": 677.4000000000001,
+        "p(95)": 800.1000000000001
+      },
+      "thresholds": {
+        "p(95)<250": {
+          "ok": false
+        }
+      },
+      "type": "trend",
+      "contains": "default"
+    }
+  }
+}

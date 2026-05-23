@@ -5,12 +5,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "Material")
+@Table(name = "Material", indexes = {
+    @Index(name = "idx_material_categoria", columnList = "categoria")
+})
 @Data
 @NoArgsConstructor
 public class Material {

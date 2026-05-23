@@ -38,7 +38,7 @@ import reactor.core.publisher.Mono;
 public class RateLimitFilter implements WebFilter {
 
     private static final int LOGIN_LIMIT = 10;
-    private static final int GLOBAL_LIMIT = 120;
+    private static final int GLOBAL_LIMIT = 300;
     private static final long WINDOW_MS = 60_000L;
 
     private record Bucket(AtomicInteger count, long windowStart) {}
@@ -57,6 +57,10 @@ public class RateLimitFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        if ("true".equalsIgnoreCase(System.getenv("DISABLE_RATE_LIMIT"))) {
+            return chain.filter(exchange);
+        }
+
         String path = exchange.getRequest().getPath().value();
         String method = exchange.getRequest().getMethod().name();
 

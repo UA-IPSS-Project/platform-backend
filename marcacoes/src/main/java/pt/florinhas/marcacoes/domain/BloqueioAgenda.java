@@ -19,7 +19,9 @@ import pt.florinhas.common_data.domain.Utilizador;
  * etc.).
  */
 @Entity
-@Table(name = "bloqueios_agenda")
+@Table(name = "bloqueios_agenda", indexes = {
+    @Index(name = "idx_bloqueio_data_tipo", columnList = "data, tipo")
+})
 @Getter
 @Setter
 @NoArgsConstructor

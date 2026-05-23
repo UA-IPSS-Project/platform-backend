@@ -2,6 +2,7 @@ package pt.florinhas.common_data.security;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -10,8 +11,9 @@ public class NifEncryptorConverter implements AttributeConverter<String, String>
 
     private static CryptoUtils cryptoUtils;
 
-    public static void setStaticCryptoUtils(CryptoUtils utils) {
-        cryptoUtils = utils;
+    @Autowired
+    public void setCryptoUtils(CryptoUtils utils) {
+        NifEncryptorConverter.cryptoUtils = utils;
     }
 
     @Override

@@ -28,8 +28,6 @@ import pt.florinhas.api_gateway.service.AuditClient;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private static final String ENTITY_TYPE_UTILIZADOR = "UTILIZADOR";
-
     private final AuthService authService;
     private final JwtService jwtService;
     private final AuditClient auditClient;
@@ -55,7 +53,7 @@ public class AuthController {
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.loginFuncionario(request);
         auditClient.logAsync(result.response().id(), result.response().nome(),
-                "LOGIN_FUNCIONARIO", ENTITY_TYPE_UTILIZADOR, result.response().id(),
+                "LOGIN_FUNCIONARIO", "UTILIZADOR", result.response().id(),
                 "Login de funcionario (" + result.response().role() + "): " + result.response().email(),
                 getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
@@ -67,7 +65,7 @@ public class AuthController {
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.loginUtente(request);
         auditClient.logAsync(result.response().id(), result.response().nome(),
-                "LOGIN_UTENTE", ENTITY_TYPE_UTILIZADOR, result.response().id(),
+                "LOGIN_UTENTE", "UTILIZADOR", result.response().id(),
                 "Login de utente: " + result.response().email(),
                 getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
@@ -79,7 +77,7 @@ public class AuthController {
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.registerUtente(request);
         auditClient.logAsync(result.response().id(), result.response().nome(),
-                "REGISTO_UTENTE", ENTITY_TYPE_UTILIZADOR, result.response().id(),
+                "REGISTO_UTENTE", "UTILIZADOR", result.response().id(),
                 "Novo registo de utente: " + result.response().email(),
                 getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
@@ -91,7 +89,7 @@ public class AuthController {
             ServerHttpRequest httpRequest) {
         AuthResult result = authService.registerFuncionario(request);
         auditClient.logAsync(result.response().id(), result.response().nome(),
-                "REGISTO_FUNCIONARIO", ENTITY_TYPE_UTILIZADOR, result.response().id(),
+                "REGISTO_FUNCIONARIO", "UTILIZADOR", result.response().id(),
                 "Novo registo de funcionario " + result.response().role() + ": " + result.response().email(),
                 getClientIp(httpRequest));
         return withJwtCookie(result.response(), httpRequest);
@@ -119,7 +117,7 @@ public class AuthController {
             ServerHttpRequest httpRequest) {
         if (utilizador != null) {
             auditClient.logAsync(utilizador.getId(), utilizador.getNome(),
-                    "LOGOUT", ENTITY_TYPE_UTILIZADOR, utilizador.getId(),
+                    "LOGOUT", "UTILIZADOR", utilizador.getId(),
                     "Logout: " + utilizador.getEmail(),
                     getClientIp(httpRequest));
         }

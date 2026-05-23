@@ -1,0 +1,72 @@
+{
+  "metrics": {
+    "marcacoes_duration": {
+      "values": {
+        "max": 2094,
+        "p(90)": 1513,
+        "p(95)": 1649,
+        "avg": 1061.4308681672026,
+        "min": 172,
+        "med": 1121
+      },
+      "thresholds": {
+        "p(95)<500": {
+          "ok": false
+        }
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "requisicoes_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "p(90)": 1963,
+        "p(95)": 2101,
+        "avg": 1352.4180064308682,
+        "min": 153,
+        "med": 1471,
+        "max": 2426
+      },
+      "thresholds": {
+        "p(95)<500": {
+          "ok": false
+        }
+      }
+    },
+    "agenda_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "min": 610,
+        "med": 2577,
+        "max": 12601,
+        "p(90)": 3549,
+        "p(95)": 4905,
+        "avg": 2888.7299035369774
+      },
+      "thresholds": {
+        "p(95)<300": {
+          "ok": false
+        }
+      }
+    },
+    "passadas_duration": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "min": 128,
+        "med": 349,
+        "max": 1152,
+        "p(90)": 668,
+        "p(95)": 772,
+        "avg": 398.38263665594855
+      },
+      "thresholds": {
+        "p(95)<500": {
+          "ok": false
+        }
+      }
+    }
+  }
+}

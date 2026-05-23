@@ -45,12 +45,6 @@ import pt.florinhas.common_data.domain.Utilizador;
 @RequestMapping("/api/requisicoes")
 public class RequisicaoController {
 
-    private static final String AUDIT_MATERIAL = "MATERIAL";
-    private static final String AUDIT_TRANSPORTE = "TRANSPORTE";
-    private static final String AUDIT_TIPO_MANUTENCAO = "TIPO_MANUTENCAO";
-    private static final String AUDIT_REQUISICAO = "REQUISICAO";
-    private static final String AUDIT_MANUTENCAO_ITEM = "MANUTENCAO_ITEM";
-
     private final RequisicaoService requisicaoService;
     private final AuditService auditService;
 
@@ -92,7 +86,7 @@ public class RequisicaoController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Material> criarMaterialCatalogo(@Valid @RequestBody CriarMaterialRequest request) {
         Material material = requisicaoService.criarMaterialCatalogo(request);
-        auditService.log("CRIAR_MATERIAL_CATALOGO", AUDIT_MATERIAL, material.getId(), 
+        auditService.log("CRIAR_MATERIAL_CATALOGO", "MATERIAL", material.getId(), 
             "Criado material no catálogo: " + material.getNome());
         return ResponseEntity.ok(material);
     }
@@ -103,7 +97,7 @@ public class RequisicaoController {
             @PathVariable Long id,
             @Valid @RequestBody CriarMaterialRequest request) {
         Material material = requisicaoService.atualizarMaterialCatalogo(id, request);
-        auditService.log("ATUALIZAR_MATERIAL_CATALOGO", AUDIT_MATERIAL, id, 
+        auditService.log("ATUALIZAR_MATERIAL_CATALOGO", "MATERIAL", id, 
             "Atualizado material no catálogo: " + material.getNome());
         return ResponseEntity.ok(material);
     }
@@ -112,7 +106,7 @@ public class RequisicaoController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> apagarMaterialCatalogo(@PathVariable Long id) {
         requisicaoService.apagarMaterialCatalogo(id);
-        auditService.log("APAGAR_MATERIAL_CATALOGO", AUDIT_MATERIAL, id, "Material apagado do catálogo");
+        auditService.log("APAGAR_MATERIAL_CATALOGO", "MATERIAL", id, "Material apagado do catálogo");
         return ResponseEntity.noContent().build();
     }
 
@@ -125,7 +119,7 @@ public class RequisicaoController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Transporte> criarTransporteCatalogo(@Valid @RequestBody CriarTransporteRequest request) {
         Transporte transporte = requisicaoService.criarTransporteCatalogo(request);
-        auditService.log("CRIAR_TRANSPORTE_CATALOGO", AUDIT_TRANSPORTE, transporte.getId(), 
+        auditService.log("CRIAR_TRANSPORTE_CATALOGO", "TRANSPORTE", transporte.getId(), 
             "Criado transporte no catálogo: " + transporte.getMarca() + " " + transporte.getModelo());
         return ResponseEntity.ok(transporte);
     }
@@ -136,7 +130,7 @@ public class RequisicaoController {
             @PathVariable Long id,
             @Valid @RequestBody CriarTransporteRequest request) {
         Transporte transporte = requisicaoService.atualizarTransporteCatalogo(id, request);
-        auditService.log("ATUALIZAR_TRANSPORTE_CATALOGO", AUDIT_TRANSPORTE, id, 
+        auditService.log("ATUALIZAR_TRANSPORTE_CATALOGO", "TRANSPORTE", id, 
             "Atualizado transporte no catálogo: " + transporte.getMarca() + " " + transporte.getModelo());
         return ResponseEntity.ok(transporte);
     }
@@ -154,7 +148,7 @@ public class RequisicaoController {
     public ResponseEntity<Void> moverCategoria(
             @Valid @RequestBody MoverCategoriaTransporteRequest request) {
         requisicaoService.moverVeiculosPorCategoria(request.origem(), request.destino());
-        auditService.log("MOVER_CATEGORIA_TRANSPORTE", AUDIT_TRANSPORTE, 0L, 
+        auditService.log("MOVER_CATEGORIA_TRANSPORTE", "TRANSPORTE", 0L, 
             "Movidos veículos da categoria " + request.origem() + " para " + request.destino());
         return ResponseEntity.noContent().build();
     }
@@ -168,7 +162,7 @@ public class RequisicaoController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<TipoManutencao> criarTipoManutencao(@Valid @RequestBody CriarTipoManutencaoRequest request) {
         TipoManutencao tipo = requisicaoService.criarTipoManutencao(request);
-        auditService.log("CRIAR_TIPO_MANUTENCAO", AUDIT_TIPO_MANUTENCAO, tipo.getId(), 
+        auditService.log("CRIAR_TIPO_MANUTENCAO", "TIPO_MANUTENCAO", tipo.getId(), 
             "Criado tipo de manutenção: " + tipo.getNome());
         return ResponseEntity.ok(tipo);
     }
@@ -179,7 +173,7 @@ public class RequisicaoController {
             @PathVariable Long id,
             @Valid @RequestBody CriarTipoManutencaoRequest request) {
         TipoManutencao tipo = requisicaoService.atualizarTipoManutencao(id, request);
-        auditService.log("ATUALIZAR_TIPO_MANUTENCAO", AUDIT_TIPO_MANUTENCAO, id, 
+        auditService.log("ATUALIZAR_TIPO_MANUTENCAO", "TIPO_MANUTENCAO", id, 
             "Atualizado tipo de manutenção: " + tipo.getNome());
         return ResponseEntity.ok(tipo);
     }
@@ -188,7 +182,7 @@ public class RequisicaoController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> apagarTipoManutencao(@PathVariable Long id) {
         requisicaoService.apagarTipoManutencao(id);
-        auditService.log("APAGAR_TIPO_MANUTENCAO", AUDIT_TIPO_MANUTENCAO, id, "Tipo de manutenção apagado");
+        auditService.log("APAGAR_TIPO_MANUTENCAO", "TIPO_MANUTENCAO", id, "Tipo de manutenção apagado");
         return ResponseEntity.noContent().build();
     }
 
@@ -197,7 +191,7 @@ public class RequisicaoController {
             @Valid @RequestBody CriarRequisicaoMaterialRequest request,
             @AuthenticationPrincipal Utilizador utilizador) {
         Requisicao req = requisicaoService.criarMaterial(request, utilizador.getId());
-        auditService.log("CRIAR_REQUISICAO_MATERIAL", AUDIT_REQUISICAO, req.getId(), 
+        auditService.log("CRIAR_REQUISICAO_MATERIAL", "REQUISICAO", req.getId(), 
             "Criada requisição de material por " + utilizador.getNome());
         return ResponseEntity.ok(req);
     }
@@ -207,7 +201,7 @@ public class RequisicaoController {
             @Valid @RequestBody CriarRequisicaoTransporteRequest request,
             @AuthenticationPrincipal Utilizador utilizador) {
         Requisicao req = requisicaoService.criarTransporte(request, utilizador.getId());
-        auditService.log("CRIAR_REQUISICAO_TRANSPORTE", AUDIT_REQUISICAO, req.getId(), 
+        auditService.log("CRIAR_REQUISICAO_TRANSPORTE", "REQUISICAO", req.getId(), 
             "Criada requisição de transporte por " + utilizador.getNome());
         return ResponseEntity.ok(req);
     }
@@ -217,7 +211,7 @@ public class RequisicaoController {
             @Valid @RequestBody CriarRequisicaoManutencaoRequest request,
             @AuthenticationPrincipal Utilizador utilizador) {
         Requisicao req = requisicaoService.criarManutencao(request, utilizador.getId());
-        auditService.log("CRIAR_REQUISICAO_MANUTENCAO", AUDIT_REQUISICAO, req.getId(), 
+        auditService.log("CRIAR_REQUISICAO_MANUTENCAO", "REQUISICAO", req.getId(), 
             "Criada requisição de manutenção por " + utilizador.getNome());
         return ResponseEntity.ok(req);
     }
@@ -232,7 +226,7 @@ public class RequisicaoController {
     public ResponseEntity<pt.florinhas.requisicoes.domain.ManutencaoItem> criarManutencaoItem(
             @Valid @RequestBody pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest request) {
         pt.florinhas.requisicoes.domain.ManutencaoItem item = requisicaoService.criarManutencaoItem(request);
-        auditService.log("CRIAR_ITEM_MANUTENCAO_CATALOGO", AUDIT_MANUTENCAO_ITEM, item.getId(), 
+        auditService.log("CRIAR_ITEM_MANUTENCAO_CATALOGO", "MANUTENCAO_ITEM", item.getId(), 
             "Criado item de manutenção no catálogo: " + item.getEspaco() + " - " + item.getItemVerificacao());
         return ResponseEntity.ok(item);
     }
@@ -243,7 +237,7 @@ public class RequisicaoController {
             @PathVariable Long id,
             @Valid @RequestBody pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest request) {
         pt.florinhas.requisicoes.domain.ManutencaoItem item = requisicaoService.atualizarManutencaoItem(id, request);
-        auditService.log("ATUALIZAR_ITEM_MANUTENCAO_CATALOGO", AUDIT_MANUTENCAO_ITEM, id, 
+        auditService.log("ATUALIZAR_ITEM_MANUTENCAO_CATALOGO", "MANUTENCAO_ITEM", id, 
             "Atualizado item de manutenção no catálogo: " + item.getEspaco() + " - " + item.getItemVerificacao());
         return ResponseEntity.ok(item);
     }
@@ -252,7 +246,7 @@ public class RequisicaoController {
     @PreAuthorize("hasRole('SECRETARIA')")
     public ResponseEntity<Void> apagarManutencaoItem(@PathVariable Long id) {
         requisicaoService.apagarManutencaoItem(id);
-        auditService.log("APAGAR_ITEM_MANUTENCAO_CATALOGO", AUDIT_MANUTENCAO_ITEM, id, 
+        auditService.log("APAGAR_ITEM_MANUTENCAO_CATALOGO", "MANUTENCAO_ITEM", id, 
             "Item de manutenção apagado do catálogo");
         return ResponseEntity.noContent().build();
     }
@@ -264,7 +258,7 @@ public class RequisicaoController {
             @Valid @RequestBody AtualizarEstadoRequisicaoRequest request,
             @AuthenticationPrincipal Utilizador utilizador) {
         Requisicao req = requisicaoService.atualizarEstado(id, request.estado(), utilizador.getId());
-        auditService.log("ATUALIZAR_ESTADO_REQUISICAO", AUDIT_REQUISICAO, id, 
+        auditService.log("ATUALIZAR_ESTADO_REQUISICAO", "REQUISICAO", id, 
             "Estado da requisição atualizado para " + request.estado() + " por " + utilizador.getNome());
         return ResponseEntity.ok(req);
     }

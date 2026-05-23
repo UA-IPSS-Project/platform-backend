@@ -18,8 +18,6 @@ import pt.florinhas.requisicoes.repository.ManutencaoItemRepository;
 @Order(3)
 public class ManutencaoItemSeed implements CommandLineRunner {
 
-    private static final String WC_AZUL = "WC azul";
-
     private final ManutencaoItemRepository manutencaoItemRepository;
 
     public ManutencaoItemSeed(ManutencaoItemRepository manutencaoItemRepository) {
@@ -40,16 +38,16 @@ public class ManutencaoItemSeed implements CommandLineRunner {
                         "WC masculino", "WC feminino", "Salão", "Salão (palco)"),
                 "RC", List.of(
                         "Parque exterior", "Relvado", "Acolhimento pré", "Acolhimento creche",
-                        "Gabinete", "WC deficientes", "WC Rosa", WC_AZUL, "Gabinete médico",
+                        "Gabinete", "WC deficientes", "WC Rosa", "WC azul", "Gabinete médico",
                         "Oficina", "Corredor + WC", "Biblioteca", "Refeitório", "Lavatórios + Hall",
                         "Elevador", "Escadas acesso 1º"),
                 "PRE_ESCOLAR", List.of(
-                        "Sala acolhimento", "Sala de educadoras", "WC deficientes", WC_AZUL,
+                        "Sala acolhimento", "Sala de educadoras", "WC deficientes", "WC azul",
                         "WC cor de rosa", "Hall", "Escadas acesso 2º", "Corredor", "Sala Amarela",
                         "Sala Azul", "Sala Verde", "Sala Arco-Íris", "WC", "Parque exterior"),
                 "CRECHE", List.of(
                         "Parque ext. 3º andar", "S. Acolhimento grande", "S. Acolhimento peq.",
-                        "WC", WC_AZUL, "Corredor e hall", "Escadas acesso sotão",
+                        "WC", "WC azul", "Corredor e hall", "Escadas acesso sotão",
                         "Sala Amarela limão", "Sala Verde Alface", "Sala Vermelha",
                         "Refeitório", "Copa", "Fraldário", "Sala azul turquesa", "Berçário"));
 
@@ -114,7 +112,7 @@ public class ManutencaoItemSeed implements CommandLineRunner {
         List<ManutencaoItem> itemsToFix = manutencaoItemRepository.findAll().stream()
                 .filter(i -> "Daycare".equalsIgnoreCase(i.getCategoria())
                         || "Preschool".equalsIgnoreCase(i.getCategoria()))
-                .toList();
+                .collect(Collectors.toList());
 
         if (!itemsToFix.isEmpty()) {
             log.info("--- CLEANING UP {} LEGACY MAINTENANCE ITEMS ---", itemsToFix.size());

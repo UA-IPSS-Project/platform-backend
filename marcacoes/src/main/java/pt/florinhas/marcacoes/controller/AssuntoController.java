@@ -45,7 +45,7 @@ public class AssuntoController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SECRETARIA')")
-    public ResponseEntity<Map<String, String>> apagar(@PathVariable Long id) {
+    public ResponseEntity<?> apagar(@PathVariable Long id) {
         assuntoService.apagar(id);
         return ResponseEntity.ok(Map.of("message", "Assunto desativado com sucesso"));
     }

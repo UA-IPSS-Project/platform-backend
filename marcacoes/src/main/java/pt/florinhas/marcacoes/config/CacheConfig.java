@@ -17,13 +17,17 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager();
         manager.registerCustomCache("assuntos",
-                Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(100).build());
+            Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(100).build());
         manager.registerCustomCache("config-slots",
-                Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10).build());
+            Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(10).build());
         manager.registerCustomCache("feriados",
-                Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(50).build());
+            Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(50).build());
         manager.registerCustomCache("terms-content",
-                Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.MINUTES).maximumSize(5).build());
+            Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.MINUTES).maximumSize(5).build());
+        manager.registerCustomCache("agenda",
+            Caffeine.newBuilder().expireAfterWrite(15, TimeUnit.SECONDS).maximumSize(50).build());
+        manager.registerCustomCache("secretarias",
+            Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(20).build());
         return manager;
     }
 }

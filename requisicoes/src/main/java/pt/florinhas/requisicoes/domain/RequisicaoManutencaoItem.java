@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -14,7 +15,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "Requisicao_Manutencao_Item")
+@Table(name = "Requisicao_Manutencao_Item", indexes = {
+    @Index(name = "idx_req_man_item_req_id",  columnList = "requisicao_id"),
+    @Index(name = "idx_req_man_item_man_id",  columnList = "manutencao_item_id")
+})
 @Data
 @NoArgsConstructor
 public class RequisicaoManutencaoItem {

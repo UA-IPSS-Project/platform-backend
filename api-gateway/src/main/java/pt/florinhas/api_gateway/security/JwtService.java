@@ -74,6 +74,6 @@ public class JwtService {
             String role,
             String nif,
             String telefone,
-            Collection<GrantedAuthority> roles) {
+            Collection<? extends GrantedAuthority> roles) {
         }
 }

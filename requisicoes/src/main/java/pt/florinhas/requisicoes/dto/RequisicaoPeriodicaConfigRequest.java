@@ -4,13 +4,12 @@ import java.time.LocalDate;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
-import org.springframework.lang.Nullable;
 import pt.florinhas.requisicoes.domain.PeriodicidadeFrequencia;
 
 public record RequisicaoPeriodicaConfigRequest(
         @NotNull PeriodicidadeFrequencia frequencia,
         @NotNull LocalDate dataInicio,
-        @Nullable LocalDate dataFim) {
+        @NotNull LocalDate dataFim) {
 
     @AssertTrue(message = "dataInicio must be before or equal to dataFim")
     public boolean isIntervaloDatasValido() {

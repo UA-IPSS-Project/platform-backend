@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,13 +44,14 @@ import pt.florinhas.common_data.security.CryptoUtils;
 @Slf4j
 public class AuthService {
 
+        // Constantes para roles
         private static final String ROLE_UTENTE = "UTENTE";
+        private static final String ROLE_FUNCIONARIO = "FUNCIONARIO";
 
         private final UtilizadorRepository utilizadorRepository;
         private final FuncionarioRepository funcionarioRepository;
         private final UtenteRepository utenteRepository;
         private final PasswordEncoder passwordEncoder;
-        private final AuthenticationManager authenticationManager;
         private final NifValidator nifValidator;
 
         @Value("${jwt.expiration:86400000}")
@@ -65,14 +64,12 @@ public class AuthService {
                         FuncionarioRepository funcionarioRepository,
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
-                        AuthenticationManager authenticationManager,
                         NifValidator nifValidator,
                         CryptoUtils cryptoUtils) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
-                this.authenticationManager = authenticationManager;
                 this.nifValidator = nifValidator;
                 this.cryptoUtils = cryptoUtils;
         }
@@ -109,19 +106,17 @@ public class AuthService {
                         throw new BadRequestException("Conta pendente de aprovação ou inativa. Contacte a secretaria.");
                 }
 
-                // 2. Autenticar credenciais só depois de confirmar que está ativo
-                try {
-                        authenticationManager.authenticate(
-                                        new UsernamePasswordAuthenticationToken(
-                                                        request.email(),
-                                                        request.password()));
-                } catch (Exception e) {
+                // 2. Verificar password diretamente via BCrypt.
+                // isAccountNonLocked, isAccountNonExpired e isCredentialsNonExpired estão
+                // hardcoded a true em Utilizador.java, pelo que o DaoAuthenticationProvider
+                // não acrescenta nenhuma validação útil — evita-se o segundo findByEmail.
+                if (!passwordEncoder.matches(request.password(), funcionario.getPassHash())) {
                         throw new BadRequestException("Credenciais inválidas");
                 }
 
                 log.debug("Authentication successful");
 
-                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : ROLE_FUNCIONARIO;
                 return generateAuthResponse(user, role, funcionario.isActivo());
         }
 
@@ -134,20 +129,8 @@ public class AuthService {
         public AuthResult loginUtente(LoginUtenteRequest request) {
                 log.debug("Login utente attempt for NIF: {}", request.nif());
 
-                // Autenticação via NIF + password
-                try {
-                        authenticationManager.authenticate(
-                                        new UsernamePasswordAuthenticationToken(
-                                                        request.nif(),
-                                                        request.password()));
-                } catch (Exception e) {
-                        log.error("Authentication failed for NIF: " + request.nif(), e);
-                        throw new BadRequestException("Credenciais inválidas");
-                }
-
-                // Obter utilizador pelo NIF (handle duplicate data by taking first)
+                // Obter utilizador pelo NIF primeiro (antes era feito depois do authenticate)
                 var users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(request.nif()));
-
                 if (users.isEmpty()) {
                         throw new BadRequestException("Utente não encontrado");
                 }
@@ -158,8 +141,17 @@ public class AuthService {
                         throw new BadRequestException("Credenciais inválidas para utente");
                 }
 
-                log.debug("User found: {}, Active: {}", user.getEmail(), utente.isActivo());
+                // Verificar password diretamente via BCrypt.
+                // isAccountNonLocked, isAccountNonExpired e isCredentialsNonExpired estão
+                // hardcoded a true em Utilizador.java, pelo que o DaoAuthenticationProvider
+                // não acrescenta nenhuma validação útil — evita-se o segundo findByNifHash.
+                // Antes: authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.nif(), request.password()))
+                if (!passwordEncoder.matches(request.password(), utente.getPassHash())) {
+                        log.error("Authentication failed for NIF: {}", request.nif());
+                        throw new BadRequestException("Credenciais inválidas");
+                }
 
+                log.debug("User found: {}, Active: {}", user.getEmail(), utente.isActivo());
                 return generateAuthResponse(user, ROLE_UTENTE, utente.isActivo());
         }
 
@@ -233,7 +225,7 @@ public class AuthService {
 
                 funcionario = funcionarioRepository.save(funcionario);
 
-                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : ROLE_FUNCIONARIO;
                 return generateAuthResponse(funcionario, role, false);
         }
 
@@ -267,19 +259,17 @@ public class AuthService {
 
                 user.setPassHash(passwordEncoder.encode(newPassword));
 
-                switch (user) {
-                        case Utente utente -> {
-                                utente.setActivo(true);
-                                utenteRepository.save(utente);
+                if (user instanceof Utente utente) {
+                        utente.setActivo(true);
+                        utenteRepository.save(utente);
+                } else if (user instanceof Funcionario funcionario) {
+                        // Ativa funcionário se aceitou termos agora OU já tinha termos aceites
+                        if (acceptedTermsNow || funcionario.getTermsAcceptedAt() != null) {
+                                funcionario.setActivo(true);
                         }
-                        case Funcionario funcionario -> {
-                                // Ativa funcionário se aceitou termos agora OU já tinha termos aceites
-                                if (acceptedTermsNow || funcionario.getTermsAcceptedAt() != null) {
-                                        funcionario.setActivo(true);
-                                }
-                                funcionarioRepository.save(funcionario);
-                        }
-                        default -> utilizadorRepository.save(user);
+                        funcionarioRepository.save(funcionario);
+                } else {
+                        utilizadorRepository.save(user);
                 }
         }
 
@@ -344,11 +334,12 @@ public class AuthService {
                 }
 
                 Utilizador user = persistedUser.get();
-                boolean active = switch (user) {
-                        case Utente u -> u.isActivo();
-                        case Funcionario f -> f.isActivo();
-                        default -> true;
-                };
+                boolean active = true;
+                if (user instanceof Utente u) {
+                        active = u.isActivo();
+                } else if (user instanceof Funcionario f) {
+                        active = f.isActivo();
+                }
 
                 boolean requiresPasswordSetup = requiresPasswordSetup(user, active);
 

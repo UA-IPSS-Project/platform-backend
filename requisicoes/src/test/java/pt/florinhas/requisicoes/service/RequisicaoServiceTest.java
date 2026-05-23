@@ -1,803 +1,491 @@
 package pt.florinhas.requisicoes.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import pt.florinhas.common_data.domain.Funcionario;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
-import pt.florinhas.requisicoes.domain.*;
-import pt.florinhas.requisicoes.dto.*;
+import pt.florinhas.requisicoes.domain.Material;
+import pt.florinhas.requisicoes.domain.Requisicao;
+import pt.florinhas.requisicoes.domain.RequisicaoEstado;
+import pt.florinhas.requisicoes.domain.RequisicaoManutencao;
+import pt.florinhas.requisicoes.domain.RequisicaoMaterial;
+import pt.florinhas.requisicoes.domain.RequisicaoPrioridade;
+import pt.florinhas.requisicoes.domain.RequisicaoTipo;
+import pt.florinhas.requisicoes.domain.RequisicaoTransporte;
+import pt.florinhas.requisicoes.domain.Transporte;
+import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
+import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
+import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.exception.ResourceNotFoundException;
-import pt.florinhas.requisicoes.repository.*;
+import pt.florinhas.requisicoes.repository.MaterialRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoManutencaoRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoMaterialRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoRepository;
+import pt.florinhas.requisicoes.repository.RequisicaoTransporteRepository;
+import pt.florinhas.requisicoes.repository.TransporteRepository;
 
 @ExtendWith(MockitoExtension.class)
 class RequisicaoServiceTest {
 
-    @Mock
-    private RequisicaoRepository requisicaoRepository;
-    @Mock
-    private RequisicaoMaterialRepository requisicaoMaterialRepository;
-    @Mock
-    private RequisicaoTransporteRepository requisicaoTransporteRepository;
-    @Mock
-    private RequisicaoManutencaoRepository requisicaoManutencaoRepository;
-    @Mock
-    private FuncionarioRepository funcionarioRepository;
-    @Mock
-    private MaterialRepository materialRepository;
-    @Mock
-    private TransporteRepository transporteRepository;
-    @Mock
-    private TipoManutencaoRepository tipoManutencaoRepository;
-    @Mock
-    private ManutencaoItemRepository manutencaoItemRepository;
-    @Mock
-    private RequisicaoManutencaoItemRepository requisicaoManutencaoItemRepository;
-    @Mock
-    private NotificacaoService notificacaoService;
+        @Mock
+        private RequisicaoRepository requisicaoRepository;
+        @Mock
+        private RequisicaoMaterialRepository requisicaoMaterialRepository;
+        @Mock
+        private RequisicaoTransporteRepository requisicaoTransporteRepository;
+        @Mock
+        private RequisicaoManutencaoRepository requisicaoManutencaoRepository;
+        @Mock
+        private FuncionarioRepository funcionarioRepository;
+        @Mock
+        private MaterialRepository materialRepository;
+        @Mock
+        private TransporteRepository transporteRepository;
+        @Mock
+        private NotificacaoService notificacaoService;
 
-    private RequisicaoService service;
-
-    @BeforeEach
-    void setUp() {
-        service = new RequisicaoService(
-                requisicaoRepository,
-                requisicaoMaterialRepository,
-                requisicaoTransporteRepository,
-                requisicaoManutencaoRepository,
-                funcionarioRepository,
-                materialRepository,
-                transporteRepository,
-                tipoManutencaoRepository,
-                manutencaoItemRepository,
-                requisicaoManutencaoItemRepository,
-                notificacaoService);
-    }
-
-    @Nested
-    @DisplayName("Testes de Consulta e Pesquisa")
-    class SearchTests {
+        @InjectMocks
+        private RequisicaoService requisicaoService;
 
         @Test
-        @DisplayName("Listar todas as requisições")
-        void listarTodas_DeveRetornarTodas() {
-            Requisicao req = new RequisicaoMaterial();
-            when(requisicaoRepository.findAll()).thenReturn(List.of(req));
+        void listarTodas_deveRetornarListaDoRepositorio() {
+                Requisicao requisicao = new RequisicaoManutencao();
+                when(requisicaoRepository.findAll()).thenReturn(List.of(requisicao));
 
-            List<Requisicao> result = service.listarTodas();
-            assertEquals(1, result.size());
-            assertSame(req, result.get(0));
+                List<Requisicao> resultado = requisicaoService.listarTodas();
+
+                assertEquals(1, resultado.size());
+                assertSame(requisicao, resultado.getFirst());
+                verify(requisicaoRepository).findAll();
         }
 
         @Test
-        @DisplayName("Obter requisição por ID")
-        void obterPorId_DeveRetornarSeExiste() {
-            Requisicao req = new RequisicaoMaterial();
-            when(requisicaoRepository.findById(1L)).thenReturn(Optional.of(req));
+        void obterPorId_quandoExiste_deveRetornarRequisicao() {
+                Requisicao requisicao = new RequisicaoManutencao();
+                when(requisicaoRepository.findById(10L)).thenReturn(Optional.of(requisicao));
 
-            Requisicao result = service.obterPorId(1L);
-            assertSame(req, result);
+                Requisicao resultado = requisicaoService.obterPorId(10L);
+
+                assertSame(requisicao, resultado);
+                verify(requisicaoRepository).findById(10L);
         }
 
         @Test
-        @DisplayName("Obter requisição por ID lança exceção se não existe")
-        void obterPorId_NaoExiste_DeveLancarExcecao() {
-            when(requisicaoRepository.findById(1L)).thenReturn(Optional.empty());
-            assertThrows(ResourceNotFoundException.class, () -> service.obterPorId(1L));
+        void obterPorId_quandoNaoExiste_deveLancarExcecao() {
+                when(requisicaoRepository.findById(77L)).thenReturn(Optional.empty());
+
+                ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                                () -> requisicaoService.obterPorId(77L));
+
+                assertEquals("Requisição não encontrada: 77", exception.getMessage());
         }
 
         @Test
-        @DisplayName("Listar requisições por estado")
-        void listarPorEstado_DeveFiltrar() {
-            Requisicao req = new RequisicaoMaterial();
-            when(requisicaoRepository.findByEstado(RequisicaoEstado.ABERTO)).thenReturn(List.of(req));
+        void listarPorEstado_deveDelegarNoRepositorio() {
+                when(requisicaoRepository.findByEstado(RequisicaoEstado.EM_PROGRESSO)).thenReturn(List.of());
 
-            List<Requisicao> result = service.listarPorEstado(RequisicaoEstado.ABERTO);
-            assertEquals(1, result.size());
+                requisicaoService.listarPorEstado(RequisicaoEstado.EM_PROGRESSO);
+
+                verify(requisicaoRepository).findByEstado(RequisicaoEstado.EM_PROGRESSO);
         }
 
         @Test
-        @DisplayName("Procurar com filtros flexíveis")
-        void procurar_ComFiltros_DeveNormalizarEFiltrar() {
-            Requisicao req = new RequisicaoMaterial();
-            when(requisicaoRepository.findWithFilters(any(), any(), any(), any(), any(), any()))
-                    .thenReturn(List.of(req));
+        void procurar_deveDelegarFindWithFilters() {
+                Requisicao requisicao = new RequisicaoManutencao();
+                requisicao.setEstado(RequisicaoEstado.ABERTO);
+                requisicao.setTipo(RequisicaoTipo.MATERIAL);
+                requisicao.setPrioridade(RequisicaoPrioridade.ALTA);
+                Funcionario criadoPor = new Funcionario();
+                criadoPor.setNome("Maria Silva");
+                requisicao.setCriadoPor(criadoPor);
+                Funcionario geridoPor = new Funcionario();
+                geridoPor.setNome("João Costa");
+                requisicao.setGeridoPor(geridoPor);
 
-            List<Requisicao> result = service.procurar(
-                    RequisicaoEstado.ABERTO, RequisicaoTipo.MATERIAL, RequisicaoPrioridade.ALTA,
-                    "  Maria  ", "2026-05-16", "2026-05-17");
+                when(requisicaoRepository.findWithFilters(
+                                any(), any(), any(), any(), any(), any()))
+                                .thenReturn(List.of(requisicao));
 
-            assertFalse(result.isEmpty());
-            verify(requisicaoRepository).findWithFilters(
-                    eq(RequisicaoEstado.ABERTO),
-                    eq(RequisicaoTipo.MATERIAL),
-                    eq(RequisicaoPrioridade.ALTA),
-                    eq("%maria%"),
-                    any(LocalDateTime.class),
-                    any(LocalDateTime.class));
+                List<Requisicao> resultado = requisicaoService.procurar(
+                                RequisicaoEstado.ABERTO,
+                                RequisicaoTipo.MATERIAL,
+                                RequisicaoPrioridade.ALTA,
+                                "Maria",
+                                null,
+                                null);
+
+                assertEquals(1, resultado.size());
+                assertSame(requisicao, resultado.getFirst());
+
+                verify(requisicaoRepository).findWithFilters(
+                                any(), any(), any(), any(), any(), any());
         }
 
         @Test
-        @DisplayName("Procurar paginado")
-        void procurarPaginated_DeveChamarRepositorio() {
-            Page<Requisicao> page = new PageImpl<>(List.of(new RequisicaoMaterial()));
-            Pageable pageable = PageRequest.of(0, 10);
-            when(requisicaoRepository.findWithFiltersPaginated(any(), any(), any(), any(), any(), any(), any()))
-                    .thenReturn(page);
+        void criarMaterial_quandoDadosValidos_deveCriarComTipoEAssociacoes() {
+                Funcionario criadoPor = funcionarioComId(1L);
+                Material material = new Material();
+                material.setId(3L);
+                Material material2 = new Material();
+                material2.setId(4L);
 
-            Page<Requisicao> result = service.procurarPaginated(
-                    RequisicaoEstado.FECHADO, RequisicaoTipo.TRANSPORTE, RequisicaoPrioridade.BAIXA,
-                    "Maria", "2026-05-16", "2026-05-17", pageable);
+                when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
+                when(materialRepository.findAllById(any())).thenReturn(List.of(material, material2));
+                when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-            assertNotNull(result);
-            assertEquals(1, result.getTotalElements());
-        }
-    }
+                CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
+                                "Pedido de material",
+                                RequisicaoPrioridade.MEDIA,
+                                2L,
+                                List.of(
+                                                new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
+                                                new CriarRequisicaoMaterialRequest.ItemMaterialRequest(4L, 2)),
+                                null);
 
-    @Nested
-    @DisplayName("Testes de Criação de Requisições")
-    class CreationTests {
+                RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, 1L);
 
-        private Funcionario criadoPor;
-
-        @BeforeEach
-        void setupFuncionario() {
-            criadoPor = new Funcionario();
-            criadoPor.setId(10L);
-            criadoPor.setNome("Criador");
-        }
-
-        @Test
-        @DisplayName("Criar requisição de Material com sucesso")
-        void criarMaterial_ComSucesso() {
-            Material mat = new Material();
-            mat.setId(100L);
-
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            when(materialRepository.findById(100L)).thenReturn(Optional.of(mat));
-            when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
-                    .thenAnswer(i -> i.getArgument(0));
-
-            CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
-                    "Pedido de canetas",
-                    RequisicaoPrioridade.MEDIA,
-                    null,
-                    List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(100L, 5)),
-                    new RequisicaoPeriodicaConfigRequest(PeriodicidadeFrequencia.SEMANAL, LocalDate.now(),
-                            LocalDate.now().plusWeeks(4)));
-
-            RequisicaoMaterial result = service.criarMaterial(request, 10L);
-
-            assertNotNull(result);
-            assertEquals("Pedido de canetas", result.getDescricao());
-            assertEquals(RequisicaoPrioridade.MEDIA, result.getPrioridade());
-            assertEquals(1, result.getItens().size());
-            assertEquals(5, result.getItens().get(0).getQuantidade());
-            assertEquals(PeriodicidadeFrequencia.SEMANAL, result.getPeriodicaFrequencia());
+                assertEquals("Pedido de material", resultado.getDescricao());
+                assertEquals(RequisicaoPrioridade.MEDIA, resultado.getPrioridade());
+                assertEquals(RequisicaoTipo.MATERIAL, resultado.getTipo());
+                assertSame(criadoPor, resultado.getCriadoPor());
+                assertNull(resultado.getGeridoPor());
+                assertEquals(2, resultado.getItens().size());
+                assertSame(material, resultado.getItens().getFirst().getMaterial());
+                assertEquals(5, resultado.getItens().getFirst().getQuantidade());
+                assertSame(material2, resultado.getItens().get(1).getMaterial());
+                assertEquals(2, resultado.getItens().get(1).getQuantidade());
         }
 
         @Test
-        @DisplayName("Criar requisição de Material lança erro se material não existe")
-        void criarMaterial_MaterialInexistente_DeveLancarExcecao() {
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            when(materialRepository.findById(100L)).thenReturn(Optional.empty());
+        void criarMaterial_quandoRepetidoMaterialNoPedido_deveManterUltimaQuantidade() {
+                Funcionario criadoPor = funcionarioComId(1L);
+                Material material = new Material();
+                material.setId(3L);
 
-            CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
-                    "Pedido", RequisicaoPrioridade.MEDIA, null,
-                    List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(100L, 5)), null);
+                when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
+                when(materialRepository.findAllById(any())).thenReturn(List.of(material));
+                when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-            assertThrows(ResourceNotFoundException.class, () -> service.criarMaterial(request, 10L));
+                CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
+                                "Pedido de material",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                List.of(
+                                                new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 5),
+                                                new CriarRequisicaoMaterialRequest.ItemMaterialRequest(3L, 8)),
+                                null);
+
+                RequisicaoMaterial resultado = requisicaoService.criarMaterial(request, 1L);
+
+                assertEquals(1, resultado.getItens().size());
+                assertEquals(8, resultado.getItens().getFirst().getQuantidade());
         }
 
         @Test
-        @DisplayName("Criar requisição de Transporte lança erro se sem transportes selecionados")
-        void criarTransporte_SemTransportes_DeveLancarExcecao() {
-            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                    "Viagem", RequisicaoPrioridade.MEDIA, null, "Porto",
-                    LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
-                    3, "Pedro", null, null);
+        void criarMaterial_quandoMaterialNaoExiste_deveLancarExcecao() {
+                Funcionario criadoPor = funcionarioComId(1L);
+                when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
+                when(materialRepository.findAllById(any())).thenReturn(List.of());
 
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporte(request, 10L));
+                CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
+                                "Pedido",
+                                RequisicaoPrioridade.BAIXA,
+                                null,
+                                List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(30L, 1)), null);
+
+                ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                                () -> requisicaoService.criarMaterial(request, 1L));
+
+                assertEquals("Material não encontrado: 30", exception.getMessage());
         }
 
         @Test
-        @DisplayName("Criar requisição de Transporte com sucesso")
-        void criarTransporte_ComSucesso() {
-            Transporte veiculo = new Transporte();
-            veiculo.setId(200L);
+        void criarTransporte_quandoDadosValidos_deveCriarComTipoEAssociacoes() {
+                Funcionario criadoPor = funcionarioComId(10L);
+                Transporte transporte = new Transporte();
+                transporte.setId(30L);
 
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            when(transporteRepository.findById(200L)).thenReturn(Optional.of(veiculo));
-            when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
-                    .thenAnswer(i -> i.getArgument(0));
+                when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+                when(transporteRepository.findAllById(any())).thenReturn(List.of(transporte));
+                when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                    "Viagem de serviço  ",
-                    RequisicaoPrioridade.ALTA,
-                    null,
-                    "Porto",
-                    LocalDateTime.now().plusDays(1),
-                    LocalDateTime.now().plusDays(1).plusHours(2),
-                    5,
-                    "  Pedro ",
-                    List.of(200L),
-                    null);
+                LocalDateTime saida = LocalDateTime.now().plusDays(10);
+                LocalDateTime regresso = saida.plusHours(4);
 
-            RequisicaoTransporte result = service.criarTransporte(request, 10L);
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido de carrinha",
+                                RequisicaoPrioridade.ALTA,
+                                20L,
+                                "Centro de Dia",
+                                LocalDateTime.now().plusDays(1),
+                                LocalDateTime.now().plusDays(1).plusHours(4),
+                                8,
+                                "Condutor 1",
+                                List.of(30L),
+                                null, null);
 
-            assertNotNull(result);
-            assertEquals("Viagem de serviço", result.getDescricao());
-            assertEquals("Pedro", result.getCondutor());
-            assertEquals("Porto", result.getDestino());
-            assertEquals(1, result.getTransportes().size());
+                RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
+
+                assertEquals(RequisicaoTipo.TRANSPORTE, resultado.getTipo());
+                assertSame(criadoPor, resultado.getCriadoPor());
+                assertNull(resultado.getGeridoPor());
+                assertSame(transporte, resultado.getTransporte());
+                assertEquals("Centro de Dia", resultado.getDestino());
+                assertEquals(8, resultado.getNumeroPassageiros());
+                assertEquals("Condutor 1", resultado.getCondutor());
+                assertEquals(1, resultado.getTransportes().size());
         }
 
         @Test
-        @DisplayName("Criar transporte lança erro com datas inválidas")
-        void criarTransporte_DatasInvalidas_DeveLancarExcecao() {
-            // Saída no passado
-            CriarRequisicaoTransporteRequest reqSaidaPassado = new CriarRequisicaoTransporteRequest(
-                    "Viagem", RequisicaoPrioridade.MEDIA, null, "Dest",
-                    LocalDateTime.now().minusDays(1), LocalDateTime.now().plusHours(2),
-                    2, "Pedro", List.of(1L), null);
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporte(reqSaidaPassado, 10L));
+        void criarTransporte_quandoTransporteNaoExiste_deveLancarExcecao() {
+                Funcionario criadoPor = funcionarioComId(10L);
+                when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+                when(transporteRepository.findAllById(any())).thenReturn(List.of());
 
-            // Regresso antes da saída
-            CriarRequisicaoTransporteRequest reqRegressoAntes = new CriarRequisicaoTransporteRequest(
-                    "Viagem", RequisicaoPrioridade.MEDIA, null, "Dest",
-                    LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).minusHours(1),
-                    2, "Pedro", List.of(1L), null);
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporte(reqRegressoAntes, 10L));
+                LocalDateTime saida = LocalDateTime.now().plusDays(2);
+                LocalDateTime regresso = saida.plusHours(2);
+
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido",
+                                RequisicaoPrioridade.BAIXA,
+                                null,
+                                "Hospital",
+                                LocalDateTime.now().plusDays(2),
+                                LocalDateTime.now().plusDays(2).plusHours(2),
+                                3,
+                                "Condutor Teste",
+                                List.of(90L),
+                                null, null);
+
+                ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                                () -> requisicaoService.criarTransporte(request, 10L));
+
+                assertEquals("Transporte não encontrado: 90", exception.getMessage());
         }
 
         @Test
-        @DisplayName("Criar requisição de Manutenção com sucesso")
-        void criarManutencao_ComSucesso() {
-            ManutencaoItem item = new ManutencaoItem();
-            item.setId(300L);
-            Transporte veiculo = new Transporte();
-            veiculo.setId(400L);
+        void criarTransporte_quandoApenasTransporteId_deveAceitarCompatibilidade() {
+                Funcionario criadoPor = funcionarioComId(10L);
+                Transporte transporte = new Transporte();
+                transporte.setId(30L);
 
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            when(manutencaoItemRepository.findById(300L)).thenReturn(Optional.of(item));
-            when(transporteRepository.findById(400L)).thenReturn(Optional.of(veiculo));
-            when(requisicaoManutencaoRepository.save(any(RequisicaoManutencao.class)))
-                    .thenAnswer(i -> i.getArgument(0));
+                when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
+                when(transporteRepository.findAllById(any())).thenReturn(List.of(transporte));
+                when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-            ManutencaoItemRequest itemReq = new ManutencaoItemRequest(300L, 400L, "Fuga de óleo");
+                LocalDateTime saida = LocalDateTime.now().plusDays(10);
+                LocalDateTime regresso = saida.plusHours(4);
 
-            CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
-                    "Reparar viatura", RequisicaoPrioridade.ALTA, null, List.of(itemReq), null);
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido compatível",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                "Centro",
+                                LocalDateTime.now().plusDays(3),
+                                LocalDateTime.now().plusDays(3).plusHours(1),
+                                2,
+                                "Condutor Teste",
+                                null,
+                                30L, null);
 
-            RequisicaoManutencao result = service.criarManutencao(request, 10L);
+                RequisicaoTransporte resultado = requisicaoService.criarTransporte(request, 10L);
 
-            assertNotNull(result);
-            assertEquals("Reparar viatura", result.getDescricao());
-            assertEquals(1, result.getItens().size());
-            assertEquals("Fuga de óleo", result.getItens().get(0).getObservacoes());
-            assertEquals(veiculo, result.getItens().get(0).getTransporte());
+                assertSame(transporte, resultado.getTransporte());
+                assertEquals(1, resultado.getTransportes().size());
         }
 
         @Test
-        @DisplayName("Criar manutenção lança erro se transporte do item não encontrado")
-        void criarManutencao_TransporteInexistente_DeveLancarExcecao() {
-            ManutencaoItem item = new ManutencaoItem();
-            item.setId(300L);
+        void criarTransporte_quandoTransporteIdsETransporteId_fornecidos_deveLancarErro() {
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido inválido",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                "Centro",
+                                LocalDateTime.now().plusDays(3),
+                                LocalDateTime.now().plusDays(3).plusHours(1),
+                                2,
+                                "Condutor Teste",
+                                List.of(30L),
+                                31L, null);
 
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            when(manutencaoItemRepository.findById(300L)).thenReturn(Optional.of(item));
-            when(transporteRepository.findById(400L)).thenReturn(Optional.empty());
+                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                                () -> requisicaoService.criarTransporte(request, 10L));
 
-            ManutencaoItemRequest itemReq = new ManutencaoItemRequest(300L, 400L, "Fuga");
-
-            CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
-                    "Reparar viatura", RequisicaoPrioridade.ALTA, null, List.of(itemReq), null);
-
-            assertThrows(ResourceNotFoundException.class, () -> service.criarManutencao(request, 10L));
+                assertEquals("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.",
+                                exception.getMessage());
         }
 
         @Test
-        @DisplayName("Validar configuração periódica com data de fim antes de início deve lançar exceção")
-        void aplicarConfiguracaoPeriodica_DataFimAntesInicio_DeveLancarExcecao() {
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
-                    "Pedido", RequisicaoPrioridade.MEDIA, null, List.of(),
-                    new RequisicaoPeriodicaConfigRequest(PeriodicidadeFrequencia.MENSAL, LocalDate.now().plusDays(5),
-                            LocalDate.now()));
+        void criarTransporte_quandoNenhumTransporteFornecido_deveLancarErro() {
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido inválido",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                "Centro",
+                                LocalDateTime.now().plusDays(3),
+                                LocalDateTime.now().plusDays(3).plusHours(1),
+                                2,
+                                "Condutor Teste",
+                                null,
+                                null, null);
 
-            assertThrows(IllegalArgumentException.class, () -> service.criarMaterial(request, 10L));
+                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                                () -> requisicaoService.criarTransporte(request, 10L));
+
+                assertEquals("É obrigatório indicar pelo menos um transporte.", exception.getMessage());
         }
 
         @Test
-        @DisplayName("Criar requisição de Material sem funcionário correspondente deve lançar exceção")
-        void criarMaterial_FuncionarioInexistente_DeveLancarExcecao() {
-            when(funcionarioRepository.findById(99L)).thenReturn(Optional.empty());
-            CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest("Pedido", RequisicaoPrioridade.MEDIA, null, List.of(), null);
+        void criarTransporte_quandoRegressoAntesDaSaida_deveLancarErro() {
+                LocalDateTime saida = LocalDateTime.now().plusDays(10);
+                LocalDateTime regresso = saida.minusHours(1);
 
-            assertThrows(ResourceNotFoundException.class, () -> service.criarMaterial(request, 99L));
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido inválido",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                "Centro",
+                                LocalDateTime.now().plusDays(3).plusHours(2),
+                                LocalDateTime.now().plusDays(3).plusHours(1),
+                                2,
+                                "Condutor Teste",
+                                List.of(30L),
+                                null, null);
+
+                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                                () -> requisicaoService.criarTransporte(request, 10L));
+
+                assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.",
+                                exception.getMessage());
         }
 
         @Test
-        @DisplayName("Criar requisição de Transporte sem funcionário correspondente deve lançar exceção")
-        void criarTransporte_FuncionarioInexistente_DeveLancarExcecao() {
-            when(funcionarioRepository.findById(99L)).thenReturn(Optional.empty());
-            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest("Pedido", RequisicaoPrioridade.MEDIA, null, "P", LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2), 2, "Pedro", List.of(1L), null);
+        void criarTransporte_quandoRegressoIgualSaida_deveLancarErro() {
+                LocalDateTime dataHora = LocalDateTime.now().plusDays(4);
 
-            assertThrows(ResourceNotFoundException.class, () -> service.criarTransporte(request, 99L));
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido inválido",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                "Centro",
+                                dataHora,
+                                dataHora,
+                                2,
+                                "Condutor Teste",
+                                List.of(30L),
+                                null, null);
+
+                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                                () -> requisicaoService.criarTransporte(request, 10L));
+
+                assertEquals("A data/hora de regresso deve ser posterior à data/hora de saída.",
+                                exception.getMessage());
         }
 
         @Test
-        @DisplayName("Criar requisição de Manutenção sem funcionário correspondente deve lançar exceção")
-        void criarManutencao_FuncionarioInexistente_DeveLancarExcecao() {
-            when(funcionarioRepository.findById(99L)).thenReturn(Optional.empty());
-            CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest("Pedido", RequisicaoPrioridade.MEDIA, null, List.of(), null);
+        void criarTransporte_quandoSaidaNoPassado_deveLancarErro() {
+                LocalDateTime agora = LocalDateTime.now();
 
-            assertThrows(ResourceNotFoundException.class, () -> service.criarManutencao(request, 99L));
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido inválido",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                "Centro",
+                                agora.minusDays(1),
+                                agora.plusDays(1),
+                                2,
+                                "Condutor Teste",
+                                List.of(30L),
+                                null, null);
+
+                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                                () -> requisicaoService.criarTransporte(request, 10L));
+
+                assertEquals("A data/hora de saída não pode estar no passado.", exception.getMessage());
         }
 
         @Test
-        @DisplayName("Criar transporte com data de regresso no passado deve lançar exceção")
-        void criarTransporte_DataRegressoNoPassado_DeveLancarExcecao() {
-            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest("Pedido", RequisicaoPrioridade.MEDIA, null, "P", LocalDateTime.now().plusDays(1), LocalDateTime.now().minusHours(2), 2, "Pedro", List.of(1L), null);
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporte(request, 10L));
+        void criarTransporte_quandoRegressoNoPassado_deveLancarErro() {
+                LocalDateTime agora = LocalDateTime.now();
+
+                CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
+                                "Pedido inválido",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                "Centro",
+                                agora.plusDays(1),
+                                agora.minusDays(1),
+                                2,
+                                "Condutor Teste",
+                                List.of(30L),
+                                null, null);
+
+                IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                                () -> requisicaoService.criarTransporte(request, 10L));
+
+                assertEquals("A data/hora de regresso não pode estar no passado.", exception.getMessage());
         }
 
         @Test
-        @DisplayName("Criar transporte com IDs de transportes duplicados deve considerar apenas IDs distintos")
-        void criarTransporte_ComDistinctIds_DeveSalvarApenasDistinct() {
-            Transporte veiculo = new Transporte();
-            veiculo.setId(200L);
+        void criarManutencao_quandoDadosValidos_deveCriarComTipo() {
+                Funcionario criadoPor = funcionarioComId(100L);
+                when(funcionarioRepository.findById(100L)).thenReturn(Optional.of(criadoPor));
+                when(requisicaoManutencaoRepository.save(any(RequisicaoManutencao.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            when(transporteRepository.findById(200L)).thenReturn(Optional.of(veiculo));
-            when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
-                    .thenAnswer(i -> i.getArgument(0));
+                CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
+                                "Reparar janela",
+                                RequisicaoPrioridade.URGENTE,
+                                200L,
+                                List.of(), null);
 
-            CriarRequisicaoTransporteRequest request = new CriarRequisicaoTransporteRequest(
-                    "Viagem", RequisicaoPrioridade.ALTA, null, "Porto",
-                    LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(1).plusHours(2),
-                    5, "Pedro", List.of(200L, 200L), null);
+                RequisicaoManutencao resultado = requisicaoService.criarManutencao(request, 100L);
 
-            RequisicaoTransporte result = service.criarTransporte(request, 10L);
-
-            assertNotNull(result);
-            assertEquals(1, result.getTransportes().size());
+                assertNotNull(resultado);
+                assertEquals(RequisicaoTipo.MANUTENCAO, resultado.getTipo());
+                assertSame(criadoPor, resultado.getCriadoPor());
+                assertNull(resultado.getGeridoPor());
         }
 
         @Test
-        @DisplayName("Exceções ao enviar notificações não devem falhar a criação de requisições")
-        void notificarSecretarias_ComException_NaoDeveFalhar() {
-            Material mat = new Material();
-            mat.setId(100L);
+        void criarManutencao_quandoCriadoPorNaoExiste_deveLancarExcecao() {
+                when(funcionarioRepository.findById(404L)).thenReturn(Optional.empty());
 
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-            when(materialRepository.findById(100L)).thenReturn(Optional.of(mat));
-            when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
-                    .thenAnswer(i -> i.getArgument(0));
+                CriarRequisicaoManutencaoRequest request = new CriarRequisicaoManutencaoRequest(
+                                "Teste",
+                                RequisicaoPrioridade.MEDIA,
+                                null,
+                                List.of(), null);
 
-            // Simular erro ao listar secretarias
-            when(funcionarioRepository.findByTipo(any())).thenThrow(new RuntimeException("Erro BD"));
+                ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                                () -> requisicaoService.criarManutencao(request, 404L));
 
-            CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
-                    "Pedido", RequisicaoPrioridade.MEDIA, null,
-                    List.of(new CriarRequisicaoMaterialRequest.ItemMaterialRequest(100L, 5)), null);
-
-            assertDoesNotThrow(() -> service.criarMaterial(request, 10L));
-        }
-    }
-
-    @Nested
-    @DisplayName("Testes de Atualização de Estado")
-    class StatusUpdateTests {
-
-        @Test
-        @DisplayName("Atualizar estado transição idêntica deve retornar imediatamente")
-        void atualizarEstado_TransicaoIdentica_DeveFazerNada() {
-            Requisicao req = new RequisicaoMaterial();
-            req.setEstado(RequisicaoEstado.ABERTO);
-            Funcionario alterador = new Funcionario();
-            alterador.setId(10L);
-
-            when(requisicaoRepository.findById(1L)).thenReturn(Optional.of(req));
-            when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(alterador));
-            when(requisicaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            Requisicao result = service.atualizarEstado(1L, RequisicaoEstado.ABERTO, 10L);
-            assertSame(req, result);
+                assertEquals("Funcionário não encontrado: 404", exception.getMessage());
         }
 
-        @Test
-        @DisplayName("Atualizar estado de requisição já finalizada (FECHADO/RECUSADO) deve lançar exceção")
-        void atualizarEstado_RequisicaoFinalizada_DeveLancarExcecao() {
-            Requisicao req = new RequisicaoMaterial();
-            req.setEstado(RequisicaoEstado.FECHADO);
-            when(requisicaoRepository.findById(1L)).thenReturn(Optional.of(req));
-
-            assertThrows(IllegalArgumentException.class,
-                    () -> service.atualizarEstado(1L, RequisicaoEstado.EM_PROGRESSO, 10L));
+        private Funcionario funcionarioComId(Long id) {
+                Funcionario funcionario = new Funcionario();
+                funcionario.setId(id);
+                return funcionario;
         }
-
-        @Test
-        @DisplayName("Atualizar estado com transição inválida deve lançar exceção")
-        void atualizarEstado_TransicaoInvalida_DeveLancarExcecao() {
-            Requisicao req = new RequisicaoMaterial();
-            req.setEstado(RequisicaoEstado.EM_PROGRESSO);
-            when(requisicaoRepository.findById(1L)).thenReturn(Optional.of(req));
-
-            assertThrows(IllegalArgumentException.class,
-                    () -> service.atualizarEstado(1L, RequisicaoEstado.ABERTO, 10L));
-        }
-
-        @Test
-        @DisplayName("Atualizar estado deve notificar criador se diferente de quem alterou")
-        void atualizarEstado_DeveNotificarCriador() {
-            Requisicao req = new RequisicaoMaterial();
-            req.setEstado(RequisicaoEstado.ABERTO);
-            Funcionario criador = new Funcionario();
-            criador.setId(55L);
-            req.setCriadoPor(criador);
-
-            Funcionario alterador = new Funcionario();
-            alterador.setId(66L);
-
-            when(requisicaoRepository.findById(1L)).thenReturn(Optional.of(req));
-            when(funcionarioRepository.findById(66L)).thenReturn(Optional.of(alterador));
-            when(requisicaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            service.atualizarEstado(1L, RequisicaoEstado.EM_PROGRESSO, 66L);
-
-            verify(notificacaoService).notificarMudancaEstado(55L, req);
-        }
-
-        @Test
-        @DisplayName("Atualizar estado não deve notificar se alterador for o próprio criador")
-        void atualizarEstado_NaoDeveNotificarSeCriadorAlterar() {
-            Requisicao req = new RequisicaoMaterial();
-            req.setEstado(RequisicaoEstado.ABERTO);
-            Funcionario criador = new Funcionario();
-            criador.setId(55L);
-            req.setCriadoPor(criador);
-
-            when(requisicaoRepository.findById(1L)).thenReturn(Optional.of(req));
-            when(funcionarioRepository.findById(55L)).thenReturn(Optional.of(criador));
-            when(requisicaoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            service.atualizarEstado(1L, RequisicaoEstado.FECHADO, 55L);
-
-            verifyNoInteractions(notificacaoService);
-        }
-    }
-
-    @Nested
-    @DisplayName("Testes de Catálogos (Materiais, Transportes, Tipos Manutenção, Itens)")
-    class CatalogTests {
-
-        @Test
-        @DisplayName("Catálogo de Material - listar, criar, atualizar, eliminar")
-        void materialCatalogFlow() {
-            Material mat = new Material();
-            when(materialRepository.findAllByOrderByCategoriaAscNomeAscAtributoAscValorAtributoAsc())
-                    .thenReturn(List.of(mat));
-
-            List<Material> listResult = service.listarMateriais();
-            assertFalse(listResult.isEmpty());
-
-            // Criar
-            CriarMaterialRequest createReq = new CriarMaterialRequest(
-                    "  Caneta Azul  ", "ESCRITORIO", "  Cor ", "  Azul ");
-            when(materialRepository.save(any(Material.class))).thenAnswer(i -> i.getArgument(0));
-            Material created = service.criarMaterialCatalogo(createReq);
-            assertEquals("Caneta Azul", created.getNome());
-            assertEquals("ESCRITORIO", created.getCategoria());
-            assertEquals("Cor", created.getAtributo());
-            assertEquals("Azul", created.getValorAtributo());
-
-            // Atualizar
-            when(materialRepository.findById(1L)).thenReturn(Optional.of(mat));
-            Material updated = service.atualizarMaterialCatalogo(1L, createReq);
-            assertNotNull(updated);
-
-            // Apagar material associado lança erro
-            when(requisicaoMaterialRepository.existsByItensMaterialId(1L)).thenReturn(true);
-            assertThrows(IllegalArgumentException.class, () -> service.apagarMaterialCatalogo(1L));
-
-            // Apagar com sucesso
-            when(requisicaoMaterialRepository.existsByItensMaterialId(2L)).thenReturn(false);
-            when(materialRepository.existsById(2L)).thenReturn(true);
-            service.apagarMaterialCatalogo(2L);
-            verify(materialRepository).deleteById(2L);
-        }
-
-        @Test
-        @DisplayName("Catálogo de Transporte - listar, criar, atualizar, mudar categoria")
-        void transporteCatalogFlow() {
-            Transporte v = new Transporte();
-            when(transporteRepository.findAll(any(org.springframework.data.domain.Sort.class)))
-                    .thenReturn(List.of(v));
-
-            List<Transporte> listResult = service.listarTransportes();
-            assertFalse(listResult.isEmpty());
-
-            // Criar
-            CriarTransporteRequest createReq = new CriarTransporteRequest(
-                    "  TX-01 ", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "  00-AA-00 ", "Renault", "Clio",
-                    5, LocalDate.now());
-            when(transporteRepository.findByMatricula("00-AA-00")).thenReturn(Optional.empty());
-            when(transporteRepository.save(any(Transporte.class))).thenAnswer(i -> {
-                Transporte t = i.getArgument(0);
-                t.setId(1L);
-                return t;
-            });
-            Transporte created = service.criarTransporteCatalogo(createReq);
-            assertEquals("TX-01", created.getCodigo());
-            assertEquals("00-AA-00", created.getMatricula());
-
-            // Criar com matrícula repetida lança exceção
-            when(transporteRepository.findByMatricula("00-AA-00")).thenReturn(Optional.of(v));
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporteCatalogo(createReq));
-
-            // Atualizar
-            when(transporteRepository.findById(1L)).thenReturn(Optional.of(created));
-            when(transporteRepository.findByMatricula("00-AA-00")).thenReturn(Optional.of(created));
-            Transporte updated = service.atualizarTransporteCatalogo(1L, createReq);
-            assertNotNull(updated);
-
-            // Mudar categoria para ABATIDO com requisições ativas lança erro
-            when(transporteRepository.findById(1L)).thenReturn(Optional.of(created));
-            when(requisicaoTransporteRepository.existsByTransporteId(1L)).thenReturn(true);
-            assertThrows(IllegalStateException.class,
-                    () -> service.atualizarCategoriaTransporte(1L, TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO));
-        }
-
-        @Test
-        @DisplayName("Catálogo de Transporte - Mover veículos por categoria")
-        void moverVeiculosPorCategoria_DeveAlterarEmLote() {
-            Transporte t1 = new Transporte();
-            t1.setCategoria(TransporteCategoria.LIGEIRO_DE_PASSAGEIROS);
-            Transporte t2 = new Transporte();
-            t2.setCategoria(TransporteCategoria.LIGEIRO_DE_PASSAGEIROS);
-
-            when(transporteRepository.findByCategoria(TransporteCategoria.LIGEIRO_DE_PASSAGEIROS))
-                    .thenReturn(List.of(t1, t2));
-
-            service.moverVeiculosPorCategoria(TransporteCategoria.LIGEIRO_DE_PASSAGEIROS,
-                    TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO);
-
-            assertEquals(TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO, t1.getCategoria());
-            assertEquals(TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO, t2.getCategoria());
-            verify(transporteRepository).saveAll(anyList());
-        }
-
-        @Test
-        @DisplayName("Mover veículos com categorias de origem e destino iguais deve lançar exceção")
-        void moverVeiculosPorCategoria_Iguais_DeveLancarExcecao() {
-            assertThrows(IllegalArgumentException.class,
-                    () -> service.moverVeiculosPorCategoria(TransporteCategoria.LIGEIRO_DE_PASSAGEIROS,
-                            TransporteCategoria.LIGEIRO_DE_PASSAGEIROS));
-        }
-
-        @Test
-        @DisplayName("Catálogo de Tipos Manutenção - listar, criar, atualizar, eliminar")
-        void tipoManutencaoCatalogFlow() {
-            TipoManutencao tipo = new TipoManutencao();
-            tipo.setId(1L);
-            tipo.setNome("Preventiva");
-
-            when(tipoManutencaoRepository.findAllByOrderByNomeAsc()).thenReturn(List.of(tipo));
-
-            List<TipoManutencao> listResult = service.listarTiposManutencao();
-            assertEquals(1, listResult.size());
-
-            // Criar
-            CriarTipoManutencaoRequest createReq = new CriarTipoManutencaoRequest("  Corretiva ", "Desc");
-            when(tipoManutencaoRepository.findByNomeIgnoreCase("Corretiva")).thenReturn(Optional.empty());
-            when(tipoManutencaoRepository.save(any(TipoManutencao.class))).thenAnswer(i -> i.getArgument(0));
-
-            TipoManutencao created = service.criarTipoManutencao(createReq);
-            assertEquals("Corretiva", created.getNome());
-
-            // Criar nome duplicado
-            when(tipoManutencaoRepository.findByNomeIgnoreCase("Corretiva")).thenReturn(Optional.of(tipo));
-            assertThrows(IllegalArgumentException.class, () -> service.criarTipoManutencao(createReq));
-
-            // Atualizar
-            when(tipoManutencaoRepository.findById(1L)).thenReturn(Optional.of(tipo));
-            when(tipoManutencaoRepository.findByNomeIgnoreCase("Corretiva")).thenReturn(Optional.empty());
-            TipoManutencao updated = service.atualizarTipoManutencao(1L, createReq);
-            assertNotNull(updated);
-
-            // Eliminar
-            service.apagarTipoManutencao(1L);
-            verify(tipoManutencaoRepository).delete(tipo);
-        }
-
-        @Test
-        @DisplayName("Catálogo de Itens Manutenção - listar, criar, atualizar, eliminar")
-        void manutencaoItemCatalogFlow() {
-            ManutencaoItem item = new ManutencaoItem();
-            item.setId(1L);
-
-            when(manutencaoItemRepository.findAllByOrderByCategoriaAscEspacoAsc()).thenReturn(List.of(item));
-            when(manutencaoItemRepository.findByCategoria("Predial")).thenReturn(List.of(item));
-
-            assertFalse(service.listarManutencaoItems().isEmpty());
-            assertFalse(service.listarManutencaoItemsPorCategoria("Predial").isEmpty());
-
-            // Criar
-            CriarManutencaoItemRequest createReq = new CriarManutencaoItemRequest("  Jardim ", " Exterior", " Rega ");
-            when(manutencaoItemRepository.save(any(ManutencaoItem.class))).thenAnswer(i -> i.getArgument(0));
-            ManutencaoItem created = service.criarManutencaoItem(createReq);
-            assertEquals("Jardim", created.getCategoria());
-            assertEquals("Exterior", created.getEspaco());
-            assertEquals("Rega", created.getItemVerificacao());
-
-            // Atualizar
-            when(manutencaoItemRepository.findById(1L)).thenReturn(Optional.of(item));
-            ManutencaoItem updated = service.atualizarManutencaoItem(1L, createReq);
-            assertNotNull(updated);
-
-            // Apagar com requisições associadas lança erro
-            when(manutencaoItemRepository.findById(1L)).thenReturn(Optional.of(item));
-            when(requisicaoManutencaoItemRepository.existsByManutencaoItemId(1L)).thenReturn(true);
-            assertThrows(IllegalArgumentException.class, () -> service.apagarManutencaoItem(1L));
-
-            // Apagar com sucesso
-            when(requisicaoManutencaoItemRepository.existsByManutencaoItemId(1L)).thenReturn(false);
-            service.apagarManutencaoItem(1L);
-            verify(manutencaoItemRepository).delete(item);
-        }
-
-        @Test
-        @DisplayName("Apagar material não existente deve lançar exceção")
-        void apagarMaterialCatalogo_MaterialNaoEncontrado_DeveLancarExcecao() {
-            when(requisicaoMaterialRepository.existsByItensMaterialId(99L)).thenReturn(false);
-            when(materialRepository.existsById(99L)).thenReturn(false);
-
-            assertThrows(ResourceNotFoundException.class, () -> service.apagarMaterialCatalogo(99L));
-        }
-
-        @Test
-        @DisplayName("Criar transporte com lotação menor ou igual a zero deve lançar exceção")
-        void criarTransporteCatalogo_LotacaoInvalida_DeveLancarExcecao() {
-            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 0, LocalDate.now());
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporteCatalogo(request));
-        }
-
-        @Test
-        @DisplayName("Criar transporte sem data de matrícula deve lançar exceção")
-        void criarTransporteCatalogo_DataMatriculaNull_DeveLancarExcecao() {
-            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 5, null);
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporteCatalogo(request));
-        }
-
-        @Test
-        @DisplayName("Criar transporte com campos obrigatórios em branco deve lançar exceção")
-        void criarTransporteCatalogo_MatriculaNull_DeveLancarExcecao() {
-            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, " ", "Ford", "Focus", 5, LocalDate.now());
-            assertThrows(IllegalArgumentException.class, () -> service.criarTransporteCatalogo(request));
-        }
-
-        @Test
-        @DisplayName("Atualizar transporte não existente deve lançar exceção")
-        void atualizarTransporteCatalogo_TransporteNaoEncontrado_DeveLancarExcecao() {
-            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 5, LocalDate.now());
-            when(transporteRepository.findById(99L)).thenReturn(Optional.empty());
-
-            assertThrows(ResourceNotFoundException.class, () -> service.atualizarTransporteCatalogo(99L, request));
-        }
-
-        @Test
-        @DisplayName("Atualizar transporte com matrícula duplicada em outro veículo deve lançar exceção")
-        void atualizarTransporteCatalogo_MatriculaDuplicadaOutroVeiculo_DeveLancarExcecao() {
-            CriarTransporteRequest request = new CriarTransporteRequest("TX-01", "Ligeiro", TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, "00-AA-00", "Ford", "Focus", 5, LocalDate.now());
-            Transporte t = new Transporte();
-            t.setId(1L);
-
-            Transporte outro = new Transporte();
-            outro.setId(2L);
-
-            when(transporteRepository.findById(1L)).thenReturn(Optional.of(t));
-            when(transporteRepository.findByMatricula("00-AA-00")).thenReturn(Optional.of(outro));
-
-            assertThrows(IllegalArgumentException.class, () -> service.atualizarTransporteCatalogo(1L, request));
-        }
-
-        @Test
-        @DisplayName("Atualizar categoria de transporte sem categoria informada deve lançar exceção")
-        void atualizarCategoriaTransporte_NullCategoria_DeveLancarExcecao() {
-            assertThrows(IllegalArgumentException.class, () -> service.atualizarCategoriaTransporte(1L, null));
-        }
-
-        @Test
-        @DisplayName("Atualizar categoria de transporte não existente deve lançar exceção")
-        void atualizarCategoriaTransporte_TransporteNaoEncontrado_DeveLancarExcecao() {
-            when(transporteRepository.findById(99L)).thenReturn(Optional.empty());
-            assertThrows(ResourceNotFoundException.class, () -> service.atualizarCategoriaTransporte(99L, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS));
-        }
-
-        @Test
-        @DisplayName("Atualizar categoria de transporte para abatido com requisição de transporte associada deve lançar exceção")
-        void atualizarCategoriaTransporte_AbatidoComRequisicaoItemAtiva_DeveLancarExcecao() {
-            Transporte t = new Transporte();
-            t.setId(1L);
-            when(transporteRepository.findById(1L)).thenReturn(Optional.of(t));
-            when(requisicaoTransporteRepository.existsByTransporteId(1L)).thenReturn(false);
-            when(requisicaoTransporteRepository.existsByTransportesTransporteId(1L)).thenReturn(true);
-
-            assertThrows(IllegalStateException.class, () -> service.atualizarCategoriaTransporte(1L, TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO));
-        }
-
-        @Test
-        @DisplayName("Mover veículos com categoria nula deve lançar exceção")
-        void moverVeiculosPorCategoria_NullCategorias_DeveLancarExcecao() {
-            assertThrows(IllegalArgumentException.class, () -> service.moverVeiculosPorCategoria(null, TransporteCategoria.LIGEIRO_DE_PASSAGEIROS));
-            assertThrows(IllegalArgumentException.class, () -> service.moverVeiculosPorCategoria(TransporteCategoria.LIGEIRO_DE_PASSAGEIROS, null));
-        }
-
-        @Test
-        @DisplayName("Atualizar tipo de manutenção não existente deve lançar exceção")
-        void atualizarTipoManutencao_TipoNaoEncontrado_DeveLancarExcecao() {
-            CriarTipoManutencaoRequest request = new CriarTipoManutencaoRequest("Preventiva", "Descrição");
-            when(tipoManutencaoRepository.findById(99L)).thenReturn(Optional.empty());
-
-            assertThrows(ResourceNotFoundException.class, () -> service.atualizarTipoManutencao(99L, request));
-        }
-
-        @Test
-        @DisplayName("Atualizar tipo de manutenção com nome duplicado deve lançar exceção")
-        void atualizarTipoManutencao_NomeDuplicadoOutro_DeveLancarExcecao() {
-            CriarTipoManutencaoRequest request = new CriarTipoManutencaoRequest("Preventiva", "Descrição");
-            TipoManutencao tipo = new TipoManutencao();
-            tipo.setId(1L);
-
-            TipoManutencao outro = new TipoManutencao();
-            outro.setId(2L);
-
-            when(tipoManutencaoRepository.findById(1L)).thenReturn(Optional.of(tipo));
-            when(tipoManutencaoRepository.findByNomeIgnoreCase("Preventiva")).thenReturn(Optional.of(outro));
-
-            assertThrows(IllegalArgumentException.class, () -> service.atualizarTipoManutencao(1L, request));
-        }
-
-        @Test
-        @DisplayName("Eliminar tipo de manutenção não existente deve lançar exceção")
-        void apagarTipoManutencao_TipoNaoEncontrado_DeveLancarExcecao() {
-            when(tipoManutencaoRepository.findById(99L)).thenReturn(Optional.empty());
-            assertThrows(ResourceNotFoundException.class, () -> service.apagarTipoManutencao(99L));
-        }
-
-        @Test
-        @DisplayName("Atualizar item de manutenção não existente deve lançar exceção")
-        void atualizarManutencaoItem_ItemNaoEncontrado_DeveLancarExcecao() {
-            CriarManutencaoItemRequest request = new CriarManutencaoItemRequest("Categoria", "Espaco", "Verificacao");
-            when(manutencaoItemRepository.findById(99L)).thenReturn(Optional.empty());
-
-            assertThrows(ResourceNotFoundException.class, () -> service.atualizarManutencaoItem(99L, request));
-        }
-
-        @Test
-        @DisplayName("Eliminar item de manutenção não existente deve lançar exceção")
-        void apagarManutencaoItem_ItemNaoEncontrado_DeveLancarExcecao() {
-            when(manutencaoItemRepository.findById(99L)).thenReturn(Optional.empty());
-            assertThrows(ResourceNotFoundException.class, () -> service.apagarManutencaoItem(99L));
-        }
-    }
 }

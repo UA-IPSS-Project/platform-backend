@@ -1,9 +1,11 @@
 package pt.florinhas.marcacoes.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.util.StringUtils;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class NotificacaoService {
 
@@ -24,34 +27,23 @@ public class NotificacaoService {
     @Value("${gateway.shared-secret:}")
     private String gatewaySecret;
 
-    private final RestTemplate restTemplate;
-
-    public NotificacaoService(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
-    }
-
-    // Setters for tests
-    public void setNotificacoesUrl(String url) { this.notificacoesUrl = url; }
-    public void setGatewaySecret(String secret) { this.gatewaySecret = secret; }
-
+    private final RestTemplate restTemplate = new RestTemplate();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
-    private static final String MSG_PREFIX_UTENTE = "O utente ";
-    private static final String METADATA_APPOINTMENT_ID = "appointmentId";
-    private static final String TIPO_LEMBRETE = "LEMBRETE";
 
+    @Async
     public void criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo) {
         enviarParaMicrosservico(utilizadorId, titulo, mensagem, tipo, null);
     }
 
+    @Async
     public void notificarNovaMarcacaoParaSecretaria(Long secretariaId, String nomeUtente, Long marcacaoId, LocalDateTime data, String assunto) {
-        String dataFormatada = data.format(DATE_TIME_FORMATTER);
-        String mensagem = MSG_PREFIX_UTENTE + nomeUtente + " criou uma marcação para " + dataFormatada + " — " + assunto;
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "O utente " + nomeUtente + " criou uma marcação para " + dataFormatada + " — " + assunto;
 
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put(METADATA_APPOINTMENT_ID, marcacaoId.toString());
+        metadata.put("appointmentId", marcacaoId.toString());
         metadata.put("createdDate", data.format(DATE_FORMATTER));
         metadata.put("createdTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "CREATED_BY_UTENTE");
@@ -59,34 +51,37 @@ public class NotificacaoService {
         enviarParaMicrosservico(secretariaId, "Nova Marcação", mensagem, "SISTEMA", metadata);
     }
 
-    public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data) {
-        String dataFormatada = data.format(DATE_TIME_FORMATTER);
-        String mensagem = "Marcação criada para " + dataFormatada + ".";
-        String assunto = "Marcação Criada";
+    @Async
+    public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, int durationMinutes, String summary) {
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'as' HH:mm"));
+        String mensagem = "Marcacao criada para " + dataFormatada + ".";
+        String assunto = "Marcacao Criada";
 
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put(METADATA_APPOINTMENT_ID, marcacaoId.toString());
+        metadata.put("appointmentId", marcacaoId.toString());
         metadata.put("createdDate", data.format(DATE_FORMATTER));
         metadata.put("createdTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "CREATED");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
+    @Async
     public void notificarLembreteUmDia(Long utilizadorId, Long marcacaoId, LocalDateTime data) {
-        String dataFormatada = data.format(DATE_TIME_FORMATTER);
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
         String mensagem = "Relembramos que tem uma marcação amanhã, " + dataFormatada + ".";
         String assunto = "Lembrete de Marcação";
 
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put(METADATA_APPOINTMENT_ID, marcacaoId.toString());
+        metadata.put("appointmentId", marcacaoId.toString());
         metadata.put("appointmentDate", data.format(DATE_FORMATTER));
         metadata.put("appointmentTime", data.format(TIME_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, metadata);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
+    @Async
     public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
         String assunto = "Marcacao Cancelada";
         String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;
@@ -100,9 +95,10 @@ public class NotificacaoService {
         enviarParaMicrosservico(utilizadorId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
+    @Async
     public void notificarCancelamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime data) {
-        String dataFormatada = data.format(DATE_TIME_FORMATTER);
-        String mensagem = MSG_PREFIX_UTENTE + nomeUtente + " cancelou a marcação de " + dataFormatada;
+        String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "O utente " + nomeUtente + " cancelou a marcação de " + dataFormatada;
         String assunto = "Marcação Cancelada pelo Utente";
 
         Map<String, Object> metadata = new HashMap<>();
@@ -112,17 +108,19 @@ public class NotificacaoService {
         enviarParaMicrosservico(destinatarioId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
+    @Async
     public void notificarDocumentosInvalidos(Long utilizadorId, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
 
-        enviarParaMicrosservico(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, null);
+        enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", null);
     }
 
+    @Async
     public void notificarReagendamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime dataAntiga, LocalDateTime dataNova) {
-        String dataAntigaFmt = dataAntiga.format(DATE_TIME_FORMATTER);
-        String dataNovaFmt = dataNova.format(DATE_TIME_FORMATTER);
-        String mensagem = MSG_PREFIX_UTENTE + nomeUtente + " reagendou a marcação de " + dataAntigaFmt + " para " + dataNovaFmt;
+        String dataAntigaFmt = dataAntiga.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String dataNovaFmt = dataNova.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+        String mensagem = "O utente " + nomeUtente + " reagendou a marcação de " + dataAntigaFmt + " para " + dataNovaFmt;
         String assunto = "Marcação Reagendada pelo Utente";
 
         Map<String, Object> metadata = new HashMap<>();
@@ -130,7 +128,7 @@ public class NotificacaoService {
         metadata.put("newDate", dataNova.format(DATE_FORMATTER));
         metadata.put(METADATA_SUBTYPE_KEY, "RESCHEDULED");
 
-        enviarParaMicrosservico(destinatarioId, assunto, mensagem, TIPO_LEMBRETE, metadata);
+        enviarParaMicrosservico(destinatarioId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
     private void enviarParaMicrosservico(Long utilizadorId, String titulo, String mensagem, String tipo, Map<String, Object> metadata) {

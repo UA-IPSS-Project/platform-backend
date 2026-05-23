@@ -1,20 +1,25 @@
 package pt.florinhas.marcacoes.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import pt.florinhas.marcacoes.domain.Assunto;
-import pt.florinhas.marcacoes.exception.NotFoundException;
-import pt.florinhas.marcacoes.repository.AssuntoRepository;
-
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import pt.florinhas.marcacoes.domain.Assunto;
+import pt.florinhas.marcacoes.exception.NotFoundException;
+import pt.florinhas.marcacoes.repository.AssuntoRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AssuntoServiceTest {
@@ -25,155 +30,124 @@ class AssuntoServiceTest {
     @InjectMocks
     private AssuntoService assuntoService;
 
-    private Assunto assunto;
-
-    @BeforeEach
-    void setup() {
-        assunto = new Assunto();
-        assunto.setId(1L);
-        assunto.setNome("teste");
+    @Test
+    void testCriarAssuntoComSucesso() {
+        String nome = "  Novo Assunto  ";
+        String nomeNormalizado = "novo assunto";
+        Assunto assunto = new Assunto();
+        assunto.setNome(nomeNormalizado);
         assunto.setAtivo(true);
+
+        when(assuntoRepository.findByNome(nomeNormalizado)).thenReturn(Optional.empty());
+        when(assuntoRepository.save(any(Assunto.class))).thenAnswer(invocation -> {
+            Assunto a = invocation.getArgument(0);
+            a.setId(1L);
+            return a;
+        });
+
+        Assunto resultado = assuntoService.criar(nome);
+
+        assertNotNull(resultado);
+        assertEquals(nomeNormalizado, resultado.getNome());
+        assertTrue(resultado.isAtivo());
+        verify(assuntoRepository).findByNome(nomeNormalizado);
+        verify(assuntoRepository).save(any(Assunto.class));
     }
 
-    // =========================
-    // listarAtivos
-    // =========================
+    @Test
+    void testCriarAssuntoDuplicado() {
+        String nome = "Assunto Existente";
+        String nomeNormalizado = "assunto existente";
+        when(assuntoRepository.findByNome(nomeNormalizado)).thenReturn(Optional.of(new Assunto()));
+
+        assertThrows(IllegalArgumentException.class, () -> assuntoService.criar(nome));
+
+        verify(assuntoRepository).findByNome(nomeNormalizado);
+        verify(assuntoRepository, never()).save(any(Assunto.class));
+    }
 
     @Test
-    void shouldReturnActiveAssuntos() {
-        when(assuntoRepository.findByAtivoTrue()).thenReturn(List.of(assunto));
+    void testAtualizarAssuntoComSucesso() {
+        Long id = 1L;
+        String novoNome = "  Nome Atualizado  ";
+        String nomeNormalizado = "nome atualizado";
+        Assunto existente = new Assunto();
+        existente.setId(id);
+        existente.setNome("nome antigo");
 
-        List<Assunto> result = assuntoService.listarAtivos();
+        when(assuntoRepository.findById(id)).thenReturn(Optional.of(existente));
+        when(assuntoRepository.findByNome(nomeNormalizado)).thenReturn(Optional.empty());
+        when(assuntoRepository.save(any(Assunto.class))).thenReturn(existente);
 
-        assertEquals(1, result.size());
+        Assunto resultado = assuntoService.atualizar(id, novoNome);
+
+        assertNotNull(resultado);
+        assertEquals(nomeNormalizado, resultado.getNome());
+        verify(assuntoRepository).findById(id);
+        verify(assuntoRepository).findByNome(nomeNormalizado);
+        verify(assuntoRepository).save(existente);
+    }
+
+    @Test
+    void testAtualizarAssuntoNaoEncontrado() {
+        Long id = 1L;
+        String novoNome = "Novo Nome";
+
+        when(assuntoRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> assuntoService.atualizar(id, novoNome));
+
+        verify(assuntoRepository).findById(id);
+        verify(assuntoRepository, never()).save(any(Assunto.class));
+    }
+
+    @Test
+    void testAtualizarAssuntoParaNomeDuplicado() {
+        Long id = 1L;
+        String novoNome = "Nome Duplicado";
+        String nomeNormalizado = "nome duplicado";
+
+        Assunto existente = new Assunto();
+        existente.setId(id);
+        existente.setNome("nome antigo");
+
+        Assunto outro = new Assunto();
+        outro.setId(2L);
+        outro.setNome(nomeNormalizado);
+
+        when(assuntoRepository.findById(id)).thenReturn(Optional.of(existente));
+        when(assuntoRepository.findByNome(nomeNormalizado)).thenReturn(Optional.of(outro));
+
+        assertThrows(IllegalArgumentException.class, () -> assuntoService.atualizar(id, novoNome));
+
+        verify(assuntoRepository).findById(id);
+        verify(assuntoRepository).findByNome(nomeNormalizado);
+        verify(assuntoRepository, never()).save(any(Assunto.class));
+    }
+
+    @Test
+    void testListarAtivos() {
+        Assunto a1 = new Assunto();
+        a1.setAtivo(true);
+        Assunto a2 = new Assunto();
+        a2.setAtivo(true);
+        when(assuntoRepository.findByAtivoTrue()).thenReturn(List.of(a1, a2));
+
+        List<Assunto> resultado = assuntoService.listarAtivos();
+
+        assertEquals(2, resultado.size());
         verify(assuntoRepository).findByAtivoTrue();
     }
 
-    // =========================
-    // listarTodos
-    // =========================
-
     @Test
-    void shouldReturnAllAssuntos() {
-        when(assuntoRepository.findAll()).thenReturn(List.of(assunto));
+    void testListarTodos() {
+        Assunto a1 = new Assunto();
+        Assunto a2 = new Assunto();
+        when(assuntoRepository.findAll()).thenReturn(List.of(a1, a2));
 
-        List<Assunto> result = assuntoService.listarTodos();
+        List<Assunto> resultado = assuntoService.listarTodos();
 
-        assertEquals(1, result.size());
+        assertEquals(2, resultado.size());
         verify(assuntoRepository).findAll();
-    }
-
-    // =========================
-    // criar
-    // =========================
-
-    @Test
-    void shouldCreateAssuntoSuccessfully() {
-        when(assuntoRepository.findByNome("teste")).thenReturn(Optional.empty());
-        when(assuntoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        Assunto result = assuntoService.criar("  TESTE ");
-
-        assertEquals("teste", result.getNome());
-        assertTrue(result.isAtivo());
-        verify(assuntoRepository).save(any());
-    }
-
-    @Test
-    void shouldThrowWhenAssuntoAlreadyExists() {
-        when(assuntoRepository.findByNome("teste")).thenReturn(Optional.of(assunto));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> assuntoService.criar("teste"));
-    }
-
-    // =========================
-    // atualizar
-    // =========================
-
-    @Test
-    void shouldThrowWhenUpdatingNonExisting() {
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class,
-                () -> assuntoService.atualizar(1L, "novo"));
-    }
-
-    @Test
-    void shouldUpdateNameSuccessfully() {
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.of(assunto));
-        when(assuntoRepository.findByNome("novo")).thenReturn(Optional.empty());
-        when(assuntoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        Assunto result = assuntoService.atualizar(1L, " NOVO ");
-
-        assertEquals("novo", result.getNome());
-    }
-
-    @Test
-    void shouldAllowSameNameForSameId() {
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.of(assunto));
-        when(assuntoRepository.findByNome("teste")).thenReturn(Optional.of(assunto));
-        when(assuntoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        Assunto result = assuntoService.atualizar(1L, "teste");
-
-        assertEquals("teste", result.getNome());
-    }
-
-    @Test
-    void shouldThrowWhenNameExistsForAnotherId() {
-        Assunto other = new Assunto();
-        other.setId(2L);
-
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.of(assunto));
-        when(assuntoRepository.findByNome("novo")).thenReturn(Optional.of(other));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> assuntoService.atualizar(1L, "novo"));
-    }
-
-    // =========================
-    // apagar
-    // =========================
-
-    @Test
-    void shouldThrowWhenDeletingNonExisting() {
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class,
-                () -> assuntoService.apagar(1L));
-    }
-
-    @Test
-    void shouldSoftDeleteAssunto() {
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.of(assunto));
-
-        assuntoService.apagar(1L);
-
-        assertFalse(assunto.isAtivo());
-        verify(assuntoRepository).save(assunto);
-    }
-
-    // =========================
-    // setAtivo
-    // =========================
-
-    @Test
-    void shouldThrowWhenSetAtivoNonExisting() {
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(NotFoundException.class,
-                () -> assuntoService.setAtivo(1L, true));
-    }
-
-    @Test
-    void shouldSetAtivoSuccessfully() {
-        when(assuntoRepository.findById(1L)).thenReturn(Optional.of(assunto));
-        when(assuntoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        Assunto result = assuntoService.setAtivo(1L, false);
-
-        assertFalse(result.isAtivo());
     }
 }

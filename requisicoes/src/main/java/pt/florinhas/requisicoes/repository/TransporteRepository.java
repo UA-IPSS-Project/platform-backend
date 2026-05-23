@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import pt.florinhas.requisicoes.domain.Transporte;
@@ -17,4 +20,10 @@ public interface TransporteRepository extends JpaRepository<Transporte, Long> {
     Optional<Transporte> findByMatricula(String matricula);
 
     List<Transporte> findByCategoria(TransporteCategoria categoria);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Transporte t SET t.categoria = :destino WHERE t.categoria = :origem")
+    int updateCategoriaByCategoria(
+            @Param("origem") TransporteCategoria origem,
+            @Param("destino") TransporteCategoria destino);
 }

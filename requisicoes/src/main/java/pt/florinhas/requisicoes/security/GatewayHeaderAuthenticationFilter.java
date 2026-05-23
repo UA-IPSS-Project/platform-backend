@@ -1,10 +1,8 @@
 package pt.florinhas.requisicoes.security;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,8 +18,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import pt.florinhas.common_data.security.CustomUserDetailsService;
 
 @Component
 public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
@@ -59,9 +55,9 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            Collection<GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
+            Collection<? extends GrantedAuthority> authorities = parseAuthorities(request.getHeader("X-Authenticated-Roles"));
             if (authorities.isEmpty()) {
-                authorities = new ArrayList<>(userDetails.getAuthorities());
+                authorities = userDetails.getAuthorities();
             }
 
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -78,15 +74,15 @@ public class GatewayHeaderAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private Collection<GrantedAuthority> parseAuthorities(String rolesHeader) {
+    private Collection<? extends GrantedAuthority> parseAuthorities(String rolesHeader) {
         if (!StringUtils.hasText(rolesHeader)) {
-            return List.of();
+            return java.util.List.of();
         }
 
         return Arrays.stream(rolesHeader.split(","))
                 .map(String::trim)
                 .filter(StringUtils::hasText)
-                .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
+                .map(SimpleGrantedAuthority::new)
                 .toList();
     }
 }

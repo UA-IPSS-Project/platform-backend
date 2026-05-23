@@ -2,6 +2,7 @@ package pt.florinhas.marcacoes.repository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
@@ -17,13 +18,11 @@ import static org.junit.jupiter.api.Assertions.*;
 @DataJpaTest
 class MarcacaoRepositoryTest {
 
-    private final TestEntityManager entityManager;
-    private final MarcacaoRepository marcacaoRepository;
+    @Autowired
+    private TestEntityManager entityManager;
 
-    public MarcacaoRepositoryTest(TestEntityManager entityManager, MarcacaoRepository marcacaoRepository) {
-        this.entityManager = entityManager;
-        this.marcacaoRepository = marcacaoRepository;
-    }
+    @Autowired
+    private MarcacaoRepository marcacaoRepository;
 
     private Funcionario funcionario;
     private Utente utente;

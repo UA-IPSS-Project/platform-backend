@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,7 +18,10 @@ import lombok.NoArgsConstructor;
  * Entidade JPA que representa uma peça de roupa no contexto do Balneário.
  */
 @Entity
-@Table(name = "Roupa")
+@Table(name = "Roupa", indexes = {
+    @Index(name = "idx_roupa_marcacao_balneario_id", columnList = "marcacao_balneario_id"),
+    @Index(name = "idx_roupa_item_armazem_id",       columnList = "item_armazem_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

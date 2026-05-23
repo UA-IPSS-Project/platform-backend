@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.domain.EventoEstado;
@@ -68,6 +70,14 @@ public class CalendarioService {
     private final Map<Integer, List<LocalDate>> feriadosCache = new ConcurrentHashMap<>();
 
     /**
+     * Cache em memória da capacidade por slot.
+     * @Cacheable não funciona em self-invocation (proxy AOP é ignorado),
+     * por isso usamos ConcurrentHashMap diretamente — mesmo padrão dos feriados.
+     * Invalidado explicitamente em atualizarCapacidadePorSlot.
+     */
+    private final Map<String, Integer> capacidadeCache = new ConcurrentHashMap<>();
+
+    /**
      * Endpoint público para feriados nacionais (Portugal).
      */
     private static final String API_PT_HOLIDAYS = "https://date.nager.at/api/v3/publicholidays/%d/PT";
@@ -94,6 +104,27 @@ public class CalendarioService {
                 log.error("Erro ao carregar feriados (API externa): {}", e.getMessage());
             }
         }).start();
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void inicializarConfiguracoes() {
+        inicializarTipoSeNaoExistir(TIPO_SECRETARIA, CAPACIDADE_SLOT_DEFAULT_SECRETARIA);
+        inicializarTipoSeNaoExistir(TIPO_BALNEARIO, CAPACIDADE_SLOT_DEFAULT_BALNEARIO);
+    }
+
+    private void inicializarTipoSeNaoExistir(String tipo, int capacidade) {
+        if (configuracaoAgendaRepository.findByTipo(tipo).isEmpty()) {
+            try {
+                ConfiguracaoAgenda cfg = new ConfiguracaoAgenda();
+                cfg.setTipo(tipo);
+                cfg.setCapacidadePorSlot(capacidade);
+                configuracaoAgendaRepository.save(cfg);
+                log.info("Configuração para {} inicializada com capacidade {}.", tipo, capacidade);
+            } catch (Exception e) {
+                log.info("Configuração para {} já foi inicializada por outra réplica.", tipo);
+            }
+        }
     }
 
     @Cacheable(value = "feriados", key = "#ano")
@@ -163,15 +194,17 @@ public class CalendarioService {
             return CAPACIDADE_SLOT_DEFAULT_SECRETARIA;
         }
 
-        return configuracaoAgendaRepository.findByTipo(tipoNormalizado)
-                .map(ConfiguracaoAgenda::getCapacidadePorSlot)
-                .orElse(capacidadeSlotDefault(tipoNormalizado));
+        return capacidadeCache.computeIfAbsent(tipoNormalizado, t ->
+                configuracaoAgendaRepository.findByTipo(t)
+                        .map(ConfiguracaoAgenda::getCapacidadePorSlot)
+                        .orElse(capacidadeSlotDefault(t)));
     }
 
     @Transactional
     @CacheEvict(value = "config-slots", allEntries = true)
     public ConfiguracaoSlotDTO atualizarCapacidadePorSlot(String tipo, Integer capacidadePorSlot) {
         String tipoNormalizado = normalizarTipoObrigatorio(tipo);
+        capacidadeCache.remove(tipoNormalizado);
 
         if (capacidadePorSlot == null || capacidadePorSlot < 1) {
             throw new BadRequestException("A capacidade por slot deve ser um número inteiro maior ou igual a 1.");

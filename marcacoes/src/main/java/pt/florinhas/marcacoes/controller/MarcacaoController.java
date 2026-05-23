@@ -52,9 +52,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MarcacaoController {
 
-    private static final String KEY_ESTADO = "estado";
-    private static final String KEY_MESSAGE = "message";
-
     /**
      * Serviço que contém toda a lógica de negócio relacionada com marcações.
      * O controller limita-se a validar pedidos e delegar a lógica no serviço.
@@ -129,8 +126,8 @@ public class MarcacaoController {
         return ResponseEntity.ok().body(Map.of(
                 "id", marcacao.getId().toString(),
                 "data", marcacao.getData().toString(),
-                KEY_ESTADO, marcacao.getEstado().toString(),
-                KEY_MESSAGE, "Marcação criada com sucesso"));
+                "estado", marcacao.getEstado().toString(),
+                "message", "Marcação criada com sucesso"));
     }
 
     /**
@@ -151,8 +148,8 @@ public class MarcacaoController {
         return ResponseEntity.ok().body(Map.of(
                 "id", marcacao.getId().toString(),
                 "data", marcacao.getData().toString(),
-                KEY_ESTADO, marcacao.getEstado().toString(),
-                KEY_MESSAGE, "Marcação criada com sucesso"));
+                "estado", marcacao.getEstado().toString(),
+                "message", "Marcação criada com sucesso"));
     }
 
     /**
@@ -172,11 +169,11 @@ public class MarcacaoController {
         return ResponseEntity.ok().body(Map.of(
                 "id", marcacao.getId().toString(),
                 "data", marcacao.getData().toString(),
-                KEY_ESTADO, marcacao.getEstado().toString(),
+                "estado", marcacao.getEstado().toString(),
                 "duration", String.valueOf(marcacao.getDuration()),
                 "durationLabel", durationLabel,
                 "durationBalneario", durationBalneario,
-                KEY_MESSAGE, "Marcação de balneário registada com sucesso"));
+                "message", "Marcação de balneário registada com sucesso"));
     }
 
     /**
@@ -453,7 +450,7 @@ public class MarcacaoController {
 
         Long tempId = marcacaoService.criarReservaTemporaria(request);
         return ResponseEntity.ok(
-                Map.of("tempId", tempId, KEY_MESSAGE, "Slot bloqueado por 10 minutos"));
+                Map.of("tempId", tempId, "message", "Slot bloqueado por 10 minutos"));
     }
 
     /**
@@ -466,7 +463,7 @@ public class MarcacaoController {
      * return resposta vazia de sucesso
      */
     @DeleteMapping("/libertar-slot/{id}")
-    public ResponseEntity<Void> libertarSlot(@PathVariable Long id) {
+    public ResponseEntity<?> libertarSlot(@PathVariable Long id) {
 
         marcacaoService.apagarReservaTemporaria(id);
         return ResponseEntity.ok().build();

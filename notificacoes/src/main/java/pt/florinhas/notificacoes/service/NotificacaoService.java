@@ -32,7 +32,6 @@ public class NotificacaoService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
-    private static final String TIPO_LEMBRETE = "LEMBRETE";
 
     private final NotificacaoRepository notificacaoRepository;
     private final UtilizadorRepository utilizadorRepository;
@@ -67,8 +66,8 @@ public class NotificacaoService {
         try {
             NotificacaoResponseDTO dto = converterParaDTO(saved);
             logger.info(
-                    "Sending WebSocket notification to user: {} (email: {})",
-                    user.getId(), user.getEmail());
+                    "Sending WebSocket notification to user: {} (email: {}), title: {}",
+                    user.getId(), user.getEmail(), titulo);
             String destination = (user.getEmail() != null && !user.getEmail().trim().isEmpty())
                     ? user.getEmail()
                     : user.getNif();
@@ -154,12 +153,12 @@ public class NotificacaoService {
                 "createdTime", data.format(TIME_FORMATTER),
                 METADATA_SUBTYPE_KEY, "CREATED");
 
-        criarNotificacao(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, metadata);
+        criarNotificacao(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
 
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> 
+        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
             sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCreated(user.getEmail(), data,
-                    marcacaoId, summary, durationMinutes))
-        );
+                    marcacaoId, summary, durationMinutes));
+        });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -174,12 +173,12 @@ public class NotificacaoService {
                 "appointmentTime", data.format(TIME_FORMATTER),
                 METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
 
-        criarNotificacao(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, metadata);
+        criarNotificacao(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
 
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> 
+        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
             sendEmailIfAvailable(user.getEmail(),
-                    () -> emailService.sendAppointmentReminderOneDay(user.getEmail(), data))
-        );
+                    () -> emailService.sendAppointmentReminderOneDay(user.getEmail(), data));
+        });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -195,10 +194,10 @@ public class NotificacaoService {
 
         criarNotificacao(utilizadorId, assunto, mensagem, "CANCELAMENTO", metadata);
 
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> 
+        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
             sendEmailIfAvailable(user.getEmail(),
-                    () -> emailService.sendAppointmentCancelled(user.getEmail(), motivoTexto))
-        );
+                    () -> emailService.sendAppointmentCancelled(user.getEmail(), motivoTexto));
+        });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -225,7 +224,7 @@ public class NotificacaoService {
                 + observacoes;
         String assunto = "Documentos Inválidos";
 
-        criarNotificacao(utilizadorId, assunto, mensagem, TIPO_LEMBRETE, null);
+        criarNotificacao(utilizadorId, assunto, mensagem, "LEMBRETE", null);
     }
 
     // Cron job for 1 day reminders moved to marcacoes module

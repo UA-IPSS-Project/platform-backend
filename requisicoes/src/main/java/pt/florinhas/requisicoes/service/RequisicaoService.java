@@ -3,14 +3,24 @@ package pt.florinhas.requisicoes.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import org.hibernate.Hibernate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +42,7 @@ import pt.florinhas.requisicoes.domain.TipoManutencao;
 import pt.florinhas.requisicoes.domain.Transporte;
 import pt.florinhas.requisicoes.domain.TransporteCategoria;
 import pt.florinhas.requisicoes.dto.CriarManutencaoItemRequest;
+import pt.florinhas.requisicoes.dto.ManutencaoItemRequest;
 import pt.florinhas.requisicoes.dto.CriarMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
@@ -53,8 +64,7 @@ import pt.florinhas.requisicoes.repository.TransporteRepository;
 @Service
 public class RequisicaoService {
 
-    private static final String MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO = "Item de manutenção não encontrado: ";
-    private static final String MSG_TRANSPORTE_NAO_ENCONTRADO = "Transporte não encontrado: ";
+    private static final Logger log = LoggerFactory.getLogger(RequisicaoService.class);
 
     private final RequisicaoRepository requisicaoRepository;
     private final RequisicaoMaterialRepository requisicaoMaterialRepository;
@@ -93,19 +103,23 @@ public class RequisicaoService {
         this.notificacaoService = notificacaoService;
     }
 
+    @Transactional(readOnly = true)
     public List<Requisicao> listarTodas() {
         return requisicaoRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Requisicao obterPorId(Long id) {
         return requisicaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Requisição não encontrada: " + id));
     }
 
+    @Transactional(readOnly = true)
     public List<Requisicao> listarPorEstado(RequisicaoEstado estado) {
         return requisicaoRepository.findByEstado(estado);
     }
 
+    @Transactional(readOnly = true)
     public List<Requisicao> procurar(
             RequisicaoEstado estado,
             RequisicaoTipo tipo,
@@ -126,14 +140,16 @@ public class RequisicaoService {
         }
 
         return requisicaoRepository.findWithFilters(
-                estado,
-                tipo,
-                prioridade,
-                criadoPorPattern,
-                dataInicio,
-                dataFim);
+            estado,
+            tipo,
+            prioridade,
+            criadoPorPattern,
+            dataInicio,
+            dataFim
+        );
     }
 
+    @Transactional(readOnly = true)
     public Page<Requisicao> procurarPaginated(
             RequisicaoEstado estado,
             RequisicaoTipo tipo,
@@ -142,6 +158,9 @@ public class RequisicaoService {
             String dataInicioStr,
             String dataFimStr,
             Pageable pageable) {
+        log.info("[procurarPaginated] estado={} tipo={} prioridade={} criadoPorNome={} dataInicio={} dataFim={} pageable={}",
+                estado, tipo, prioridade, criadoPorNome, dataInicioStr, dataFimStr, pageable);
+
         String criadoPorPattern = prepararPadraoLike(criadoPorNome);
 
         LocalDateTime dataInicio = null;
@@ -154,8 +173,48 @@ public class RequisicaoService {
             dataFim = LocalDate.parse(dataFimStr).atTime(LocalTime.MAX);
         }
 
-        return requisicaoRepository.findWithFiltersPaginated(
+        log.info("[procurarPaginated] a executar query: estado={} tipo={} prioridade={} criadoPorPattern={} dataInicio={} dataFim={}",
+                estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim);
+        try {
+            // Step 1: IDs paginados — sem JOIN FETCH, paginação correcta na base de dados
+            Page<Long> idsPage = requisicaoRepository.findIdsPaginated(
                 estado, tipo, prioridade, criadoPorPattern, dataInicio, dataFim, pageable);
+
+            if (idsPage.isEmpty()) {
+                log.info("[procurarPaginated] sem resultados");
+                return new PageImpl<>(Collections.emptyList(), pageable, 0);
+            }
+
+            // Step 2: fetch entidades por IDs com criadoPor/geridoPor eager
+            List<Long> ids = idsPage.getContent();
+            List<Requisicao> requisicoes = requisicaoRepository.findByIdsWithCriadoPor(ids);
+
+            // Preservar a ordem da paginação do step 1
+            Map<Long, Requisicao> byId = requisicoes.stream()
+                    .collect(Collectors.toMap(Requisicao::getId, r -> r));
+            List<Requisicao> ordered = ids.stream()
+                    .map(byId::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            // Initialize LAZY collections within the transaction (required with open-in-view=false)
+            for (Requisicao r : ordered) {
+                if (r instanceof RequisicaoMaterial rm) {
+                    Hibernate.initialize(rm.getItens());
+                } else if (r instanceof RequisicaoTransporte rt) {
+                    Hibernate.initialize(rt.getTransportes());
+                } else if (r instanceof RequisicaoManutencao rmn) {
+                    Hibernate.initialize(rmn.getItens());
+                }
+            }
+
+            log.info("[procurarPaginated] sucesso: {} resultados (página {}/{})",
+                    idsPage.getTotalElements(), pageable.getPageNumber(), idsPage.getTotalPages());
+            return new PageImpl<>(ordered, pageable, idsPage.getTotalElements());
+        } catch (Exception e) {
+            log.error("[procurarPaginated] falhou com exception: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     private String prepararPadraoLike(String filtro) {
@@ -182,6 +241,14 @@ public class RequisicaoService {
             itensNormalizados.put(item.materialId(), item.quantidade());
         }
 
+        Map<Long, Material> materialMap = materialRepository.findAllById(itensNormalizados.keySet())
+                .stream().collect(Collectors.toMap(Material::getId, Function.identity()));
+        itensNormalizados.keySet().forEach(id -> {
+            if (!materialMap.containsKey(id)) {
+                throw new ResourceNotFoundException("Material não encontrado: " + id);
+            }
+        });
+
         RequisicaoMaterial requisicao = new RequisicaoMaterial();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
         requisicao.setPrioridade(request.prioridade());
@@ -190,11 +257,8 @@ public class RequisicaoService {
         requisicao.setGeridoPor(null);
 
         for (Map.Entry<Long, Integer> item : itensNormalizados.entrySet()) {
-            Material material = materialRepository.findById(item.getKey())
-                    .orElseThrow(() -> new ResourceNotFoundException("Material não encontrado: " + item.getKey()));
-
             RequisicaoMaterialItem requisicaoMaterialItem = new RequisicaoMaterialItem();
-            requisicaoMaterialItem.setMaterial(material);
+            requisicaoMaterialItem.setMaterial(materialMap.get(item.getKey()));
             requisicaoMaterialItem.setQuantidade(item.getValue());
             requisicaoMaterialItem.setRequisicao(requisicao);
             requisicao.getItens().add(requisicaoMaterialItem);
@@ -208,20 +272,20 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request,
-            Long authenticatedUtilizadorId) {
-        if (request.transporteIds() == null || request.transporteIds().isEmpty()) {
-            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
-        }
-
+    public RequisicaoTransporte criarTransporte(CriarRequisicaoTransporteRequest request, Long authenticatedUtilizadorId) {
+        List<Long> transporteIds = resolverIdsTransporte(request.transporteIds(), request.transporteId());
         validarPeriodoTransporte(request.dataHoraSaida(), request.dataHoraRegresso());
         Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
-        List<Transporte> transportesSelecionados = request.transporteIds().stream()
-                .distinct()
-                .map(id -> transporteRepository.findById(id)
-                        .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id)))
-                .toList();
+        List<Long> distinctIds = transporteIds.stream().distinct().toList();
+        Map<Long, Transporte> transporteMap = transporteRepository.findAllById(distinctIds)
+                .stream().collect(Collectors.toMap(Transporte::getId, Function.identity()));
+        distinctIds.forEach(id -> {
+            if (!transporteMap.containsKey(id)) {
+                throw new ResourceNotFoundException("Transporte não encontrado: " + id);
+            }
+        });
+        List<Transporte> transportesSelecionados = distinctIds.stream().map(transporteMap::get).toList();
 
         RequisicaoTransporte requisicao = new RequisicaoTransporte();
         requisicao.setDescricao(normalizarDescricao(request.descricao()));
@@ -250,6 +314,21 @@ public class RequisicaoService {
         return saved;
     }
 
+    private List<Long> resolverIdsTransporte(List<Long> transporteIds, Long transporteId) {
+        boolean temLista = transporteIds != null && !transporteIds.isEmpty();
+        boolean temSingular = transporteId != null;
+
+        if (temLista && temSingular) {
+            throw new IllegalArgumentException("Pedido inválido: forneça apenas 'transporteIds' ou 'transporteId', não ambos.");
+        }
+
+        if (!temLista && !temSingular) {
+            throw new IllegalArgumentException("É obrigatório indicar pelo menos um transporte.");
+        }
+
+        return temLista ? transporteIds : List.of(transporteId);
+    }
+
     private void validarPeriodoTransporte(LocalDateTime dataHoraSaida, LocalDateTime dataHoraRegresso) {
         LocalDateTime agora = LocalDateTime.now();
 
@@ -267,8 +346,7 @@ public class RequisicaoService {
     }
 
     @Transactional
-    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request,
-            Long authenticatedUtilizadorId) {
+    public RequisicaoManutencao criarManutencao(CriarRequisicaoManutencaoRequest request, Long authenticatedUtilizadorId) {
         Funcionario criadoPor = obterFuncionario(authenticatedUtilizadorId);
 
         RequisicaoManutencao requisicao = new RequisicaoManutencao();
@@ -279,24 +357,40 @@ public class RequisicaoService {
         requisicao.setGeridoPor(null);
 
         // Build items list before saving to benefit from CascadeType.ALL
-        for (var itemRequest : request.manutencaoItens()) {
-            ManutencaoItem item = manutencaoItemRepository.findById(itemRequest.itemId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + itemRequest.itemId()));
+        if (request.manutencaoItens() != null && !request.manutencaoItens().isEmpty()) {
+            List<Long> itemIds = request.manutencaoItens().stream()
+                    .map(ManutencaoItemRequest::itemId).toList();
+            Map<Long, ManutencaoItem> itemMap = manutencaoItemRepository.findAllById(itemIds)
+                    .stream().collect(Collectors.toMap(ManutencaoItem::getId, Function.identity()));
+            itemIds.forEach(id -> {
+                if (!itemMap.containsKey(id)) {
+                    throw new ResourceNotFoundException("Item de manutenção não encontrado: " + id);
+                }
+            });
 
-            RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
-            requisicaoItem.setRequisicao(requisicao); // Back-reference for JPA
-            requisicaoItem.setManutencaoItem(item);
-            requisicaoItem.setObservacoes(itemRequest.observacoes());
+            List<Long> transporteIds = request.manutencaoItens().stream()
+                    .map(ManutencaoItemRequest::transporteId)
+                    .filter(id -> id != null).distinct().toList();
+            Map<Long, Transporte> transporteMap = transporteIds.isEmpty()
+                    ? Map.of()
+                    : transporteRepository.findAllById(transporteIds).stream()
+                            .collect(Collectors.toMap(Transporte::getId, Function.identity()));
+            transporteIds.forEach(id -> {
+                if (!transporteMap.containsKey(id)) {
+                    throw new ResourceNotFoundException("Transporte não encontrado: " + id);
+                }
+            });
 
-            if (itemRequest.transporteId() != null) {
-                Transporte transporte = transporteRepository.findById(itemRequest.transporteId())
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                MSG_TRANSPORTE_NAO_ENCONTRADO + itemRequest.transporteId()));
-                requisicaoItem.setTransporte(transporte);
+            for (var itemRequest : request.manutencaoItens()) {
+                RequisicaoManutencaoItem requisicaoItem = new RequisicaoManutencaoItem();
+                requisicaoItem.setRequisicao(requisicao);
+                requisicaoItem.setManutencaoItem(itemMap.get(itemRequest.itemId()));
+                requisicaoItem.setObservacoes(itemRequest.observacoes());
+                if (itemRequest.transporteId() != null) {
+                    requisicaoItem.setTransporte(transporteMap.get(itemRequest.transporteId()));
+                }
+                requisicao.getItens().add(requisicaoItem);
             }
-
-            requisicao.getItens().add(requisicaoItem);
         }
 
         aplicarConfiguracaoPeriodica(requisicao, request.periodica());
@@ -317,8 +411,8 @@ public class RequisicaoService {
         requisicao.setUltimaAlteracaoEstadoEm(LocalDateTime.now());
 
         Requisicao saved = requisicaoRepository.save(requisicao);
-
-        // Notificar o criador da requisição sobre a mudança de estado,
+        
+        // Notificar o criador da requisição sobre a mudança de estado, 
         // a menos que tenha sido o próprio criador a fazer a alteração
         if (saved.getCriadoPor() != null && !saved.getCriadoPor().getId().equals(alteradoPorId)) {
             notificacaoService.notificarMudancaEstado(saved.getCriadoPor().getId(), saved);
@@ -329,8 +423,7 @@ public class RequisicaoService {
 
     private void notificarSecretarias(Requisicao requisicao, Long autorId) {
         try {
-            List<Funcionario> secretarias = funcionarioRepository
-                    .findByTipo(pt.florinhas.common_data.domain.FuncionarioTipo.SECRETARIA);
+            List<Funcionario> secretarias = funcionarioRepository.findByTipo(pt.florinhas.common_data.domain.FuncionarioTipo.SECRETARIA);
             for (Funcionario sec : secretarias) {
                 // Não notificar a própria pessoa que criou a requisição
                 if (!sec.getId().equals(autorId)) {
@@ -338,14 +431,17 @@ public class RequisicaoService {
                 }
             }
         } catch (Exception e) {
-            // Log but don't fail the transaction
+            log.warn("Falha ao notificar secretarias para requisição {}: {}", requisicao.getId(), e.getMessage());
         }
     }
 
+    @Cacheable("materiais")
+    @Transactional(readOnly = true)
     public List<Material> listarMateriais() {
         return materialRepository.findAllByOrderByCategoriaAscNomeAscAtributoAscValorAtributoAsc();
     }
 
+    @CacheEvict(value = "materiais", allEntries = true)
     @Transactional
     public Material criarMaterialCatalogo(CriarMaterialRequest request) {
         Material material = new Material();
@@ -356,6 +452,7 @@ public class RequisicaoService {
         return materialRepository.save(material);
     }
 
+    @CacheEvict(value = "materiais", allEntries = true)
     @Transactional
     public Material atualizarMaterialCatalogo(Long id, CriarMaterialRequest request) {
         Material material = materialRepository.findById(id)
@@ -369,6 +466,7 @@ public class RequisicaoService {
         return materialRepository.save(material);
     }
 
+    @CacheEvict(value = "materiais", allEntries = true)
     @Transactional
     public void apagarMaterialCatalogo(Long id) {
         if (requisicaoMaterialRepository.existsByItensMaterialId(id)) {
@@ -382,11 +480,14 @@ public class RequisicaoService {
         materialRepository.deleteById(id);
     }
 
+    @Cacheable("transportes")
+    @Transactional(readOnly = true)
     public List<Transporte> listarTransportes() {
         return transporteRepository.findAll(
                 Sort.by(Sort.Order.asc("codigo"), Sort.Order.asc("tipo"), Sort.Order.asc("matricula")));
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public Transporte criarTransporteCatalogo(CriarTransporteRequest request) {
         String codigoNormalizado = normalizarTextoObrigatorio(request.codigo(), "Código interno");
@@ -394,6 +495,9 @@ public class RequisicaoService {
         String marcaNormalizada = normalizarTextoObrigatorio(request.marca(), "Marca");
         String modeloNormalizado = normalizarTextoObrigatorio(request.modelo(), "Modelo");
 
+        if (request.categoria() == null) {
+            throw new IllegalArgumentException("A categoria do transporte é obrigatória.");
+        }
         if (request.lotacao() == null || request.lotacao() <= 0) {
             throw new IllegalArgumentException("A lotação do transporte é obrigatória e deve ser maior que zero.");
         }
@@ -422,10 +526,11 @@ public class RequisicaoService {
         return transporteRepository.save(transporte);
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public Transporte atualizarTransporteCatalogo(Long id, CriarTransporteRequest request) {
         Transporte transporte = transporteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
 
         String matriculaNormalizada = request.matricula().trim().toUpperCase(Locale.ROOT);
         transporteRepository.findByMatricula(matriculaNormalizada)
@@ -446,6 +551,7 @@ public class RequisicaoService {
         return transporteRepository.save(transporte);
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public Transporte atualizarCategoriaTransporte(Long id, TransporteCategoria novaCategoria) {
         if (novaCategoria == null) {
@@ -453,46 +559,41 @@ public class RequisicaoService {
         }
 
         Transporte transporte = transporteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(MSG_TRANSPORTE_NAO_ENCONTRADO + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Transporte não encontrado: " + id));
 
-        // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há
-        // requisições ativas
-        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO
-                && (requisicaoTransporteRepository.existsByTransporteId(id)
-                || requisicaoTransporteRepository.existsByTransportesTransporteId(id))) {
-            throw new IllegalStateException(
-                    "Não é possível marcar como indisponível: transporte está associado a requisições ativas.");
+        // Se está a ser movido para ABATIDO_VENDIDO_DESCONTINUADO, validar que não há requisições ativas
+        if (novaCategoria == TransporteCategoria.ABATIDO_VENDIDO_DESCONTINUADO) {
+            if (requisicaoTransporteRepository.existsByTransporteId(id)
+                    || requisicaoTransporteRepository.existsByTransportesTransporteId(id)) {
+                throw new IllegalStateException(
+                        "Não é possível marcar como indisponível: transporte está associado a requisições ativas.");
+            }
         }
 
         transporte.setCategoria(novaCategoria);
         return transporteRepository.save(transporte);
     }
 
+    @CacheEvict(value = "transportes", allEntries = true)
     @Transactional
     public void moverVeiculosPorCategoria(TransporteCategoria origem, TransporteCategoria destino) {
         if (origem == null || destino == null) {
             throw new IllegalArgumentException("As categorias de origem e destino são obrigatórias.");
         }
-
+        
         if (origem.equals(destino)) {
             throw new IllegalArgumentException("As categorias de origem e destino não podem ser iguais.");
         }
-
-        // Encontrar todos os veículos na categoria de origem
-        List<Transporte> veiculos = transporteRepository.findByCategoria(origem);
-
-        // Mover cada veículo para a categoria de destino
-        for (Transporte veiculo : veiculos) {
-            veiculo.setCategoria(destino);
-        }
-
-        transporteRepository.saveAll(veiculos);
+        
+        transporteRepository.updateCategoriaByCategoria(origem, destino);
     }
 
+    @Cacheable("tipos-manutencao")
     public List<TipoManutencao> listarTiposManutencao() {
         return tipoManutencaoRepository.findAllByOrderByNomeAsc();
     }
 
+    @CacheEvict(value = "tipos-manutencao", allEntries = true)
     @Transactional
     public TipoManutencao criarTipoManutencao(CriarTipoManutencaoRequest request) {
         String nomeNormalizado = request.nome().trim();
@@ -507,6 +608,7 @@ public class RequisicaoService {
         return tipoManutencaoRepository.save(tipo);
     }
 
+    @CacheEvict(value = "tipos-manutencao", allEntries = true)
     @Transactional
     public TipoManutencao atualizarTipoManutencao(Long id, CriarTipoManutencaoRequest request) {
         TipoManutencao tipo = tipoManutencaoRepository.findById(id)
@@ -524,14 +626,17 @@ public class RequisicaoService {
         return tipoManutencaoRepository.save(tipo);
     }
 
+    @CacheEvict(value = "tipos-manutencao", allEntries = true)
     @Transactional
     public void apagarTipoManutencao(Long id) {
         TipoManutencao tipo = tipoManutencaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de manutenção não encontrado: " + id));
 
+
         tipoManutencaoRepository.delete(tipo);
     }
 
+    @Cacheable("manutencao-items")
     public List<ManutencaoItem> listarManutencaoItems() {
         return manutencaoItemRepository.findAllByOrderByCategoriaAscEspacoAsc();
     }
@@ -540,6 +645,7 @@ public class RequisicaoService {
         return manutencaoItemRepository.findByCategoria(categoria);
     }
 
+    @CacheEvict(value = "manutencao-items", allEntries = true)
     @Transactional
     public ManutencaoItem criarManutencaoItem(CriarManutencaoItemRequest request) {
         ManutencaoItem item = new ManutencaoItem();
@@ -549,10 +655,11 @@ public class RequisicaoService {
         return manutencaoItemRepository.save(item);
     }
 
+    @CacheEvict(value = "manutencao-items", allEntries = true)
     @Transactional
     public ManutencaoItem atualizarManutencaoItem(Long id, CriarManutencaoItemRequest request) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
 
         item.setCategoria(request.categoria().trim());
         item.setEspaco(request.espaco().trim());
@@ -560,39 +667,39 @@ public class RequisicaoService {
         return manutencaoItemRepository.save(item);
     }
 
+    @CacheEvict(value = "manutencao-items", allEntries = true)
     @Transactional
     public void apagarManutencaoItem(Long id) {
         ManutencaoItem item = manutencaoItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(MSG_ITEM_MANUTENCAO_NAO_ENCONTRADO + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Item de manutenção não encontrado: " + id));
 
         if (requisicaoManutencaoItemRepository.existsByManutencaoItemId(id)) {
-            throw new IllegalArgumentException(
-                    "Não é possível apagar: item de manutenção está associado a requisições.");
+            throw new IllegalArgumentException("Não é possível apagar: item de manutenção está associado a requisições.");
         }
 
         manutencaoItemRepository.delete(item);
     }
 
     private void validarTransicaoEstado(RequisicaoEstado estadoAtual, RequisicaoEstado novoEstado) {
-        if (estadoAtual == novoEstado)
-            return;
+        if (estadoAtual == novoEstado) return;
 
         if (estadoAtual == RequisicaoEstado.FECHADO || estadoAtual == RequisicaoEstado.RECUSADO) {
             throw new IllegalArgumentException("Não é possível alterar o estado de uma requisição finalizada.");
         }
 
-        if (estadoAtual == RequisicaoEstado.ABERTO && (novoEstado == RequisicaoEstado.EM_PROGRESSO
-                || novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO)) {
-            return;
+        if (estadoAtual == RequisicaoEstado.ABERTO) {
+            if (novoEstado == RequisicaoEstado.EM_PROGRESSO || novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
+                return;
+            }
         }
 
-        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO && (novoEstado == RequisicaoEstado.FECHADO
-                || novoEstado == RequisicaoEstado.RECUSADO)) {
-            return;
+        if (estadoAtual == RequisicaoEstado.EM_PROGRESSO) {
+            if (novoEstado == RequisicaoEstado.FECHADO || novoEstado == RequisicaoEstado.RECUSADO) {
+                return;
+            }
         }
 
-        throw new IllegalArgumentException(
-                "Transição de estado inválida do estado " + estadoAtual + " para " + novoEstado);
+        throw new IllegalArgumentException("Transição de estado inválida do estado " + estadoAtual + " para " + novoEstado);
     }
 
     private Funcionario obterFuncionario(Long id) {
@@ -629,9 +736,14 @@ public class RequisicaoService {
     }
 
     private void validarConfiguracaoPeriodica(RequisicaoPeriodicaConfigRequest config) {
+        if (config.frequencia() == null) {
+            throw new IllegalArgumentException("A frequência da requisição periódica é obrigatória.");
+        }
+        if (config.dataInicio() == null) {
+            throw new IllegalArgumentException("A data de início da requisição periódica é obrigatória.");
+        }
         if (config.dataFim() != null && config.dataFim().isBefore(config.dataInicio())) {
-            throw new IllegalArgumentException(
-                    "A data de fim da requisição periódica não pode ser anterior à data de início.");
+            throw new IllegalArgumentException("A data de fim da requisição periódica não pode ser anterior à data de início.");
         }
     }
 

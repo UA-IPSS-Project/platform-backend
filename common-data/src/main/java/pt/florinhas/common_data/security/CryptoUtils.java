@@ -13,7 +13,6 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 import pt.florinhas.common_data.validation.NifValidator;
-import pt.florinhas.common_data.exception.CryptoException;
 
 @Component
 public class CryptoUtils {
@@ -21,7 +20,6 @@ public class CryptoUtils {
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
     private static final int IV_LENGTH = 12;
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Value("${app.security.encryption.key}")
     private String encryptionKeyHex;
@@ -52,7 +50,7 @@ public class CryptoUtils {
         if (plainText == null) return null;
         try {
             byte[] iv = new byte[IV_LENGTH];
-            SECURE_RANDOM.nextBytes(iv);
+            new SecureRandom().nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(encryptionKeyBytes, "AES"), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
@@ -60,7 +58,7 @@ public class CryptoUtils {
 
             return Base64.getEncoder().encodeToString(iv) + ":" + Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception e) {
-            throw new CryptoException("Erro ao cifrar dados", e);
+            throw new RuntimeException("Erro ao cifrar dados", e);
         }
     }
 
@@ -79,7 +77,7 @@ public class CryptoUtils {
 
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new CryptoException("Erro ao decifrar dados", e);
+            throw new RuntimeException("Erro ao decifrar dados", e);
         }
     }
 
@@ -92,7 +90,7 @@ public class CryptoUtils {
             byte[] hash = digest.digest((normalized + blindIndexKey).getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash);
         } catch (Exception e) {
-            throw new CryptoException("Erro ao gerar blind index", e);
+            throw new RuntimeException("Erro ao gerar blind index", e);
         }
     }
 
