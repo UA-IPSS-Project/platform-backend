@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.domain.EventoEstado;
@@ -102,6 +104,27 @@ public class CalendarioService {
                 log.error("Erro ao carregar feriados (API externa): {}", e.getMessage());
             }
         }).start();
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void inicializarConfiguracoes() {
+        inicializarTipoSeNaoExistir(TIPO_SECRETARIA, CAPACIDADE_SLOT_DEFAULT_SECRETARIA);
+        inicializarTipoSeNaoExistir(TIPO_BALNEARIO, CAPACIDADE_SLOT_DEFAULT_BALNEARIO);
+    }
+
+    private void inicializarTipoSeNaoExistir(String tipo, int capacidade) {
+        if (configuracaoAgendaRepository.findByTipo(tipo).isEmpty()) {
+            try {
+                ConfiguracaoAgenda cfg = new ConfiguracaoAgenda();
+                cfg.setTipo(tipo);
+                cfg.setCapacidadePorSlot(capacidade);
+                configuracaoAgendaRepository.save(cfg);
+                log.info("Configuração para {} inicializada com capacidade {}.", tipo, capacidade);
+            } catch (Exception e) {
+                log.info("Configuração para {} já foi inicializada por outra réplica.", tipo);
+            }
+        }
     }
 
     @Cacheable(value = "feriados", key = "#ano")

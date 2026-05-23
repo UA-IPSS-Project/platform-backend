@@ -20,8 +20,11 @@ import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
 import pt.florinhas.marcacoes.dto.CriarMarcacaoRequest;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
+import pt.florinhas.marcacoes.repository.ConfiguracaoAgendaRepository;
+import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.domain.Funcionario;
@@ -39,7 +42,15 @@ class MarcacaoServiceTest {
     @Mock
     private MarcacaoRepository marcacaoRepository;
     @Mock
+    private ConfiguracaoAgendaRepository configuracaoAgendaRepository;
+    @Mock
     private UtenteRepository utenteRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        lenient().when(configuracaoAgendaRepository.findByTipoWithWriteLock(anyString()))
+                .thenReturn(Optional.of(new ConfiguracaoAgenda()));
+    }
     @Mock
     private FuncionarioRepository funcionarioRepository;
     @Mock
@@ -145,6 +156,7 @@ class MarcacaoServiceTest {
         assertEquals(AtendimentoTipo.PRESENCIAL, resultado.getMarcacaoSecretaria().getTipoAtendimento());
         assertEquals(utente, resultado.getMarcacaoSecretaria().getUtente());
         assertEquals("Consulta", resultado.getMarcacaoSecretaria().getAssunto());
+        verify(configuracaoAgendaRepository).findByTipoWithWriteLock("SECRETARIA");
     }
 
     @Test
@@ -178,6 +190,7 @@ class MarcacaoServiceTest {
         assertEquals(AtendimentoTipo.REMOTO, resultado.getMarcacaoSecretaria().getTipoAtendimento());
         assertEquals(utente, resultado.getMarcacaoSecretaria().getUtente());
         assertEquals("Consulta Remota", resultado.getMarcacaoSecretaria().getAssunto());
+        verify(configuracaoAgendaRepository).findByTipoWithWriteLock("SECRETARIA");
     }
 
     @Test

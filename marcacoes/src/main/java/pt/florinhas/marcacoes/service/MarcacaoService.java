@@ -45,6 +45,7 @@ import pt.florinhas.marcacoes.dto.ReagendarMarcacaoRequest;
 import pt.florinhas.marcacoes.dto.RoupaDTO;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
 import pt.florinhas.marcacoes.repository.ItemArmazemRepository;
+import pt.florinhas.marcacoes.repository.ConfiguracaoAgendaRepository;
 import pt.florinhas.marcacoes.service.email.EmailService;
 import pt.florinhas.marcacoes.validation.MarcacaoValidator;
 
@@ -66,6 +67,7 @@ import pt.florinhas.common_data.security.CryptoUtils;
 public class MarcacaoService {
 
     private final MarcacaoRepository marcacaoRepository;
+    private final ConfiguracaoAgendaRepository configuracaoAgendaRepository;
     private final UtenteRepository utenteRepository;
     private final FuncionarioRepository funcionarioRepository;
     private final UtilizadorRepository utilizadorRepository;
@@ -106,6 +108,16 @@ public class MarcacaoService {
         return password.toString();
     }
 
+    private void adquirirBloqueioPessimista(String tipoAgenda) {
+        String tipoProvisorio = (tipoAgenda != null) ? tipoAgenda.trim().toUpperCase() : "SECRETARIA";
+        if (!"SECRETARIA".equals(tipoProvisorio) && !"BALNEARIO".equals(tipoProvisorio)) {
+            tipoProvisorio = "SECRETARIA";
+        }
+        final String tipo = tipoProvisorio;
+        configuracaoAgendaRepository.findByTipoWithWriteLock(tipo)
+                .orElseThrow(() -> new IllegalStateException("Configuração da agenda não encontrada: " + tipo));
+    }
+
     // Placeholder: In a real scenario, this would convert entities to DTOs
     // For now, returning null or empty lists to satisfy compilation,
     // expecting that I might need to refine this if logic is complex.
@@ -121,6 +133,7 @@ public class MarcacaoService {
     @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public Marcacao criarMarcacaoPresencial(CriarMarcacaoRequest request) {
+        adquirirBloqueioPessimista("SECRETARIA");
         // Validar data e conflitos antes de prosseguir
         marcacaoValidator.validarCriacao(request);
 
@@ -218,6 +231,7 @@ public class MarcacaoService {
     @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public Marcacao criarMarcacaoRemota(CriarMarcacaoRequest request) {
+        adquirirBloqueioPessimista("SECRETARIA");
         // Validar data e conflitos antes de prosseguir
         marcacaoValidator.validarCriacao(request);
 
@@ -259,6 +273,7 @@ public class MarcacaoService {
     @CacheEvict(value = "agenda", allEntries = true)
     @Transactional
     public Marcacao criarMarcacaoBalneario(CriarMarcacaoBalnearioRequest request) {
+        adquirirBloqueioPessimista("BALNEARIO");
         marcacaoValidator.validarCriacaoBalneario(request);
 
         Marcacao marcacao = null;
@@ -654,8 +669,9 @@ public class MarcacaoService {
 
     @Transactional
     public Long criarReservaTemporaria(CriarMarcacaoRequest request) {
-        // 1. Verificar capacidade máxima antes de criar reserva
         String tipoAgenda = normalizarTipoAgenda(request.getTipoAgenda());
+        adquirirBloqueioPessimista(tipoAgenda);
+        // 1. Verificar capacidade máxima antes de criar reserva
         LocalDateTime data = request.getData();
         int capacidade = calendarioService.getCapacidadePorSlot(tipoAgenda);
         // Estados que contam para ocupação do slot
@@ -723,6 +739,7 @@ public class MarcacaoService {
                 .orElseThrow(() -> new EntityNotFoundException("Marcação não encontrada com ID: " + id));
 
         String tipoAgenda = marcacao.getMarcacaoBalneario() != null ? "BALNEARIO" : "SECRETARIA";
+        adquirirBloqueioPessimista(tipoAgenda);
 
         // Validar data/hora, feriados, fim de semana e bloqueios
         marcacaoValidator.validarReagendamento(request, tipoAgenda);
