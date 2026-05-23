@@ -146,8 +146,7 @@ class RequisicaoServiceTest {
                 material2.setId(4L);
 
                 when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
-                when(materialRepository.findById(3L)).thenReturn(Optional.of(material));
-                when(materialRepository.findById(4L)).thenReturn(Optional.of(material2));
+                when(materialRepository.findAllById(any())).thenReturn(List.of(material, material2));
                 when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -181,7 +180,7 @@ class RequisicaoServiceTest {
                 material.setId(3L);
 
                 when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
-                when(materialRepository.findById(3L)).thenReturn(Optional.of(material));
+                when(materialRepository.findAllById(any())).thenReturn(List.of(material));
                 when(requisicaoMaterialRepository.save(any(RequisicaoMaterial.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -204,7 +203,7 @@ class RequisicaoServiceTest {
         void criarMaterial_quandoMaterialNaoExiste_deveLancarExcecao() {
                 Funcionario criadoPor = funcionarioComId(1L);
                 when(funcionarioRepository.findById(1L)).thenReturn(Optional.of(criadoPor));
-                when(materialRepository.findById(30L)).thenReturn(Optional.empty());
+                when(materialRepository.findAllById(any())).thenReturn(List.of());
 
                 CriarRequisicaoMaterialRequest request = new CriarRequisicaoMaterialRequest(
                                 "Pedido",
@@ -225,7 +224,7 @@ class RequisicaoServiceTest {
                 transporte.setId(30L);
 
                 when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-                when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+                when(transporteRepository.findAllById(any())).thenReturn(List.of(transporte));
                 when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -260,7 +259,7 @@ class RequisicaoServiceTest {
         void criarTransporte_quandoTransporteNaoExiste_deveLancarExcecao() {
                 Funcionario criadoPor = funcionarioComId(10L);
                 when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-                when(transporteRepository.findById(90L)).thenReturn(Optional.empty());
+                when(transporteRepository.findAllById(any())).thenReturn(List.of());
 
                 LocalDateTime saida = LocalDateTime.now().plusDays(2);
                 LocalDateTime regresso = saida.plusHours(2);
@@ -290,7 +289,7 @@ class RequisicaoServiceTest {
                 transporte.setId(30L);
 
                 when(funcionarioRepository.findById(10L)).thenReturn(Optional.of(criadoPor));
-                when(transporteRepository.findById(30L)).thenReturn(Optional.of(transporte));
+                when(transporteRepository.findAllById(any())).thenReturn(List.of(transporte));
                 when(requisicaoTransporteRepository.save(any(RequisicaoTransporte.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
 
