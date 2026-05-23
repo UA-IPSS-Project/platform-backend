@@ -13,6 +13,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 
 import pt.florinhas.api_gateway.dto.*;
 import pt.florinhas.api_gateway.security.JwtService;
@@ -26,6 +27,7 @@ import pt.florinhas.api_gateway.service.AuditClient;
 
 @RestController
 @RequestMapping("/api/auth")
+@Slf4j
 public class AuthController {
 
     private final AuthService authService;
@@ -167,22 +169,24 @@ public class AuthController {
             .sameSite(cookieSameSite)
             .build();
 
+        log.info("[LOGIN] Cookie jwt criado: secure={} sameSite={} path=/ para user={}",
+                cookieSecure, cookieSameSite, response.email());
+
         return ResponseEntity.ok()
             .header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
             .body(response);
     }
 
     private boolean shouldUseSecureCookie(ServerHttpRequest request) {
-        if (!secureCookies) {
-            return false;
-        }
-
         String scheme = request.getURI().getScheme();
-        if ("https".equalsIgnoreCase(scheme)) {
-            return true;
-        }
-
         String forwardedProto = request.getHeaders().getFirst("X-Forwarded-Proto");
-        return forwardedProto != null && forwardedProto.toLowerCase().contains("https");
+        boolean isHttps = "https".equalsIgnoreCase(scheme)
+                || (forwardedProto != null && forwardedProto.toLowerCase().contains("https"));
+
+        log.debug("[COOKIE] secureCookies={} scheme={} X-Forwarded-Proto={} -> secure={}",
+                secureCookies, scheme, forwardedProto, secureCookies && isHttps);
+
+        if (!secureCookies) return false;
+        return isHttps;
     }
 }

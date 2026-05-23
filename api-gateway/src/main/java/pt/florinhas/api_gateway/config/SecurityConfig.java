@@ -1,6 +1,5 @@
 package pt.florinhas.api_gateway.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,15 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
-import org.springframework.security.web.server.csrf.CsrfToken;
-import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
-import org.springframework.security.web.server.util.matcher.AndServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
-import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
-import org.springframework.http.HttpMethod;
 
 import pt.florinhas.api_gateway.security.JwtAuthenticationFilter;
 
@@ -36,6 +26,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -45,47 +36,12 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
 
-    @Value("${app.secure-cookies:false}")
-    private boolean secureCookies;
-
-    @Value("${app.cookie-samesite:Lax}")
-    private String cookieSameSite;
-
-    /**
-     * CSRF matcher: applies only to state-changing methods (POST/PUT/DELETE/PATCH)
-     * excluding auth and actuator endpoints (no session before login).
-     * Extracted as a named helper for readability.
-     */
-    private ServerWebExchangeMatcher csrfProtectionMatcher() {
-        var stateMutatingMethods = new OrServerWebExchangeMatcher(
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.POST),
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.PUT),
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.DELETE),
-            new PathPatternParserServerWebExchangeMatcher("/**", HttpMethod.PATCH)
-        );
-        var excludedPaths = new OrServerWebExchangeMatcher(
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/login/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/register/**"),
-            new PathPatternParserServerWebExchangeMatcher("/api/auth/logout"),
-            // /actuator/** is auth-required except /actuator/health, but CSRF-exempt
-            // because actuator clients (health checks, monitoring) don't use browsers.
-            new PathPatternParserServerWebExchangeMatcher("/actuator/**")
-        );
-        return new AndServerWebExchangeMatcher(stateMutatingMethods, new NegatedServerWebExchangeMatcher(excludedPaths));
-    }
-
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
-        // Align CSRF cookie attributes with the JWT cookie policy
-        var csrfTokenRepository = CookieServerCsrfTokenRepository.withHttpOnlyFalse();
-        csrfTokenRepository.setCookieCustomizer(cookie ->
-            cookie.secure(secureCookies).sameSite(cookieSameSite));
-
+        // CSRF disabled: authentication is stateless JWT-only.
+        // JWT in HttpOnly cookie already prevents CSRF (attacker cannot read it cross-origin).
         return http
-                .csrf(csrf -> csrf
-                    .csrfTokenRepository(csrfTokenRepository)
-                    .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler())
-                    .requireCsrfProtectionMatcher(csrfProtectionMatcher()))
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
@@ -109,11 +65,6 @@ public class SecurityConfig {
                     .anyExchange()
                     .authenticated())
                 .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-                // Subscribe the deferred CsrfToken so XSRF-TOKEN cookie is written to response
-                .addFilterAfter((exchange, chain) -> {
-                    Mono<CsrfToken> csrfToken = exchange.getAttribute(CsrfToken.class.getName());
-                    return csrfToken != null ? csrfToken.then(chain.filter(exchange)) : chain.filter(exchange);
-                }, SecurityWebFiltersOrder.CSRF)
                 .build();
     }
 
