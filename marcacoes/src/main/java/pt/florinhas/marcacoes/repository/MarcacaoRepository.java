@@ -86,6 +86,24 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         @Param("dataFim") LocalDateTime dataFim,
                         @Param("tipo") String tipo);
 
+        @Query("SELECT DISTINCT m FROM Marcacao m " +
+                        "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
+                        "LEFT JOIN FETCH ms.utente u " +
+                        "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
+                        "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
+                        "WHERE m.data > :now AND m.estado IN ('AGENDADO', 'AVISO') " +
+                        "AND (:tipo IS NULL OR " +
+                        "     (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR " +
+                        "     (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL)) " +
+                        "ORDER BY m.data ASC, m.id ASC")
+        List<Marcacao> findActiveFutureMarcacoes(
+                        @Param("now") LocalDateTime now,
+                        @Param("tipo") String tipo);
+
         // Verificar se existe marcação no mesmo horário exato (não cancelada)
         @Query("SELECT COUNT(m) > 0 FROM Marcacao m WHERE m.data = :data AND m.estado <> :estado")
         boolean existsByDataAndEstadoNot(

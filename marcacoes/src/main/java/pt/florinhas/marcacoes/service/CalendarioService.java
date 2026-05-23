@@ -55,6 +55,8 @@ public class CalendarioService {
     private final BloqueioRepository bloqueioRepository;
     private final MarcacaoRepository marcacaoRepository;
     private final ConfiguracaoAgendaRepository configuracaoAgendaRepository;
+    private final NotificacaoService notificacaoService;
+    private final AuditLogService auditLogService;
 
     /**
      * Limites de horário do sistema.
@@ -217,9 +219,77 @@ public class CalendarioService {
                     return created;
                 });
 
+        int oldCapacidade = getCapacidadePorSlot(tipoNormalizado);
+
         cfg.setCapacidadePorSlot(capacidadePorSlot);
         ConfiguracaoAgenda saved = configuracaoAgendaRepository.save(cfg);
+
+        if (capacidadePorSlot < oldCapacidade) {
+            cancelarMarcacoesExcedentesNoFuturo(tipoNormalizado, oldCapacidade, capacidadePorSlot);
+        }
+
         return new ConfiguracaoSlotDTO(saved.getTipo(), saved.getCapacidadePorSlot());
+    }
+
+    private void cancelarMarcacoesExcedentesNoFuturo(String tipo, int oldCapacidade, int novaCapacidade) {
+        LocalDateTime agora = LocalDateTime.now();
+        List<Marcacao> activeFutureMarcacoes = marcacaoRepository.findActiveFutureMarcacoes(agora, tipo);
+
+        // Group by LocalDateTime of the slot
+        java.util.Map<LocalDateTime, List<Marcacao>> bookingsBySlot = activeFutureMarcacoes.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Marcacao::getData));
+
+        for (java.util.Map.Entry<LocalDateTime, List<Marcacao>> entry : bookingsBySlot.entrySet()) {
+            List<Marcacao> bookingsInSlot = entry.getValue();
+            if (bookingsInSlot.size() > novaCapacidade) {
+                int excessCount = bookingsInSlot.size() - novaCapacidade;
+
+                // Sort bookings by criadoEm descending (newest first), so we cancel the newest bookings first
+                bookingsInSlot.sort((m1, m2) -> {
+                    LocalDateTime c1 = m1.getCriadoEm();
+                    LocalDateTime c2 = m2.getCriadoEm();
+                    if (c1 != null && c2 != null) {
+                        return c2.compareTo(c1);
+                    }
+                    if (m1.getId() != null && m2.getId() != null) {
+                        return m2.getId().compareTo(m1.getId());
+                    }
+                    return 0;
+                });
+
+                String motivo = "Cancelada devido à redução de capacidade máxima de vagas de " + oldCapacidade + " para " + novaCapacidade + ".";
+
+                for (int i = 0; i < excessCount; i++) {
+                    Marcacao m = bookingsInSlot.get(i);
+                    m.setEstado(EventoEstado.CANCELADO);
+                    m.setMotivoCancelamento(motivo);
+                    marcacaoRepository.save(m);
+
+                    auditLogService.log(
+                        "ATUALIZAR_ESTADO_MARCACAO",
+                        "MARCACAO",
+                        m.getId(),
+                        "Cancelamento automático devido a redução de capacidade do slot. Motivo: " + motivo
+                    );
+
+                    // Notify the utente / creator
+                    Long utenteId = null;
+                    if (m.getMarcacaoSecretaria() != null && m.getMarcacaoSecretaria().getUtente() != null) {
+                        utenteId = m.getMarcacaoSecretaria().getUtente().getId();
+                    } else if (m.getCriadoPor() != null) {
+                        utenteId = m.getCriadoPor().getId();
+                    }
+
+                    if (utenteId != null) {
+                        try {
+                            notificacaoService.notificarCancelamento(utenteId, m.getData(), motivo);
+                        } catch (Exception e) {
+                            log.error("Erro ao enviar notificação de cancelamento automático para o utilizador {}", utenteId, e);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Cacheable("config-slots")
