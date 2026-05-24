@@ -221,7 +221,6 @@ public class CalendarioService {
     @CacheEvict(value = "config-slots", allEntries = true)
     public ConfiguracaoSlotDTO atualizarCapacidadePorSlot(String tipo, Integer capacidadePorSlot) {
         String tipoNormalizado = normalizarTipoObrigatorio(tipo);
-        capacidadeCache.remove(tipoNormalizado);
 
         if (capacidadePorSlot == null || capacidadePorSlot < 1) {
             throw new BadRequestException("A capacidade por slot deve ser um número inteiro maior ou igual a 1.");
@@ -238,6 +237,8 @@ public class CalendarioService {
 
         cfg.setCapacidadePorSlot(capacidadePorSlot);
         ConfiguracaoAgenda saved = configuracaoAgendaRepository.save(cfg);
+        
+        capacidadeCache.put(tipoNormalizado, capacidadePorSlot);
 
         if (capacidadePorSlot < oldCapacidade) {
             cancelarMarcacoesExcedentesNoFuturo(tipoNormalizado, oldCapacidade, capacidadePorSlot);
