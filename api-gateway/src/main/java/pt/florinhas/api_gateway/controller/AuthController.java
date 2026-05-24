@@ -169,7 +169,7 @@ public class AuthController {
             .sameSite(cookieSameSite)
             .build();
 
-        log.info("[LOGIN] Cookie jwt criado: secure={} sameSite={} path=/ para user={}",
+        log.debug("[LOGIN] Cookie jwt criado: secure={} sameSite={} path=/ para user={}",
                 cookieSecure, cookieSameSite, response.email());
 
         return ResponseEntity.ok()
