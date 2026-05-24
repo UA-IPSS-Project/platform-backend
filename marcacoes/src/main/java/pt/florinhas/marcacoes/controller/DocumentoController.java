@@ -278,10 +278,10 @@ public class DocumentoController {
      */
     private void verificarPermissaoMarcacao(Long marcacaoId) {
         Long currentUserId = authorizationService.getCurrentUserId();
-        boolean isAdmin = authorizationService.isAdmin();
+        boolean isStaff = authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO", "ROLE_FUNCIONARIO");
 
         // Admin e funcionários têm acesso total
-        if (isAdmin) {
+        if (isStaff) {
             return;
         }
 
