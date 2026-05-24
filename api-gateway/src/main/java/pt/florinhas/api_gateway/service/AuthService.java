@@ -323,17 +323,21 @@ public class AuthService {
                         return Optional.empty();
                 }
 
-                String role = principal.getAuthorities().stream()
-                                .findFirst()
-                                .map(a -> a.getAuthority().replace("ROLE_", ""))
-                                .orElse(ROLE_UTENTE);
-
                 var persistedUser = utilizadorRepository.findById(principal.getId());
                 if (persistedUser.isEmpty()) {
                         return Optional.empty();
                 }
 
                 Utilizador user = persistedUser.get();
+
+                // Derive role from the persisted entity to avoid stale principal authorities in WebFlux
+                String role;
+                if (user instanceof Funcionario f) {
+                        role = f.getTipo() != null ? f.getTipo().name() : ROLE_FUNCIONARIO;
+                } else {
+                        role = ROLE_UTENTE;
+                }
+
                 boolean active = true;
                 if (user instanceof Utente u) {
                         active = u.isActivo();

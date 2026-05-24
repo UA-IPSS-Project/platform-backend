@@ -80,7 +80,7 @@ public class MarcacaoController {
      */
     private Long verificarPermissaoUtente(Long targetUtenteId) {
         Long currentUserId = authorizationService.getCurrentUserId();
-        boolean isAdmin = authorizationService.isAdmin();
+        boolean isAdmin = authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO");
 
         if (!isAdmin) {
             if (targetUtenteId != null && !targetUtenteId.equals(currentUserId)) {
@@ -209,8 +209,8 @@ public class MarcacaoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dataFim,
             @RequestParam(required = false) String tipo) {
 
-        if (!authorizationService.isAdmin()) {
-            throw new AccessDeniedException("Acesso restrito a administradores/secretaria.");
+        if (!authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO")) {
+            throw new AccessDeniedException("Acesso restrito a administradores/secretaria/balneário.");
         }
 
         List<MarcacaoResponseDTO> response = marcacaoService.consultarAgenda(dataInicio, dataFim, tipo);
@@ -263,9 +263,9 @@ public class MarcacaoController {
             @Valid @RequestBody AtualizarEstadoRequest request) {
 
         // Validar permissões
-        boolean isAdmin = authorizationService.isAdmin();
+        boolean isStaff = authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO");
 
-        if (!isAdmin) {
+        if (!isStaff) {
             // Se não é admin, verificar se a marcação pertence ao utilizador
             MarcacaoResponseDTO existing = marcacaoService.obterMarcacaoDTO(id);
             if (existing != null && existing.getMarcacaoSecretaria() != null
@@ -388,7 +388,7 @@ public class MarcacaoController {
     public ResponseEntity<MarcacaoResponseDTO> obterMarcacao(
             @PathVariable Long id) {
 
-        boolean isAdmin = authorizationService.isAdmin();
+        boolean isStaff = authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO");
 
         // Obter marcação primeiro para verificar ownership
         MarcacaoResponseDTO response = marcacaoService.obterMarcacaoDTO(id);
@@ -398,7 +398,7 @@ public class MarcacaoController {
         }
 
         // Se não é admin, verificar se a marcação pertence ao utilizador
-        if (!isAdmin) {
+        if (!isStaff) {
             Long ownerId = null;
             if (response.getMarcacaoSecretaria() != null
                     && response.getMarcacaoSecretaria().getUtente() != null) {
@@ -426,8 +426,8 @@ public class MarcacaoController {
     public ResponseEntity<Page<MarcacaoResponseDTO>> listarTodasMarcacoes(
             @PageableDefault(size = 20, sort = "data") Pageable pageable) {
 
-        if (!authorizationService.isAdmin()) {
-            throw new AccessDeniedException("Acesso restrito a administradores.");
+        if (!authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO")) {
+            throw new AccessDeniedException("Acesso restrito a administradores/secretaria/balneário.");
         }
         Page<MarcacaoResponseDTO> response = marcacaoService.listarTodasMarcacoesPaginated(pageable);
         return ResponseEntity.ok(response);
@@ -493,7 +493,7 @@ public class MarcacaoController {
 
         // Apenas funcionários/admin (que têm ROLE_SECRETARIA ou ROLE_BALNEARIO) podem
         // ver estatísticas
-        if (!authorizationService.isAdmin()) {
+        if (!authorizationService.hasAnyRole("ROLE_SECRETARIA", "ROLE_BALNEARIO")) {
             throw new AccessDeniedException("Não tem permissão para consultar estatísticas de frequência.");
         }
 
