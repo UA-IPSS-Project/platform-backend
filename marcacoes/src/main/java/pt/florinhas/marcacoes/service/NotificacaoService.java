@@ -1,6 +1,7 @@
 package pt.florinhas.marcacoes.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -31,10 +32,12 @@ public class NotificacaoService {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String METADATA_SUBTYPE_KEY = "notificationSubtype";
 
+    @Async
     public void criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo) {
         enviarParaMicrosservico(utilizadorId, titulo, mensagem, tipo, null);
     }
 
+    @Async
     public void notificarNovaMarcacaoParaSecretaria(Long secretariaId, String nomeUtente, Long marcacaoId, LocalDateTime data, String assunto) {
         String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
         String mensagem = "O utente " + nomeUtente + " criou uma marcação para " + dataFormatada + " — " + assunto;
@@ -48,6 +51,7 @@ public class NotificacaoService {
         enviarParaMicrosservico(secretariaId, "Nova Marcação", mensagem, "SISTEMA", metadata);
     }
 
+    @Async
     public void notificarNovaMarcacao(Long utilizadorId, Long marcacaoId, LocalDateTime data, int durationMinutes, String summary) {
         String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'as' HH:mm"));
         String mensagem = "Marcacao criada para " + dataFormatada + ".";
@@ -62,6 +66,7 @@ public class NotificacaoService {
         enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
+    @Async
     public void notificarLembreteUmDia(Long utilizadorId, Long marcacaoId, LocalDateTime data) {
         String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
         String mensagem = "Relembramos que tem uma marcação amanhã, " + dataFormatada + ".";
@@ -76,6 +81,7 @@ public class NotificacaoService {
         enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
     }
 
+    @Async
     public void notificarCancelamento(Long utilizadorId, LocalDateTime data, String motivo) {
         String assunto = "Marcacao Cancelada";
         String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;
@@ -89,6 +95,7 @@ public class NotificacaoService {
         enviarParaMicrosservico(utilizadorId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
+    @Async
     public void notificarCancelamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime data) {
         String dataFormatada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
         String mensagem = "O utente " + nomeUtente + " cancelou a marcação de " + dataFormatada;
@@ -101,6 +108,7 @@ public class NotificacaoService {
         enviarParaMicrosservico(destinatarioId, assunto, mensagem, "CANCELAMENTO", metadata);
     }
 
+    @Async
     public void notificarDocumentosInvalidos(Long utilizadorId, String observacoes) {
         String mensagem = "Os documentos apresentados são inválidos. Por favor, contacte a secretaria. Observações: " + observacoes;
         String assunto = "Documentos Inválidos";
@@ -108,6 +116,7 @@ public class NotificacaoService {
         enviarParaMicrosservico(utilizadorId, assunto, mensagem, "LEMBRETE", null);
     }
 
+    @Async
     public void notificarReagendamentoPeloUtente(Long destinatarioId, String nomeUtente, LocalDateTime dataAntiga, LocalDateTime dataNova) {
         String dataAntigaFmt = dataAntiga.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
         String dataNovaFmt = dataNova.format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));

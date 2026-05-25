@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,11 +44,14 @@ import pt.florinhas.common_data.security.CryptoUtils;
 @Slf4j
 public class AuthService {
 
+        // Constantes para roles
+        private static final String ROLE_UTENTE = "UTENTE";
+        private static final String ROLE_FUNCIONARIO = "FUNCIONARIO";
+
         private final UtilizadorRepository utilizadorRepository;
         private final FuncionarioRepository funcionarioRepository;
         private final UtenteRepository utenteRepository;
         private final PasswordEncoder passwordEncoder;
-        private final AuthenticationManager authenticationManager;
         private final NifValidator nifValidator;
 
         @Value("${jwt.expiration:86400000}")
@@ -63,14 +64,12 @@ public class AuthService {
                         FuncionarioRepository funcionarioRepository,
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
-                        AuthenticationManager authenticationManager,
                         NifValidator nifValidator,
                         CryptoUtils cryptoUtils) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
-                this.authenticationManager = authenticationManager;
                 this.nifValidator = nifValidator;
                 this.cryptoUtils = cryptoUtils;
         }
@@ -107,19 +106,22 @@ public class AuthService {
                         throw new BadRequestException("Conta pendente de aprovação ou inativa. Contacte a secretaria.");
                 }
 
-                // 2. Autenticar credenciais só depois de confirmar que está ativo
-                try {
-                        authenticationManager.authenticate(
-                                        new UsernamePasswordAuthenticationToken(
-                                                        request.email(),
-                                                        request.password()));
-                } catch (Exception e) {
+                // 2. Verificar password diretamente via BCrypt.
+                // isAccountNonLocked, isAccountNonExpired e isCredentialsNonExpired estão
+                // hardcoded a true em Utilizador.java, pelo que o DaoAuthenticationProvider
+                // não acrescenta nenhuma validação útil — evita-se o segundo findByEmail.
+                if (!passwordEncoder.matches(request.password(), funcionario.getPassHash())) {
                         throw new BadRequestException("Credenciais inválidas");
+                }
+
+                // Verificar se a OTP expirou
+                if (user.getOtpExpiresAt() != null && user.getOtpExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+                        throw new BadRequestException("Código expirado. Solicite um novo código na secretaria.");
                 }
 
                 log.debug("Authentication successful");
 
-                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : ROLE_FUNCIONARIO;
                 return generateAuthResponse(user, role, funcionario.isActivo());
         }
 
@@ -132,33 +134,35 @@ public class AuthService {
         public AuthResult loginUtente(LoginUtenteRequest request) {
                 log.debug("Login utente attempt for NIF: {}", request.nif());
 
-                // Autenticação via NIF + password
-                try {
-                        authenticationManager.authenticate(
-                                        new UsernamePasswordAuthenticationToken(
-                                                        request.nif(),
-                                                        request.password()));
-                } catch (Exception e) {
-                        log.error("Authentication failed for NIF: " + request.nif(), e);
-                        throw new BadRequestException("Credenciais inválidas");
-                }
-
-                // Obter utilizador pelo NIF (handle duplicate data by taking first)
+                // Obter utilizador pelo NIF primeiro (antes era feito depois do authenticate)
                 var users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(request.nif()));
-
                 if (users.isEmpty()) {
                         throw new BadRequestException("Utente não encontrado");
                 }
                 var user = users.get(0);
 
-                log.debug("User found: {}, Active: {}", user.getEmail(), ((Utente) user).isActivo());
-
                 // Garantir que é efetivamente um Utente
-                if (!(user instanceof Utente)) {
+                if (!(user instanceof Utente utente)) {
                         throw new BadRequestException("Credenciais inválidas para utente");
                 }
 
-                return generateAuthResponse(user, "UTENTE", ((Utente) user).isActivo());
+                // Verificar password diretamente via BCrypt.
+                // isAccountNonLocked, isAccountNonExpired e isCredentialsNonExpired estão
+                // hardcoded a true em Utilizador.java, pelo que o DaoAuthenticationProvider
+                // não acrescenta nenhuma validação útil — evita-se o segundo findByNifHash.
+                // Antes: authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.nif(), request.password()))
+                if (!passwordEncoder.matches(request.password(), utente.getPassHash())) {
+                        log.error("Authentication failed for NIF: {}", request.nif());
+                        throw new BadRequestException("Credenciais inválidas");
+                }
+
+                // Verificar se a OTP expirou
+                if (user.getOtpExpiresAt() != null && user.getOtpExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+                        throw new BadRequestException("Código expirado. Solicite um novo código na secretaria.");
+                }
+
+                log.debug("User found: {}, Active: {}", user.getEmail(), utente.isActivo());
+                return generateAuthResponse(user, ROLE_UTENTE, utente.isActivo());
         }
 
         /**
@@ -196,7 +200,7 @@ public class AuthService {
 
                 utente = utenteRepository.save(utente);
 
-                return generateAuthResponse(utente, "UTENTE", true);
+                return generateAuthResponse(utente, ROLE_UTENTE, true);
         }
 
         /**
@@ -231,7 +235,7 @@ public class AuthService {
 
                 funcionario = funcionarioRepository.save(funcionario);
 
-                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : "FUNCIONARIO";
+                String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : ROLE_FUNCIONARIO;
                 return generateAuthResponse(funcionario, role, false);
         }
 
@@ -264,6 +268,7 @@ public class AuthService {
                 }
 
                 user.setPassHash(passwordEncoder.encode(newPassword));
+                user.setOtpExpiresAt(null); // Limpar expiração da OTP
 
                 if (user instanceof Utente utente) {
                         utente.setActivo(true);
@@ -329,17 +334,21 @@ public class AuthService {
                         return Optional.empty();
                 }
 
-                String role = principal.getAuthorities().stream()
-                                .findFirst()
-                                .map(a -> a.getAuthority().replace("ROLE_", ""))
-                                .orElse("UTENTE");
-
                 var persistedUser = utilizadorRepository.findById(principal.getId());
                 if (persistedUser.isEmpty()) {
                         return Optional.empty();
                 }
 
                 Utilizador user = persistedUser.get();
+
+                // Derive role from the persisted entity to avoid stale principal authorities in WebFlux
+                String role;
+                if (user instanceof Funcionario f) {
+                        role = f.getTipo() != null ? f.getTipo().name() : ROLE_FUNCIONARIO;
+                } else {
+                        role = ROLE_UTENTE;
+                }
+
                 boolean active = true;
                 if (user instanceof Utente u) {
                         active = u.isActivo();

@@ -168,19 +168,18 @@ public class UtilizadorService {
         nifValidator.validateRequiredOrThrow(nif);
 
         validarCampoObrigatorio(nome, "Nome do utente é obrigatório para criar novo registo");
-        validarCampoObrigatorio(email, "Email do utente é obrigatório para criar novo registo");
         validarCampoObrigatorio(telefone, "Telefone do utente é obrigatório para criar novo registo");
 
-        if (utenteRepository.existsByEmail(email)) {
+        if (email != null && !email.isBlank() && utenteRepository.existsByEmail(email)) {
             throw new ConflictException("Email já está registado no sistema");
         }
 
         Utente novoUtente = new Utente();
         novoUtente.setNif(nif);
         novoUtente.setNome(nome);
-        novoUtente.setEmail(email);
+        if (email != null && !email.isBlank()) novoUtente.setEmail(email);
         novoUtente.setTelefone(telefone);
-        novoUtente.setActivo(false); // Inactivo até dar login pela primeira vez
+        novoUtente.setActivo(false);
 
         log.info("[AUTO-CREATE] utente nif={} setActivo=false", nif);
 
@@ -188,10 +187,8 @@ public class UtilizadorService {
         novoUtente.setPassHash(passwordEncoder.encode(passwordInicial));
         novoUtente.setDataNasc(LocalDate.now());
 
-        log.info("Novo utente criado. Enviando password para: {}", email);
-
         try {
-            emailService.sendPassword(email, passwordInicial);
+            if (email != null && !email.isBlank()) emailService.sendPassword(email, passwordInicial);
         } catch (Exception e) {
             log.error("Erro ao enviar email: {}", e.getMessage());
         }
@@ -361,7 +358,8 @@ public class UtilizadorService {
         if (utilizadorRepository.existsByNifHash(cryptoUtils.generateBlindIndex(request.getNif()))) {
             throw new ConflictException("Já existe um utilizador com este NIF.");
         }
-        if (utilizadorRepository.existsByEmail(request.getEmail())) {
+        boolean hasEmail = request.getEmail() != null && !request.getEmail().isBlank();
+        if (hasEmail && utilizadorRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Já existe um utilizador com este Email.");
         }
 
@@ -406,7 +404,7 @@ public class UtilizadorService {
         novoUtilizador.setNif(request.getNif());
         novoUtilizador.setNome(request.getName());
         novoUtilizador.setTelefone(request.getContact());
-        novoUtilizador.setEmail(request.getEmail());
+        if (hasEmail) novoUtilizador.setEmail(request.getEmail());
 
         try {
             LocalDate dataNasc = LocalDate.parse(request.getBirthDate(), DateTimeFormatter.ISO_LOCAL_DATE);
@@ -430,7 +428,7 @@ public class UtilizadorService {
         );
 
         try {
-            emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
+            if (hasEmail) emailService.sendPassword(novoUtilizador.getEmail(), passwordInicial);
         } catch (Exception e) {
             log.error("Erro ao enviar email de criação: {}", e.getMessage());
         }
@@ -470,6 +468,7 @@ public class UtilizadorService {
 
         String novaPassword = gerarPasswordSegura();
         utilizador.setPassHash(passwordEncoder.encode(novaPassword));
+        utilizador.setOtpExpiresAt(LocalDateTime.now().plusMinutes(15));
 
         utilizadorRepository.save(utilizador);
         
@@ -496,6 +495,44 @@ public class UtilizadorService {
 
     public long contarUtentesAtivos() {
         return utenteRepository.countByActivo(true);
+    }
+
+    public long contarFuncionariosAtivos() {
+        return funcionarioRepository.countByActivo(true);
+    }
+
+    /**
+     * Gera um código presencial curto (6 dígitos) com validade de 10 minutos.
+     * O código é definido como password temporária do utilizador.
+     */
+    @Transactional
+    public String gerarCodigoPresencial(String nif) {
+        List<Utilizador> users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif));
+        if (users.isEmpty()) {
+            throw new NotFoundException("Utilizador não encontrado com NIF: " + nif);
+        }
+        Utilizador utilizador = users.get(0);
+
+        String codigo = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+        utilizador.setPassHash(passwordEncoder.encode(codigo));
+        utilizador.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+
+        if (utilizador instanceof Utente) {
+            ((Utente) utilizador).setActivo(false);
+        } else if (utilizador instanceof Funcionario) {
+            ((Funcionario) utilizador).setActivo(false);
+        }
+
+        utilizadorRepository.save(utilizador);
+
+        auditLogService.log(
+            "GERAR_CODIGO_PRESENCIAL",
+            "UTILIZADOR",
+            utilizador.getId(),
+            String.format("Código presencial gerado para: %s", utilizador.getNome())
+        );
+
+        return codigo;
     }
 
     /*

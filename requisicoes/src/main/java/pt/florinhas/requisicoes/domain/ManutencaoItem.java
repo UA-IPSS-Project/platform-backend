@@ -5,13 +5,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "Manutencao_Item")
+@Table(name = "Manutencao_Item", indexes = {
+    @Index(name = "idx_manutencao_item_categoria", columnList = "categoria")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

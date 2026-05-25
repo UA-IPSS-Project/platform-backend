@@ -7,9 +7,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
@@ -22,7 +24,12 @@ import lombok.NoArgsConstructor;
 import pt.florinhas.common_data.domain.Funcionario;
 
 @Entity
-@Table(name = "Requisicao")
+@Table(name = "Requisicao", indexes = {
+    @Index(name = "idx_requisicao_criado_em",        columnList = "criado_em DESC"),
+    @Index(name = "idx_requisicao_estado_criado_em", columnList = "estado, criado_em"),
+    @Index(name = "idx_requisicao_tipo_criado_em",   columnList = "tipo, criado_em"),
+    @Index(name = "idx_requisicao_criado_por",       columnList = "criado_por_id")
+})
 @Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @NoArgsConstructor
@@ -50,11 +57,11 @@ public abstract class Requisicao {
     @Column(nullable = false, length = 40)
     private RequisicaoTipo tipo;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "criado_por_id", nullable = false)
     private Funcionario criadoPor;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gerido_por_id")
     private Funcionario geridoPor;
 

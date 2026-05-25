@@ -3,12 +3,13 @@ package pt.florinhas.marcacoes.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,13 +33,35 @@ import pt.florinhas.common_data.domain.Utilizador;
 @Repository
 public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
 
-        // Encontrar marcações por utente (através de MarcacaoSecretaria)
+        // Encontrar marcações por utente — com fetch de todas as relações acedidas no toDTO
+        @EntityGraph(attributePaths = {
+                "atendente",
+                "marcacaoSecretaria", "marcacaoSecretaria.utente",
+                "marcacaoBalneario", "marcacaoBalneario.responsavel",
+                "marcacaoBalneario.roupas", "marcacaoBalneario.roupas.item"
+        })
         @Query("SELECT m FROM Marcacao m WHERE m.marcacaoSecretaria.utente = :utente")
         List<Marcacao> findByUtente(@Param("utente") Utente utente);
 
-        // Encontrar marcações criadas por utilizador
+        // Encontrar marcações criadas por utilizador — com fetch de todas as relações acedidas no toDTO
+        @EntityGraph(attributePaths = {
+                "atendente",
+                "marcacaoSecretaria", "marcacaoSecretaria.utente",
+                "marcacaoBalneario", "marcacaoBalneario.responsavel",
+                "marcacaoBalneario.roupas", "marcacaoBalneario.roupas.item"
+        })
         @Query("SELECT m FROM Marcacao m WHERE m.criadoPor = :criadoPor")
         List<Marcacao> findByCriadoPor(@Param("criadoPor") Utilizador criadoPor);
+
+        // Carregar entidades por IDs com fetch completo — usado após paginação de IDs nas passadas
+        @EntityGraph(attributePaths = {
+                "atendente",
+                "marcacaoSecretaria", "marcacaoSecretaria.utente",
+                "marcacaoBalneario", "marcacaoBalneario.responsavel",
+                "marcacaoBalneario.roupas", "marcacaoBalneario.roupas.item"
+        })
+        @Query("SELECT m FROM Marcacao m WHERE m.id IN :ids")
+        List<Marcacao> findAllByIdWithDetails(@Param("ids") List<Long> ids);
 
         // Encontrar marcações por estado
         List<Marcacao> findByEstado(EventoEstado estado);
@@ -48,7 +71,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
                         "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
                         "WHERE m.data >= :dataInicio AND m.data <= :dataFim " +
                         "AND (:tipo IS NULL OR " +
                         "    (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR " +
@@ -57,6 +84,24 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
         List<Marcacao> findMarcacoesBetweenDates(
                         @Param("dataInicio") LocalDateTime dataInicio,
                         @Param("dataFim") LocalDateTime dataFim,
+                        @Param("tipo") String tipo);
+
+        @Query("SELECT DISTINCT m FROM Marcacao m " +
+                        "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
+                        "LEFT JOIN FETCH ms.utente u " +
+                        "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
+                        "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
+                        "WHERE m.data > :now AND m.estado IN ('AGENDADO', 'AVISO') " +
+                        "AND (:tipo IS NULL OR " +
+                        "     (:tipo = 'BALNEARIO' AND m.marcacaoBalneario IS NOT NULL) OR " +
+                        "     (:tipo = 'SECRETARIA' AND m.marcacaoSecretaria IS NOT NULL)) " +
+                        "ORDER BY m.data ASC, m.id ASC")
+        List<Marcacao> findActiveFutureMarcacoes(
+                        @Param("now") LocalDateTime now,
                         @Param("tipo") String tipo);
 
         // Verificar se existe marcação no mesmo horário exato (não cancelada)
@@ -98,6 +143,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
+                        "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
                         "WHERE " +
                         "(:dataInicio IS NULL OR m.data >= :dataInicio) AND " +
                         "(:dataFim IS NULL OR m.data <= :dataFim) AND " +
@@ -117,6 +167,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH m.marcacaoSecretaria ms " +
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp " +
+                        "LEFT JOIN FETCH m.atendente " +
+                        "LEFT JOIN FETCH m.marcacaoBalneario mb " +
+                        "LEFT JOIN FETCH mb.responsavel " +
+                        "LEFT JOIN FETCH mb.roupas roupas " +
+                        "LEFT JOIN FETCH roupas.item " +
                         "WHERE " +
                         "m.estado IN ('CONCLUIDO', 'NAO_COMPARECIDO', 'CANCELADO') AND " +
                         "m.data >= :dataInicio AND " +
@@ -207,6 +262,11 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
                         "LEFT JOIN FETCH ms.utente u " +
                         "LEFT JOIN FETCH m.criadoPor cp", countQuery = "SELECT COUNT(m) FROM Marcacao m")
         Page<Marcacao> findAllWithRelations(Pageable pageable);
+
+        // Step 1 do 2-step pagination para listarTodas — retorna IDs sem JOIN FETCH
+        @Query(value = "SELECT m.id FROM Marcacao m ORDER BY m.data DESC",
+               countQuery = "SELECT COUNT(m) FROM Marcacao m")
+        Page<Long> findAllIdsPaginated(Pageable pageable);
     @Query("SELECT COUNT(m) FROM Marcacao m WHERE m.marcacaoBalneario IS NOT NULL " +
             "AND m.estado IN ('EM_PROGRESSO', 'CONCLUIDO') " +
             "AND m.data BETWEEN :inicio AND :fim")
@@ -240,4 +300,6 @@ public interface MarcacaoRepository extends JpaRepository<Marcacao, Long> {
             "GROUP BY HOUR(m.data) " +
             "ORDER BY HOUR(m.data)")
     List<Object[]> findAttendanceByHour(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    List<Marcacao> findByEstadoAndDataBefore(EventoEstado estado, LocalDateTime data);
 }

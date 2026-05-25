@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.domain.EventoEstado;
@@ -53,6 +55,8 @@ public class CalendarioService {
     private final BloqueioRepository bloqueioRepository;
     private final MarcacaoRepository marcacaoRepository;
     private final ConfiguracaoAgendaRepository configuracaoAgendaRepository;
+    private final NotificacaoService notificacaoService;
+    private final AuditLogService auditLogService;
 
     /**
      * Limites de horário do sistema.
@@ -66,6 +70,14 @@ public class CalendarioService {
      * Evita chamadas repetidas à API externa.
      */
     private final Map<Integer, List<LocalDate>> feriadosCache = new ConcurrentHashMap<>();
+
+    /**
+     * Cache em memória da capacidade por slot.
+     * @Cacheable não funciona em self-invocation (proxy AOP é ignorado),
+     * por isso usamos ConcurrentHashMap diretamente — mesmo padrão dos feriados.
+     * Invalidado explicitamente em atualizarCapacidadePorSlot.
+     */
+    private final Map<String, Integer> capacidadeCache = new ConcurrentHashMap<>();
 
     /**
      * Endpoint público para feriados nacionais (Portugal).
@@ -94,6 +106,27 @@ public class CalendarioService {
                 log.error("Erro ao carregar feriados (API externa): {}", e.getMessage());
             }
         }).start();
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void inicializarConfiguracoes() {
+        inicializarTipoSeNaoExistir(TIPO_SECRETARIA, CAPACIDADE_SLOT_DEFAULT_SECRETARIA);
+        inicializarTipoSeNaoExistir(TIPO_BALNEARIO, CAPACIDADE_SLOT_DEFAULT_BALNEARIO);
+    }
+
+    private void inicializarTipoSeNaoExistir(String tipo, int capacidade) {
+        if (configuracaoAgendaRepository.findByTipo(tipo).isEmpty()) {
+            try {
+                ConfiguracaoAgenda cfg = new ConfiguracaoAgenda();
+                cfg.setTipo(tipo);
+                cfg.setCapacidadePorSlot(capacidade);
+                configuracaoAgendaRepository.save(cfg);
+                log.info("Configuração para {} inicializada com capacidade {}.", tipo, capacidade);
+            } catch (Exception e) {
+                log.info("Configuração para {} já foi inicializada por outra réplica.", tipo);
+            }
+        }
     }
 
     @Cacheable(value = "feriados", key = "#ano")
@@ -163,9 +196,25 @@ public class CalendarioService {
             return CAPACIDADE_SLOT_DEFAULT_SECRETARIA;
         }
 
-        return configuracaoAgendaRepository.findByTipo(tipoNormalizado)
-                .map(ConfiguracaoAgenda::getCapacidadePorSlot)
-                .orElse(capacidadeSlotDefault(tipoNormalizado));
+        return capacidadeCache.computeIfAbsent(tipoNormalizado, t ->
+                configuracaoAgendaRepository.findByTipo(t)
+                        .map(ConfiguracaoAgenda::getCapacidadePorSlot)
+                        .orElse(capacidadeSlotDefault(t)));
+    }
+
+    public int previewReducaoCapacidade(String tipo, int novaCapacidade) {
+        String tipoNormalizado = normalizarTipoObrigatorio(tipo);
+        int atual = getCapacidadePorSlot(tipoNormalizado);
+        if (novaCapacidade >= atual) return 0;
+
+        LocalDateTime agora = LocalDateTime.now();
+        List<Marcacao> futuras = marcacaoRepository.findActiveFutureMarcacoes(agora, tipoNormalizado);
+
+        return (int) futuras.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Marcacao::getData))
+                .values().stream()
+                .mapToLong(list -> Math.max(0, list.size() - novaCapacidade))
+                .sum();
     }
 
     @Transactional
@@ -184,9 +233,79 @@ public class CalendarioService {
                     return created;
                 });
 
+        int oldCapacidade = getCapacidadePorSlot(tipoNormalizado);
+
         cfg.setCapacidadePorSlot(capacidadePorSlot);
         ConfiguracaoAgenda saved = configuracaoAgendaRepository.save(cfg);
+        
+        capacidadeCache.put(tipoNormalizado, capacidadePorSlot);
+
+        if (capacidadePorSlot < oldCapacidade) {
+            cancelarMarcacoesExcedentesNoFuturo(tipoNormalizado, oldCapacidade, capacidadePorSlot);
+        }
+
         return new ConfiguracaoSlotDTO(saved.getTipo(), saved.getCapacidadePorSlot());
+    }
+
+    private void cancelarMarcacoesExcedentesNoFuturo(String tipo, int oldCapacidade, int novaCapacidade) {
+        LocalDateTime agora = LocalDateTime.now();
+        List<Marcacao> activeFutureMarcacoes = marcacaoRepository.findActiveFutureMarcacoes(agora, tipo);
+
+        // Group by LocalDateTime of the slot
+        java.util.Map<LocalDateTime, List<Marcacao>> bookingsBySlot = activeFutureMarcacoes.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Marcacao::getData));
+
+        for (java.util.Map.Entry<LocalDateTime, List<Marcacao>> entry : bookingsBySlot.entrySet()) {
+            List<Marcacao> bookingsInSlot = entry.getValue();
+            if (bookingsInSlot.size() > novaCapacidade) {
+                int excessCount = bookingsInSlot.size() - novaCapacidade;
+
+                // Sort bookings by criadoEm descending (newest first), so we cancel the newest bookings first
+                bookingsInSlot.sort((m1, m2) -> {
+                    LocalDateTime c1 = m1.getCriadoEm();
+                    LocalDateTime c2 = m2.getCriadoEm();
+                    if (c1 != null && c2 != null) {
+                        return c2.compareTo(c1);
+                    }
+                    if (m1.getId() != null && m2.getId() != null) {
+                        return m2.getId().compareTo(m1.getId());
+                    }
+                    return 0;
+                });
+
+                String motivo = "Cancelada devido à redução de capacidade máxima de vagas de " + oldCapacidade + " para " + novaCapacidade + ".";
+
+                for (int i = 0; i < excessCount; i++) {
+                    Marcacao m = bookingsInSlot.get(i);
+                    m.setEstado(EventoEstado.CANCELADO);
+                    m.setMotivoCancelamento(motivo);
+                    marcacaoRepository.save(m);
+
+                    auditLogService.log(
+                        "ATUALIZAR_ESTADO_MARCACAO",
+                        "MARCACAO",
+                        m.getId(),
+                        "Cancelamento automático devido a redução de capacidade do slot. Motivo: " + motivo
+                    );
+
+                    // Notify the utente / creator
+                    Long utenteId = null;
+                    if (m.getMarcacaoSecretaria() != null && m.getMarcacaoSecretaria().getUtente() != null) {
+                        utenteId = m.getMarcacaoSecretaria().getUtente().getId();
+                    } else if (m.getCriadoPor() != null) {
+                        utenteId = m.getCriadoPor().getId();
+                    }
+
+                    if (utenteId != null) {
+                        try {
+                            notificacaoService.notificarCancelamento(utenteId, m.getData(), motivo);
+                        } catch (Exception e) {
+                            log.error("Erro ao enviar notificação de cancelamento automático para o utilizador {}", utenteId, e);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Cacheable("config-slots")

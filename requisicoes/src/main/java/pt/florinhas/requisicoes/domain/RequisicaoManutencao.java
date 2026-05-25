@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -21,5 +22,6 @@ import lombok.NoArgsConstructor;
 public class RequisicaoManutencao extends Requisicao {
 
     @OneToMany(mappedBy = "requisicao", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<RequisicaoManutencaoItem> itens = new ArrayList<>();
 }

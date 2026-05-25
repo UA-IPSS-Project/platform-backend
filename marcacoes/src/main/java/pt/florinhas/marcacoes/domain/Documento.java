@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreRemove;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,7 +26,9 @@ import pt.florinhas.marcacoes.service.DocumentoStorageCleanupService;
  * metadados sobre o ficheiro enviado pelo utente.
  */
 @Entity
-@Table(name = "Documento")
+@Table(name = "Documento", indexes = {
+    @Index(name = "idx_documento_marcacao_id", columnList = "marcacao_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

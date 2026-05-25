@@ -141,6 +141,16 @@ public class UtilizadorController {
     }
 
     /**
+     * Devolve o número de funcionários ativos no sistema.
+     */
+    @GetMapping("/funcionarios/count")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'FUNCIONARIO')")
+    public ResponseEntity<Long> contarFuncionarios() {
+        long count = utilizadorService.contarFuncionariosAtivos();
+        return ResponseEntity.ok(count);
+    }
+
+    /**
      * Lista todos os funcionários (ativos e inativos).
      */
     @GetMapping("/funcionarios")
@@ -225,6 +235,21 @@ public class UtilizadorController {
             @Valid @RequestBody RecoverAccountDTO request) {
         utilizadorService.recuperarConta(request);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Gera um código presencial curto (6 dígitos, 10 min validade).
+     * Mostrado no ecrã para ser ditado/mostrado ao utente presencialmente.
+     */
+    @PostMapping("/generate-presential-code")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Map<String, String>> gerarCodigoPresencial(@RequestBody Map<String, String> body) {
+        String nif = body.get("nif");
+        if (nif == null || nif.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        String codigo = utilizadorService.gerarCodigoPresencial(nif);
+        return ResponseEntity.ok(Map.of("code", codigo));
     }
 
     /**

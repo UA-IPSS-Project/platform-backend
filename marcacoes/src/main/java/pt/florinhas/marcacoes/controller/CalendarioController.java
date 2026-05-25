@@ -2,13 +2,16 @@ package pt.florinhas.marcacoes.controller;
 
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.dto.AtualizarConfiguracaoSlotRequest;
+import pt.florinhas.marcacoes.dto.BloqueioAgendaDTO;
 import pt.florinhas.marcacoes.dto.BloquearHorarioRequest;
 import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
 import pt.florinhas.marcacoes.service.CalendarioService;
@@ -80,17 +83,19 @@ public class CalendarioController {
          * Endpoint para listar bloqueios, opcionalmente filtrados por mês e tipo.
          */
         @GetMapping("/bloqueios")
-        public ResponseEntity<List<BloqueioAgenda>> listarBloqueios(
+        public ResponseEntity<List<BloqueioAgendaDTO>> listarBloqueios(
                         @RequestParam(required = false) Integer ano,
                         @RequestParam(required = false) Integer mes,
                         @RequestParam(required = false) String tipo) {
 
+                List<BloqueioAgenda> bloqueios;
                 if (ano != null && mes != null) {
-                        return ResponseEntity.ok(
-                                        calendarioService.getBloqueiosDoMes(ano, mes, tipo));
+                        bloqueios = calendarioService.getBloqueiosDoMes(ano, mes, tipo);
+                } else {
+                        bloqueios = calendarioService.getTodosBloqueios(tipo);
                 }
 
-                return ResponseEntity.ok(calendarioService.getTodosBloqueios(tipo));
+                return ResponseEntity.ok(bloqueios.stream().map(BloqueioAgendaDTO::from).toList());
         }
 
         /**
@@ -126,6 +131,22 @@ public class CalendarioController {
         @GetMapping("/configuracao-slots")
         public ResponseEntity<List<ConfiguracaoSlotDTO>> listarConfiguracaoSlots() {
                 return ResponseEntity.ok(calendarioService.listarConfiguracoesSlot());
+        }
+
+        @GetMapping("/configuracao-slots/{tipo}/preview")
+        @PreAuthorize("(hasRole('SECRETARIA') and #tipo?.toUpperCase() == 'SECRETARIA') or (hasRole('BALNEARIO') and #tipo?.toUpperCase() == 'BALNEARIO')")
+        public ResponseEntity<Map<String, Integer>> previewReducaoSlot(
+                        @PathVariable String tipo,
+                        @RequestParam int novaCapacidade) {
+                
+                if (novaCapacidade < 1 || novaCapacidade > 20) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST,
+                                        "A nova capacidade deve estar entre 1 e 20 para o preview de redução de capacidade.");
+                }
+
+                int afetadas = calendarioService.previewReducaoCapacidade(tipo, novaCapacidade);
+                return ResponseEntity.ok(Map.of("marcacoesAfetadas", afetadas));
         }
 
         @PutMapping("/configuracao-slots/{tipo}")

@@ -1,6 +1,7 @@
 package pt.florinhas.requisicoes.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -22,6 +23,7 @@ public class NotificacaoService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    @Async
     public void notificarNovaRequisicao(Long destinatarioId, Requisicao requisicao) {
         String titulo = "Nova Requisição de " + requisicao.getTipo();
         String mensagem = "O funcionário " + requisicao.getCriadoPor().getNome() + 
@@ -36,6 +38,7 @@ public class NotificacaoService {
         enviarParaMicrosservico(destinatarioId, titulo, mensagem, metadata);
     }
 
+    @Async
     public void notificarMudancaEstado(Long destinatarioId, Requisicao requisicao) {
         String titulo = "Atualização de Requisição";
         String mensagem = "A sua requisição de " + requisicao.getTipo().toString().toLowerCase() + 

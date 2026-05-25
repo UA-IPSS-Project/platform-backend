@@ -97,7 +97,7 @@ public class JwtAuthenticationFilter implements WebFilter {
                     headers.remove("X-Authenticated-Roles");
                     headers.remove("X-Gateway-Secret");
 
-                    headers.set("X-Authenticated-User", userDetails.getUsername());
+                    headers.set("X-Authenticated-User", subject);
                     headers.set("X-Gateway-Secret", gatewaySharedSecret);
 
                     Number userId = claims.get("userId", Number.class);

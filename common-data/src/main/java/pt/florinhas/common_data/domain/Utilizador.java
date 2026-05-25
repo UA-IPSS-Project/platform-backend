@@ -34,7 +34,9 @@ import java.util.List;
  * (Funcionario vs Utente).
  */
 @Entity
-@Table(name = "Utilizador")
+@Table(name = "Utilizador", indexes = {
+    @Index(name = "idx_utilizador_email", columnList = "email")
+})
 @Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @SuperBuilder
@@ -131,6 +133,13 @@ public class Utilizador implements UserDetails {
      */
     @Column(name = "delete_requested_at")
     private LocalDateTime deleteRequestedAt;
+
+    /**
+     * Timestamp de expiração da OTP/password temporária.
+     * Se não nulo e no passado, a password temporária já não é válida.
+     */
+    @Column(name = "otp_expires_at")
+    private LocalDateTime otpExpiresAt;
 
     /**
      * Hash da palavra-passe (ex.: BCrypt -> 60 chars).

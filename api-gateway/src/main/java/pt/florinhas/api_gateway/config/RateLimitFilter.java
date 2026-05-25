@@ -57,6 +57,10 @@ public class RateLimitFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        if ("true".equalsIgnoreCase(System.getenv("DISABLE_RATE_LIMIT"))) {
+            return chain.filter(exchange);
+        }
+
         String path = exchange.getRequest().getPath().value();
         String method = exchange.getRequest().getMethod().name();
 

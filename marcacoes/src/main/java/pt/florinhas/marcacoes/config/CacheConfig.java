@@ -24,6 +24,10 @@ public class CacheConfig {
             Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(50).build());
         manager.registerCustomCache("terms-content",
             Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.MINUTES).maximumSize(5).build());
+        manager.registerCustomCache("agenda",
+            Caffeine.newBuilder().expireAfterWrite(15, TimeUnit.SECONDS).maximumSize(50).build());
+        manager.registerCustomCache("secretarias",
+            Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(20).build());
         return manager;
     }
 }
