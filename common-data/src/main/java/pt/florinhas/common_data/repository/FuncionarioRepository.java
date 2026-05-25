@@ -55,11 +55,13 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     // Encontrar funcionários pendentes de aprovação
     List<Funcionario> findByActivoFalse();
 
-    // Pesquisa paginada com filtro opcional de nome e tipo
+    // Contar funcionários ativos
+    long countByActivo(boolean activo);
+
     // Pesquisa paginada com filtro opcional de nome, tipo e nifHash exato
     @Query("SELECT f FROM Funcionario f WHERE " +
            "(:nifHash IS NOT NULL AND f.nifHash = :nifHash) OR " +
-           "(:nifHash IS NULL AND (:nome IS NULL OR LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))) AND (:tipo IS NULL OR f.tipo = :tipo))")
+           "(:nifHash IS NULL AND (COALESCE(:nome, '') = '' OR LOWER(f.nome) LIKE LOWER(CONCAT('%', :nome, '%'))) AND (:tipo IS NULL OR f.tipo = :tipo))")
     Page<Funcionario> findByNomeAndTipoFilter(
             @Param("nome") String nome,
             @Param("tipo") FuncionarioTipo tipo,
