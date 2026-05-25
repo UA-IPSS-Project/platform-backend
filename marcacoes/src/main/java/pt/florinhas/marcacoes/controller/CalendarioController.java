@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.dto.AtualizarConfiguracaoSlotRequest;
+import pt.florinhas.marcacoes.dto.BloqueioAgendaDTO;
 import pt.florinhas.marcacoes.dto.BloquearHorarioRequest;
 import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
 import pt.florinhas.marcacoes.service.CalendarioService;
@@ -82,17 +83,19 @@ public class CalendarioController {
          * Endpoint para listar bloqueios, opcionalmente filtrados por mês e tipo.
          */
         @GetMapping("/bloqueios")
-        public ResponseEntity<List<BloqueioAgenda>> listarBloqueios(
+        public ResponseEntity<List<BloqueioAgendaDTO>> listarBloqueios(
                         @RequestParam(required = false) Integer ano,
                         @RequestParam(required = false) Integer mes,
                         @RequestParam(required = false) String tipo) {
 
+                List<BloqueioAgenda> bloqueios;
                 if (ano != null && mes != null) {
-                        return ResponseEntity.ok(
-                                        calendarioService.getBloqueiosDoMes(ano, mes, tipo));
+                        bloqueios = calendarioService.getBloqueiosDoMes(ano, mes, tipo);
+                } else {
+                        bloqueios = calendarioService.getTodosBloqueios(tipo);
                 }
 
-                return ResponseEntity.ok(calendarioService.getTodosBloqueios(tipo));
+                return ResponseEntity.ok(bloqueios.stream().map(BloqueioAgendaDTO::from).toList());
         }
 
         /**
