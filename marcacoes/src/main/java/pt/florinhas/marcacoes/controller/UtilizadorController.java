@@ -141,6 +141,16 @@ public class UtilizadorController {
     }
 
     /**
+     * Devolve o número de funcionários ativos no sistema.
+     */
+    @GetMapping("/funcionarios/count")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'FUNCIONARIO')")
+    public ResponseEntity<Long> contarFuncionarios() {
+        long count = utilizadorService.contarFuncionariosAtivos();
+        return ResponseEntity.ok(count);
+    }
+
+    /**
      * Lista todos os funcionários (ativos e inativos).
      */
     @GetMapping("/funcionarios")

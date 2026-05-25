@@ -496,6 +496,10 @@ public class UtilizadorService {
         return utenteRepository.countByActivo(true);
     }
 
+    public long contarFuncionariosAtivos() {
+        return funcionarioRepository.countByActivo(true);
+    }
+
     /*
      * =========================================================
      * DIREITO AO ESQUECIMENTO (RGPD Art.º 17)
