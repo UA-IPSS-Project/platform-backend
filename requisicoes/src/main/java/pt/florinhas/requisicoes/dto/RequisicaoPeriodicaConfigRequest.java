@@ -9,7 +9,7 @@ import pt.florinhas.requisicoes.domain.PeriodicidadeFrequencia;
 public record RequisicaoPeriodicaConfigRequest(
         @NotNull PeriodicidadeFrequencia frequencia,
         @NotNull LocalDate dataInicio,
-        @NotNull LocalDate dataFim) {
+        LocalDate dataFim) {
 
     @AssertTrue(message = "dataInicio must be before or equal to dataFim")
     public boolean isIntervaloDatasValido() {

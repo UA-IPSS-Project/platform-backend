@@ -735,6 +735,27 @@ public class RequisicaoService {
         requisicao.setPeriodicaDataFim(config.dataFim());
     }
 
+    @Transactional
+    public Requisicao atualizarPeriodicidade(Long id, RequisicaoPeriodicaConfigRequest config) {
+        Requisicao requisicao = requisicaoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Requisição não encontrada: " + id));
+        validarConfiguracaoPeriodica(config);
+        requisicao.setPeriodicaFrequencia(config.frequencia());
+        requisicao.setPeriodicaDataInicio(config.dataInicio());
+        requisicao.setPeriodicaDataFim(config.dataFim());
+        return requisicaoRepository.save(requisicao);
+    }
+
+    @Transactional
+    public Requisicao cancelarPeriodicidade(Long id) {
+        Requisicao requisicao = requisicaoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Requisição não encontrada: " + id));
+        requisicao.setPeriodicaFrequencia(null);
+        requisicao.setPeriodicaDataInicio(null);
+        requisicao.setPeriodicaDataFim(null);
+        return requisicaoRepository.save(requisicao);
+    }
+
     private void validarConfiguracaoPeriodica(RequisicaoPeriodicaConfigRequest config) {
         if (config.frequencia() == null) {
             throw new IllegalArgumentException("A frequência da requisição periódica é obrigatória.");

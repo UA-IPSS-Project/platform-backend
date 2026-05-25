@@ -33,6 +33,7 @@ import pt.florinhas.requisicoes.dto.CriarRequisicaoManutencaoRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoMaterialRequest;
 import pt.florinhas.requisicoes.dto.CriarRequisicaoTransporteRequest;
 import pt.florinhas.requisicoes.dto.CriarTipoManutencaoRequest;
+import pt.florinhas.requisicoes.dto.RequisicaoPeriodicaConfigRequest;
 import pt.florinhas.requisicoes.dto.CriarTransporteRequest;
 import pt.florinhas.requisicoes.dto.AtualizarCategoriaTransporteRequest;
 import pt.florinhas.requisicoes.dto.MoverCategoriaTransporteRequest;
@@ -260,6 +261,22 @@ public class RequisicaoController {
         Requisicao req = requisicaoService.atualizarEstado(id, request.estado(), utilizador.getId());
         auditService.log("ATUALIZAR_ESTADO_REQUISICAO", "REQUISICAO", id, 
             "Estado da requisição atualizado para " + request.estado() + " por " + utilizador.getNome());
+        return ResponseEntity.ok(req);
+    }
+
+    @PutMapping("/{id}/periodicidade")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Requisicao> atualizarPeriodicidade(
+            @PathVariable Long id,
+            @Valid @RequestBody RequisicaoPeriodicaConfigRequest config) {
+        Requisicao req = requisicaoService.atualizarPeriodicidade(id, config);
+        return ResponseEntity.ok(req);
+    }
+
+    @DeleteMapping("/{id}/periodicidade")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Requisicao> cancelarPeriodicidade(@PathVariable Long id) {
+        Requisicao req = requisicaoService.cancelarPeriodicidade(id);
         return ResponseEntity.ok(req);
     }
 }
