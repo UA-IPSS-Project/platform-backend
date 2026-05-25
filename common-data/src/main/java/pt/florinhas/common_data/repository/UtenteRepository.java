@@ -36,7 +36,7 @@ public interface UtenteRepository extends JpaRepository<Utente, Long> {
     // Pesquisa paginada com filtro opcional de nome ou nifHash exato
     @Query("SELECT u FROM Utente u WHERE " +
            "(:nifHash IS NOT NULL AND u.nifHash = :nifHash) OR " +
-           "(:nifHash IS NULL AND (:nome IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%'))))")
+           "(:nifHash IS NULL AND (COALESCE(:nome, '') = '' OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%'))))")
     Page<Utente> findByNomeFilter(@Param("nome") String nome, @Param("nifHash") String nifHash, Pageable pageable);
 
     // Encontrar utente por telefone
