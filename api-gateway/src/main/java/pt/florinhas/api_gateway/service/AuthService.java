@@ -114,6 +114,11 @@ public class AuthService {
                         throw new BadRequestException("Credenciais inválidas");
                 }
 
+                // Verificar se a OTP expirou
+                if (user.getOtpExpiresAt() != null && user.getOtpExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+                        throw new BadRequestException("Código expirado. Solicite um novo código na secretaria.");
+                }
+
                 log.debug("Authentication successful");
 
                 String role = funcionario.getTipo() != null ? funcionario.getTipo().name() : ROLE_FUNCIONARIO;
@@ -149,6 +154,11 @@ public class AuthService {
                 if (!passwordEncoder.matches(request.password(), utente.getPassHash())) {
                         log.error("Authentication failed for NIF: {}", request.nif());
                         throw new BadRequestException("Credenciais inválidas");
+                }
+
+                // Verificar se a OTP expirou
+                if (user.getOtpExpiresAt() != null && user.getOtpExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+                        throw new BadRequestException("Código expirado. Solicite um novo código na secretaria.");
                 }
 
                 log.debug("User found: {}, Active: {}", user.getEmail(), utente.isActivo());
@@ -258,6 +268,7 @@ public class AuthService {
                 }
 
                 user.setPassHash(passwordEncoder.encode(newPassword));
+                user.setOtpExpiresAt(null); // Limpar expiração da OTP
 
                 if (user instanceof Utente utente) {
                         utente.setActivo(true);

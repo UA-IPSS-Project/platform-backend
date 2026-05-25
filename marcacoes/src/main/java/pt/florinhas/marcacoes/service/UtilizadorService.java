@@ -468,6 +468,7 @@ public class UtilizadorService {
 
         String novaPassword = gerarPasswordSegura();
         utilizador.setPassHash(passwordEncoder.encode(novaPassword));
+        utilizador.setOtpExpiresAt(LocalDateTime.now().plusMinutes(15));
 
         utilizadorRepository.save(utilizador);
         
@@ -498,6 +499,40 @@ public class UtilizadorService {
 
     public long contarFuncionariosAtivos() {
         return funcionarioRepository.countByActivo(true);
+    }
+
+    /**
+     * Gera um código presencial curto (6 dígitos) com validade de 10 minutos.
+     * O código é definido como password temporária do utilizador.
+     */
+    @Transactional
+    public String gerarCodigoPresencial(String nif) {
+        List<Utilizador> users = utilizadorRepository.findByNifHash(cryptoUtils.generateBlindIndex(nif));
+        if (users.isEmpty()) {
+            throw new NotFoundException("Utilizador não encontrado com NIF: " + nif);
+        }
+        Utilizador utilizador = users.get(0);
+
+        String codigo = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+        utilizador.setPassHash(passwordEncoder.encode(codigo));
+        utilizador.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+
+        if (utilizador instanceof Utente) {
+            ((Utente) utilizador).setActivo(false);
+        } else if (utilizador instanceof Funcionario) {
+            ((Funcionario) utilizador).setActivo(false);
+        }
+
+        utilizadorRepository.save(utilizador);
+
+        auditLogService.log(
+            "GERAR_CODIGO_PRESENCIAL",
+            "UTILIZADOR",
+            utilizador.getId(),
+            String.format("Código presencial gerado para: %s", utilizador.getNome())
+        );
+
+        return codigo;
     }
 
     /*
