@@ -135,6 +135,13 @@ public class Utilizador implements UserDetails {
     private LocalDateTime deleteRequestedAt;
 
     /**
+     * Timestamp de expiração da OTP/password temporária.
+     * Se não nulo e no passado, a password temporária já não é válida.
+     */
+    @Column(name = "otp_expires_at")
+    private LocalDateTime otpExpiresAt;
+
+    /**
      * Hash da palavra-passe (ex.: BCrypt -> 60 chars).
      * Nunca armazenar passwords em claro.
      */

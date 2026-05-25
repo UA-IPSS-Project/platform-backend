@@ -228,6 +228,21 @@ public class UtilizadorController {
     }
 
     /**
+     * Gera um código presencial curto (6 dígitos, 10 min validade).
+     * Mostrado no ecrã para ser ditado/mostrado ao utente presencialmente.
+     */
+    @PostMapping("/generate-presential-code")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Map<String, String>> gerarCodigoPresencial(@RequestBody Map<String, String> body) {
+        String nif = body.get("nif");
+        if (nif == null || nif.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        String codigo = utilizadorService.gerarCodigoPresencial(nif);
+        return ResponseEntity.ok(Map.of("code", codigo));
+    }
+
+    /**
      * Solicita eliminação de conta (RGPD Art.º 17 - Direito ao Esquecimento).
      * Marca flag na BD e notifica secretaria para processar anonimização.
      */
