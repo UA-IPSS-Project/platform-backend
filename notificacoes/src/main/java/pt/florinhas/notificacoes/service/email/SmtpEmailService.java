@@ -31,17 +31,28 @@ public class SmtpEmailService implements EmailService {
     public void sendPassword(String to, String password) {
         sendEmail(
                 to,
-                "Acesso à Plataforma Florinhas",
-                "Foi criada uma conta para si.\n\n" +
-                "A sua password inicial é: " + password + "\n\n" +
-                        "Por favor, altere a sua password após o primeiro login.");
+                "Acesso à Plataforma Florinhas do Vouga",
+                "Bem-vindo à plataforma Florinhas do Vouga!\n\n"
+                + "Foi criada uma conta para si. Seguem os seus dados de acesso:\n\n"
+                + "Password: " + password + "\n\n"
+                + "Por favor, faça login e altere a sua password assim que possível.\n"
+                + "Caso não consiga aceder, pode solicitar uma nova password na página de login.\n\n"
+                + "Com os melhores cumprimentos,\n"
+                + "Florinhas do Vouga");
     }
 
     @Override
     public void sendAppointmentCreated(String to, LocalDateTime appointmentDateTime, Long appointmentId, String summary, int durationMinutes) {
         String dateText = appointmentDateTime.format(DATE_TIME_FORMATTER);
-        String subject = "Marcação Criada";
-        String body = "A sua marcação foi criada para " + dateText + ".";
+        String assunto = summary != null ? summary : "Geral";
+        String subject = "Marcação Criada — " + assunto;
+        String body = "A sua marcação foi criada com sucesso.\n\n"
+                + "Assunto: " + assunto + "\n"
+                + "Data: " + dateText + "\n"
+                + "Duração estimada: " + durationMinutes + " minutos\n\n"
+                + "Para mais detalhes, pode consultar a sua marcação na plataforma Florinhas do Vouga acedendo à sua conta.\n\n"
+                + "Com os melhores cumprimentos,\n"
+                + "Florinhas do Vouga";
         
         // Dynamic filename: marcacao-assunto.ics (lowercase, spaces replaced by hyphens)
         String safeSummary = summary != null ? summary.toLowerCase().trim().replaceAll("\\s+", "-") : "geral";
@@ -52,7 +63,6 @@ public class SmtpEmailService implements EmailService {
             sendEmailWithAttachment(to, subject, body, icsBytes, fileName);
         } catch (Exception e) {
             log.error("Erro ao gerar ou enviar convite ICS para {}", to, e);
-            // Fallback para email simples se falhar o anexo
             sendEmail(to, subject, body);
         }
     }
@@ -81,21 +91,38 @@ public class SmtpEmailService implements EmailService {
     }
 
     @Override
-    public void sendAppointmentCancelled(String to, String motivo) {
+    public void sendAppointmentCancelled(String to, String cancelledBy, LocalDateTime appointmentDateTime, String summary, String motivo) {
+        String dateText = appointmentDateTime != null ? appointmentDateTime.format(DATE_TIME_FORMATTER) : "não especificada";
+        String assunto = summary != null ? summary : "Geral";
+        String motivoTexto = (motivo == null || motivo.isBlank()) ? "sem motivo especificado" : motivo;
+        String canceladoPor = (cancelledBy == null || cancelledBy.isBlank()) ? "a instituição" : cancelledBy;
+
         sendEmail(
                 to,
-                "Marcacao Cancelada",
-                "A sua marcacao foi cancelada por: " + (motivo == null || motivo.isBlank() ? "sem motivo especificado" : motivo)
-                        + ".");
+                "Marcação Cancelada — " + assunto,
+                "A sua marcação foi cancelada.\n\n"
+                        + "Assunto: " + assunto + "\n"
+                        + "Data: " + dateText + "\n"
+                        + "Cancelada por: " + canceladoPor + "\n"
+                        + "Motivo: " + motivoTexto + "\n\n"
+                        + "Para mais informações, pode consultar a sua conta na plataforma Florinhas do Vouga ou contactar a secretaria.\n\n"
+                        + "Com os melhores cumprimentos,\n"
+                        + "Florinhas do Vouga");
     }
 
     @Override
-    public void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime) {
+    public void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime, String summary) {
         String dateText = appointmentDateTime.format(DATE_TIME_FORMATTER);
+        String assunto = summary != null ? summary : "Geral";
         sendEmail(
                 to,
-                "Lembrete de Marcacao (1 dia)",
-                "Lembrete: tem uma marcacao em 1 dia, no dia " + dateText + ".");
+                "Lembrete de Marcação — " + assunto,
+                "Relembramos que tem uma marcação agendada para amanhã.\n\n"
+                        + "Assunto: " + assunto + "\n"
+                        + "Data: " + dateText + "\n\n"
+                        + "Para mais detalhes, pode consultar a sua conta na plataforma Florinhas do Vouga.\n\n"
+                        + "Com os melhores cumprimentos,\n"
+                        + "Florinhas do Vouga");
     }
 
     @Override
@@ -115,8 +142,11 @@ public class SmtpEmailService implements EmailService {
             helper.setSubject(subject);
             helper.setText(body);
 
-            // Add the attachment with explicit MIME type
-            helper.addAttachment(fileName, new ByteArrayResource(attachment), "text/calendar; method=REQUEST; charset=UTF-8");
+            // Determine MIME type from filename
+            String mimeType = fileName != null && fileName.endsWith(".ics")
+                    ? "text/calendar; method=REQUEST; charset=UTF-8"
+                    : "application/octet-stream";
+            helper.addAttachment(fileName, new ByteArrayResource(attachment), mimeType);
 
             mailSender.send(message);
             log.info("Email com anexo '{}' enviado para {}", fileName, to);

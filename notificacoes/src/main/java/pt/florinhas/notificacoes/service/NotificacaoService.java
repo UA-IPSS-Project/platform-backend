@@ -17,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 import pt.florinhas.common_data.domain.Notificacao;
 import pt.florinhas.common_data.repository.NotificacaoRepository;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
-import pt.florinhas.notificacoes.service.email.EmailService;
-
 import pt.florinhas.common_data.domain.Utilizador;
 import pt.florinhas.common_data.dto.NotificacaoResponseDTO;
 
@@ -35,7 +33,6 @@ public class NotificacaoService {
 
     private final NotificacaoRepository notificacaoRepository;
     private final UtilizadorRepository utilizadorRepository;
-    private final EmailService emailService;
     private final SimpMessagingTemplate messagingTemplate;
 
     public Notificacao criarNotificacao(Long utilizadorId, String titulo, String mensagem, String tipo) {
@@ -154,11 +151,6 @@ public class NotificacaoService {
                 METADATA_SUBTYPE_KEY, "CREATED");
 
         criarNotificacao(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
-
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
-            sendEmailIfAvailable(user.getEmail(), () -> emailService.sendAppointmentCreated(user.getEmail(), data,
-                    marcacaoId, summary, durationMinutes));
-        });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -174,11 +166,6 @@ public class NotificacaoService {
                 METADATA_SUBTYPE_KEY, "REMINDER_1_DAY");
 
         criarNotificacao(utilizadorId, assunto, mensagem, "LEMBRETE", metadata);
-
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
-            sendEmailIfAvailable(user.getEmail(),
-                    () -> emailService.sendAppointmentReminderOneDay(user.getEmail(), data));
-        });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -193,11 +180,6 @@ public class NotificacaoService {
                 METADATA_SUBTYPE_KEY, "CANCELLED");
 
         criarNotificacao(utilizadorId, assunto, mensagem, "CANCELAMENTO", metadata);
-
-        utilizadorRepository.findById(utilizadorId).ifPresent(user -> {
-            sendEmailIfAvailable(user.getEmail(),
-                    () -> emailService.sendAppointmentCancelled(user.getEmail(), motivoTexto));
-        });
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -228,15 +210,4 @@ public class NotificacaoService {
     }
 
     // Cron job for 1 day reminders moved to marcacoes module
-
-    private void sendEmailIfAvailable(String email, Runnable sender) {
-        if (email == null || email.isBlank()) {
-            return;
-        }
-        try {
-            sender.run();
-        } catch (Exception e) {
-            logger.error("Falha ao enviar email para {}", email, e);
-        }
-    }
 }

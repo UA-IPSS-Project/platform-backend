@@ -46,7 +46,9 @@ public class MarcacaoCronService {
                         marcacao.getData());
 
                 if (utente.getEmail() != null && !utente.getEmail().isBlank()) {
-                    emailService.sendAppointmentReminderOneDay(utente.getEmail(), marcacao.getData());
+                    String summary = marcacao.getMarcacaoSecretaria() != null
+                            ? marcacao.getMarcacaoSecretaria().getAssunto() : null;
+                    emailService.sendAppointmentReminderOneDay(utente.getEmail(), marcacao.getData(), summary);
                 }
             }
         }

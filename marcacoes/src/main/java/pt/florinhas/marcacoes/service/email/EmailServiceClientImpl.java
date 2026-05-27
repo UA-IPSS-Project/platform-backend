@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class EmailServiceClientImpl implements EmailService {
 
-    @Value("${notificacoes.url:http://notificacoes:8080}")
+    @Value("${notificacoes.url:http://notificacoes:8083}")
     private String notificacoesUrl;
 
     @Value("${gateway.shared-secret:}")
@@ -63,11 +63,14 @@ public class EmailServiceClientImpl implements EmailService {
     }
 
     @Override
-    public void sendAppointmentCancelled(String to, String motivo) {
+    public void sendAppointmentCancelled(String to, String cancelledBy, LocalDateTime appointmentDateTime, String summary, String motivo) {
         try {
             String url = notificacoesUrl + "/api/internal/notificacoes/email/marcacao-cancelada";
             Map<String, Object> req = new HashMap<>();
             req.put("to", to);
+            req.put("cancelledBy", cancelledBy);
+            req.put("appointmentDateTime", appointmentDateTime);
+            req.put("summary", summary);
             req.put("motivo", motivo);
             postWithSecret(url, req);
         } catch (Exception e) {
@@ -76,12 +79,13 @@ public class EmailServiceClientImpl implements EmailService {
     }
 
     @Override
-    public void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime) {
+    public void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime, String summary) {
         try {
             String url = notificacoesUrl + "/api/internal/notificacoes/email/marcacao-lembrete";
             Map<String, Object> req = new HashMap<>();
             req.put("to", to);
             req.put("appointmentDateTime", appointmentDateTime);
+            req.put("summary", summary);
             postWithSecret(url, req);
         } catch (Exception e) {
             log.error("Erro ao solicitar envio de lembrete via notificacoes para {}", to, e);
@@ -104,6 +108,17 @@ public class EmailServiceClientImpl implements EmailService {
 
     @Override
     public void sendEmailWithAttachment(String to, String subject, String body, byte[] attachment, String fileName) {
-        log.warn("sendEmailWithAttachment via HTTP client not fully implemented yet");
+        try {
+            String url = notificacoesUrl + "/api/internal/notificacoes/email/attachment";
+            Map<String, Object> req = new HashMap<>();
+            req.put("to", to);
+            req.put("subject", subject);
+            req.put("body", body);
+            req.put("attachmentBase64", java.util.Base64.getEncoder().encodeToString(attachment));
+            req.put("fileName", fileName);
+            postWithSecret(url, req);
+        } catch (Exception e) {
+            log.error("Erro ao solicitar envio de email com anexo via notificacoes para {}", to, e);
+        }
     }
 }
