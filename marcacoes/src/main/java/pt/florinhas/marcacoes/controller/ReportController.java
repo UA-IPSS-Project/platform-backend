@@ -2,6 +2,7 @@ package pt.florinhas.marcacoes.controller;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,8 +22,19 @@ public class ReportController {
     private final EmailService emailService;
     private final RelatorioPeriodicoRepository relatorioPeriodicoRepository;
 
+    private static final Map<String, String> SECTION_LABELS = Map.of(
+            "secretaria", "Marcações da Secretaria",
+            "balneario", "Marcações do Balneário",
+            "material", "Requisições de Material",
+            "transporte", "Requisições de Transporte",
+            "manutencao", "Requisições de Manutenção"
+    );
+
     @PostMapping("/email")
     public ResponseEntity<Void> sendReportByEmail(@RequestBody SendReportRequest request) {
+        String subject = request.getSubject();
+        String body = buildReportBody(request);
+
         String[] recipients = request.getTo().split(",");
         for (String recipient : recipients) {
             String email = recipient.trim();
@@ -33,13 +45,33 @@ public class ReportController {
                     base64Data = base64Data.split(",")[1];
                 }
                 byte[] pdfBytes = Base64.getDecoder().decode(base64Data);
-                emailService.sendEmailWithAttachment(email, request.getSubject(), request.getBody(), pdfBytes,
+                emailService.sendEmailWithAttachment(email, subject, body, pdfBytes,
                         request.getFileName() != null ? request.getFileName() : "relatorio.pdf");
             } else {
-                emailService.sendGenericEmail(email, request.getSubject(), request.getBody());
+                emailService.sendGenericEmail(email, subject, body);
             }
         }
         return ResponseEntity.ok().build();
+    }
+
+    private String buildReportBody(SendReportRequest request) {
+        if (request.getSeccoes() == null || request.getSeccoes().isEmpty()) {
+            return request.getBody() != null ? request.getBody() : "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Segue em anexo o relatório institucional");
+        if (request.getPeriodoInicio() != null && request.getPeriodoFim() != null) {
+            sb.append(" referente ao período de ").append(request.getPeriodoInicio())
+              .append(" até ").append(request.getPeriodoFim());
+        }
+        sb.append(".\n\nDados incluídos:\n");
+        for (String seccao : request.getSeccoes()) {
+            String label = SECTION_LABELS.getOrDefault(seccao, seccao);
+            sb.append("  • ").append(label).append("\n");
+        }
+        sb.append("\nCom os melhores cumprimentos,\nFlorinhas do Vouga");
+        return sb.toString();
     }
 
     @GetMapping("/periodicos")
