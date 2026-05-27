@@ -63,11 +63,14 @@ public class EmailServiceClientImpl implements EmailService {
     }
 
     @Override
-    public void sendAppointmentCancelled(String to, String motivo) {
+    public void sendAppointmentCancelled(String to, String cancelledBy, LocalDateTime appointmentDateTime, String summary, String motivo) {
         try {
             String url = notificacoesUrl + "/api/internal/notificacoes/email/marcacao-cancelada";
             Map<String, Object> req = new HashMap<>();
             req.put("to", to);
+            req.put("cancelledBy", cancelledBy);
+            req.put("appointmentDateTime", appointmentDateTime);
+            req.put("summary", summary);
             req.put("motivo", motivo);
             postWithSecret(url, req);
         } catch (Exception e) {
@@ -76,12 +79,13 @@ public class EmailServiceClientImpl implements EmailService {
     }
 
     @Override
-    public void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime) {
+    public void sendAppointmentReminderOneDay(String to, LocalDateTime appointmentDateTime, String summary) {
         try {
             String url = notificacoesUrl + "/api/internal/notificacoes/email/marcacao-lembrete";
             Map<String, Object> req = new HashMap<>();
             req.put("to", to);
             req.put("appointmentDateTime", appointmentDateTime);
+            req.put("summary", summary);
             postWithSecret(url, req);
         } catch (Exception e) {
             log.error("Erro ao solicitar envio de lembrete via notificacoes para {}", to, e);

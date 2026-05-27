@@ -534,7 +534,12 @@ public class MarcacaoService {
                                     marcacao.getData(),
                                     request.getMotivoCancelamento());
                             if (utenteAlvo.getEmail() != null && !utenteAlvo.getEmail().isBlank()) {
-                                emailService.sendAppointmentCancelled(utenteAlvo.getEmail(), request.getMotivoCancelamento());
+                                String cancelledBy = atorId != null
+                                        ? funcionarioRepository.findById(atorId).map(f -> f.getNome()).orElse("Secretaria")
+                                        : "Secretaria";
+                                String assunto = secretariaDetails.getAssunto();
+                                emailService.sendAppointmentCancelled(utenteAlvo.getEmail(), cancelledBy,
+                                        marcacao.getData(), assunto, request.getMotivoCancelamento());
                             }
                         }
                     } catch (Exception e) {

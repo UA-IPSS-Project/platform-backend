@@ -42,13 +42,13 @@ public class InternalCommunicationController {
 
     @PostMapping("/email/marcacao-cancelada")
     public ResponseEntity<Void> enviarMarcacaoCancelada(@RequestBody EmailMarcacaoCanceladaRequest req) {
-        emailService.sendAppointmentCancelled(req.getTo(), req.getMotivo());
+        emailService.sendAppointmentCancelled(req.getTo(), req.getCancelledBy(), req.getAppointmentDateTime(), req.getSummary(), req.getMotivo());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/email/marcacao-lembrete")
     public ResponseEntity<Void> enviarMarcacaoLembrete(@RequestBody EmailMarcacaoLembreteRequest req) {
-        emailService.sendAppointmentReminderOneDay(req.getTo(), req.getAppointmentDateTime());
+        emailService.sendAppointmentReminderOneDay(req.getTo(), req.getAppointmentDateTime(), req.getSummary());
         return ResponseEntity.ok().build();
     }
 
@@ -92,6 +92,9 @@ public class InternalCommunicationController {
     @Data
     public static class EmailMarcacaoCanceladaRequest {
         private String to;
+        private String cancelledBy;
+        private LocalDateTime appointmentDateTime;
+        private String summary;
         private String motivo;
     }
 
@@ -99,6 +102,7 @@ public class InternalCommunicationController {
     public static class EmailMarcacaoLembreteRequest {
         private String to;
         private LocalDateTime appointmentDateTime;
+        private String summary;
     }
 
     @Data
