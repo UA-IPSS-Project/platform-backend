@@ -1,5 +1,7 @@
 package pt.florinhas.marcacoes.controller;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +24,8 @@ public class ReportController {
     private final EmailService emailService;
     private final RelatorioPeriodicoRepository relatorioPeriodicoRepository;
 
+    private static final DateTimeFormatter PT_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
     private static final Map<String, String> SECTION_LABELS = Map.of(
             "secretaria", "Marcações da Secretaria",
             "balneario", "Marcações do Balneário",
@@ -32,7 +36,7 @@ public class ReportController {
 
     @PostMapping("/email")
     public ResponseEntity<Void> sendReportByEmail(@RequestBody SendReportRequest request) {
-        String subject = request.getSubject();
+        String subject = buildSubject(request);
         String body = buildReportBody(request);
 
         String[] recipients = request.getTo().split(",");
@@ -54,16 +58,30 @@ public class ReportController {
         return ResponseEntity.ok().build();
     }
 
+    private String formatDate(String isoDate) {
+        if (isoDate == null || isoDate.isBlank()) return "";
+        return LocalDate.parse(isoDate).format(PT_DATE_FORMAT);
+    }
+
+    private String buildSubject(SendReportRequest request) {
+        if (request.getPeriodoInicio() != null && request.getPeriodoFim() != null) {
+            return "Relatório Institucional - Florinhas do Vouga ("
+                    + formatDate(request.getPeriodoInicio()) + " a "
+                    + formatDate(request.getPeriodoFim()) + ")";
+        }
+        return "Relatório Institucional - Florinhas do Vouga";
+    }
+
     private String buildReportBody(SendReportRequest request) {
         if (request.getSeccoes() == null || request.getSeccoes().isEmpty()) {
-            return request.getBody() != null ? request.getBody() : "";
+            return "";
         }
 
         StringBuilder sb = new StringBuilder();
         sb.append("Segue em anexo o relatório institucional");
         if (request.getPeriodoInicio() != null && request.getPeriodoFim() != null) {
-            sb.append(" referente ao período de ").append(request.getPeriodoInicio())
-              .append(" até ").append(request.getPeriodoFim());
+            sb.append(" referente ao período de ").append(formatDate(request.getPeriodoInicio()))
+              .append(" até ").append(formatDate(request.getPeriodoFim()));
         }
         sb.append(".\n\nDados incluídos:\n");
         for (String seccao : request.getSeccoes()) {
