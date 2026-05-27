@@ -37,7 +37,7 @@ public class TermsService {
     }
 
     public boolean needsAcceptance(Utilizador user) {
-        return false;
+        return user.getTermsVersion() == null || user.getTermsVersion() < getCurrentVersion();
     }
 
     public TermsStatusDTO getStatus(Utilizador user) {

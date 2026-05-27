@@ -248,59 +248,59 @@ services:
         - path: ../platform-frontend/vite.config.ts
           action: rebuild
 
-  # Backup automático PostgreSQL
-  postgres-backup:
-    image: prodrigestivill/postgres-backup-local
-    container_name: postgres_backup
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_EXTRA_OPTS: "-Z9 --schema=public --blobs"
-      SCHEDULE: "@daily"
-      BACKUP_KEEP_DAYS: 7
-      BACKUP_KEEP_WEEKS: 4
-      BACKUP_KEEP_MONTHS: 12
-      HEALTHCHECK_PORT: 8080
-    volumes:
-      - ./backups/postgres:/backups
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8080/ || exit 1" ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
+  # Backup automático PostgreSQL (desativado a pedido do cliente)
+  # postgres-backup:
+  #   image: prodrigestivill/postgres-backup-local
+  #   container_name: postgres_backup
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRES_HOST: postgres
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     POSTGRES_EXTRA_OPTS: "-Z9 --schema=public --blobs"
+  #     SCHEDULE: "@daily"
+  #     BACKUP_KEEP_DAYS: 7
+  #     BACKUP_KEEP_WEEKS: 4
+  #     BACKUP_KEEP_MONTHS: 12
+  #     HEALTHCHECK_PORT: 8080
+  #   volumes:
+  #     - ./backups/postgres:/backups
+  #   healthcheck:
+  #     test: [ "CMD-SHELL", "curl -f http://localhost:8080/ || exit 1" ]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  #   restart: unless-stopped
 
-  # Backup automático MinIO
-  minio-backup:
-    image: minio/mc
-    container_name: minio_backup
-    depends_on:
-      minio:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - ./backups/minio:/backups
-      - ./scripts/backup-minio.sh:/backup-minio.sh
-      - ./scripts/crontab:/etc/crontabs/root
-    entrypoint: /bin/sh
-    command: -c "chmod +x /backup-minio.sh && crond -f -l 2"
-    healthcheck:
-      test: [ "CMD-SHELL", "pgrep crond || exit 1" ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
+  # Backup automático MinIO (desativado a pedido do cliente)
+  # minio-backup:
+  #   image: minio/mc
+  #   container_name: minio_backup
+  #   depends_on:
+  #     minio:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+  #     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+  #   volumes:
+  #     - ./backups/minio:/backups
+  #     - ./scripts/backup-minio.sh:/backup-minio.sh
+  #     - ./scripts/crontab:/etc/crontabs/root
+  #   entrypoint: /bin/sh
+  #   command: -c "chmod +x /backup-minio.sh && crond -f -l 2"
+  #   healthcheck:
+  #     test: [ "CMD-SHELL", "pgrep crond || exit 1" ]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  #   restart: unless-stopped
 
 volumes:
   postgres_data:
