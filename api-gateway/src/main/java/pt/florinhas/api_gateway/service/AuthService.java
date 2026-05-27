@@ -1,7 +1,10 @@
 package pt.florinhas.api_gateway.service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -10,6 +13,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.client.RestTemplate;
 
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
@@ -47,15 +53,24 @@ public class AuthService {
         // Constantes para roles
         private static final String ROLE_UTENTE = "UTENTE";
         private static final String ROLE_FUNCIONARIO = "FUNCIONARIO";
+        private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
         private final UtilizadorRepository utilizadorRepository;
         private final FuncionarioRepository funcionarioRepository;
         private final UtenteRepository utenteRepository;
         private final PasswordEncoder passwordEncoder;
         private final NifValidator nifValidator;
+        private final RestTemplate restTemplate = new RestTemplate();
 
         @Value("${jwt.expiration:86400000}")
         private long jwtExpiration;
+
+        @Value("${gateway.notificacoes.base-url:http://notificacoes:8083}")
+        private String notificacoesUrl;
+
+        @Value("${gateway.shared-secret:}")
+        private String gatewaySecret;
 
         private final CryptoUtils cryptoUtils;
 
@@ -285,12 +300,82 @@ public class AuthService {
         }
 
         /**
-         * Converte a string "funcao" recebida no registo
-         * para o enum FuncionarioTipo.
-         *
-         * Aceita variantes com/sem acentos.
-         * Valor default: SECRETARIA.
+         * Recuperação de password.
+         * Gera nova OTP com expiração de 15 min e envia por email.
+         * Aceita email ou NIF como identificador.
          */
+        public void recoverPassword(String identifier) {
+                Utilizador user = findUserByIdentifier(identifier);
+                if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+                        // Não revelar se o utilizador existe ou não
+                        log.debug("Recover password: user not found or no email for identifier: {}", identifier);
+                        return;
+                }
+
+                String rawPassword = generateRandomPassword();
+                user.setPassHash(passwordEncoder.encode(rawPassword));
+                user.setOtpExpiresAt(LocalDateTime.now().plusMinutes(15));
+                user.setTermsAcceptedAt(null);
+
+                if (user instanceof Utente utente) {
+                        utente.setActivo(false);
+                        utenteRepository.save(utente);
+                } else if (user instanceof Funcionario funcionario) {
+                        funcionario.setActivo(false);
+                        funcionarioRepository.save(funcionario);
+                } else {
+                        utilizadorRepository.save(user);
+                }
+
+                // Enviar email com nova password via serviço de notificações
+                sendPasswordEmail(user.getEmail(), rawPassword);
+                log.info("Password recovery initiated for: {}", user.getEmail());
+        }
+
+        private Utilizador findUserByIdentifier(String identifier) {
+                if (identifier == null || identifier.isBlank()) return null;
+
+                // Tentar como email
+                if (identifier.contains("@")) {
+                        List<Utilizador> users = utilizadorRepository.findByEmail(identifier.trim());
+                        return users.isEmpty() ? null : users.get(0);
+                }
+
+                // Tentar como NIF (9 dígitos)
+                if (identifier.matches("\\d{9}")) {
+                        List<Utilizador> users = utilizadorRepository.findByNifHash(
+                                        cryptoUtils.generateBlindIndex(identifier));
+                        return users.isEmpty() ? null : users.get(0);
+                }
+
+                return null;
+        }
+
+        private String generateRandomPassword() {
+                StringBuilder password = new StringBuilder(22);
+                for (int i = 0; i < 22; i++) {
+                        password.append(ALPHANUMERIC.charAt(SECURE_RANDOM.nextInt(ALPHANUMERIC.length())));
+                }
+                return password.toString();
+        }
+
+        private void sendPasswordEmail(String to, String password) {
+                try {
+                        String url = notificacoesUrl + "/api/internal/notificacoes/email/password";
+                        Map<String, Object> req = new HashMap<>();
+                        req.put("to", to);
+                        req.put("password", password);
+                        HttpHeaders headers = new HttpHeaders();
+                        headers.set("Content-Type", "application/json");
+                        if (gatewaySecret != null && !gatewaySecret.isBlank()) {
+                                headers.set("X-Gateway-Secret", gatewaySecret);
+                        }
+                        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(req, headers);
+                        restTemplate.postForObject(url, entity, Void.class);
+                } catch (Exception e) {
+                        log.error("Erro ao enviar email de recuperação para {}", to, e);
+                }
+        }
 
         private void checkUserExists(String email, String nif) {
                 if (utilizadorRepository.existsByEmail(email)) {

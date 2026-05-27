@@ -104,6 +104,12 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/recover-password")
+    public ResponseEntity<Void> recoverPassword(@RequestBody RecoverPasswordRequest request) {
+        authService.recoverPassword(request.identifier());
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal Utilizador utilizador) {
         var response = authService.getCurrentUserResponse(utilizador);

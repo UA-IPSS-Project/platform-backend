@@ -64,7 +64,7 @@ public class RateLimitFilter implements WebFilter {
         String path = exchange.getRequest().getPath().value();
         String method = exchange.getRequest().getMethod().name();
 
-        boolean isAuthEndpoint = path.startsWith("/api/auth/login") || path.startsWith("/api/auth/register");
+        boolean isAuthEndpoint = path.startsWith("/api/auth/login") || path.startsWith("/api/auth/register") || path.equals("/api/auth/recover-password");
 
         // Only rate-limit auth endpoints and state-changing methods (POST/PUT/DELETE/PATCH)
         // GET requests are not rate-limited to avoid blocking dashboard parallel loads
