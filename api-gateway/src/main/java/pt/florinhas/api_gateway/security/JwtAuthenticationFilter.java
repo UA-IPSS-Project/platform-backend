@@ -139,6 +139,7 @@ public class JwtAuthenticationFilter implements WebFilter {
         return path.startsWith("/api/auth/login")
                 || path.startsWith("/api/auth/register")
                 || path.equals("/api/auth/logout")
+                || path.startsWith("/api/auth/recover-password")
                 || path.startsWith("/actuator/health")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-ui")

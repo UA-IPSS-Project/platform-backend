@@ -59,6 +59,7 @@ public class SecurityConfig {
                     }))
                 .authorizeExchange(auth -> auth
                     .pathMatchers("/api/auth/login/**", "/api/auth/register/**", "/api/auth/logout",
+                                  "/api/auth/recover-password",
                                   "/actuator/health", "/api/utilizadores/terms-content",
                                   "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**")
                     .permitAll()
