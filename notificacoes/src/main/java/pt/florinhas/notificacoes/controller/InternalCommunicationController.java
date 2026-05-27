@@ -58,6 +58,13 @@ public class InternalCommunicationController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/email/attachment")
+    public ResponseEntity<Void> enviarEmailComAnexo(@RequestBody EmailAttachmentRequest req) {
+        byte[] attachment = java.util.Base64.getDecoder().decode(req.getAttachmentBase64());
+        emailService.sendEmailWithAttachment(req.getTo(), req.getSubject(), req.getBody(), attachment, req.getFileName());
+        return ResponseEntity.ok().build();
+    }
+
     @Data
     public static class CriarNotificacaoRequest {
         private Long utilizadorId;
@@ -99,5 +106,14 @@ public class InternalCommunicationController {
         private String to;
         private String subject;
         private String body;
+    }
+
+    @Data
+    public static class EmailAttachmentRequest {
+        private String to;
+        private String subject;
+        private String body;
+        private String attachmentBase64;
+        private String fileName;
     }
 }
