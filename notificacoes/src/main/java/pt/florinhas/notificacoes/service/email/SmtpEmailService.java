@@ -35,9 +35,8 @@ public class SmtpEmailService implements EmailService {
                 "Bem-vindo à plataforma Florinhas do Vouga!\n\n"
                 + "Foi criada uma conta para si. Seguem os seus dados de acesso:\n\n"
                 + "Password: " + password + "\n\n"
-                + "ATENÇÃO: Esta password expira em 15 minutos.\n"
-                + "Por favor, faça login e altere a sua password dentro deste prazo.\n"
-                + "Caso expire, pode solicitar uma nova password na página de login.\n\n"
+                + "Por favor, faça login e altere a sua password assim que possível.\n"
+                + "Caso não consiga aceder, pode solicitar uma nova password na página de login.\n\n"
                 + "Com os melhores cumprimentos,\n"
                 + "Florinhas do Vouga");
     }
@@ -143,8 +142,11 @@ public class SmtpEmailService implements EmailService {
             helper.setSubject(subject);
             helper.setText(body);
 
-            // Add the attachment with explicit MIME type
-            helper.addAttachment(fileName, new ByteArrayResource(attachment), "text/calendar; method=REQUEST; charset=UTF-8");
+            // Determine MIME type from filename
+            String mimeType = fileName != null && fileName.endsWith(".ics")
+                    ? "text/calendar; method=REQUEST; charset=UTF-8"
+                    : "application/octet-stream";
+            helper.addAttachment(fileName, new ByteArrayResource(attachment), mimeType);
 
             mailSender.send(message);
             log.info("Email com anexo '{}' enviado para {}", fileName, to);

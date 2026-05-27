@@ -930,8 +930,9 @@ public class MarcacaoService {
 
     private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration,
             String summary, Long actorId) {
-        String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
-        String emailUtente = utenteRepository.findById(utenteId).map(u -> u.getEmail()).orElse(null);
+        Utente utenteEntity = utenteRepository.findById(utenteId).orElse(null);
+        String nomeUtente = (utenteEntity != null && utenteEntity.getNome() != null) ? utenteEntity.getNome() : "Utente";
+        String emailUtente = (utenteEntity != null) ? utenteEntity.getEmail() : null;
         boolean criadoPeloUtente = utenteId.equals(actorId);
 
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
