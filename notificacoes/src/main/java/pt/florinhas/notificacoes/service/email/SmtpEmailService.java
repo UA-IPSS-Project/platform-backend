@@ -35,7 +35,9 @@ public class SmtpEmailService implements EmailService {
                 "Bem-vindo à plataforma Florinhas do Vouga!\n\n"
                 + "Foi criada uma conta para si. Seguem os seus dados de acesso:\n\n"
                 + "Password: " + password + "\n\n"
-                + "Por favor, altere a sua password após o primeiro login por motivos de segurança.\n\n"
+                + "ATENÇÃO: Esta password expira em 15 minutos.\n"
+                + "Por favor, faça login e altere a sua password dentro deste prazo.\n"
+                + "Caso expire, pode solicitar uma nova password na página de login.\n\n"
                 + "Com os melhores cumprimentos,\n"
                 + "Florinhas do Vouga");
     }
