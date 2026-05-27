@@ -64,7 +64,8 @@ public class ReportController {
     }
 
     private String buildSubject(SendReportRequest request) {
-        if (request.getPeriodoInicio() != null && request.getPeriodoFim() != null) {
+        if (request.getPeriodoInicio() != null && !request.getPeriodoInicio().isBlank()
+                && request.getPeriodoFim() != null && !request.getPeriodoFim().isBlank()) {
             return "Relatório Institucional - Florinhas do Vouga ("
                     + formatDate(request.getPeriodoInicio()) + " a "
                     + formatDate(request.getPeriodoFim()) + ")";
@@ -79,7 +80,8 @@ public class ReportController {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Segue em anexo o relatório institucional");
-        if (request.getPeriodoInicio() != null && request.getPeriodoFim() != null) {
+        if (request.getPeriodoInicio() != null && !request.getPeriodoInicio().isBlank()
+                && request.getPeriodoFim() != null && !request.getPeriodoFim().isBlank()) {
             sb.append(" referente ao período de ").append(formatDate(request.getPeriodoInicio()))
               .append(" até ").append(formatDate(request.getPeriodoFim()));
         }
