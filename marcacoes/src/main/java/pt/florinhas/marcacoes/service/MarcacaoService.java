@@ -533,6 +533,9 @@ public class MarcacaoService {
                                     utenteAlvo.getId(),
                                     marcacao.getData(),
                                     request.getMotivoCancelamento());
+                            if (utenteAlvo.getEmail() != null && !utenteAlvo.getEmail().isBlank()) {
+                                emailService.sendAppointmentCancelled(utenteAlvo.getEmail(), request.getMotivoCancelamento());
+                            }
                         }
                     } catch (Exception e) {
                         log.error("Erro ao notificar utente {}", utenteAlvo.getId(), e);
@@ -923,6 +926,7 @@ public class MarcacaoService {
     private void registrarNotificacaoAsync(Long utenteId, Long marcacaoId, LocalDateTime data, int duration,
             String summary, Long actorId) {
         String nomeUtente = utenteRepository.findById(utenteId).map(u -> u.getNome()).orElse("Utente");
+        String emailUtente = utenteRepository.findById(utenteId).map(u -> u.getEmail()).orElse(null);
         boolean criadoPeloUtente = utenteId.equals(actorId);
 
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -932,6 +936,9 @@ public class MarcacaoService {
                     try {
                         if (!criadoPeloUtente) {
                             notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                            if (emailUtente != null && !emailUtente.isBlank()) {
+                                emailService.sendAppointmentCreated(emailUtente, data, marcacaoId, summary, duration);
+                            }
                         } else {
                             // Utente criou a marcação — notificar todas as secretarias
                             funcionarioService.listarSecretarias().forEach(sec -> {
@@ -952,6 +959,9 @@ public class MarcacaoService {
             try {
                 if (!criadoPeloUtente) {
                     notificacaoService.notificarNovaMarcacao(utenteId, marcacaoId, data, duration, summary);
+                    if (emailUtente != null && !emailUtente.isBlank()) {
+                        emailService.sendAppointmentCreated(emailUtente, data, marcacaoId, summary, duration);
+                    }
                 } else {
                     funcionarioService.listarSecretarias().forEach(sec -> {
                         try {
