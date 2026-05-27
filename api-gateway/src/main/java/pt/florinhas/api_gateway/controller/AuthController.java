@@ -105,7 +105,7 @@ public class AuthController {
     }
 
     @PostMapping("/recover-password")
-    public ResponseEntity<Void> recoverPassword(@RequestBody RecoverPasswordRequest request) {
+    public ResponseEntity<Void> recoverPassword(@Valid @RequestBody RecoverPasswordRequest request) {
         authService.recoverPassword(request.identifier());
         return ResponseEntity.ok().build();
     }

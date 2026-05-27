@@ -2,7 +2,6 @@ package pt.florinhas.api_gateway.service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,9 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import lombok.extern.slf4j.Slf4j;
 import pt.florinhas.common_data.repository.FuncionarioRepository;
@@ -61,16 +58,10 @@ public class AuthService {
         private final UtenteRepository utenteRepository;
         private final PasswordEncoder passwordEncoder;
         private final NifValidator nifValidator;
-        private final RestTemplate restTemplate = new RestTemplate();
+        private final WebClient notificacoesWebClient;
 
         @Value("${jwt.expiration:86400000}")
         private long jwtExpiration;
-
-        @Value("${gateway.notificacoes.base-url:http://notificacoes:8083}")
-        private String notificacoesUrl;
-
-        @Value("${gateway.shared-secret:}")
-        private String gatewaySecret;
 
         private final CryptoUtils cryptoUtils;
 
@@ -80,13 +71,20 @@ public class AuthService {
                         UtenteRepository utenteRepository,
                         PasswordEncoder passwordEncoder,
                         NifValidator nifValidator,
-                        CryptoUtils cryptoUtils) {
+                        CryptoUtils cryptoUtils,
+                        WebClient.Builder webClientBuilder,
+                        @Value("${gateway.notificacoes.base-url:http://notificacoes:8083}") String notificacoesUrl,
+                        @Value("${gateway.shared-secret:}") String gatewaySecret) {
                 this.utilizadorRepository = utilizadorRepository;
                 this.funcionarioRepository = funcionarioRepository;
                 this.utenteRepository = utenteRepository;
                 this.passwordEncoder = passwordEncoder;
                 this.nifValidator = nifValidator;
                 this.cryptoUtils = cryptoUtils;
+                this.notificacoesWebClient = webClientBuilder
+                        .baseUrl(notificacoesUrl)
+                        .defaultHeader("X-Gateway-Secret", gatewaySecret)
+                        .build();
         }
 
         /**
@@ -313,6 +311,10 @@ public class AuthService {
                 }
 
                 String rawPassword = generateRandomPassword();
+
+                // Enviar email primeiro — se falhar, não alteramos o estado da conta
+                sendPasswordEmail(user.getEmail(), rawPassword);
+
                 user.setPassHash(passwordEncoder.encode(rawPassword));
                 user.setOtpExpiresAt(LocalDateTime.now().plusMinutes(15));
                 user.setTermsAcceptedAt(null);
@@ -327,24 +329,23 @@ public class AuthService {
                         utilizadorRepository.save(user);
                 }
 
-                // Enviar email com nova password via serviço de notificações
-                sendPasswordEmail(user.getEmail(), rawPassword);
                 log.info("Password recovery initiated for: {}", user.getEmail());
         }
 
         private Utilizador findUserByIdentifier(String identifier) {
                 if (identifier == null || identifier.isBlank()) return null;
+                String trimmed = identifier.trim();
 
                 // Tentar como email
-                if (identifier.contains("@")) {
-                        List<Utilizador> users = utilizadorRepository.findByEmail(identifier.trim());
+                if (trimmed.contains("@")) {
+                        List<Utilizador> users = utilizadorRepository.findByEmail(trimmed);
                         return users.isEmpty() ? null : users.get(0);
                 }
 
                 // Tentar como NIF (9 dígitos)
-                if (identifier.matches("\\d{9}")) {
+                if (trimmed.matches("\\d{9}")) {
                         List<Utilizador> users = utilizadorRepository.findByNifHash(
-                                        cryptoUtils.generateBlindIndex(identifier));
+                                        cryptoUtils.generateBlindIndex(trimmed));
                         return users.isEmpty() ? null : users.get(0);
                 }
 
@@ -360,22 +361,22 @@ public class AuthService {
         }
 
         private void sendPasswordEmail(String to, String password) {
-                try {
-                        String url = notificacoesUrl + "/api/internal/notificacoes/email/password";
-                        Map<String, Object> req = new HashMap<>();
-                        req.put("to", to);
-                        req.put("password", password);
-                        HttpHeaders headers = new HttpHeaders();
-                        headers.set("Content-Type", "application/json");
-                        if (gatewaySecret != null && !gatewaySecret.isBlank()) {
-                                headers.set("X-Gateway-Secret", gatewaySecret);
-                        }
-                        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(req, headers);
-                        restTemplate.postForObject(url, entity, Void.class);
-                } catch (Exception e) {
-                        log.error("Erro ao enviar email de recuperação para {}", to, e);
-                }
+                notificacoesWebClient.post()
+                        .uri("/api/internal/notificacoes/email/password")
+                        .bodyValue(Map.of("to", to, "password", password))
+                        .retrieve()
+                        .toBodilessEntity()
+                        .doOnError(e -> log.error("Erro ao enviar email de recuperação para {}", to, e))
+                        .block();
         }
+
+        /**
+         * Converte a string "funcao" recebida no registo
+         * para o enum FuncionarioTipo.
+         *
+         * Aceita variantes com/sem acentos.
+         * Valor default: SECRETARIA.
+         */
 
         private void checkUserExists(String email, String nif) {
                 if (utilizadorRepository.existsByEmail(email)) {
