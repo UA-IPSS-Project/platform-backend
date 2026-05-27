@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class EmailServiceClientImpl implements EmailService {
 
-    @Value("${notificacoes.url:http://notificacoes:8080}")
+    @Value("${notificacoes.url:http://notificacoes:8083}")
     private String notificacoesUrl;
 
     @Value("${gateway.shared-secret:}")
@@ -104,6 +104,17 @@ public class EmailServiceClientImpl implements EmailService {
 
     @Override
     public void sendEmailWithAttachment(String to, String subject, String body, byte[] attachment, String fileName) {
-        log.warn("sendEmailWithAttachment via HTTP client not fully implemented yet");
+        try {
+            String url = notificacoesUrl + "/api/internal/notificacoes/email/attachment";
+            Map<String, Object> req = new HashMap<>();
+            req.put("to", to);
+            req.put("subject", subject);
+            req.put("body", body);
+            req.put("attachmentBase64", java.util.Base64.getEncoder().encodeToString(attachment));
+            req.put("fileName", fileName);
+            postWithSecret(url, req);
+        } catch (Exception e) {
+            log.error("Erro ao solicitar envio de email com anexo via notificacoes para {}", to, e);
+        }
     }
 }
