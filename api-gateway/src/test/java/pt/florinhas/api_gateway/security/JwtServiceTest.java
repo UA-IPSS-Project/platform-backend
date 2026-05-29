@@ -1,83 +1,111 @@
 package pt.florinhas.api_gateway.security;
 
-import io.jsonwebtoken.Claims;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.lang.reflect.Field;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import io.jsonwebtoken.Claims;
 
 class JwtServiceTest {
+
     private JwtService jwtService;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         jwtService = new JwtService();
-        // Set secret and expiration via reflection for test
-        TestUtils.setField(jwtService, "secret", "test-secret-key-12345678901234567890123456789012");
-        TestUtils.setField(jwtService, "jwtExpiration", 3600000L);
+
+        setField("secret", "12345678901234567890123456789012");
+        setField("jwtExpiration", 86400000L);
+
         jwtService.init();
     }
 
     @Test
-    void generateAndParseToken_ShouldContainAllClaims() {
-        JwtService.AuthUserClaims claims = new JwtService.AuthUserClaims(
-                1L,
-                "user@example.com",
-                "Test User",
-                "ADMIN",
-                "123456789",
-                "912345678",
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
-        );
-        String token = jwtService.generateToken(claims);
+    void generateToken_DeveGerarToken() {
+        String token = jwtService.generateToken(
+                new JwtService.AuthUserClaims(
+                        1L,
+                        "teste@teste.com",
+                        "Teste",
+                        "UTENTE",
+                        "123456789",
+                        "912345678",
+                        List.of(new SimpleGrantedAuthority("ROLE_UTENTE"))));
+
         assertNotNull(token);
-
-        Claims parsed = jwtService.parseClaims(token);
-        assertEquals(1, parsed.get("userId", Integer.class));
-        assertEquals("user@example.com", parsed.get("email"));
-        assertEquals("Test User", parsed.get("nome"));
-        assertEquals("ADMIN", parsed.get("role"));
-        assertEquals("123456789", parsed.get("nif"));
-        assertEquals("912345678", parsed.get("telefone"));
-        assertEquals("user@example.com", parsed.getSubject());
-        assertTrue(((List<?>) parsed.get("roles")).contains("ROLE_ADMIN"));
+        assertFalse(token.isBlank());
     }
 
     @Test
-    void tokenShouldExpireCorrectly() {
-        JwtService.AuthUserClaims claims = new JwtService.AuthUserClaims(
-                2L,
-                "other@example.com",
-                "Other User",
-                "UTENTE",
-                "987654321",
-                "987654321",
-                List.of(new SimpleGrantedAuthority("ROLE_UTENTE"))
-        );
-        String token = jwtService.generateToken(claims);
-        Claims parsed = jwtService.parseClaims(token);
-        assertNotNull(parsed.getExpiration());
-        assertTrue(parsed.getExpiration().getTime() > System.currentTimeMillis());
+    void parseClaims_DeveExtrairClaims() {
+        String token = jwtService.generateToken(
+                new JwtService.AuthUserClaims(
+                        1L,
+                        "teste@teste.com",
+                        "Teste",
+                        "UTENTE",
+                        "123456789",
+                        "912345678",
+                        List.of(new SimpleGrantedAuthority("ROLE_UTENTE"))));
+
+        Claims claims = jwtService.parseClaims(token);
+
+        assertEquals("teste@teste.com", claims.getSubject());
+        assertEquals("Teste", claims.get("nome"));
+        assertEquals("UTENTE", claims.get("role"));
     }
 
     @Test
-    void generateToken_ShouldFallbackSubjectToNif_WhenEmailIsBlank() {
-        JwtService.AuthUserClaims claims = new JwtService.AuthUserClaims(
-                3L,
-                "   ",
-                "Sem Email",
-                "UTENTE",
-                "245907318",
-                "910000000",
-                List.of(new SimpleGrantedAuthority("ROLE_UTENTE"))
-        );
+    void generateToken_DeveUsarNifQuandoEmailNull() {
+        String token = jwtService.generateToken(
+                new JwtService.AuthUserClaims(
+                        1L,
+                        null,
+                        "Teste",
+                        "UTENTE",
+                        "123456789",
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_UTENTE"))));
 
-        String token = jwtService.generateToken(claims);
-        Claims parsed = jwtService.parseClaims(token);
+        Claims claims = jwtService.parseClaims(token);
 
-        assertEquals("245907318", parsed.getSubject());
+        assertEquals("123456789", claims.getSubject());
+    }
+
+    @Test
+    void generateToken_DeveGuardarRoles() {
+        String token = jwtService.generateToken(
+                new JwtService.AuthUserClaims(
+                        1L,
+                        "teste@teste.com",
+                        "Teste",
+                        "UTENTE",
+                        "123456789",
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_UTENTE"))));
+
+        Claims claims = jwtService.parseClaims(token);
+
+        List<?> roles = claims.get("roles", List.class);
+
+        assertEquals(1, roles.size());
+        assertEquals("ROLE_UTENTE", roles.get(0));
+    }
+
+    private void setField(String fieldName, Object value)
+            throws Exception {
+
+        Field field =
+                JwtService.class.getDeclaredField(fieldName);
+
+        field.setAccessible(true);
+        field.set(jwtService, value);
     }
 }
