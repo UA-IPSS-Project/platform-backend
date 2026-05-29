@@ -1,79 +1,85 @@
 package pt.florinhas.marcacoes.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.ArgumentMatchers.anyString;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
+import pt.florinhas.common_data.domain.Utente;
 import pt.florinhas.common_data.repository.UtilizadorRepository;
 import pt.florinhas.common_data.security.CryptoUtils;
 
-import pt.florinhas.common_data.domain.Utente;
-
-import java.util.Collections;
-import java.util.List;
-
-@ExtendWith(MockitoExtension.class)
 class CustomUserDetailsServiceTest {
 
-    @Mock
-    private UtilizadorRepository utilizadorRepository;
-    @Mock
+    private UtilizadorRepository repository;
     private CryptoUtils cryptoUtils;
 
-    @InjectMocks
-    private CustomUserDetailsService userDetailsService;
-
-    private Utente utente;
+    private CustomUserDetailsService service;
 
     @BeforeEach
     void setUp() {
-        utente = new Utente();
-        utente.setId(1L);
-        utente.setEmail("test@example.com");
-        utente.setNome("Test User");
-        utente.setPassHash("hashedPassword");
+
+        repository = mock(UtilizadorRepository.class);
+
+        cryptoUtils = mock(CryptoUtils.class);
+
+        service = new CustomUserDetailsService(repository, cryptoUtils);
     }
 
     @Test
-    void loadUserByUsername_DeveRetornarUserDetails_QuandoUtilizadorExiste() {
-        // Arrange
-        when(utilizadorRepository.findByEmail("test@example.com"))
-            .thenReturn(List.of(utente));
+    void loadUserByUsername_DeveCarregarPorEmail() {
 
-        // Act
-        UserDetails userDetails = userDetailsService.loadUserByUsername("test@example.com");
+        Utente user =
+                new Utente();
 
-        // Assert
-        assertNotNull(userDetails);
-        assertEquals("test@example.com", userDetails.getUsername());
-        assertEquals("hashedPassword", userDetails.getPassword());
-        verify(utilizadorRepository).findByEmail("test@example.com");
+        when(repository.findByEmail("teste"))
+                .thenReturn(List.of(user));
+
+        assertEquals(
+                user,
+                service.loadUserByUsername("teste"));
     }
 
     @Test
-    void loadUserByUsername_DeveLancarException_QuandoUtilizadorNaoExiste() {
-        // Arrange
-        when(utilizadorRepository.findByEmail(anyString()))
-            .thenReturn(Collections.emptyList());
+    void loadUserByUsername_DeveCarregarPorNif() {
 
-        // Act & Assert
-        UsernameNotFoundException exception = assertThrows(
+        Utente user =
+                new Utente();
+
+        when(repository.findByEmail("123"))
+                .thenReturn(List.of());
+
+        when(cryptoUtils.generateBlindIndex("123"))
+                .thenReturn("hash");
+
+        when(repository.findByNifHash("hash"))
+                .thenReturn(List.of(user));
+
+        assertEquals(
+                user,
+                service.loadUserByUsername("123"));
+    }
+
+    @Test
+    void loadUserByUsername_DeveFalhar() {
+
+        when(repository.findByEmail("teste"))
+                .thenReturn(List.of());
+
+        when(cryptoUtils.generateBlindIndex("teste"))
+                .thenReturn("hash");
+
+        when(repository.findByNifHash("hash"))
+                .thenReturn(List.of());
+
+        assertThrows(
                 UsernameNotFoundException.class,
-                () -> userDetailsService.loadUserByUsername("nonexistent@example.com"));
-
-        assertTrue(exception.getMessage().contains("Utilizador não encontrado"));
-        verify(utilizadorRepository).findByEmail("nonexistent@example.com");
+                () -> service.loadUserByUsername("teste"));
     }
 }
