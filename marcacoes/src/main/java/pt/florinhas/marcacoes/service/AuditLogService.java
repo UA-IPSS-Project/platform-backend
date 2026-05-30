@@ -30,7 +30,6 @@ public class AuditLogService {
     @Autowired(required = false)
     private HttpServletRequest request;
 
-    @Async
     public void log(String action, String entityType, Long entityId, String details) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
