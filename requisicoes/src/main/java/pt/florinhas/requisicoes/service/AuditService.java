@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,7 +34,6 @@ public class AuditService {
         this.request = request;
     }
 
-    @Async
     public void log(String action, String entityType, Long entityId, String details) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
