@@ -16,7 +16,7 @@ curl -c cookies.txt -X POST http://localhost:8080/api/auth/login/funcionario \
 {
   "id": 4,
   "email": "dpo@florinhasdovouga.pt",
-  "nome": "Encarregado Proteção Dados",
+  "nome": "Encarregado de Proteção de Dados",
   "role": "DPO",
   "active": true
 }
