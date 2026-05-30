@@ -5,12 +5,13 @@
 **Endpoint:** `POST /api/auth/login/funcionario`
 
 ```bash
-curl -X POST http://localhost:8080/api/auth/login/funcionario \
+curl -c cookies.txt -X POST http://localhost:8080/api/auth/login/funcionario \
   -H "Content-Type: application/json" \
   -d '{"email":"auditor@florinhasdovouga.pt","password":"<PASSWORD>"}'
 ```
 
-**Resposta:**
+**Resposta (body):**
+
 ```json
 {
   "id": 5,
@@ -21,12 +22,38 @@ curl -X POST http://localhost:8080/api/auth/login/funcionario \
 }
 ```
 
-O token JWT é devolvido no cookie `jwt`. Deve ser incluído em todos os pedidos:
-```bash
--b "jwt=<TOKEN>"
+O token JWT é devolvido no header `Set-Cookie` da resposta HTTP como um cookie `HttpOnly`:
+
+```txt
+Set-Cookie: jwt=eyJhbG...; Path=/; Max-Age=28800; HttpOnly; SameSite=Lax
 ```
 
-> **Nota:** O Auditor não tem acesso à plataforma web. Toda a interação é feita via CLI/API. O Auditor tem acesso **exclusivo** à consulta de logs de auditoria e não pode realizar nenhuma outra operação.
+**Como guardar e reutilizar o cookie:**
+
+```bash
+# Login — guarda o cookie no ficheiro cookies.txt
+curl -c cookies.txt -X POST http://localhost:8080/api/auth/login/funcionario \
+  -H "Content-Type: application/json" \
+  -d '{"email":"auditor@florinhasdovouga.pt","password":"<PASSWORD>"}'
+
+# Pedidos seguintes — usa o cookie guardado
+curl -b cookies.txt "http://localhost:8080/api/audit/logs?page=0&size=10"
+```
+
+Em alternativa, pode extrair o token manualmente e usá-lo diretamente:
+
+```bash
+# Extrair token do header Set-Cookie
+TOKEN=$(curl -s -D - -X POST http://localhost:8080/api/auth/login/funcionario \
+  -H "Content-Type: application/json" \
+  -d '{"email":"auditor@florinhasdovouga.pt","password":"<PASSWORD>"}' \
+  | grep -oP 'jwt=\K[^;]+')
+
+# Usar o token diretamente
+curl -b "jwt=$TOKEN" "http://localhost:8080/api/audit/logs?page=0&size=10"
+```
+
+> **Nota:** O Auditor não tem acesso à plataforma web. Toda a interação é feita via CLI/API. O Auditor tem acesso **exclusivo** à consulta de logs de auditoria e não pode realizar nenhuma outra operação. O cookie expira após 8 horas.
 
 ---
 
@@ -39,7 +66,7 @@ O token JWT é devolvido no cookie `jwt`. Deve ser incluído em todos os pedidos
 ### Parâmetros (todos opcionais)
 
 | Parâmetro | Tipo | Descrição |
-|-----------|------|-----------|
+| ----------- | ------ | ----------- |
 | `page` | int | Página (começa em 0) |
 | `size` | int | Registos por página (1-200, default: 50) |
 | `userId` | long | Filtrar por ID do utilizador |
@@ -53,11 +80,11 @@ O token JWT é devolvido no cookie `jwt`. Deve ser incluído em todos os pedidos
 ### Exemplo: Listar todos os logs (paginado)
 
 ```bash
-curl -b "jwt=$TOKEN_AUDITOR" \
-  "http://localhost:8080/api/audit/logs?page=0&size=10"
+curl -b cookies.txt "http://localhost:8080/api/audit/logs?page=0&size=10"
 ```
 
 **Resposta:**
+
 ```json
 {
   "content": [
@@ -94,35 +121,32 @@ curl -b "jwt=$TOKEN_AUDITOR" \
 ### Exemplo: Filtrar por ação (logins)
 
 ```bash
-curl -b "jwt=$TOKEN_AUDITOR" \
-  "http://localhost:8080/api/audit/logs?action=LOGIN_FUNCIONARIO&page=0&size=50"
+curl -b cookies.txt "http://localhost:8080/api/audit/logs?action=LOGIN_FUNCIONARIO&page=0&size=50"
 ```
 
 ### Exemplo: Filtrar por utilizador específico
 
 ```bash
-curl -b "jwt=$TOKEN_AUDITOR" \
-  "http://localhost:8080/api/audit/logs?userId=4&page=0&size=50"
+curl -b cookies.txt "http://localhost:8080/api/audit/logs?userId=4&page=0&size=50"
 ```
 
 ### Exemplo: Filtrar por intervalo de datas
 
 ```bash
-curl -b "jwt=$TOKEN_AUDITOR" \
+curl -b cookies.txt \
   "http://localhost:8080/api/audit/logs?startDate=2026-05-01T00:00:00&endDate=2026-05-31T23:59:59&page=0&size=100"
 ```
 
 ### Exemplo: Filtrar por tipo de entidade
 
 ```bash
-curl -b "jwt=$TOKEN_AUDITOR" \
-  "http://localhost:8080/api/audit/logs?entityType=SYSTEM_CONFIG&page=0&size=50"
+curl -b cookies.txt "http://localhost:8080/api/audit/logs?entityType=SYSTEM_CONFIG&page=0&size=50"
 ```
 
 ### Exemplo: Combinar filtros
 
 ```bash
-curl -b "jwt=$TOKEN_AUDITOR" \
+curl -b cookies.txt \
   "http://localhost:8080/api/audit/logs?action=PUBLICAR_TERMOS&startDate=2026-05-30T00:00:00&endDate=2026-05-30T23:59:59&page=0&size=20"
 ```
 
@@ -131,7 +155,7 @@ curl -b "jwt=$TOKEN_AUDITOR" \
 ## Tipos de Ação Registados
 
 | Ação | Descrição |
-|------|-----------|
+| ------ | ----------- |
 | `LOGIN_FUNCIONARIO` | Login de funcionário |
 | `LOGIN_UTENTE` | Login de utente |
 | `LOGOUT` | Logout |
@@ -149,7 +173,7 @@ curl -b "jwt=$TOKEN_AUDITOR" \
 ## Tipos de Entidade
 
 | Entidade | Descrição |
-|----------|-----------|
+| ---------- | ----------- |
 | `UTILIZADOR` | Operações sobre utilizadores |
 | `SYSTEM_CONFIG` | Configurações do sistema |
 | `REQUISICAO` | Requisições |
@@ -163,7 +187,7 @@ curl -b "jwt=$TOKEN_AUDITOR" \
 ## Resumo de Permissões do Auditor
 
 | Operação | Acesso |
-|----------|--------|
+| ---------- | -------- |
 | Consultar logs de auditoria | ✅ |
 | Gerir termos e condições | ❌ |
 | Configurar retenção de documentos | ❌ |
