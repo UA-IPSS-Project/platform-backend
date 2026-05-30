@@ -10,6 +10,8 @@ package pt.florinhas.common_data.domain;
  */
 public enum FuncionarioTipo {
     SECRETARIA, BALNEARIO, OUTRO, ESCOLA, INTERNO,
-    /** Responsável pela Proteção de Dados — acesso exclusivo a termos, retenção e auditoria. */
-    DPO
+    /** Responsável pela Proteção de Dados — acesso exclusivo a termos e retenção. */
+    DPO,
+    /** Auditor — acesso exclusivo a logs de auditoria. */
+    AUDITOR
 }
