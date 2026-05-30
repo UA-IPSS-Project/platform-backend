@@ -365,6 +365,7 @@ public class MarcacaoService {
 
     /**
      * Atualiza os detalhes de uma marcação de balneário (serviços, roupa, etc.).
+     * Se a marcação já está EM_PROGRESSO, ajusta o stock (restaura antigos, desconta novos).
      */
     @Transactional
     public MarcacaoResponseDTO atualizarDetalhesBalneario(Long marcacaoId,
@@ -382,6 +383,12 @@ public class MarcacaoService {
 
         detalhes.setProdutosHigiene(produtosHigiene != null ? produtosHigiene : false);
         detalhes.setLavagemRoupa(lavagemRoupa != null ? lavagemRoupa : false);
+
+        // Se já está EM_PROGRESSO, restaurar stock dos itens antigos antes de substituir
+        boolean stockJaDescontado = marcacao.getEstado() == EventoEstado.EM_PROGRESSO;
+        if (stockJaDescontado) {
+            armazemService.restaurarItens(marcacao);
+        }
 
         // Clear existing clothes and add new ones (orphanRemoval handles DB deletes)
         detalhes.getRoupas().clear();
@@ -404,6 +411,11 @@ public class MarcacaoService {
         }
 
         marcacaoRepository.save(marcacao);
+
+        // Se já estava EM_PROGRESSO, descontar stock dos novos itens
+        if (stockJaDescontado) {
+            armazemService.descontarItens(marcacao);
+        }
         auditLogService.log(
                 "ATUALIZAR_DETALHES_BALNEARIO",
                 "MARCACAO",
