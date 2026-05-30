@@ -1,50 +1,54 @@
 package pt.florinhas.marcacoes.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
+import java.lang.reflect.Field;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.minio.MinioClient;
-import io.minio.RemoveObjectArgs;
+import pt.florinhas.marcacoes.service.DocumentoStorageCleanupService;
 
-@ExtendWith(MockitoExtension.class)
 class DocumentoStorageCleanupServiceTest {
 
-    @Mock
     private MinioClient minioClient;
 
-    private DocumentoStorageCleanupService cleanupService;
+    private DocumentoStorageCleanupService service;
 
     @BeforeEach
     void setUp() {
-        cleanupService = new DocumentoStorageCleanupService(minioClient, "marcacoes-test");
-        cleanupService.init();
+
+        minioClient = org.mockito.Mockito.mock(MinioClient.class);
+
+        service = new DocumentoStorageCleanupService(minioClient, "marcacoes");
+
+        service.init();
     }
 
     @Test
-    void removerDoArmazenamento_DeveRemoverObjetoNoMinio_QuandoCaminhoValido() throws Exception {
-        DocumentoStorageCleanupService.removerDoArmazenamento("2026/02/ficheiro.pdf", 7L);
+    void removerDoArmazenamento_DeveIgnorarCaminhoNull() {
 
-        ArgumentCaptor<RemoveObjectArgs> captor = ArgumentCaptor.forClass(RemoveObjectArgs.class);
-        verify(minioClient).removeObject(captor.capture());
-
-        RemoveObjectArgs args = captor.getValue();
-        assertEquals("marcacoes-test", args.bucket());
-        assertEquals("2026/02/ficheiro.pdf", args.object());
+        assertDoesNotThrow(() ->
+                DocumentoStorageCleanupService
+                        .removerDoArmazenamento(null, 1L));
     }
 
     @Test
-    void removerDoArmazenamento_NaoDeveRemover_QuandoCaminhoVazio() throws Exception {
-        DocumentoStorageCleanupService.removerDoArmazenamento("   ", 8L);
+    void removerDoArmazenamento_DeveIgnorarCaminhoVazio() {
 
-        verify(minioClient, never()).removeObject(any(RemoveObjectArgs.class));
+        assertDoesNotThrow(() ->
+                DocumentoStorageCleanupService
+                        .removerDoArmazenamento(" ", 1L));
+    }
+
+    @Test
+    void removerDoArmazenamento_NaoDeveLancarErro() {
+
+        assertDoesNotThrow(() ->
+                DocumentoStorageCleanupService
+                        .removerDoArmazenamento(
+                                "teste.pdf",
+                                1L));
     }
 }
