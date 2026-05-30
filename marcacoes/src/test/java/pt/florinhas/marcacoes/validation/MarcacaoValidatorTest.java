@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -39,9 +40,10 @@ class MarcacaoValidatorTest {
     void validarCriacao_DeveAceitarPedidoValido() {
 
         LocalDateTime data =
-                LocalDateTime.now()
-                        .plusDays(1)
-                        .withHour(10);
+                LocalDate.now()
+                        .with(TemporalAdjusters.next(
+                                java.time.DayOfWeek.MONDAY))
+                        .atTime(10, 0);
 
         when(calendarioService.getFeriadosDoAno(data.getYear()))
                 .thenReturn(List.of());
@@ -77,9 +79,10 @@ class MarcacaoValidatorTest {
     void validarCriacaoBalneario_DeveAceitarPedidoValido() {
 
         LocalDateTime data =
-                LocalDateTime.now()
-                        .plusDays(1)
-                        .withHour(10);
+                LocalDate.now()
+                        .with(TemporalAdjusters.next(
+                                java.time.DayOfWeek.MONDAY))
+                        .atTime(10, 0);
 
         when(calendarioService.getFeriadosDoAno(data.getYear()))
                 .thenReturn(List.of());

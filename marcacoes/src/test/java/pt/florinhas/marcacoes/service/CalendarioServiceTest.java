@@ -15,6 +15,7 @@ import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,14 +53,28 @@ class CalendarioServiceTest {
         auditLogService = mock(AuditLogService.class);
 
         service = new CalendarioService(
-                        bloqueioRepository,
-                        marcacaoRepository,
-                        configuracaoAgendaRepository,
-                        notificacaoService,
-                        auditLogService);
+                bloqueioRepository,
+                marcacaoRepository,
+                configuracaoAgendaRepository,
+                notificacaoService,
+                auditLogService);
 
-        setField("feriadosCache", new ConcurrentHashMap<>());
-        setField("capacidadeCache", new ConcurrentHashMap<>());
+        ConcurrentHashMap<Integer, List<LocalDate>> feriados =
+                new ConcurrentHashMap<>();
+
+        feriados.put(
+                LocalDate.now().getYear(),
+                List.of());
+
+        feriados.put(
+                LocalDate.now().plusYears(1).getYear(),
+                List.of());
+
+        setField("feriadosCache", feriados);
+
+        setField(
+                "capacidadeCache",
+                new ConcurrentHashMap<>());
     }
 
     @Test
@@ -68,7 +83,8 @@ class CalendarioServiceTest {
         when(configuracaoAgendaRepository.findByTipo("SECRETARIA"))
                 .thenReturn(java.util.Optional.empty());
 
-        int result = service.getCapacidadePorSlot("SECRETARIA");
+        int result =
+                service.getCapacidadePorSlot("SECRETARIA");
 
         assertEquals(1, result);
     }
@@ -76,7 +92,8 @@ class CalendarioServiceTest {
     @Test
     void atualizarCapacidadePorSlot_DeveAtualizar() {
 
-        ConfiguracaoAgenda configuracao = new ConfiguracaoAgenda();
+        ConfiguracaoAgenda configuracao =
+                new ConfiguracaoAgenda();
 
         configuracao.setTipo("SECRETARIA");
 
@@ -107,7 +124,10 @@ class CalendarioServiceTest {
     @Test
     void isSlotBloqueado_DeveRetornarTrueQuandoCapacidadeCheia() {
 
-        LocalDate data = LocalDate.now().plusDays(1);
+        LocalDate data =
+                LocalDate.now()
+                        .with(TemporalAdjusters.next(
+                                java.time.DayOfWeek.MONDAY));
 
         when(bloqueioRepository.findByDataAndTipo(any(), any()))
                 .thenReturn(List.of());
@@ -130,7 +150,10 @@ class CalendarioServiceTest {
     @Test
     void bloquearHorario_DeveCriarBloqueio() {
 
-        LocalDate data = LocalDate.now().plusDays(1);
+        LocalDate data =
+                LocalDate.now()
+                        .with(TemporalAdjusters.next(
+                                java.time.DayOfWeek.MONDAY));
 
         when(bloqueioRepository.countConflictingWithLockByTipo(
                 any(),
@@ -189,12 +212,17 @@ class CalendarioServiceTest {
         when(bloqueioRepository.findAll())
                 .thenReturn(List.of(new BloqueioAgenda()));
 
-        assertEquals(1, service.getTodosBloqueios(null).size());
+        assertEquals(
+                1,
+                service.getTodosBloqueios(null).size());
     }
 
-    private void setField(String field, Object value) throws Exception {
+    private void setField(String field, Object value)
+            throws Exception {
 
-        Field f = CalendarioService.class.getDeclaredField(field);
+        Field f =
+                CalendarioService.class
+                        .getDeclaredField(field);
 
         f.setAccessible(true);
 
