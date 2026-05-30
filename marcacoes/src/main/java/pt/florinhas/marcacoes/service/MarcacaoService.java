@@ -353,6 +353,9 @@ public class MarcacaoService {
 
         Marcacao saved = marcacaoRepository.save(marcacao);
 
+        // Descontar stock imediatamente ao registar banho
+        armazemService.descontarItens(saved);
+
         auditLogService.log(
                 "CRIAR_MARCACAO_BALNEARIO",
                 "MARCACAO",
@@ -384,9 +387,10 @@ public class MarcacaoService {
         detalhes.setProdutosHigiene(produtosHigiene != null ? produtosHigiene : false);
         detalhes.setLavagemRoupa(lavagemRoupa != null ? lavagemRoupa : false);
 
-        // Se já está EM_PROGRESSO, restaurar stock dos itens antigos antes de substituir
-        boolean stockJaDescontado = marcacao.getEstado() == EventoEstado.EM_PROGRESSO;
-        if (stockJaDescontado) {
+        // Stock já foi descontado na criação — restaurar antigos antes de substituir
+        boolean stockActivo = marcacao.getEstado() != EventoEstado.CANCELADO
+                && marcacao.getEstado() != EventoEstado.NAO_COMPARECIDO;
+        if (stockActivo) {
             armazemService.restaurarItens(marcacao);
         }
 
@@ -413,7 +417,7 @@ public class MarcacaoService {
         marcacaoRepository.save(marcacao);
 
         // Se já estava EM_PROGRESSO, descontar stock dos novos itens
-        if (stockJaDescontado) {
+        if (stockActivo) {
             armazemService.descontarItens(marcacao);
         }
         auditLogService.log(
@@ -460,20 +464,12 @@ public class MarcacaoService {
         }
 
         // === GESTÃO DE STOCK DO ARMAZÉM (Balneário) ===
+        // Stock é descontado na criação do banho. Restaurar se cancelado ou não compareceu.
         if (marcacao.getMarcacaoBalneario() != null) {
-            // Descontar stock ao marcar presença (transição para EM_PROGRESSO)
-            if (request.getNovoEstadoEnum() == EventoEstado.EM_PROGRESSO) {
-                List<String> avisos = armazemService.descontarItens(marcacao);
-                if (!avisos.isEmpty()) {
-                    log.warn("Avisos de stock ao marcar presença na marcação {}: {}", id, avisos);
-                }
-            }
-
-            // Restaurar stock se a marcação estava EM_PROGRESSO e agora é CANCELADA ou
-            // NAO_COMPARECIDO
-            if (estadoAnterior == EventoEstado.EM_PROGRESSO
-                    && (request.getNovoEstadoEnum() == EventoEstado.CANCELADO
-                            || request.getNovoEstadoEnum() == EventoEstado.NAO_COMPARECIDO)) {
+            if ((request.getNovoEstadoEnum() == EventoEstado.CANCELADO
+                    || request.getNovoEstadoEnum() == EventoEstado.NAO_COMPARECIDO)
+                    && estadoAnterior != EventoEstado.CANCELADO
+                    && estadoAnterior != EventoEstado.NAO_COMPARECIDO) {
                 armazemService.restaurarItens(marcacao);
                 log.info("Stock restaurado para marcação {} (transição {} -> {})",
                         id, estadoAnterior, request.getNovoEstadoEnum());
