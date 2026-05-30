@@ -91,7 +91,7 @@ curl -b cookies.txt "http://localhost:8080/api/audit/logs?page=0&size=10"
     {
       "id": 5,
       "userId": 4,
-      "userName": "Encarregado Proteção Dados",
+      "userName": "Encarregado de Proteção de Dados",
       "action": "PUBLICAR_TERMOS",
       "entityType": "SYSTEM_CONFIG",
       "entityId": null,
