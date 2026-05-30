@@ -112,6 +112,11 @@ public class AuthService {
                         throw new BadRequestException("Credenciais inválidas");
                 }
 
+                // DPO e AUDITOR não têm acesso ao frontend — apenas via CLI
+                if (funcionario.getTipo() == FuncionarioTipo.DPO || funcionario.getTipo() == FuncionarioTipo.AUDITOR) {
+                        throw new BadRequestException("Esta conta não tem acesso à plataforma web. Utilize a interface de linha de comandos.");
+                }
+
                 // Funcionário inativo pode significar dois cenários distintos:
                 // 1) Criado pela secretaria (primeiro login com password temporária) -> permitir autenticar
                 // 2) Auto-registo pendente de aprovação (termos já aceites) -> bloquear login
