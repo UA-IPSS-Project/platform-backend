@@ -817,4 +817,68 @@ public class UtilizadorService {
             throw new BadRequestException(mensagemErro);
         }
     }
+
+    /**
+     * Cria conta especial (DPO ou Auditor) apenas com email.
+     * Gera password e envia por email. Conta fica inativa até primeiro login.
+     */
+    @Transactional
+    public void criarContaEspecial(String email, FuncionarioTipo tipo) {
+        if (tipo != FuncionarioTipo.DPO && tipo != FuncionarioTipo.AUDITOR) {
+            throw new BadRequestException("Tipo inválido. Apenas DPO ou AUDITOR são permitidos.");
+        }
+        validarCampoObrigatorio(email, "Email é obrigatório");
+
+        List<Funcionario> existentes = funcionarioRepository.findByEmail(email);
+        if (!existentes.isEmpty()) {
+            throw new BadRequestException("Já existe uma conta com este email.");
+        }
+
+        Funcionario funcionario = new Funcionario();
+        funcionario.setNome(tipo.name());
+        funcionario.setEmail(email.trim());
+        funcionario.setTipo(tipo);
+        funcionario.setActivo(false);
+
+        String password = gerarPasswordSegura();
+        funcionario.setPassHash(passwordEncoder.encode(password));
+        funcionario.setOtpExpiresAt(LocalDateTime.now().plusMinutes(15));
+
+        funcionarioRepository.save(funcionario);
+
+        auditLogService.log("CRIAR_CONTA_ESPECIAL", "UTILIZADOR", funcionario.getId(),
+                String.format("Conta %s criada: %s", tipo.name(), email));
+
+        emailService.sendPassword(email, password);
+    }
+
+    /**
+     * Recupera conta especial (DPO/Auditor) — regenera password e envia por email.
+     */
+    @Transactional
+    public void recuperarContaEspecial(String email) {
+        validarCampoObrigatorio(email, "Email é obrigatório");
+
+        List<Funcionario> funcionarios = funcionarioRepository.findByEmail(email.trim());
+        if (funcionarios.isEmpty()) {
+            return; // Não revelar se existe
+        }
+
+        Funcionario funcionario = funcionarios.get(0);
+        if (funcionario.getTipo() != FuncionarioTipo.DPO && funcionario.getTipo() != FuncionarioTipo.AUDITOR) {
+            return; // Só funciona para contas especiais
+        }
+
+        String password = gerarPasswordSegura();
+        funcionario.setPassHash(passwordEncoder.encode(password));
+        funcionario.setOtpExpiresAt(LocalDateTime.now().plusMinutes(15));
+        funcionario.setActivo(false);
+        funcionario.setTermsAcceptedAt(null);
+        funcionarioRepository.save(funcionario);
+
+        auditLogService.log("RECUPERAR_CONTA_ESPECIAL", "UTILIZADOR", funcionario.getId(),
+                String.format("Conta %s recuperada: %s", funcionario.getTipo().name(), email));
+
+        emailService.sendPassword(email, password);
+    }
 }

@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -30,7 +29,6 @@ public class AuditLogService {
     @Autowired(required = false)
     private HttpServletRequest request;
 
-    @Async
     public void log(String action, String entityType, Long entityId, String details) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();

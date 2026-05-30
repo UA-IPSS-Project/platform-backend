@@ -123,6 +123,7 @@ public class UtilizadorController {
     public ResponseEntity<UtilizadorResponseDTO> atualizarUtilizador(
             @PathVariable Long id,
             @RequestBody UtilizadorInfoDTO request) {
+        authorizationService.checkPermission(id, "atualizar este perfil");
         Utilizador utilizador = utilizadorService.atualizarUtilizador(id, request);
         UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
         return ResponseEntity.ok(response);
@@ -383,6 +384,36 @@ public class UtilizadorController {
         }
 
         termsService.updateTermsContent(lang, content);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Cria conta especial (DPO ou Auditor). Apenas secretaria pode criar.
+     */
+    @PostMapping("/special-account")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> criarContaEspecial(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String tipo = body.get("tipo");
+        if (email == null || tipo == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        FuncionarioTipo funcTipo = FuncionarioTipo.valueOf(tipo.toUpperCase());
+        utilizadorService.criarContaEspecial(email, funcTipo);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Recupera conta especial (DPO/Auditor) — regenera password e envia por email.
+     */
+    @PostMapping("/special-account/recover")
+    @PreAuthorize("hasRole('SECRETARIA')")
+    public ResponseEntity<Void> recuperarContaEspecial(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        utilizadorService.recuperarContaEspecial(email);
         return ResponseEntity.ok().build();
     }
 }

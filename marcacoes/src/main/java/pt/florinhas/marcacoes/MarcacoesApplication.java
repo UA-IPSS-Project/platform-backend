@@ -123,6 +123,14 @@ public class MarcacoesApplication {
 				    "999999995",
 				    "dpo123",
 				    FuncionarioTipo.DPO));
+
+			upsertFuncionario(funcionarioRepository, encoder, cryptoUtils, new SeedAccount(
+				    "999999994",
+				    "Auditor",
+				    "auditor@florinhasdovouga.pt",
+				    "999999994",
+				    "aud123",
+				    FuncionarioTipo.AUDITOR));
 		};
 	}
 

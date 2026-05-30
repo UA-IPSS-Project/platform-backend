@@ -55,6 +55,7 @@ public class RequisicaoController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO', 'FUNCIONARIO', 'ESCOLA', 'INTERNO')")
     public Page<Requisicao> listar(
             @RequestParam(required = false) RequisicaoEstado estado,
             @PageableDefault(size = 20, sort = "criadoEm") Pageable pageable) {
@@ -62,6 +63,7 @@ public class RequisicaoController {
     }
 
     @GetMapping("/procurar")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO', 'FUNCIONARIO', 'ESCOLA', 'INTERNO')")
     public Page<Requisicao> procurar(
             @RequestParam(required = false) RequisicaoEstado estado,
             @RequestParam(required = false) RequisicaoTipo tipo,
@@ -74,6 +76,7 @@ public class RequisicaoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO', 'FUNCIONARIO', 'ESCOLA', 'INTERNO')")
     public Requisicao obter(@PathVariable Long id) {
         return requisicaoService.obterPorId(id);
     }
@@ -188,6 +191,7 @@ public class RequisicaoController {
     }
 
     @PostMapping("/material")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO', 'FUNCIONARIO', 'ESCOLA', 'INTERNO')")
     public ResponseEntity<Requisicao> criarMaterial(
             @Valid @RequestBody CriarRequisicaoMaterialRequest request,
             @AuthenticationPrincipal Utilizador utilizador) {
@@ -198,6 +202,7 @@ public class RequisicaoController {
     }
 
     @PostMapping("/transporte")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO', 'FUNCIONARIO', 'ESCOLA', 'INTERNO')")
     public ResponseEntity<Requisicao> criarTransporte(
             @Valid @RequestBody CriarRequisicaoTransporteRequest request,
             @AuthenticationPrincipal Utilizador utilizador) {
@@ -208,6 +213,7 @@ public class RequisicaoController {
     }
 
     @PostMapping("/manutencao")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO', 'FUNCIONARIO', 'ESCOLA', 'INTERNO')")
     public ResponseEntity<Requisicao> criarManutencao(
             @Valid @RequestBody CriarRequisicaoManutencaoRequest request,
             @AuthenticationPrincipal Utilizador utilizador) {
