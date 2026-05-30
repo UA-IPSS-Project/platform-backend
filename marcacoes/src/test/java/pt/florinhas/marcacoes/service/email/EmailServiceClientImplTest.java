@@ -2,6 +2,7 @@ package pt.florinhas.marcacoes.service.email;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,8 +13,6 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestTemplate;
-
-import pt.florinhas.marcacoes.service.email.EmailServiceClientImpl;
 
 class EmailServiceClientImplTest {
 
@@ -39,9 +38,9 @@ class EmailServiceClientImplTest {
         service.sendPassword("teste@test.com", "123");
 
         verify(restTemplate).postForObject(
-                any(),
-                any(),
-                any());
+            anyString(),
+            any(),
+            any(Class.class));
     }
 
     @Test
@@ -55,9 +54,9 @@ class EmailServiceClientImplTest {
                 15);
 
         verify(restTemplate).postForObject(
-                any(),
-                any(),
-                any());
+            anyString(),
+            any(),
+            any(Class.class));
     }
 
     @Test
@@ -71,9 +70,9 @@ class EmailServiceClientImplTest {
                 "Motivo");
 
         verify(restTemplate).postForObject(
-                any(),
-                any(),
-                any());
+            anyString(),
+            any(),
+            any(Class.class));
     }
 
     @Test
@@ -85,9 +84,9 @@ class EmailServiceClientImplTest {
                 "Consulta");
 
         verify(restTemplate).postForObject(
-                any(),
-                any(),
-                any());
+            anyString(),
+            any(),
+            any(Class.class));
     }
 
     @Test
@@ -99,9 +98,9 @@ class EmailServiceClientImplTest {
                 "Mensagem");
 
         verify(restTemplate).postForObject(
+                anyString(),
                 any(),
-                any(),
-                any());
+                any(Class.class));
     }
 
     @Test
@@ -115,18 +114,18 @@ class EmailServiceClientImplTest {
                 "teste.pdf");
 
         verify(restTemplate).postForObject(
-                any(),
-                any(),
-                any());
+            anyString(),
+            any(),
+            any(Class.class));
     }
 
     @Test
     void sendGenericEmail_NaoDeveLancarErro() {
 
         when(restTemplate.postForObject(
+                anyString(),
                 any(),
-                any(),
-                any(Class.class)))
+                any()))
                 .thenThrow(new RuntimeException());
 
         assertDoesNotThrow(() ->
