@@ -35,6 +35,7 @@ public class ReportController {
     );
 
     @PostMapping("/email")
+    @PreAuthorize("hasAnyRole('SECRETARIA', 'BALNEARIO')")
     public ResponseEntity<Void> sendReportByEmail(@RequestBody SendReportRequest request) {
         String subject = buildSubject(request);
         String body = buildReportBody(request);

@@ -123,6 +123,7 @@ public class UtilizadorController {
     public ResponseEntity<UtilizadorResponseDTO> atualizarUtilizador(
             @PathVariable Long id,
             @RequestBody UtilizadorInfoDTO request) {
+        authorizationService.checkPermission(id, "atualizar este perfil");
         Utilizador utilizador = utilizadorService.atualizarUtilizador(id, request);
         UtilizadorResponseDTO response = UtilizadorResponseDTO.fromUtilizador(utilizador);
         return ResponseEntity.ok(response);

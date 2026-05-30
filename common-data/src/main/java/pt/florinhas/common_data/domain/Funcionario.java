@@ -55,10 +55,12 @@ public class Funcionario extends Utilizador {
     private boolean activo;
 
     @Override
-        public Collection<? extends GrantedAuthority> getAuthorities() {
+    public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.tipo == null) {
-            return List.of(
-                new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+            return List.of(new SimpleGrantedAuthority("ROLE_FUNCIONARIO"));
+        }
+        if (this.tipo == FuncionarioTipo.DPO || this.tipo == FuncionarioTipo.AUDITOR) {
+            return List.of(new SimpleGrantedAuthority("ROLE_" + this.tipo.name()));
         }
         return List.of(
             new SimpleGrantedAuthority("ROLE_" + this.tipo.name()),
