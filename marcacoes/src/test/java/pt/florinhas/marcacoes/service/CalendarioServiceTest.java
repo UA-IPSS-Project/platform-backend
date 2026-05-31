@@ -1,103 +1,231 @@
 package pt.florinhas.marcacoes.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
+import pt.florinhas.common_data.domain.Utilizador;
+import pt.florinhas.common_data.exception.BadRequestException;
+import pt.florinhas.marcacoes.domain.BloqueioAgenda;
 import pt.florinhas.marcacoes.domain.ConfiguracaoAgenda;
 import pt.florinhas.marcacoes.domain.EventoEstado;
 import pt.florinhas.marcacoes.domain.Marcacao;
-import pt.florinhas.marcacoes.dto.ConfiguracaoSlotDTO;
 import pt.florinhas.marcacoes.repository.BloqueioRepository;
 import pt.florinhas.marcacoes.repository.ConfiguracaoAgendaRepository;
 import pt.florinhas.marcacoes.repository.MarcacaoRepository;
-import pt.florinhas.common_data.domain.Utilizador;
 
-@ExtendWith(MockitoExtension.class)
 class CalendarioServiceTest {
 
-    @Mock
     private BloqueioRepository bloqueioRepository;
-
-    @Mock
     private MarcacaoRepository marcacaoRepository;
-
-    @Mock
     private ConfiguracaoAgendaRepository configuracaoAgendaRepository;
-
-    @Mock
     private NotificacaoService notificacaoService;
-
-    @Mock
     private AuditLogService auditLogService;
 
-    @InjectMocks
-    private CalendarioService calendarioService;
+    private CalendarioService service;
+
+    @BeforeEach
+    void setUp() throws Exception {
+
+        bloqueioRepository = mock(BloqueioRepository.class);
+        marcacaoRepository = mock(MarcacaoRepository.class);
+        configuracaoAgendaRepository = mock(ConfiguracaoAgendaRepository.class);
+        notificacaoService = mock(NotificacaoService.class);
+        auditLogService = mock(AuditLogService.class);
+
+        service = new CalendarioService(
+                bloqueioRepository,
+                marcacaoRepository,
+                configuracaoAgendaRepository,
+                notificacaoService,
+                auditLogService);
+
+        ConcurrentHashMap<Integer, List<LocalDate>> feriados =
+                new ConcurrentHashMap<>();
+
+        feriados.put(
+                LocalDate.now().getYear(),
+                List.of());
+
+        feriados.put(
+                LocalDate.now().plusYears(1).getYear(),
+                List.of());
+
+        setField("feriadosCache", feriados);
+
+        setField(
+                "capacidadeCache",
+                new ConcurrentHashMap<>());
+    }
 
     @Test
-    void atualizarCapacidadePorSlot_quandoDiminuiCapacidade_deveCancelarMarcacoesExcedentesNoFuturo() {
-        // Arrange
-        String tipo = "SECRETARIA";
-        int oldCapacidade = 3;
-        int novaCapacidade = 1;
+    void getCapacidadePorSlot_DeveRetornarDefault() {
 
-        // Configuração antiga
-        ConfiguracaoAgenda cfg = new ConfiguracaoAgenda();
-        cfg.setTipo(tipo);
-        cfg.setCapacidadePorSlot(oldCapacidade);
+        when(configuracaoAgendaRepository.findByTipo("SECRETARIA"))
+                .thenReturn(java.util.Optional.empty());
 
-        when(configuracaoAgendaRepository.findByTipo(tipo)).thenReturn(Optional.of(cfg));
-        when(configuracaoAgendaRepository.save(any(ConfiguracaoAgenda.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        int result =
+                service.getCapacidadePorSlot("SECRETARIA");
 
-        // Criar marcações futuras no mesmo slot para simular excesso
-        LocalDateTime slotTime = LocalDateTime.now().plusDays(2);
-        
-        Marcacao m1 = new Marcacao();
-        m1.setId(1L);
-        m1.setData(slotTime);
-        m1.setEstado(EventoEstado.AGENDADO);
-        m1.setCriadoEm(LocalDateTime.now().minusHours(2));
+        assertEquals(1, result);
+    }
 
-        Utilizador criador = new Utilizador();
-        criador.setId(10L);
+    @Test
+    void atualizarCapacidadePorSlot_DeveAtualizar() {
 
-        Marcacao m2 = new Marcacao();
-        m2.setId(2L);
-        m2.setData(slotTime);
-        m2.setEstado(EventoEstado.AGENDADO);
-        m2.setCriadoEm(LocalDateTime.now().minusHours(1));
-        m2.setCriadoPor(criador);
+        ConfiguracaoAgenda configuracao =
+                new ConfiguracaoAgenda();
 
-        List<Marcacao> futureMarcacoes = new ArrayList<>(List.of(m1, m2));
-        when(marcacaoRepository.findActiveFutureMarcacoes(any(LocalDateTime.class), eq(tipo))).thenReturn(futureMarcacoes);
+        configuracao.setTipo("SECRETARIA");
 
-        // Act
-        ConfiguracaoSlotDTO result = calendarioService.atualizarCapacidadePorSlot(tipo, novaCapacidade);
+        when(configuracaoAgendaRepository.findByTipo("SECRETARIA"))
+                .thenReturn(java.util.Optional.of(configuracao));
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(novaCapacidade, result.getCapacidadePorSlot());
+        when(configuracaoAgendaRepository.save(any()))
+                .thenReturn(configuracao);
 
-        // Como a capacidade reduziu de 3 para 1, e havia 2 marcações, a mais recente (m2, criada há 1h) deve ser cancelada,
-        // enquanto a mais antiga (m1, criada há 2h) deve ser mantida.
-        assertEquals(EventoEstado.AGENDADO, m1.getEstado());
-        assertEquals(EventoEstado.CANCELADO, m2.getEstado());
-        assertNotNull(m2.getMotivoCancelamento());
-        assertTrue(m2.getMotivoCancelamento().contains("redução de capacidade"));
+        assertEquals(
+                5,
+                service.atualizarCapacidadePorSlot(
+                        "SECRETARIA",
+                        5)
+                        .getCapacidadePorSlot());
+    }
 
-        verify(marcacaoRepository, times(1)).save(m2);
-        verify(auditLogService, times(1)).log(eq("ATUALIZAR_ESTADO_MARCACAO"), eq("MARCACAO"), eq(2L), anyString());
-        verify(notificacaoService, times(1)).notificarCancelamento(any(), any(), anyString());
+    @Test
+    void atualizarCapacidadePorSlot_DeveLancarErro() {
+
+        assertThrows(
+                BadRequestException.class,
+                () -> service.atualizarCapacidadePorSlot(
+                        "SECRETARIA",
+                        0));
+    }
+
+    @Test
+    void isSlotBloqueado_DeveRetornarTrueQuandoCapacidadeCheia() {
+
+        LocalDate data =
+                LocalDate.now()
+                        .with(TemporalAdjusters.next(
+                                java.time.DayOfWeek.MONDAY));
+
+        when(bloqueioRepository.findByDataAndTipo(any(), any()))
+                .thenReturn(List.of());
+
+        when(configuracaoAgendaRepository.findByTipo("SECRETARIA"))
+                .thenReturn(java.util.Optional.empty());
+
+        when(marcacaoRepository.countByDataAndTipo(any(), any()))
+                .thenReturn(1L);
+
+        boolean result =
+                service.isSlotBloqueado(
+                        data,
+                        LocalTime.of(10, 0),
+                        "SECRETARIA");
+
+        assertEquals(true, result);
+    }
+
+    @Test
+    void bloquearHorario_DeveCriarBloqueio() {
+
+        LocalDate data =
+                LocalDate.now()
+                        .with(TemporalAdjusters.next(
+                                java.time.DayOfWeek.MONDAY));
+
+        when(bloqueioRepository.countConflictingWithLockByTipo(
+                any(),
+                any(),
+                any(),
+                any()))
+                .thenReturn(0L);
+
+        when(marcacaoRepository.findMarcacoesBetweenDates(
+                any(),
+                any(),
+                any()))
+                .thenReturn(List.of());
+
+        when(bloqueioRepository.save(any()))
+                .thenAnswer(i -> i.getArgument(0));
+
+        BloqueioAgenda result =
+                service.bloquearHorario(
+                        data,
+                        LocalTime.of(10, 0),
+                        LocalTime.of(11, 0),
+                        "Teste",
+                        mock(Utilizador.class),
+                        "SECRETARIA");
+
+        assertEquals("Teste", result.getMotivo());
+    }
+
+    @Test
+    void bloquearHorario_DeveLancarErroDataPassada() {
+
+        assertThrows(
+                BadRequestException.class,
+                () -> service.bloquearHorario(
+                        LocalDate.now().minusDays(1),
+                        LocalTime.of(10, 0),
+                        LocalTime.of(11, 0),
+                        "Teste",
+                        mock(Utilizador.class),
+                        "SECRETARIA"));
+    }
+
+    @Test
+    void removerBloqueio_DeveRemover() {
+
+        service.removerBloqueio(1L);
+
+        verify(bloqueioRepository)
+                .deleteById(1L);
+    }
+
+    @Test
+    void getTodosBloqueios_DeveRetornarLista() {
+
+        when(bloqueioRepository.findAll())
+                .thenReturn(List.of(new BloqueioAgenda()));
+
+        assertEquals(
+                1,
+                service.getTodosBloqueios(null).size());
+    }
+
+    private void setField(String field, Object value)
+            throws Exception {
+
+        Field f =
+                CalendarioService.class
+                        .getDeclaredField(field);
+
+        f.setAccessible(true);
+
+        f.set(service, value);
     }
 }

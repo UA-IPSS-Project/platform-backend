@@ -5,10 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-class MarcacaoRepositoryTest {
+class AssuntoRepositoryTest {
 
     @Test
-    void marcacaoRepository_DeveSerJpaRepository() {
+    void assuntoRepository_DeveSerJpaRepository() {
 
         assertNotNull(JpaRepository.class);
     }
