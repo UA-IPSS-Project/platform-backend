@@ -197,4 +197,130 @@ class AuthControllerTest {
 
         field.set(controller, value);
     }
+
+    @Test
+        void loginFuncionario_DeveConfigurarCookieLaxSemSecure()
+                throws Exception {
+
+        AuthResponse response =
+                new AuthResponse(
+                        1L,
+                        "teste@teste.com",
+                        "Teste",
+                        "SECRETARIA",
+                        "123456789",
+                        "912345678",
+                        System.currentTimeMillis(),
+                        true,
+                        false);
+
+        when(authService.loginFuncionario(any()))
+                .thenReturn(new AuthResult(response));
+
+        when(jwtService.generateToken(any()))
+                .thenReturn("jwt-token");
+
+        setField("secureCookies", false);
+        setField("cookieSameSite", "Lax");
+
+        MockServerHttpRequest request =
+                MockServerHttpRequest
+                        .post("/api/auth/login/funcionario")
+                        .build();
+
+        ResponseEntity<AuthResponse> result =
+                controller.loginFuncionario(
+                        new LoginFuncionarioRequest(
+                                "teste@teste.com",
+                                "123"),
+                        request);
+
+        String cookie =
+                result.getHeaders()
+                        .getFirst(HttpHeaders.SET_COOKIE);
+
+        assertNotNull(cookie);
+
+        assertEquals(true, cookie.contains("HttpOnly"));
+
+        assertEquals(true, cookie.contains("SameSite=Lax"));
+
+        assertEquals(false, cookie.contains("Secure"));
+        }
+
+        @Test
+        void loginFuncionario_DeveConfigurarCookieSecure()
+                throws Exception {
+
+        AuthResponse response =
+                new AuthResponse(
+                        1L,
+                        "teste@teste.com",
+                        "Teste",
+                        "SECRETARIA",
+                        "123456789",
+                        "912345678",
+                        System.currentTimeMillis(),
+                        true,
+                        false);
+
+        when(authService.loginFuncionario(any()))
+                .thenReturn(new AuthResult(response));
+
+        when(jwtService.generateToken(any()))
+                .thenReturn("jwt-token");
+
+        setField("secureCookies", true);
+        setField("cookieSameSite", "Strict");
+
+        MockServerHttpRequest request =
+                MockServerHttpRequest
+                        .post("/api/auth/login/funcionario")
+                        .header("X-Forwarded-Proto", "https")
+                        .build();
+
+        ResponseEntity<AuthResponse> result =
+                controller.loginFuncionario(
+                        new LoginFuncionarioRequest(
+                                "teste@teste.com",
+                                "123"),
+                        request);
+
+        String cookie =
+                result.getHeaders()
+                        .getFirst(HttpHeaders.SET_COOKIE);
+
+        assertNotNull(cookie);
+
+        assertEquals(true, cookie.contains("HttpOnly"));
+
+        assertEquals(true, cookie.contains("Secure"));
+
+        assertEquals(true, cookie.contains("SameSite=Strict"));
+        }
+
+        @Test
+        void loginFuncionario_DevePropagarErro() {
+
+        when(authService.loginFuncionario(any()))
+                .thenThrow(
+                        new pt.florinhas.common_data.exception.BadRequestException(
+                                "credenciais inválidas"));
+
+        MockServerHttpRequest request =
+                MockServerHttpRequest
+                        .post("/api/auth/login/funcionario")
+                        .build();
+
+        var exception =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        pt.florinhas.common_data.exception.BadRequestException.class,
+                        () -> controller.loginFuncionario(
+                                new LoginFuncionarioRequest(
+                                        "teste@teste.com",
+                                        "123"),
+                                request));
+
+        assertEquals("credenciais inválidas", exception.getMessage());
+        }
 }

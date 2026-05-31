@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -271,4 +274,85 @@ class AuthServiceTest {
 
         field.set(service, value);
     }
+
+    @Test
+        void loginFuncionario_DeveFalharQuandoUtilizadorNaoEncontrado() {
+
+        when(utilizadorRepository.findByEmail(
+                "naoexiste@teste.com"))
+                .thenReturn(List.of());
+
+        assertThrows(
+                BadRequestException.class,
+                () -> service.loginFuncionario(
+                        new LoginFuncionarioRequest(
+                                "naoexiste@teste.com",
+                                "123")));
+        }
+
+        @Test
+        void loginFuncionario_DeveFalharQuandoFuncionarioInativoEAprovado() {
+
+        Funcionario funcionario = new Funcionario();
+
+        funcionario.setId(1L);
+        funcionario.setNome("Teste");
+        funcionario.setEmail("teste@teste.com");
+        funcionario.setPassHash("hash");
+        funcionario.setTipo(FuncionarioTipo.SECRETARIA);
+
+        funcionario.setActivo(false);
+
+        funcionario.setTermsAcceptedAt(
+                LocalDateTime.now());
+
+        when(utilizadorRepository.findByEmail(
+                "teste@teste.com"))
+                .thenReturn(List.of(funcionario));
+
+        when(passwordEncoder.matches(
+                "123",
+                "hash"))
+                .thenReturn(true);
+
+        assertThrows(
+                BadRequestException.class,
+                () -> service.loginFuncionario(
+                        new LoginFuncionarioRequest(
+                                "teste@teste.com",
+                                "123")));
+        }
+
+        @Test
+        void getCurrentUserResponse_DeveRetornarEmptyQuandoUtilizadorNaoExiste() {
+
+        Funcionario funcionario =
+                new Funcionario();
+
+        funcionario.setId(999L);
+
+        when(utilizadorRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        Optional<AuthResponse> result =
+                service.getCurrentUserResponse(
+                        funcionario);
+
+        assertTrue(
+                result.isEmpty());
+        }
+
+        @Test
+        void updatePassword_DeveFalharQuandoUtilizadorNaoExiste() {
+
+        when(utilizadorRepository.findById(1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                BadRequestException.class,
+                () -> service.updatePassword(
+                        1L,
+                        "novaPassword",
+                        true));
+        }
 }

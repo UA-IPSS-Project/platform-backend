@@ -1,6 +1,8 @@
 package pt.florinhas.api_gateway.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +22,7 @@ import org.springframework.web.server.WebFilterChain;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import pt.florinhas.common_data.domain.Utilizador;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -173,4 +176,117 @@ class JwtAuthenticationFilterTest {
                 filter.filter(exchange, chain))
                 .verifyComplete();
     }
+    
+       @Test
+        void filter_DeveRetornar401QuandoTokenInvalido() {
+
+        when(jwtService.parseClaims("token"))
+                .thenThrow(new RuntimeException("jwt inválido"));
+
+        MockServerHttpRequest request =
+                MockServerHttpRequest
+                        .get("/api/private")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer token")
+                        .build();
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        WebFilterChain chain =
+                e -> Mono.error(
+                        new IllegalStateException(
+                                "chain não devia ser executada"));
+
+        StepVerifier.create(
+                filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertEquals(
+                401,
+                exchange.getResponse()
+                        .getStatusCode()
+                        .value());
+        }
+        
+        @Test
+        void filter_DeveRetornar401QuandoUtilizadorNaoExiste() {
+
+        Claims claims =
+                Jwts.claims()
+                        .subject("teste@teste.com")
+                        .build();
+
+        when(jwtService.parseClaims("token"))
+                .thenReturn(claims);
+
+        when(userDetailsService.loadUserByUsername(
+                "teste@teste.com"))
+                .thenThrow(
+                        new RuntimeException(
+                                "user não encontrado"));
+
+        MockServerHttpRequest request =
+                MockServerHttpRequest
+                        .get("/api/private")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer token")
+                        .build();
+
+        MockServerWebExchange exchange =
+                MockServerWebExchange.from(request);
+
+        WebFilterChain chain =
+                e -> Mono.error(
+                        new IllegalStateException(
+                                "chain não devia ser executada"));
+
+        StepVerifier.create(
+                filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertEquals(
+                401,
+                exchange.getResponse()
+                        .getStatusCode()
+                        .value());
+        }
+
+        @Test
+        void filter_DeveRetornar401QuandoSubjectVazio() {
+
+        Claims claims =
+                Jwts.claims()
+                        .subject("")
+                        .build();
+
+        when(jwtService.parseClaims("token"))
+                .thenReturn(claims);
+
+        MockServerHttpRequest request =
+                MockServerHttpRequest
+                        .get("/api/private")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                "Bearer token")
+                        .build();
+
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        WebFilterChain chain =
+                e -> Mono.error(
+                        new IllegalStateException(
+                                "chain não devia ser executada"));
+
+        StepVerifier.create(
+                filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertEquals(
+                401,
+                exchange.getResponse()
+                        .getStatusCode()
+                        .value());
+        }
 }

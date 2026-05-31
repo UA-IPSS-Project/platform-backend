@@ -3,6 +3,7 @@ package pt.florinhas.api_gateway.security;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import io.jsonwebtoken.Claims;
+import pt.florinhas.common_data.domain.Utilizador;
 
 class JwtServiceTest {
 
@@ -108,4 +110,96 @@ class JwtServiceTest {
         field.setAccessible(true);
         field.set(jwtService, value);
     }
+    @Test
+        void generateToken_DeveFallbackSubjectParaNifQuandoEmailEmBranco() {
+
+        JwtService.AuthUserClaims claimsData =
+                new JwtService.AuthUserClaims(
+                        1L,
+                        "   ",
+                        "Nuno",
+                        "USER",
+                        "123456789",
+                        "912345678",
+                        List.of(
+                                new SimpleGrantedAuthority(
+                                        "ROLE_USER")));
+
+        String token = jwtService.generateToken(claimsData);
+
+        Claims claims = jwtService.parseClaims(token);
+
+        assertEquals("123456789", claims.getSubject());
+        }
+
+       @Test
+        void generateToken_DeveConterClaimsImportantes() {
+
+        JwtService.AuthUserClaims claimsData =
+                new JwtService.AuthUserClaims(
+                        10L,
+                        "user@example.com",
+                        "Nuno",
+                        "ADMIN",
+                        "123456789",
+                        "912345678",
+                        List.of(
+                                new SimpleGrantedAuthority(
+                                        "ROLE_ADMIN")));
+
+        String token =
+                jwtService.generateToken(
+                        claimsData);
+
+        Claims claims =
+                jwtService.parseClaims(token);
+
+        assertEquals(
+                10,
+                ((Number) claims.get("userId"))
+                        .intValue());
+
+        assertEquals(
+                "123456789",
+                claims.get("nif"));
+
+        assertEquals(
+                "912345678",
+                claims.get("telefone"));
+
+        assertTrue(
+                ((List<?>) claims.get("roles"))
+                        .contains("ROLE_ADMIN"));
+        }
+
+        @Test
+        void generateToken_DeveDefinirExpirationFutura() {
+
+            JwtService.AuthUserClaims claimsData =
+                    new JwtService.AuthUserClaims(
+                            1L,
+                            "user@example.com",
+                            "Nuno",
+                            "USER",
+                            "123456789",
+                            "912345678",
+                            List.of(
+                                    new SimpleGrantedAuthority(
+                                            "ROLE_USER")));
+
+            String token =
+                    jwtService.generateToken(
+                            claimsData);
+
+            Claims claims =
+                    jwtService.parseClaims(token);
+
+            assertNotNull(
+                    claims.getExpiration());
+
+            assertTrue(
+                    claims.getExpiration()
+                            .getTime() >
+                            System.currentTimeMillis());
+        }
 }
