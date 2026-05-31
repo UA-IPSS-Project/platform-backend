@@ -1,14 +1,20 @@
 package pt.florinhas.common_data.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.reflect.Field;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
+
+import pt.florinhas.common_data.security.CryptoUtils;
 
 class UtilizadorTest {
 
@@ -120,4 +126,78 @@ class UtilizadorTest {
                 now,
                 utilizador.getCreatedAt());
     }
+
+    @Test
+        void onCreate_DeveDefinirCreatedAtENifHash() throws Exception {
+
+        CryptoUtils cryptoUtils = new CryptoUtils();
+
+        Field encryptionField =
+                CryptoUtils.class.getDeclaredField("encryptionKeyHex");
+
+        encryptionField.setAccessible(true);
+
+        encryptionField.set(
+                cryptoUtils,
+                "00112233445566778899AABBCCDDEEFF");
+
+        Field blindField =
+                CryptoUtils.class.getDeclaredField("blindIndexKey");
+
+        blindField.setAccessible(true);
+
+        blindField.set(
+                cryptoUtils,
+                "blind-key");
+
+        cryptoUtils.init();
+
+        Utilizador.setCryptoUtils(cryptoUtils);
+
+        Utilizador utilizador = new Utilizador();
+
+        utilizador.setNif("123456789");
+
+        utilizador.onCreate();
+
+        assertNotNull(utilizador.getCreatedAt());
+
+        assertNotNull(utilizador.getNifHash());
+        }
+
+        @Test
+        void onUpdate_DeveAtualizarNifHash() throws Exception {
+
+        CryptoUtils cryptoUtils = new CryptoUtils();
+
+        Field encryptionField =
+                CryptoUtils.class.getDeclaredField("encryptionKeyHex");
+
+        encryptionField.setAccessible(true);
+
+        encryptionField.set(
+                cryptoUtils,
+                "00112233445566778899AABBCCDDEEFF");
+
+        Field blindField =
+                CryptoUtils.class.getDeclaredField("blindIndexKey");
+
+        blindField.setAccessible(true);
+
+        blindField.set(
+                cryptoUtils,
+                "blind-key");
+
+        cryptoUtils.init();
+        Utilizador.setCryptoUtils(cryptoUtils);
+        Utilizador utilizador = new Utilizador();
+        utilizador.setNif("123456789");
+        utilizador.onUpdate();
+        String hash1 = utilizador.getNifHash();
+        utilizador.setNif("987654321");
+        utilizador.onUpdate();
+        String hash2 = utilizador.getNifHash();
+        assertNotEquals(hash1, hash2);
+        }
+        
 }

@@ -1,8 +1,9 @@
 package pt.florinhas.common_data.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -42,16 +43,17 @@ class NifEncryptorConverterTest {
     }
 
     @Test
-    void convertToDatabaseColumn_DeveIgnorarValorJaCifrado() {
+        void convertToDatabaseColumn_DeveIgnorarValorJaCifrado() {
 
         String result =
                 converter.convertToDatabaseColumn(
                         "iv:data");
 
-        assertEquals(
-                "iv:data",
-                result);
-    }
+        assertEquals("iv:data", result);
+
+        verify(cryptoUtils, never())
+                .encrypt("iv:data");
+        }
 
     @Test
     void convertToEntityAttribute_DeveDecifrar() {
@@ -69,16 +71,17 @@ class NifEncryptorConverterTest {
     }
 
     @Test
-    void convertToEntityAttribute_DeveIgnorarTextoNaoCifrado() {
+        void convertToEntityAttribute_DeveIgnorarTextoNaoCifrado() {
 
         String result =
                 converter.convertToEntityAttribute(
                         "123456789");
 
-        assertEquals(
-                "123456789",
-                result);
-    }
+        assertEquals("123456789", result);
+
+        verify(cryptoUtils, never())
+                .decrypt("123456789");
+        }
 
     @Test
     void convertToDatabaseColumn_DeveRetornarNull() {
@@ -95,4 +98,6 @@ class NifEncryptorConverterTest {
                 null,
                 converter.convertToEntityAttribute(null));
     }
+    
+
 }

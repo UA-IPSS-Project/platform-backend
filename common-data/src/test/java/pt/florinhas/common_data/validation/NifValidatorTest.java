@@ -161,4 +161,16 @@ class NifValidatorTest {
                 () -> validator.validateOptionalOrThrow(
                         "123"));
     }
+
+    @Test
+        void isValidOptional_DeveRetornarFalseQuandoValorInvalido() {
+
+        assertFalse(validator.isValidOptional("123"));
+        }
+
+        @Test
+        void validateOptionalOrThrow_DeveAceitarNifValido() {
+
+        assertDoesNotThrow(() -> validator.validateOptionalOrThrow("123456789"));
+        }
 }
