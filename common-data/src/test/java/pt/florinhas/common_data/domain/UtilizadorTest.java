@@ -74,30 +74,28 @@ class UtilizadorTest {
     }
 
     @Test
-    void onCreate_DeveDefinirCreatedAt() {
+        void onCreate_DeveDefinirCreatedAt() {
 
-        Utilizador utilizador =
-                new Utilizador();
-
+        Utilizador.setCryptoUtils(null);
+        Utilizador utilizador = new Utilizador();
         utilizador.setNif("123456789");
 
         assertThrows(
                 IllegalStateException.class,
                 utilizador::onCreate);
-    }
+        }
 
     @Test
-    void onUpdate_DeveFalharSemCryptoUtils() {
+        void onUpdate_DeveFalharSemCryptoUtils() {
 
-        Utilizador utilizador =
-                new Utilizador();
-
+        Utilizador.setCryptoUtils(null);
+        Utilizador utilizador = new Utilizador();
         utilizador.setNif("123456789");
 
         assertThrows(
                 IllegalStateException.class,
                 utilizador::onUpdate);
-    }
+        }
 
     @Test
     void deleteRequested_DeveTerDefaultFalse() {
