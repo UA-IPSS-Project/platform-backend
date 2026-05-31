@@ -10,7 +10,7 @@ class FuncionarioTipoTest {
     void values_DeveConterTodosOsTipos() {
 
         assertEquals(
-                6,
+                7,
                 FuncionarioTipo.values().length);
     }
 
